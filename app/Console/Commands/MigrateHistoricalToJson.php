@@ -260,10 +260,6 @@ class MigrateHistoricalToJson extends Command
         ];
     }
 
-    // CORREZIONE: usa il NOME per mappare, non referee_code
-
-    // SOSTITUISCI le 3 funzioni con queste che usano ID DIRETTO
-
     private function getAssignmentsForUserYear(int $userId, int $year): array
     {
         $table = "assignments_{$year}";
