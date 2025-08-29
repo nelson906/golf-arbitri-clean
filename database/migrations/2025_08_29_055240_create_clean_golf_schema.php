@@ -46,7 +46,7 @@ return new class extends Migration
         Schema::create('clubs', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('code', 20)->unique();
+            $table->string('code', 50)->unique();
             $table->string('email');
             $table->string('phone')->nullable();
             $table->text('address')->nullable();
