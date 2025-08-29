@@ -136,7 +136,3 @@ if (app()->environment(['local', 'staging'])) {
         })->name('user-types');
     });
 }
-
-
-// Referee routes compatibility - redirect to users
-Route::redirect('/admin/referees', '/admin/users?user_type=referee');
