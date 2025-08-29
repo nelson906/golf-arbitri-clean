@@ -10,11 +10,21 @@ use Carbon\Carbon;
 
 class MigrateHistoricalToJson extends Command
 {
-    protected $signature = 'migrate:historical-json {--year-start=2015} {--year-end=2025} {--batch-size=50} {--dry-run} {--debug}';
+    protected $signature = 'migrate:historical-json
+                            {--year-start=2015}
+                            {--year-end=2025}
+                            {--batch-size=50}
+                            {--dry-run}
+                            {--debug}
+                            {--debug-levels : Mostra debug dettagliato livelli storici}
+                            {--cache-arbitri : Usa cache per record arbitri}
+                            {--only-user= : Processa solo un utente specifico}';
+
     protected $description = 'Migra dati storici da 48+ tabelle a JSON (da assignments_YYYY, tournaments_YYYY a referee_career_history)';
 
     private array $stats = [];
     private array $availableYears = [];
+    private array $arbitriCache = []; // <- AGGIUNGI QUESTA
 
     public function handle()
     {
@@ -43,7 +53,7 @@ class MigrateHistoricalToJson extends Command
         ];
 
         // 1. Test connessione
-        if (!$this->testConnection()) {
+        if (!$this->testConnections()) {
             return 1;
         }
 
@@ -65,12 +75,17 @@ class MigrateHistoricalToJson extends Command
         return 0;
     }
 
-    private function testConnection(): bool
+    private function testConnections(): bool // <- cambia nome da testConnection
     {
         try {
-            // Test su una tabella storica
+            // Test su una tabella storica (codice esistente)
             $count = DB::connection('old_mysql')->table('assignments_2024')->count();
             $this->info("Connessione DB vecchio OK - assignments_2024: {$count} records");
+
+            // AGGIUNGI questo controllo tabella arbitri
+            $arbitriCount = DB::connection('old_mysql')->table('arbitri')->count();
+            $this->info("Connessione tabella arbitri OK - arbitri: {$arbitriCount} records");
+
             return true;
         } catch (\Exception $e) {
             $this->error("Errore connessione DB vecchio: {$e->getMessage()}");
@@ -112,7 +127,7 @@ class MigrateHistoricalToJson extends Command
         // Report tabelle disponibili
         $this->table(
             ['Anno', 'Assignments', 'Tournaments', 'Availabilities'],
-            collect($this->availableYears)->map(function($tables, $year) {
+            collect($this->availableYears)->map(function ($tables, $year) {
                 return [
                     $year,
                     $tables['assignments'] ?? 'N/A',
@@ -178,7 +193,6 @@ class MigrateHistoricalToJson extends Command
                 }
 
                 $this->stats['users_processed']++;
-
             } catch (\Exception $e) {
                 $this->stats['errors']++;
                 if ($debug) {
@@ -246,6 +260,33 @@ class MigrateHistoricalToJson extends Command
         ];
     }
 
+    // CORREZIONE: usa il NOME per mappare, non referee_code
+
+    // SOSTITUISCI le 3 funzioni con queste che usano ID DIRETTO
+
+    private function getAssignmentsForUserYear(int $userId, int $year): array
+    {
+        $table = "assignments_{$year}";
+
+        try {
+            $assignments = DB::connection('old_mysql')
+                ->table($table)
+                ->where('user_id', $userId)  // <- USA ID DIRETTO!
+                ->select('tournament_id', 'role', 'assigned_at')
+                ->get();
+
+            return $assignments->map(function ($a) {
+                return [
+                    'tournament_id' => $a->tournament_id,
+                    'role' => $a->role,
+                    'assigned_at' => $a->assigned_at,
+                ];
+            })->toArray();
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+
     private function getTournamentsForUserYear(int $userId, int $year): array
     {
         $tournamentsTable = "tournaments_{$year}";
@@ -255,11 +296,11 @@ class MigrateHistoricalToJson extends Command
             $tournaments = DB::connection('old_mysql')
                 ->table("{$tournamentsTable} as t")
                 ->join("{$assignmentsTable} as a", 't.id', '=', 'a.tournament_id')
-                ->where('a.user_id', $userId)
+                ->where('a.user_id', $userId)  // <- USA ID DIRETTO!
                 ->select('t.id', 't.name', 't.start_date', 't.end_date', 't.club_id')
                 ->get();
 
-            return $tournaments->map(function($t) {
+            return $tournaments->map(function ($t) {
                 return [
                     'id' => $t->id,
                     'name' => $t->name,
@@ -268,32 +309,6 @@ class MigrateHistoricalToJson extends Command
                     'club_id' => $t->club_id
                 ];
             })->toArray();
-
-        } catch (\Exception $e) {
-            return [];
-        }
-    }
-
-    private function getAssignmentsForUserYear(int $userId, int $year): array
-    {
-        $table = "assignments_{$year}";
-
-        try {
-            $assignments = DB::connection('old_mysql')
-                ->table($table)
-                ->where('user_id', $userId)
-                ->select('tournament_id', 'role', 'assigned_at', 'notes')
-                ->get();
-
-            return $assignments->map(function($a) {
-                return [
-                    'tournament_id' => $a->tournament_id,
-                    'role' => $a->role,
-                    'assigned_at' => $a->assigned_at,
-                    'notes' => $a->notes
-                ];
-            })->toArray();
-
         } catch (\Exception $e) {
             return [];
         }
@@ -306,30 +321,120 @@ class MigrateHistoricalToJson extends Command
         try {
             $availabilities = DB::connection('old_mysql')
                 ->table($table)
-                ->where('user_id', $userId)
-                ->select('tournament_id', 'submitted_at', 'notes')
+                ->where('user_id', $userId)  // <- USA ID DIRETTO!
+                ->select('tournament_id', 'notes')
                 ->get();
 
-            return $availabilities->map(function($a) {
+            return $availabilities->map(function ($a) {
                 return [
                     'tournament_id' => $a->tournament_id,
-                    'submitted_at' => $a->submitted_at,
                     'notes' => $a->notes
                 ];
             })->toArray();
-
         } catch (\Exception $e) {
             return [];
         }
     }
-
     private function inferLevelForYear(User $referee, int $year): ?string
     {
-        // Logica semplice: usa il livello corrente dell'user
-        // In futuro potresti implementare logica più sofisticata
-        return $referee->level;
+        try {
+            // Cerca nella tabella arbitri
+            $arbitroRecord = $this->findArbitroRecord($referee);
+
+            if (!$arbitroRecord) {
+                if ($this->option('debug')) {
+                    $this->warn("Arbitro non trovato per user {$referee->id} ({$referee->name})");
+                }
+                return $referee->level;
+            }
+
+            // Campo per l'anno specifico
+            $levelFieldName = "Livello_{$year}";
+
+            // Verifica che il campo esista
+            if (!isset($arbitroRecord->$levelFieldName) || empty($arbitroRecord->$levelFieldName)) {
+                // Cerca il livello più vicino
+                $nearestLevel = $this->findNearestAvailableLevel($arbitroRecord, $year);
+
+                if ($nearestLevel) {
+                    return $this->mapLegacyLevelToModern($nearestLevel);
+                }
+
+                return $referee->level;
+            }
+
+            // Mappa il livello legacy
+            $legacyLevel = $arbitroRecord->$levelFieldName;
+            return $this->mapLegacyLevelToModern($legacyLevel);
+        } catch (\Exception $e) {
+            if ($this->option('debug')) {
+                $this->error("Errore inferLevelForYear per user {$referee->id}, anno {$year}: {$e->getMessage()}");
+            }
+            return $referee->level;
+        }
     }
 
+    private function findArbitroRecord(User $referee)
+    {
+        try {
+            // METODO 1: Match per nome completo ESATTO
+            $arbitro = DB::connection('old_mysql')
+                ->table('arbitri')
+                ->whereRaw("CONCAT(Nome, ' ', Cognome) = ?", [$referee->name])
+                ->first();
+
+            if ($arbitro) {
+                return $arbitro;
+            }
+
+            // METODO 2: Match per nome completo LIKE
+            $arbitro = DB::connection('old_mysql')
+                ->table('arbitri')
+                ->whereRaw("CONCAT(Nome, ' ', Cognome) LIKE ?", ["%{$referee->name}%"])
+                ->first();
+
+            if ($arbitro) {
+                return $arbitro;
+            }
+
+            // METODO 3: Split migliorato per cognomi composti
+            $nameParts = explode(' ', trim($referee->name));
+            if (count($nameParts) >= 2) {
+                $nome = $nameParts[0];
+                $cognome = implode(' ', array_slice($nameParts, 1)); // Tutto tranne il primo come cognome
+
+                $arbitro = DB::connection('old_mysql')
+                    ->table('arbitri')
+                    ->where('Nome', $nome)
+                    ->where('Cognome', $cognome)
+                    ->first();
+
+                if ($arbitro) {
+                    return $arbitro;
+                }
+            }
+
+            // METODO 4: Match LIKE migliorato
+            if (count($nameParts) >= 2) {
+                $nome = $nameParts[0];
+                $cognome = implode(' ', array_slice($nameParts, 1));
+
+                $arbitro = DB::connection('old_mysql')
+                    ->table('arbitri')
+                    ->where('Nome', 'LIKE', "%{$nome}%")
+                    ->where('Cognome', 'LIKE', "%{$cognome}%")
+                    ->first();
+
+                if ($arbitro) {
+                    return $arbitro;
+                }
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
     private function calculateCareerStats(array $tournaments, array $assignments, array $availabilities): array
     {
         $totalYears = count($tournaments);
@@ -452,5 +557,61 @@ class MigrateHistoricalToJson extends Command
             $this->line("  Total assignments: {$stats['total_assignments']}");
             $this->line("  Years active: {$stats['total_years']}");
         }
+    }
+    /**
+     * Trova il livello più vicino all'anno richiesto
+     */
+    private function findNearestAvailableLevel($arbitroRecord, int $targetYear): ?string
+    {
+        $availableYears = range(2015, 2025);
+        $availableLevels = [];
+
+        foreach ($availableYears as $year) {
+            $fieldName = "Livello_{$year}";
+            if (isset($arbitroRecord->$fieldName) && !empty($arbitroRecord->$fieldName)) {
+                $availableLevels[$year] = $arbitroRecord->$fieldName;
+            }
+        }
+
+        if (empty($availableLevels)) {
+            return null;
+        }
+
+        // Trova l'anno più vicino
+        $nearestYear = null;
+        $minDistance = PHP_INT_MAX;
+
+        foreach (array_keys($availableLevels) as $availableYear) {
+            $distance = abs($availableYear - $targetYear);
+            if ($distance < $minDistance) {
+                $minDistance = $distance;
+                $nearestYear = $availableYear;
+            }
+        }
+
+        return $nearestYear ? $availableLevels[$nearestYear] : null;
+    }
+
+    /**
+     * Mappa i livelli legacy ai formati moderni
+     */
+    private function mapLegacyLevelToModern(?string $legacyLevel): string
+    {
+        if (empty($legacyLevel)) {
+            return 'Aspirante';
+        }
+
+        $level = strtoupper(trim($legacyLevel));
+
+        return match ($level) {
+            'ARCH', 'ARCHIVIO' => 'Archivio',
+            'ASP', 'ASPIRANTE' => 'Aspirante',
+            'PRIMO', 'PRIMO_LIVELLO', '1_LIVELLO', '1° LIVELLO' => '1_livello',
+            'REG', 'REGIONALE' => 'Regionale',
+            'NAZ', 'NAZIONALE' => 'Nazionale',
+            'INT', 'INTERNAZIONALE' => 'Internazionale',
+            'GIOV' => 'Archivio',
+            default => 'Aspirante'
+        };
     }
 }
