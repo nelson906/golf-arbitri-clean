@@ -57,26 +57,13 @@ class User extends Authenticatable
         return $this->hasMany(Availability::class);
     }
 
-    public function careerHistory()
-    {
-        return $this->hasOne(RefereeCareerHistory::class);
-    }
-
-    public function createdTournaments()
+   public function createdTournaments()
     {
         return $this->hasMany(Tournament::class, 'created_by');
     }
 
-    // Scopes
-    public function scopeReferees($query)
-    {
-        return $query->where('user_type', 'referee');
-    }
 
-    public function scopeAdmins($query)
-    {
-        return $query->whereIn('user_type', ['admin', 'national_admin', 'super_admin']);
-    }
+    // Scopes
 
     public function scopeActive($query)
     {
@@ -121,6 +108,20 @@ class User extends Authenticatable
         }
         return $this->name;
     }
+public function careerHistory()
+{
+    return $this->hasOne(RefereeCareerHistory::class);
+}
+
+public function scopeReferees($query)
+{
+    return $query->where('user_type', 'referee');
+}
+
+public function scopeAdmins($query)
+{
+    return $query->whereIn('user_type', ['admin', 'super_admin', 'national_admin']);
+}
 
     // Constants
     const USER_TYPES = [

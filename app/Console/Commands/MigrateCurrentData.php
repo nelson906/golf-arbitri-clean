@@ -37,6 +37,7 @@ class MigrateCurrentData extends Command
         }
 
         // Migrazione in ordine di dipendenze
+        $this->migrateTournamentTypes($dryRun, $debug);
         $this->migrateClubs($dryRun, $debug);
         $this->migrateTournaments($dryRun, $debug);
         $this->migrateAssignments($dryRun, $debug);
@@ -84,9 +85,91 @@ class MigrateCurrentData extends Command
         return true;
     }
 
+    private function migrateTournamentTypes(bool $dryRun, bool $debug): void
+    {
+        $this->info('1. Migrazione Tournament Types...');
+
+        // Verifica se tournament types già esistono
+        $existingCount = TournamentType::count();
+        if ($existingCount > 0) {
+            $this->warn("Tournament Types già presenti: {$existingCount}. Skip migrazione tournament types.");
+            return;
+        }
+
+        try {
+            $oldTypes = DB::connection('old_mysql')->table('tournament_types')->get();
+        } catch (\Exception $e) {
+            $this->warn("Tabella tournament_types non trovata nel DB vecchio: {$e->getMessage()}");
+            return;
+        }
+
+        if ($oldTypes->isEmpty()) {
+            $this->warn('Nessun tournament type trovato nel DB vecchio');
+            return;
+        }
+
+        $progress = $this->output->createProgressBar($oldTypes->count());
+        $progress->start();
+
+        $migrated = 0;
+        $errors = 0;
+
+        foreach ($oldTypes as $oldType) {
+            try {
+                $typeData = [
+                    'id' => $oldType->id, // Mantieni lo stesso ID per mantenere le relazioni
+                    'name' => $oldType->name,
+                    'short_name' => $oldType->short_name ?? substr($oldType->name, 0, 10),
+                    'description' => $oldType->description,
+                    'is_national' => (bool)($oldType->is_national ?? false),
+                    'level' => $oldType->level ?? 1,
+                    'required_level' => $oldType->required_level ?? 1,
+                    'min_referees' => $oldType->min_referees ?? 1,
+                    'max_referees' => $oldType->max_referees ?? 2,
+                    'sort_order' => $oldType->sort_order ?? 100,
+                    'is_active' => (bool)($oldType->is_active ?? true),
+                    'settings' => $oldType->settings ?? null,
+                    'created_at' => $oldType->created_at ?? now(),
+                    'updated_at' => $oldType->updated_at ?? now(),
+                ];
+
+                if ($debug && $migrated < 3) {
+                    $this->newLine();
+                    $this->warn("DEBUG Tournament Type ID {$oldType->id}:");
+                    $this->line("Name: {$typeData['name']}");
+                    $this->line("Short Name: {$typeData['short_name']}");
+                    $this->line("Is National: " . ($typeData['is_national'] ? 'Yes' : 'No'));
+                    $this->line("Level: {$typeData['level']}");
+                    $this->line("Required Level: {$typeData['required_level']}");
+                    $this->line("Min/Max Referees: {$typeData['min_referees']}/{$typeData['max_referees']}");
+                }
+
+                if (!$dryRun) {
+                    // Usa insert diretto per mantenere l'ID originale
+                    DB::table('tournament_types')->insert($typeData);
+                }
+
+                $migrated++;
+
+            } catch (\Exception $e) {
+                $errors++;
+                if ($debug) {
+                    $this->newLine();
+                    $this->error("Errore tournament type ID {$oldType->id}: {$e->getMessage()}");
+                }
+            }
+
+            $progress->advance();
+        }
+
+        $progress->finish();
+        $this->newLine();
+        $this->info("Tournament Types - Migrati: {$migrated}, Errori: {$errors}");
+    }
+
     private function migrateClubs(bool $dryRun, bool $debug): void
     {
-        $this->info('1. Migrazione Clubs...');
+        $this->info('2. Migrazione Clubs...');
 
         // Verifica se clubs già esistono
         $existingCount = DB::table('clubs')->count();
@@ -160,7 +243,7 @@ class MigrateCurrentData extends Command
 
     private function migrateTournaments(bool $dryRun, bool $debug): void
     {
-        $this->info('2. Migrazione Tournaments...');
+        $this->info('3. Migrazione Tournaments...');
 
         $oldTournaments = DB::connection('old_mysql')->table('tournaments')->get();
 
@@ -183,7 +266,7 @@ class MigrateCurrentData extends Command
                     'end_date' => $this->parseDate($oldTournament->end_date),
                     'availability_deadline' => $this->parseDateTime($oldTournament->availability_deadline),
                     'club_id' => $this->mapClubId($oldTournament->club_id),
-                    'tournament_type_id' => $this->mapTournamentTypeId($oldTournament),
+                    'tournament_type_id' => $this->mapTournamentTypeId($oldTournament->tournament_type_id),
                     'zone_id' => $this->mapZoneId($oldTournament->zone_id),
                     'status' => $this->mapStatus($oldTournament->status ?? 'draft'),
                     'description' => $oldTournament->description,
@@ -197,6 +280,7 @@ class MigrateCurrentData extends Command
                     $this->newLine();
                     $this->warn("DEBUG Tournament ID {$oldTournament->id}:");
                     $this->line("Name: {$tournamentData['name']}");
+                    $this->line("Club: {$tournamentData['club_id']}");
                     $this->line("Type ID: {$tournamentData['tournament_type_id']}");
                     $this->line("Zone ID: {$tournamentData['zone_id']}");
                 }
@@ -225,7 +309,7 @@ class MigrateCurrentData extends Command
 
     private function migrateAssignments(bool $dryRun, bool $debug): void
     {
-        $this->info('3. Migrazione Assignments...');
+        $this->info('4. Migrazione Assignments...');
 
         $oldAssignments = DB::connection('old_mysql')->table('assignments')->get();
 
@@ -287,7 +371,7 @@ class MigrateCurrentData extends Command
 
     private function migrateAvailabilities(bool $dryRun, bool $debug): void
     {
-        $this->info('4. Migrazione Availabilities...');
+        $this->info('5. Migrazione Availabilities...');
 
         try {
             $oldAvailabilities = DB::connection('old_mysql')->table('availabilities')->get();
@@ -346,18 +430,19 @@ class MigrateCurrentData extends Command
 
     private function mapClubId(?int $oldClubId): int
     {
-        if (!$oldClubId) return 1;
+       if (!$oldClubId) return 1;
 
-        // Trova club nel nuovo DB per ID corrispondente
-        $club = DB::table('clubs')->orderBy('id')->first();
+       // Trova club nel nuovo DB per ID corrispondente
+        $club = DB::table('clubs')->orderBy('id')->find($oldClubId);
+
         return $club ? $club->id : 1;
     }
 
     private function mapTournamentTypeId($oldTournament): int
     {
-        // Cerca per tournament_type_id se esiste
-        if (isset($oldTournament->tournament_type_id)) {
-            $type = TournamentType::find($oldTournament->tournament_type_id);
+    // Cerca per tournament_type_id se esiste
+        if (isset($oldTournament)) {
+            $type = TournamentType::find($oldTournament);
             if ($type) return $type->id;
         }
 

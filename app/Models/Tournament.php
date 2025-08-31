@@ -67,6 +67,24 @@ class Tournament extends Model
     {
         return $query->where('start_date', '>', now());
     }
+public function scopeActive($query)
+{
+    // Non fa nulla se il campo non esiste
+    if (\Schema::hasColumn($this->getTable(), 'active')) {
+        return $query->where('active', true);
+    }
+    return $query;
+}
+    /**
+     * Scope alternativo per stato
+     */
+    public function scopeWithStatus($query, $status = 'active')
+    {
+        if (Schema::hasColumn($this->getTable(), 'status')) {
+            return $query->where('status', $status);
+        }
+        return $query;
+    }
 
     // Constants
     const STATUSES = [

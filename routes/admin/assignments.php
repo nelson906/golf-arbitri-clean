@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 | Gestione completa assegnazioni arbitri ai tornei
 | Separate dalle tournament routes per maggiore modularità
 */
+Route::resource('assignments', AssignmentController::class);
 
 Route::prefix('assignments')->name('assignments.')->group(function () {
 
@@ -19,6 +20,7 @@ Route::prefix('assignments')->name('assignments.')->group(function () {
     Route::post('/', [AssignmentController::class, 'store'])->name('store');
     Route::get('/{assignment}', [AssignmentController::class, 'show'])->name('show');
     Route::get('/{assignment}/edit', [AssignmentController::class, 'edit'])->name('edit');
+    Route::get('/{tournament}/assign', [AssignmentController::class, 'assignReferees'])->name('assign-referees');
     Route::put('/{assignment}', [AssignmentController::class, 'update'])->name('update');
     Route::delete('/{assignment}', [AssignmentController::class, 'destroy'])->name('destroy');
 

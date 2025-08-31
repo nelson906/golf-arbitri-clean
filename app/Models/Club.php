@@ -39,4 +39,14 @@ class Club extends Model
     {
         return $query->where('zone_id', $zoneId);
     }
+
+        /**
+     * Order by name
+     */
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('name');
+    }
+
+
 }

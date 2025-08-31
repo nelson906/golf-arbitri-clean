@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\TournamentController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -34,8 +35,22 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+Route::middleware(['auth'])->group(function () {
+    Route::prefix('tournaments')->name('tournaments.')->group(function () {
+        Route::get('tournaments', function () {
+            return view('admin.placeholder', ['title' => 'Tournaments']);
+        })->name('index');
+        Route::get('/calendar/view', [TournamentController::class, 'calendar'])->name('calendar');
+        Route::get('/calendar/data', [TournamentController::class, 'calendarData'])->name('calendar-data');
+    });
+    Route::get(uri: 'reports', action: function () {
+        return view('admin.placeholder', ['title' => 'Reports']);
+    })->name('reports.dashboard');
+});
+
+
 // Authentication routes (Laravel Breeze/standard)
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
 
 /*
 |--------------------------------------------------------------------------
@@ -49,19 +64,66 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
             return redirect()->route('admin.dashboard');
         });
         Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
+        // Placeholder routes
+        // Route::get('tournaments', function () {
+        //     return view('admin.placeholder', ['title' => 'Tournaments']);
+        // })->name('tournaments.index');
+
+        Route::get('tournaments/create', function () {
+            return view('admin.placeholder', ['title' => 'Create Tournament']);
+        })->name('tournaments.create');
+
+        // Route::get('assignments', action: function () {
+        //     return view('admin.placeholder', ['title' => 'Assignments']);
+        // })->name('assignments.index');
+
+        Route::get(uri: 'communications', action: function () {
+            return view('admin.placeholder', ['title' => 'Communications']);
+        })->name('communications.index');
+
+        Route::get('letterheads', action: function () {
+            return view('admin.placeholder', ['title' => 'Letterheads']);
+        })->name('letterheads.index');
+
+        // Route::get('clubs', action: function () {
+        //     return view('admin.placeholder', ['title' => 'Clubs']);
+        // })->name('clubs.index');
+
+        Route::get(uri: 'letter-templates', action: function () {
+            return view('admin.placeholder', ['title' => 'Templates']);
+        })->name('letter-templates.index');
+
+        Route::get(uri: 'tournament-notifications', action: function () {
+            return view('admin.placeholder', ['title' => 'Tournament-notifications']);
+        })->name('tournament-notifications.index');
+
+        Route::get(uri: 'documents', action: function () {
+            return view('admin.placeholder', ['title' => 'Documents']);
+        })->name('documents.index');
+
+        Route::get(uri: 'settings', action: function () {
+            return view('admin.placeholder', ['title' => 'Settings']);
+        })->name('settings');
+
+
 
         // Quick stats API
         Route::get('/quick-stats', [App\Http\Controllers\Admin\DashboardController::class, 'quickStats'])
             ->name('quick-stats');
-    });
 
-    // Load modular admin routes
-    require __DIR__.'/admin/tournaments.php';
-    require __DIR__.'/admin/users.php';
-    require __DIR__.'/admin/assignments.php';
-    require __DIR__.'/admin/clubs.php';
-    require __DIR__.'/admin/notifications.php';
-    require __DIR__.'/admin/reports.php';
+        // Load modular admin routes
+        require __DIR__ . '/admin/tournaments.php';
+        require __DIR__ . '/admin/users.php';
+        require __DIR__ . '/admin/assignments.php';
+        require __DIR__ . '/admin/dashboard.php';
+        require __DIR__ . '/admin/statistic.php';
+        require __DIR__ . '/admin/monitoring.php';
+        require __DIR__ . '/admin/clubs.php';
+        // require __DIR__.'/admin/notifications.php';
+        require __DIR__ . '/admin/reports.php';
+        // require __DIR__.'/referee/dashboard.php';   // Se non esiste
+
+    });
 });
 
 /*
@@ -78,8 +140,8 @@ Route::middleware(['auth', 'referee_or_admin'])->group(function () {
     });
 
     // Load modular referee routes
-    require __DIR__.'/referee/dashboard.php';
-    require __DIR__.'/referee/availability.php';
+    // require __DIR__.'/referee/dashboard.php';
+    // require __DIR__.'/referee/availability.php';
     // require __DIR__.'/referee/tournaments.php';
 });
 
@@ -90,12 +152,12 @@ Route::middleware(['auth', 'referee_or_admin'])->group(function () {
 */
 Route::prefix('api')->name('api.')->group(function () {
     // Internal API (for AJAX calls)
-    require __DIR__.'/api/internal.php';
+    require __DIR__ . '/api/internal.php';
 
     // Versioned API
     Route::prefix('v1')->name('v1.')->group(function () {
-        require __DIR__.'/api/v1/tournaments.php';
-        require __DIR__.'/api/v1/notifications.php';
+        require __DIR__ . '/api/v1/tournaments.php';
+        require __DIR__ . '/api/v1/notifications.php';
     });
 });
 

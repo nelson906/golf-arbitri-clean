@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Route;
 | Gestione unificata di tutti gli utenti: Referees, Admins, Super Admins
 | Sostituisce le vecchie routes separate admin/referees.php + admin/admins.php
 */
+Route::resource('users', controller: UserController::class);
+Route::post('users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggle-active');
 
 Route::prefix('users')->name('users.')->group(function () {
 

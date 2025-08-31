@@ -11,8 +11,13 @@ use Illuminate\Support\Facades\Route;
 | Gestione completa tornei per admin (Zone Admin, National Admin, Super Admin)
 | Tutte le routes sono prefissate con 'admin.' nel name
 */
+Route::resource('tournaments', TournamentController::class);
+Route::get('tournaments/{tournament}/assignments', [TournamentController::class, 'assignmentsForm'])->name('tournaments.assignments');
 
 Route::prefix('tournaments')->name('tournaments.')->group(function () {
+        Route::get('tournaments', function () {
+            return view('admin.placeholder', ['title' => 'Tournaments']);
+        })->name('tournaments.index');
 
     // CRUD Base
     Route::get('/', [TournamentController::class, 'index'])->name('index');

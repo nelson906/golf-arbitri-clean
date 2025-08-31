@@ -32,6 +32,7 @@ return new class extends Migration
             $table->boolean('is_national')->default(false);
             $table->enum('level', ['zonale', 'nazionale'])->default('zonale');
             $table->enum('required_level', ['aspirante', '1_livello', 'regionale', 'nazionale', 'internazionale'])->default('aspirante');
+            $table->text('calendar_color')->nullable();
             $table->integer('min_referees')->default(1);
             $table->integer('max_referees')->default(2);
             $table->integer('sort_order')->default(0);
@@ -242,66 +243,34 @@ return new class extends Migration
         Schema::dropIfExists('tournament_types');
         Schema::dropIfExists('notifications');
         Schema::dropIfExists('notification_recipients');
-        Schema::dropIfExists('institutional_addresses');}
+        Schema::dropIfExists('institutional_addresses');
+    }
 
     private function seedBasicData(): void
     {
         DB::table('zones')->insert([
-            ['code' => 'SZR1', 'name' => 'Sezione Zonale Regole 1', 'is_national' => false, 'is_active' => true],
-            ['code' => 'SZR2', 'name' => 'Sezione Zonale Regole 2', 'is_national' => false, 'is_active' => true],
-            ['code' => 'SZR3', 'name' => 'Sezione Zonale Regole 3', 'is_national' => false, 'is_active' => true],
-            ['code' => 'SZR4', 'name' => 'Sezione Zonale Regole 4', 'is_national' => false, 'is_active' => true],
-            ['code' => 'SZR5', 'name' => 'Sezione Zonale Regole 5', 'is_national' => false, 'is_active' => true],
-            ['code' => 'SZR6', 'name' => 'Sezione Zonale Regole 6', 'is_national' => false, 'is_active' => true],
-            ['code' => 'SZR7', 'name' => 'Sezione Zonale Regole 7', 'is_national' => false, 'is_active' => true],
-            ['code' => 'CRC', 'name' => 'Central Referee Committee', 'is_national' => true, 'is_active' => true],
+            ['code' => 'SZR1', 'name' => 'Sezione Zonale Regole 1', 'description' => 'Piemonte-Valle d\'Aosta-Liguria', 'is_national' => false],
+            ['code' => 'SZR2', 'name' => 'Sezione Zonale Regole 2', 'description' => 'Lombardia', 'is_national' => false],
+            ['code' => 'SZR3', 'name' => 'Sezione Zonale Regole 3', 'description' => 'Veneto-Trentino-Friuli', 'is_national' => false],
+            ['code' => 'SZR4', 'name' => 'Sezione Zonale Regole 4', 'description' => 'Emilia-Romagna', 'is_national' => false],
+            ['code' => 'SZR5', 'name' => 'Sezione Zonale Regole 5', 'description' => 'Toscana-Umbria', 'is_national' => false],
+            ['code' => 'SZR6', 'name' => 'Sezione Zonale Regole 6', 'description' => 'Lazio-Abruzzo-Molise', 'is_national' => false],
+            ['code' => 'SZR7', 'name' => 'Sezione Zonale Regole 7', 'description' => 'Sud Italia-Sicilia-Sardegna', 'is_national' => false],
+            ['code' => 'CRC', 'name' => 'Comitato Regole Campionati', 'description' => 'Comitato Regole e Campionati', 'is_national' => true],
         ]);
 
-        DB::table('tournament_types')->insert([
-            [
-                'name' => 'Torneo 18 buche',
-                'short_name' => 'T18',
-                'is_national' => false,
-                'level' => 'zonale',
-                'required_level' => '1_livello',
-                'min_referees' => 1,
-                'max_referees' => 2,
-                'sort_order' => 10,
-                'is_active' => true
-            ],
-            [
-                'name' => 'Gara Giovanile',
-                'short_name' => 'GIOV',
-                'is_national' => false,
-                'level' => 'zonale',
-                'required_level' => 'aspirante',
-                'min_referees' => 1,
-                'max_referees' => 2,
-                'sort_order' => 5,
-                'is_active' => true
-            ],
-            [
-                'name' => 'Gara Nazionale 72 buche',
-                'short_name' => 'GN-72',
-                'is_national' => true,
-                'level' => 'nazionale',
-                'required_level' => 'nazionale',
-                'min_referees' => 3,
-                'max_referees' => 5,
-                'sort_order' => 30,
-                'is_active' => true
-            ],
-            [
-                'name' => 'Campionato Italiano',
-                'short_name' => 'CI',
-                'is_national' => true,
-                'level' => 'nazionale',
-                'required_level' => 'nazionale',
-                'min_referees' => 3,
-                'max_referees' => 6,
-                'sort_order' => 40,
-                'is_active' => true
-            ]
+        DB::table('institutional_addresses')->insert([
+            // FIG
+            ['name' => 'Federazione Italiana Golf - Segreteria', 'email' => 'segreteria@federgolf.it', 'category' => 'FIG', 'is_global' => true, 'zone_id' => null, 'is_active' => true],
+            ['name' => 'FIG - Direzione Tecnica', 'email' => 'tecnica@federgolf.it', 'category' => 'FIG', 'is_global' => true, 'zone_id' => null, 'is_active' => true],
+            ['name' => 'FIG - Comitato Regole', 'email' => 'regole@federgolf.it', 'category' => 'FIG', 'is_global' => true, 'zone_id' => null, 'is_active' => true],
+
+            // Regionali (esempi)
+            ['name' => 'Comitato Regionale Lombardia', 'email' => 'lombardia@federgolf.it', 'category' => 'Regionale', 'is_global' => false, 'zone_id' => 1, 'is_active' => true],
+            ['name' => 'Comitato Regionale Lazio', 'email' => 'lazio@federgolf.it', 'category' => 'Regionale', 'is_global' => false, 'zone_id' => 2, 'is_active' => true],
+
+            // Altri enti
+            ['name' => 'European Golf Association', 'email' => 'info@ega-golf.ch', 'category' => 'Internazionale', 'is_global' => true, 'zone_id' => null, 'is_active' => true],
         ]);
     }
 };

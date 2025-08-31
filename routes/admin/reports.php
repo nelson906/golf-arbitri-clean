@@ -6,7 +6,7 @@
 |--------------------------------------------------------------------------
 */
 
-use App\Http\Controllers\Admin\StatisticsController;
+use App\Http\Controllers\Admin\StatisticsDashboardController;
 use App\Http\Controllers\Referee\DashboardController as RefereeDashboardController;
 use App\Http\Controllers\Referee\AvailabilityController;
 use App\Http\Controllers\Referee\TournamentController as RefereeTournamentController;
@@ -16,39 +16,39 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('reports')->name('reports.')->group(function () {
 
     // Main Dashboard
-    Route::get('/', [StatisticsController::class, 'index'])->name('index');
+    Route::get('/', [StatisticsDashboardController::class, 'index'])->name('index');
 
     // Tournament Reports
     Route::prefix('tournaments')->name('tournaments.')->group(function () {
-        Route::get('/', [StatisticsController::class, 'tournaments'])->name('index');
-        Route::get('/completion-rate', [StatisticsController::class, 'tournamentCompletionRate'])->name('completion-rate');
-        Route::get('/by-type', [StatisticsController::class, 'tournamentsByType'])->name('by-type');
-        Route::get('/by-zone', [StatisticsController::class, 'tournamentsByZone'])->name('by-zone');
-        Route::get('/calendar-analysis', [StatisticsController::class, 'calendarAnalysis'])->name('calendar-analysis');
+        Route::get('/', [StatisticsDashboardController::class, 'tournaments'])->name('index');
+        Route::get('/completion-rate', [StatisticsDashboardController::class, 'tournamentCompletionRate'])->name('completion-rate');
+        Route::get('/by-type', [StatisticsDashboardController::class, 'tournamentsByType'])->name('by-type');
+        Route::get('/by-zone', [StatisticsDashboardController::class, 'tournamentsByZone'])->name('by-zone');
+        Route::get('/calendar-analysis', [StatisticsDashboardController::class, 'calendarAnalysis'])->name('calendar-analysis');
     });
 
     // Referee Reports
     Route::prefix('referees')->name('referees.')->group(function () {
-        Route::get('/', [StatisticsController::class, 'referees'])->name('index');
-        Route::get('/activity', [StatisticsController::class, 'refereeActivity'])->name('activity');
-        Route::get('/performance', [StatisticsController::class, 'refereePerformance'])->name('performance');
-        Route::get('/level-distribution', [StatisticsController::class, 'refereeLevelDistribution'])->name('level-distribution');
-        Route::get('/workload', [StatisticsController::class, 'refereeWorkload'])->name('workload');
-        Route::get('/availability-trends', [StatisticsController::class, 'availabilityTrends'])->name('availability-trends');
+        Route::get('/', [StatisticsDashboardController::class, 'referees'])->name('index');
+        Route::get('/activity', [StatisticsDashboardController::class, 'refereeActivity'])->name('activity');
+        Route::get('/performance', [StatisticsDashboardController::class, 'refereePerformance'])->name('performance');
+        Route::get('/level-distribution', [StatisticsDashboardController::class, 'refereeLevelDistribution'])->name('level-distribution');
+        Route::get('/workload', [StatisticsDashboardController::class, 'refereeWorkload'])->name('workload');
+        Route::get('/availability-trends', [StatisticsDashboardController::class, 'availabilityTrends'])->name('availability-trends');
     });
 
     // Assignment Reports
     Route::prefix('assignments')->name('assignments.')->group(function () {
-        Route::get('/', [StatisticsController::class, 'assignments'])->name('index');
-        Route::get('/efficiency', [StatisticsController::class, 'assignmentEfficiency'])->name('efficiency');
-        Route::get('/role-distribution', [StatisticsController::class, 'roleDistribution'])->name('role-distribution');
-        Route::get('/confirmation-rates', [StatisticsController::class, 'confirmationRates'])->name('confirmation-rates');
+        Route::get('/', [StatisticsDashboardController::class, 'assignments'])->name('index');
+        Route::get('/efficiency', [StatisticsDashboardController::class, 'assignmentEfficiency'])->name('efficiency');
+        Route::get('/role-distribution', [StatisticsDashboardController::class, 'roleDistribution'])->name('role-distribution');
+        Route::get('/confirmation-rates', [StatisticsDashboardController::class, 'confirmationRates'])->name('confirmation-rates');
     });
 
     // Export Functionality
-    Route::get('/export', [StatisticsController::class, 'export'])->name('export');
-    Route::post('/custom-export', [StatisticsController::class, 'customExport'])->name('custom-export');
-    Route::get('/scheduled-reports', [StatisticsController::class, 'scheduledReports'])->name('scheduled');
+    Route::get('/export', [StatisticsDashboardController::class, 'export'])->name('export');
+    Route::post('/custom-export', [StatisticsDashboardController::class, 'customExport'])->name('custom-export');
+    Route::get('/scheduled-reports', [StatisticsDashboardController::class, 'scheduledReports'])->name('scheduled');
 });
 
 /*

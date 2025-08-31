@@ -23,6 +23,7 @@ Route::prefix('clubs')->name('clubs.')->group(function () {
 
     // Status Management
     Route::post('/{club}/toggle-active', [ClubController::class, 'toggleActive'])->name('toggle-active');
+    Route::post('/{club}/deactivate', action: [ClubController::class, 'deactivate'])->name('deactivate');
 
     // Bulk Operations
     Route::post('/bulk-action', [ClubController::class, 'bulkAction'])->name('bulk-action');
