@@ -1,609 +1,352 @@
+{{-- File: resources/views/admin/tournaments/show.blade.php --}}
 @extends('layouts.admin')
 
-@section('title', 'Dettagli Torneo: ' . $tournament->name)
+@section('title', 'Dettaglio Torneo - ' . $tournament->name)
 
 @section('content')
-    <div class="container mx-auto px-4 py-8 max-w-7xl">
-        {{-- Header --}}
-        <div class="mb-8">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-900">{{ $tournament->name }}</h1>
-                    <p class="mt-1 text-gray-600">
-                        {{ $tournament->club->name }} - {{ $tournament->date_range }}
-                    </p>
-                </div>
-                <div class="flex space-x-4">
-                    @if ($tournament->isEditable())
-                        <a href="{{ route('admin.tournaments.edit', $tournament) }}"
-                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-200 flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
-                                </path>
-                            </svg>
-                            Modifica
-                        </a>
-                    @endif
-                    <a href="{{ route('admin.tournaments.index') }}"
-                        class="text-gray-600 hover:text-gray-900 flex items-center px-4 py-2">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                        </svg>
-                        Torna all'elenco
-                    </a>
-                </div>
+<div class="py-6">
+    {{-- Header --}}
+    <div class="mb-6">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">🏆 {{ $tournament->name }}</h1>
+                <p class="text-gray-600 mt-1">Dettaglio completo del torneo</p>
             </div>
-        </div>
-
-        {{-- Alert Messages --}}
-        @if (session('success'))
-            <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
-                <p class="font-bold">Successo!</p>
-                <p>{{ session('success') }}</p>
-            </div>
-        @endif
-
-        @if (session('error'))
-            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
-                <p class="font-bold">Errore!</p>
-                <p>{{ session('error') }}</p>
-            </div>
-        @endif
-
-        {{-- Status and Actions --}}
-        <div class="mb-6 flex items-center justify-between bg-white rounded-lg shadow p-4">
-            <div class="flex items-center space-x-4">
-                <span class="text-sm text-gray-500">Stato:</span>
-                <span
-                    class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full
-                bg-{{ $tournament->status_color }}-100 text-{{ $tournament->status_color }}-800">
-                    {{ $tournament->status_label }}
-                </span>
-
-                {{-- Status Change Buttons --}}
-                @if ($tournament->status === 'draft')
-                    <button onclick="updateStatus('open')" class="text-sm text-green-600 hover:text-green-800">
-                        → Apri torneo
-                    </button>
-                @elseif($tournament->status === 'open')
-                    <button onclick="updateStatus('closed')" class="text-sm text-yellow-600 hover:text-yellow-800">
-                        → Chiudi disponibilità
-                    </button>
-                @elseif($tournament->status === 'closed')
-                    @if ($tournament->assignments()->count() >= $tournament->required_referees)
-                        <button onclick="updateStatus('assigned')" class="text-sm text-blue-600 hover:text-blue-800">
-                            → Segna come assegnato
-                        </button>
-                    @endif
-                    <button onclick="updateStatus('open')" class="text-sm text-gray-600 hover:text-gray-800">
-                        ← Riapri disponibilità
-                    </button>
-                @elseif($tournament->status === 'assigned')
-                    <button onclick="updateStatus('completed')" class="text-sm text-gray-600 hover:text-gray-800">
-                        → Completa torneo
-                    </button>
-                @endif
-            </div>
-
             <div class="flex space-x-2">
-                @if ($tournament->needsReferees())
-                    <a href="{{ route('admin.assignments.create', ['tournament_id' => $tournament->id]) }}"
-                        class="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 transition duration-200">
-                        <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z">
-                            </path>
-                        </svg>
-                        Assegna Arbitri
-                    </a>
-                @endif
-
-                <a href="{{ route('referee.availability.index') }}"
-                    class="bg-gray-600 text-white px-4 py-2 rounded text-sm hover:bg-gray-700 transition duration-200">
-                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
-                        </path>
-                    </svg>
-                    Gestisci Disponibilità
+                <a href="{{ route('admin.tournaments.index') }}"
+                   class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">
+                    ← Torna alla Lista
+                </a>
+                <a href="{{ route('admin.tournaments.edit', $tournament) }}"
+                   class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition-colors">
+                    ✏️ Modifica
                 </a>
             </div>
         </div>
-        <div class="bg-white shadow-sm rounded-lg p-6 mb-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">📧 Gestione Notifiche</h3>
+    </div>
 
-            @if ($tournament->assignments->count() > 0 || $tournament->assignedReferees->count() > 0)
-                <div class="flex flex-wrap gap-3">
-                    {{-- ✅ PULSANTE INVIA NOTIFICHE --}}
-                    <a href="{{ route('admin.tournaments.show-assignment-form', $tournament) }}"
-                        class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                        </svg>
-                        📧 Invia Notifiche Assegnazione
-                    </a>
-
-                    {{-- Verifica documenti disponibili --}}
-                    @php
-                        $hasConvocation = false;
-                        $hasClubLetter = false;
-
-                        // Check for convocation
-                        if (
-                            $tournament->convocation_file_path &&
-                            \Storage::disk('public')->exists($tournament->convocation_file_path)
-                        ) {
-                            $hasConvocation = true;
-                        } elseif (
-                            session()->has('last_convocation_path') &&
-                            \Storage::disk('public')->exists(session('last_convocation_path'))
-                        ) {
-                            $hasConvocation = true;
-                        }
-
-                        // Check for club letter
-                        if (
-                            $tournament->club_letter_file_path &&
-                            \Storage::disk('public')->exists($tournament->club_letter_file_path)
-                        ) {
-                            $hasClubLetter = true;
-                        }
-                    @endphp
-
-                    @if ($hasConvocation || $hasClubLetter)
-                        <span
-                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            📎 Documenti disponibili per allegati
-                        </span>
-                    @endif
-                </div>
-
-                <div class="mt-3 text-sm text-gray-600">
-                    <p>Arbitri assegnati:
-                        <strong>{{ $tournament->assignments->count() ?: $tournament->assignedReferees->count() }}</strong>
-                    </p>
-                    @if ($hasConvocation)
-                        <p class="text-green-600">✓ Convocazione SZR disponibile</p>
-                    @endif
-                    @if ($hasClubLetter)
-                        <p class="text-blue-600">✓ Lettera Circolo disponibile</p>
-                    @endif
-                </div>
-            @else
-                <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <div class="flex">
-                        <div class="flex-shrink-0">
-                            <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd"
-                                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                    clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                        <div class="ml-3">
-                            <h3 class="text-sm font-medium text-yellow-800">Nessun arbitro assegnato</h3>
-                            <div class="mt-2 text-sm text-yellow-700">
-                                <p>Assegna prima gli arbitri per poter inviare le notifiche.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            @endif
+    {{-- Messaggi Flash --}}
+    @if(session('success'))
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+            {{ session('success') }}
         </div>
+    @endif
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {{-- Left Column - Tournament Details --}}
-            <div class="lg:col-span-2 space-y-6">
-                {{-- Basic Information --}}
-                <div class="bg-white shadow rounded-lg p-6">
-                    <h2 class="text-lg font-medium text-gray-900 mb-4">Informazioni Torneo</h2>
-                    <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <dt class="text-sm font-medium text-gray-500">Categoria</dt>
-                            <dd class="mt-1 text-sm text-gray-900 flex items-center">
-                                <div class="w-3 h-3 rounded-full mr-2"
-                                    style="background-color: {{ $tournament->tournamentType->calendar_color }}"></div>
-                                {{ $tournament->tournamentType->name }}
-                                @if ($tournament->tournamentType->is_national)
-                                    <span class="ml-2 text-xs text-blue-600">(Nazionale)</span>
-                                @endif
-                            </dd>
-                        </div>
+    @if(session('error'))
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {{ session('error') }}
+        </div>
+    @endif
 
-                        <div>
-                            <dt class="text-sm font-medium text-gray-500">Zona</dt>
-                            <dd class="mt-1 text-sm text-gray-900">{{ $tournament->zone->name }}</dd>
-                        </div>
-
-                        <div>
-                            <dt class="text-sm font-medium text-gray-500">Date Torneo</dt>
-                            <dd class="mt-1 text-sm text-gray-900">
-                                {{ $tournament->start_date->format('d/m/Y') }} -
-                                {{ $tournament->end_date->format('d/m/Y') }}
-                                <span
-                                    class="text-gray-500">({{ $tournament->start_date->diffInDays($tournament->end_date) + 1 }}
-                                    giorni)</span>
-                            </dd>
-                        </div>
-
-                        <div>
-                            <dt class="text-sm font-medium text-gray-500">Scadenza Disponibilità</dt>
-                            <dd class="mt-1 text-sm text-gray-900">
-                                {{ $tournament->availability_deadline->format('d/m/Y') }}
-                                @if ($tournament->days_until_deadline >= 0)
-                                    <span
-                                        class="text-xs {{ $tournament->days_until_deadline <= 3 ? 'text-red-600 font-semibold' : 'text-gray-500' }}">
-                                        ({{ $tournament->days_until_deadline }} giorni rimanenti)
-                                    </span>
-                                @else
-                                    <span class="text-xs text-gray-500">(scaduta)</span>
-                                @endif
-                            </dd>
-                        </div>
-
-                        <div>
-                            <dt class="text-sm font-medium text-gray-500">Circolo</dt>
-                            <dd class="mt-1 text-sm text-gray-900">
-                                {{ $tournament->club->name }}
-                                <div class="text-xs text-gray-500">{{ $tournament->club->full_address }}</div>
-                            </dd>
-                        </div>
-
-                        <div>
-                            <dt class="text-sm font-medium text-gray-500">Contatti Circolo</dt>
-                            <dd class="mt-1 text-sm text-gray-900">
-                                @if ($tournament->club->contact_person)
-                                    <div>{{ $tournament->club->contact_person }}</div>
-                                @endif
-                                @if ($tournament->club->email)
-                                    <div><a href="mailto:{{ $tournament->club->email }}"
-                                            class="text-blue-600 hover:text-blue-800">{{ $tournament->club->email }}</a>
-                                    </div>
-                                @endif
-                                @if ($tournament->club->phone)
-                                    <div>{{ $tournament->club->phone }}</div>
-                                @endif
-                            </dd>
-                        </div>
-                    </dl>
-
-                    @if ($tournament->notes)
-                        <div class="mt-4 pt-4 border-t border-gray-200">
-                            <dt class="text-sm font-medium text-gray-500">Note</dt>
-                            <dd class="mt-1 text-sm text-gray-900">{{ $tournament->notes }}</dd>
-                        </div>
-                    @endif
-                </div>
-
-                {{-- Assigned Referees --}}
-                <div class="bg-white shadow rounded-lg overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                        <h2 class="text-lg font-medium text-gray-900">
-                            Arbitri Assegnati ({{ $tournament->assignments()->count() }} /
-                            {{ $tournament->required_referees }})
-                        </h2>
-                        @if ($tournament->assignments()->count() > 0 && $tournament->status === 'assigned')
-                            <div class="flex space-x-2">
-                                <button onclick="generateDocuments('convocation')"
-                                    class="text-sm text-blue-600 hover:text-blue-800">
-                                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                        </path>
-                                    </svg>
-                                    Genera Convocazioni
-                                </button>
-                                <button onclick="generateDocuments('club')"
-                                    class="text-sm text-green-600 hover:text-green-800">
-                                    <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor"
-                                        viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
-                                        </path>
-                                    </svg>
-                                    Lettera Circolo
-                                </button>
-                            </div>
-                        @endif
+    {{-- Informazioni Torneo --}}
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-900">📊 Informazioni Torneo</h2>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {{-- Colonna Sinistra --}}
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Nome Torneo</label>
+                        <p class="text-gray-900 font-semibold">{{ $tournament->name }}</p>
                     </div>
 
-                    @if ($assignedReferees->count() > 0)
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th scope="col"
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Arbitro
-                                    </th>
-                                    <th scope="col"
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Ruolo
-                                    </th>
-                                    <th scope="col"
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Assegnato
-                                    </th>
-                                    <th scope="col"
-                                        class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Confermato
-                                    </th>
-                                    <th scope="col" class="relative px-6 py-3">
-                                        <span class="sr-only">Azioni</span>
-                                    </th>
-                                </tr>
-                            </thead>
-
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                @foreach ($assignedReferees as $referee)
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="flex items-center">
-                                                <div>
-                                                    <div class="text-sm font-medium text-gray-900">
-                                                        {{ $referee->name }}
-                                                    </div>
-                                                    <div class="text-sm text-gray-500">
-                                                        {{ $referee->referee_code }} - {{ ucfirst($referee->level) }}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span
-                                                class="text-sm text-gray-900">{{ $referee->pivot->role ?? 'N/A' }}</span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            @if ($referee->pivot?->assigned_at)
-                                                {{ \Carbon\Carbon::parse($referee->pivot->assigned_at)->format('d/m/Y H:i') }}
-                                                <div class="text-xs">da
-                                                    {{ $tournament->assignments->where('user_id', $referee->id)->first()?->assignedBy?->name ?? 'Sconosciuto' }}
-                                                </div>
-                                            @else
-                                                N/A
-                                            @endif
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-center">
-                                            @if ($referee->pivot?->is_confirmed)
-                                                <span
-                                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                    Confermato
-                                                </span>
-                                            @else
-                                                <span
-                                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                    In attesa
-                                                </span>
-                                            @endif
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            @if ($tournament->status !== 'completed')
-                                                @php
-                                                    $assignment = $tournament->assignments
-                                                        ->where('user_id', $referee->id)
-                                                        ->first();
-                                                @endphp
-                                                @if ($assignment)
-                                                    <form action="{{ route('admin.assignments.destroy', $assignment) }}"
-                                                        method="POST" class="inline"
-                                                        onsubmit="return confirm('Sei sicuro di voler rimuovere questa assegnazione?');">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="text-red-600 hover:text-red-900">
-                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor"
-                                                                viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round"
-                                                                    stroke-width="2"
-                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                                                                </path>
-                                                            </svg>
-                                                        </button>
-                                                    </form>
-                                                @endif
-                                            @endif
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    @else
-                        <div class="px-6 py-12 text-center text-gray-500">
-                            <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
-                                </path>
-                            </svg>
-                            <p>Nessun arbitro ancora assegnato</p>
-                            @if ($tournament->needsReferees())
-                                <a href="{{ route('admin.assignments.create', ['tournament_id' => $tournament->id]) }}"
-                                    class="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
-                                    Assegna Arbitri
-                                </a>
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Circolo</label>
+                        <p class="text-gray-900">
+                            @if($tournament->club)
+                                {{ $tournament->club->name }}
+                                @if($tournament->club->city)
+                                    <span class="text-gray-500 text-sm">({{ $tournament->club->city }})</span>
+                                @endif
+                            @else
+                                <span class="text-gray-400">N/A</span>
                             @endif
-                        </div>
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Zona</label>
+                        <p class="text-gray-900">
+                            @if($tournament->club && $tournament->club->zone)
+                                {{ $tournament->club->zone->name }}
+                            @else
+                                <span class="text-gray-400">N/A</span>
+                            @endif
+                        </p>
+                    </div>
+                </div>
+
+                {{-- Colonna Destra --}}
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Tipo Torneo</label>
+                        <p class="text-gray-900">
+                            @if($tournament->tournamentType)
+                                {{ $tournament->tournamentType->name }}
+                                @if($tournament->tournamentType->is_national)
+                                    <span class="ml-2 px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded">Nazionale</span>
+                                @endif
+                            @else
+                                <span class="text-gray-400">Standard</span>
+                            @endif
+                        </p>
+                    </div>
+
+                    @if(\Schema::hasColumn('tournaments', 'date') && $tournament->date)
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Data</label>
+                        <p class="text-gray-900">
+                            {{ \Carbon\Carbon::parse($tournament->date)->format('d/m/Y') }}
+                        </p>
+                    </div>
+                    @endif
+
+                    @if(\Schema::hasColumn('tournaments', 'status'))
+                    <div>
+                        <label class="text-sm font-medium text-gray-500">Stato</label>
+                        <p>
+                            @php
+                                $statusColors = [
+                                    'active' => 'bg-green-100 text-green-800',
+                                    'completed' => 'bg-gray-100 text-gray-800',
+                                    'cancelled' => 'bg-red-100 text-red-800',
+                                    'draft' => 'bg-yellow-100 text-yellow-800',
+                                ];
+                                $statusLabels = [
+                                    'active' => 'Attivo',
+                                    'completed' => 'Completato',
+                                    'cancelled' => 'Cancellato',
+                                    'draft' => 'Bozza',
+                                ];
+                            @endphp
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $statusColors[$tournament->status] ?? 'bg-gray-100 text-gray-800' }}">
+                                {{ $statusLabels[$tournament->status] ?? $tournament->status ?? 'N/A' }}
+                            </span>
+                        </p>
+                    </div>
                     @endif
                 </div>
             </div>
 
-            {{-- Right Column - Statistics --}}
-            <div class="space-y-6">
-                {{-- Stats Overview --}}
-                <div class="bg-white shadow rounded-lg p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Riepilogo</h3>
+            {{-- Note --}}
+            @if($tournament->notes)
+            <div class="mt-6 pt-6 border-t border-gray-200">
+                <label class="text-sm font-medium text-gray-500">Note</label>
+                <p class="text-gray-900 mt-1">{{ $tournament->notes }}</p>
+            </div>
+            @endif
+        </div>
+    </div>
 
-                    <div class="space-y-4">
-                        {{-- Referees Progress --}}
-                        <div>
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-600">Arbitri Assegnati</span>
-                                <span class="font-medium">{{ $stats['total_assignments'] }} /
-                                    {{ $stats['required_referees'] }}</span>
-                            </div>
-                            <div class="mt-2 bg-gray-200 rounded-full h-2">
-                                <div class="bg-indigo-600 h-2 rounded-full"
-                                    style="width: {{ min(100, ($stats['total_assignments'] / $stats['required_referees']) * 100) }}%">
-                                </div>
-                            </div>
-                        </div>
+    {{-- Azioni Rapide --}}
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-900">⚡ Azioni Rapide</h2>
+        </div>
+        <div class="p-6">
+            <div class="flex flex-wrap gap-3">
+                {{-- Assegna Arbitri --}}
+                <a href="{{ route('admin.assignments.assign-referees', $tournament) }}"
+                   class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors inline-flex items-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+                        </path>
+                    </svg>
+                    Assegna Arbitri
+                </a>
 
-                        {{-- Availabilities --}}
-                        <div class="pt-4 border-t border-gray-200">
-                            <div class="flex justify-between text-sm mb-2">
-                                <span class="text-gray-600">Disponibilità Ricevute</span>
-                                <span class="font-medium">{{ $stats['total_availabilities'] }}</span>
-                            </div>
-                            <div class="flex justify-between text-sm">
-                                <span class="text-gray-600">Non ancora assegnati</span>
-                                <span class="font-medium">{{ $availableReferees->count() }}</span>
-                            </div>
-                        </div>
+                {{-- Visualizza Assegnazioni --}}
+                <a href="{{ route('admin.assignments.index', ['tournament_id' => $tournament->id]) }}"
+                   class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors inline-flex items-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                        </path>
+                    </svg>
+                    Vedi Assegnazioni
+                </a>
 
-                        {{-- Category Requirements --}}
-                        <div class="pt-4 border-t border-gray-200">
-                            <h4 class="text-sm font-medium text-gray-900 mb-2">Requisiti Categoria</h4>
-                            <div class="space-y-1 text-sm">
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Livello minimo:</span>
-                                    <span
-                                        class="font-medium">{{ ucfirst($tournament->tournamentType->required_referee_level) }}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span class="text-gray-600">Arbitri richiesti:</span>
-                                    <span class="font-medium">
-                                        @if ($tournament->required_referees == $tournament->max_referees)
-                                            {{ $tournament->required_referees }}
-                                        @else
-                                            {{ $tournament->required_referees }} - {{ $tournament->max_referees }}
-                                        @endif
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {{-- Modifica Torneo --}}
+                <a href="{{ route('admin.tournaments.edit', $tournament) }}"
+                   class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors inline-flex items-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                        </path>
+                    </svg>
+                    Modifica Torneo
+                </a>
 
-                {{-- Quick Actions --}}
-                <div class="bg-white shadow rounded-lg p-6">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Azioni Rapide</h3>
-                    <div class="space-y-2">
-                        <a href="{{ route('admin.tournaments.availabilities', $tournament) }}"
-                            class="block w-full text-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                            Gestisci Disponibilità
-                        </a>
-
-                        @if ($tournament->needsReferees())
-                            <a href="{{ route('admin.assignments.create', ['tournament_id' => $tournament->id]) }}"
-                                class="block w-full text-center px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700">
-                                Assegna Arbitri
-                            </a>
-                        @endif
-
-                        <form action="{{ route('admin.tournament-notifications.prepare', $tournament) }}" method="POST">
-                            @csrf
-                            <button type="submit"
-                                class="block w-full text-center px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700">
-                                Salva Notifica
-                            </button>
-                        </form>
-
-                        <a href="{{ route('reports.tournament.show', $tournament) }}"
-                            class="block w-full text-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                            Visualizza Report
-                        </a>
-                    </div>
-                </div>
-
-                {{-- Recent Availabilities --}}
-                @if ($tournament->availabilities()->count() > 0)
-                    <div class="bg-white shadow rounded-lg p-6">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">
-                            Ultime Disponibilità
-                        </h3>
-                        <div class="space-y-3">
-                            @foreach ($tournament->availabilities()->with('user')->latest()->limit(5)->get() as $availability)
-                                <div class="flex items-center justify-between text-sm">
-                                    <div>
-                                        <span class="font-medium">{{ $availability->user->name }}</span>
-                                        <span class="text-gray-500 text-xs block">
-                                            {{ $availability->submitted_at?->diffForHumans() ?? 'Data non disponibile' }}
-                                        </span>
-                                    </div>
-                                    @if (!$tournament->assignments()->where('user_id', $availability->user_id)->exists())
-                                        <a href="{{ route('admin.assignments.create', ['tournament_id' => $tournament->id, 'referee_id' => $availability->user_id]) }}"
-                                            class="text-green-600 hover:text-green-800">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor"
-                                                viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M12 4v16m8-8H4"></path>
-                                            </svg>
-                                        </a>
-                                    @endif
-                                </div>
-                            @endforeach
-                        </div>
-
-                        @if ($tournament->availabilities()->count() > 5)
-                            <a href="{{ route('referee.availability.index') }}"
-                                class="block mt-4 text-center text-sm text-indigo-600 hover:text-indigo-800">
-                                Vedi tutte ({{ $tournament->availabilities()->count() }})
-                            </a>
-                        @endif
-                    </div>
+                {{-- Duplica Torneo (opzionale) --}}
+                @if(isset($canDuplicate) && $canDuplicate)
+                <a href="{{ route('admin.tournaments.duplicate', $tournament) }}"
+                   class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors inline-flex items-center">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
+                        </path>
+                    </svg>
+                    Duplica Torneo
+                </a>
                 @endif
             </div>
         </div>
     </div>
 
-    @push('scripts')
-        <script>
-            // Update tournament status
-            function updateStatus(newStatus) {
-                if (confirm('Sei sicuro di voler cambiare lo stato del torneo?')) {
-                    fetch('{{ route('admin.tournaments.update-status', $tournament) }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                            },
-                            body: JSON.stringify({
-                                status: newStatus
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                location.reload();
-                            } else {
-                                alert(data.message || 'Errore durante l\'aggiornamento dello stato');
-                            }
-                        });
-                }
-            }
+    {{-- Arbitri Assegnati --}}
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h2 class="text-lg font-semibold text-gray-900">
+                👥 Arbitri Assegnati
+                @if(isset($assignments))
+                    ({{ $assignments->count() }})
+                @endif
+            </h2>
+            <a href="{{ route('admin.assignments.assign-referees', $tournament) }}"
+               class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                + Aggiungi Arbitri
+            </a>
+        </div>
+        <div class="p-6">
+            @if(isset($assignments) && $assignments->count() > 0)
+                <div class="space-y-3">
+                    @foreach($assignments as $assignment)
+                    <div class="flex items-center justify-between py-2 px-3 bg-gray-50 rounded hover:bg-gray-100">
+                        <div class="flex items-center space-x-3">
+                            <div class="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
+                                {{ strtoupper(substr($assignment->user->name ?? 'A', 0, 1)) }}
+                            </div>
+                            <div>
+                                <p class="font-medium text-gray-900">
+                                    {{ $assignment->user->name ?? 'N/A' }}
+                                </p>
+                                <p class="text-sm text-gray-500">
+                                    @if($assignment->user && $assignment->user->referee_code)
+                                        Codice: {{ $assignment->user->referee_code }}
+                                    @endif
+                                    @if($assignment->role)
+                                        • Ruolo: {{ $assignment->role }}
+                                    @endif
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            @if(\Schema::hasColumn('assignments', 'status') && $assignment->status)
+                                @php
+                                    $statusColors = [
+                                        'confirmed' => 'bg-green-100 text-green-800',
+                                        'pending' => 'bg-yellow-100 text-yellow-800',
+                                        'cancelled' => 'bg-red-100 text-red-800',
+                                    ];
+                                    $statusLabels = [
+                                        'confirmed' => 'Confermato',
+                                        'pending' => 'In Attesa',
+                                        'cancelled' => 'Cancellato',
+                                    ];
+                                @endphp
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $statusColors[$assignment->status] ?? 'bg-gray-100 text-gray-800' }}">
+                                    {{ $statusLabels[$assignment->status] ?? $assignment->status }}
+                                </span>
+                            @endif
 
-            // Generate documents
-            function generateDocuments(type) {
-                if (type === 'convocation') {
-                    if (confirm('Generare le lettere di convocazione per tutti gli arbitri assegnati?')) {
-                        // Implementation for generating convocation letters
-                        alert('Funzionalità in sviluppo');
-                    }
-                } else if (type === 'club') {
-                    if (confirm('Generare la lettera per il circolo con l\'elenco degli arbitri?')) {
-                        // Implementation for generating club letter
-                        alert('Funzionalità in sviluppo');
-                    }
-                }
-            }
+                            <a href="{{ route('admin.assignments.edit', $assignment) }}"
+                               class="text-yellow-600 hover:text-yellow-800"
+                               title="Modifica">
+                                ✏️
+                            </a>
 
-            // Send notifications
-            // function sendNotifications() {
-            //     if (confirm('Inviare le notifiche a tutti gli arbitri assegnati?')) {
-            //         window.location.href = '{{ route('admin.tournaments.show-assignment-form', $tournament) }}';
-            //     }
-            // }
-        </script>
-    @endpush
+                            <form action="{{ route('admin.assignments.destroy', $assignment) }}"
+                                  method="POST"
+                                  class="inline"
+                                  onsubmit="return confirm('Rimuovere questo arbitro dal torneo?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit"
+                                        class="text-red-600 hover:text-red-800"
+                                        title="Rimuovi">
+                                    🗑️
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            @else
+                <div class="text-center py-8">
+                    <span class="text-4xl">👥</span>
+                    <p class="mt-2 text-gray-500">Nessun arbitro assegnato</p>
+                    <a href="{{ route('admin.assignments.assign-referees', $tournament) }}"
+                       class="mt-4 inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors">
+                        Assegna Primo Arbitro
+                    </a>
+                </div>
+            @endif
+        </div>
+    </div>
+
+    {{-- Statistiche --}}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="flex items-center">
+                <span class="text-2xl mr-3">📊</span>
+                <div>
+                    <p class="text-sm text-gray-500">Arbitri Assegnati</p>
+                    <p class="text-xl font-semibold text-gray-900">
+                        {{ isset($assignments) ? $assignments->count() : 0 }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="flex items-center">
+                <span class="text-2xl mr-3">✅</span>
+                <div>
+                    <p class="text-sm text-gray-500">Confermati</p>
+                    <p class="text-xl font-semibold text-gray-900">
+                        @if(isset($assignments))
+                            {{ $assignments->where('status', 'confirmed')->count() }}
+                        @else
+                            0
+                        @endif
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="flex items-center">
+                <span class="text-2xl mr-3">⏳</span>
+                <div>
+                    <p class="text-sm text-gray-500">In Attesa</p>
+                    <p class="text-xl font-semibold text-gray-900">
+                        @if(isset($assignments))
+                            {{ $assignments->where('status', 'pending')->count() }}
+                        @else
+                            0
+                        @endif
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Pulsante Elimina (con conferma) --}}
+    <div class="mt-8 pt-6 border-t border-gray-200">
+        <form action="{{ route('admin.tournaments.destroy', $tournament) }}"
+              method="POST"
+              onsubmit="return confirm('Sei sicuro di voler eliminare questo torneo? Questa azione non può essere annullata.');"
+              class="inline">
+            @csrf
+            @method('DELETE')
+            <button type="submit"
+                    class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors">
+                🗑️ Elimina Torneo
+            </button>
+        </form>
+    </div>
+</div>
 @endsection

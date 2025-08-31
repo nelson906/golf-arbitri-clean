@@ -119,9 +119,9 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
         require __DIR__ . '/admin/statistic.php';
         require __DIR__ . '/admin/monitoring.php';
         require __DIR__ . '/admin/clubs.php';
-        // require __DIR__.'/admin/notifications.php';
+        require __DIR__.'/admin/notifications.php';
         require __DIR__ . '/admin/reports.php';
-        // require __DIR__.'/referee/dashboard.php';   // Se non esiste
+        require __DIR__.'/referee/dashboard.php';   // Se non esiste
 
     });
 });

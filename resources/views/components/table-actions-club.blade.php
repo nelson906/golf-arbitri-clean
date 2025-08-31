@@ -61,12 +61,17 @@
     @php
         $testo = 'Sei sicuro di voler eliminare questo club? Questa azione non può essere annullata.';
     @endphp
-    @if ($club->tournaments()->whereIn('status', ['open', 'closed', 'assigned'])->exists())
-        @php
-            $testo = $testo ?? 'Sei sicuro di voler eliminare questo club? Questa azione non può essere annullata e questo Circolo ha tornei in corso';
-        @endphp
+@php
+    $tournamentsExist = $club->tournaments()->whereIn('status', ['open', 'closed', 'assigned'])->exists();
+    if ($tournamentsExist) {
+        $testo = 'Questo Circolo ha tornei associati. Prima occore eliminare i tornei';
+    } else {
+        $testo = 'Sei sicuro di voler eliminare questo club? Questa azione non può essere annullata.';
+    }
+@endphp
+
     <form action="{{ route('admin.clubs.destroy', $club) }}" method="POST" class="inline"
-        onsubmit="return confirm({{ $testo }});">
+        onsubmit="return confirm('{{ $testo }}');">
         @csrf
         @method('DELETE')
         <button type="submit" class="text-red-600 hover:text-red-900" title="Elimina">
@@ -77,6 +82,5 @@
             </svg>
         </button>
     </form>
-        @endif
 
 </div>

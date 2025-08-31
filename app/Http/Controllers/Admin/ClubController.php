@@ -124,6 +124,7 @@ class ClubController extends Controller
             'name' => 'required|string|max:255',
             'zone_id' => 'required|exists:zones,id',
             'city' => 'nullable|string|max:255',
+            'province' => 'nullable|string|max:2',
             'address' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',

@@ -101,8 +101,7 @@
     @endif
 
     {{-- Form Assegnazione --}}
-    <form action="{{ route('admin.assignments.storeMultiple', $tournament) }}" method="POST">
-        @csrf
+<form id="assignmentForm" action="{{ route('admin.assignments.storeMultiple', $tournament) }}" method="POST">RiprovaClaude può commettere errori. Verifica sempre le risposte con attenzione.        @csrf
 
         {{-- Arbitri Disponibili --}}
         @if($availableReferees && $availableReferees->count() > 0)
@@ -131,10 +130,6 @@
                                 <span class="text-sm text-gray-500 ml-2">- {{ $referee->zone->name }}</span>
                             @endif
                         </label>
-                        <input type="text"
-                               name="roles[{{ $referee->id }}]"
-                               placeholder="Ruolo (opzionale)"
-                               class="w-40 px-2 py-1 text-sm border border-gray-300 rounded">
                     </div>
                     @endforeach
                 </div>
@@ -169,10 +164,13 @@
                                 <span class="text-sm text-gray-500 ml-2">- {{ $referee->zone->name }}</span>
                             @endif
                         </label>
-                        <input type="text"
-                               name="roles[{{ $referee->id }}]"
-                               placeholder="Ruolo (opzionale)"
-                               class="w-40 px-2 py-1 text-sm border border-gray-300 rounded">
+                        <select name="roles[{{ $referee->id }}]"
+                                class="w-48 px-2 py-1 text-sm border border-gray-300 rounded">
+                            <option value="">Seleziona ruolo</option>
+                            <option value="Direttore di Torneo">Direttore di Torneo</option>
+                            <option value="Arbitro">Arbitro</option>
+                            <option value="Osservatore">Osservatore</option>
+                        </select>
                     </div>
                     @endforeach
                 </div>
@@ -212,11 +210,10 @@
                                 <span class="text-sm text-gray-500 ml-2">- {{ $referee->zone->name }}</span>
                             @endif
                         </label>
-                        <input type="text"
-                               name="roles[{{ $referee->id }}]"
-                               placeholder="Ruolo (opzionale)"
-                               class="w-40 px-2 py-1 text-sm border border-gray-300 rounded">
-                    </div>
+<div class="role-select" style="display:inline-block;">
+</div>
+
+</div>
                     @endforeach
                 </div>
             </div>
@@ -253,7 +250,7 @@
         {{-- Bottoni Azione --}}
         <div class="flex justify-between items-center mt-6">
             <div class="text-sm text-gray-600">
-                Seleziona gli arbitri da assegnare e specifica opzionalmente il ruolo
+                Seleziona gli arbitri da assegnare e assegna il ruolo appropriato
             </div>
             <div class="space-x-3">
                 <a href="{{ route('admin.assignments.index') }}"
@@ -268,16 +265,57 @@
         </div>
     </form>
 </div>
-
-{{-- Script per selezione multipla --}}
-@push('scripts')
 <script>
-    // Seleziona/Deseleziona tutti
-    function toggleAll(section) {
-        const checkboxes = document.querySelectorAll(`#${section} input[type="checkbox"]`);
-        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-        checkboxes.forEach(cb => cb.checked = !allChecked);
+window.addEventListener('DOMContentLoaded', function() {
+    // Per ogni checkbox
+    document.querySelectorAll('input[name="referee_ids[]"]').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const refereeId = this.value;
+            const existingSelect = document.getElementById('select_' + refereeId);
+
+            if (this.checked) {
+                // Se non esiste, crealo
+                if (!existingSelect) {
+                    const select = document.createElement('select');
+                    select.id = 'select_' + refereeId;
+                    select.name = 'roles[' + refereeId + ']';
+                    select.className = 'ml-2 px-2 py-1 text-sm border border-gray-300 rounded';
+                    select.innerHTML = `
+                        <option value="">Seleziona ruolo</option>
+                        <option value="Direttore di Torneo">Direttore di Torneo</option>
+                        <option value="Arbitro">Arbitro</option>
+                        <option value="Osservatore">Osservatore</option>
+                    `;
+                    // Inserisci dopo il checkbox
+                    this.parentElement.appendChild(select);
+                }
+            } else {
+                // Rimuovi se esiste
+                if (existingSelect) {
+                    existingSelect.remove();
+                }
+            }
+        });
+    });
+
+    // PULSANTE FLOTTANTE (già funziona)
+    const floatingBtn = document.createElement('div');
+    floatingBtn.innerHTML = '<button type="button" style="position:fixed;bottom:30px;right:30px;z-index:9999;display:none;background:#2563eb;color:white;padding:12px 24px;border-radius:50px;box-shadow:0 4px 6px rgba(0,0,0,0.1);" id="floatBtn">💾 Assegna (<span id="count">0</span>)</button>';
+    document.body.appendChild(floatingBtn);
+
+    document.getElementById('floatBtn').onclick = function() {
+        document.getElementById('assignmentForm').submit();
+    };
+
+    function updateCounter() {
+        const checked = document.querySelectorAll('input[name="referee_ids[]"]:checked').length;
+        document.getElementById('count').textContent = checked;
+        document.getElementById('floatBtn').style.display = checked > 0 ? 'block' : 'none';
     }
+
+    document.querySelectorAll('input[name="referee_ids[]"]').forEach(cb => {
+        cb.addEventListener('change', updateCounter);
+    });
+});
 </script>
-@endpush
 @endsection

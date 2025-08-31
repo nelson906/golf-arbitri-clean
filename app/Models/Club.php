@@ -17,6 +17,7 @@ class Club extends Model
         'zone_id',
         'code',
         'city',
+        'province',
         'address',
         'phone',
         'email',

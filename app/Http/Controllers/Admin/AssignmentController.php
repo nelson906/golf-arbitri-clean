@@ -8,6 +8,7 @@ use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Models\User;
 use App\Models\Availability;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -234,8 +235,12 @@ class AssignmentController extends Controller
                         $userField => $refereeId,
                         'role' => $request->roles[$refereeId] ?? null,
                     ];
-
-                    // Aggiungi status se il campo esiste
+                    if (Schema::hasColumn('assignments', 'assigned_at')) {
+                        $data['assigned_at'] = now();
+                    }
+                    if (Schema::hasColumn('assignments', 'assigned_by')) {
+                        $data['assigned_by'] = auth()->id();
+                    }                    // Aggiungi status se il campo esiste
                     if (Schema::hasColumn('assignments', 'status')) {
                         $data['status'] = 'pending';
                     }
@@ -257,7 +262,6 @@ class AssignmentController extends Controller
             return redirect()
                 ->route('admin.assignments.index')
                 ->with('success', $message);
-
         } catch (\Exception $e) {
             DB::rollback();
             return back()
@@ -335,7 +339,7 @@ class AssignmentController extends Controller
 
         // Restrizioni per zona
         if (!$isNationalAdmin && $user->zone_id) {
-            $query->whereHas('tournament.club', function($q) use ($user) {
+            $query->whereHas('tournament.club', function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id);
             });
         }
@@ -393,4 +397,41 @@ class AssignmentController extends Controller
             ->route('admin.assignments.index')
             ->with('success', 'Assegnazione creata con successo');
     }
+    /**
+     * Show assignment details
+     */
+    public function show($assignmentId): View
+    {
+        // Trova l'assegnazione in tutti gli anni disponibili
+        $assignment = null;
+
+        $found = Assignment::with([
+            'user',
+            'tournament.club',
+            'tournament.tournamentType',
+            'assigned_by'
+        ])
+            ->find($assignmentId);
+
+        if ($found) {
+            $assignment = $found;
+        }
+
+        if (!$assignment) {
+            abort(404, 'Assegnazione non trovata');
+        }
+
+        $this->checkAssignmentAccess($assignment);
+
+        return view('admin.assignments.show', compact('assignment'));
+    }
+
+        /**
+     * Check if user can access the assignment.
+     */
+    private function checkAssignmentAccess($assignment): void
+    {
+        $this->checkTournamentAccess($assignment->tournament);
+    }
+
 }

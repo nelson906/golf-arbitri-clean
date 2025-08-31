@@ -64,6 +64,27 @@
                     </select>
                 </div>
 
+                {{-- Livello (solo per arbitri) --}}
+                <div>
+                    <select name="level" class="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">Tutti i livelli</option>
+                        @foreach(referee_levels() as $key => $label)
+                            <option value="{{ $key }}" {{ request('level') == $key ? 'selected' : '' }}>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Stato --}}
+                <div>
+                    <select name="status" class="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="active" {{ (!request()->has('status') || request('status') == 'active') ? 'selected' : '' }}>Solo attivi</option>
+                        <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Solo inattivi</option>
+                        <option value="all" {{ request('status') == 'all' ? 'selected' : '' }}>Tutti</option>
+                    </select>
+                </div>
+
                 {{-- Zona (solo per admin nazionali) --}}
                 @if(isset($isNationalAdmin) && $isNationalAdmin && isset($zones))
                     <div>
@@ -107,13 +128,14 @@
                         Tipo
                     </th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Livello
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Zona
                     </th>
-                    @if(isset($isNationalAdmin) && $isNationalAdmin)
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Stato
                     </th>
-                    @endif
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Azioni
                     </th>
@@ -164,25 +186,38 @@
                             </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ $user->zone->name ?? 'N/A' }}
-                        </td>
-                        @if(isset($isNationalAdmin) && $isNationalAdmin)
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            @if(isset($user->active))
-                                @if($user->active)
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                        Attivo
-                                    </span>
-                                @else
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                                        Inattivo
-                                    </span>
-                                @endif
+                            @if($user->user_type === 'referee' && isset($user->level))
+                                @php
+                                    $levelColors = [
+                                        'Aspirante' => 'bg-yellow-100 text-yellow-800',
+                                        '1_livello' => 'bg-blue-100 text-blue-800',
+                                        'Regionale' => 'bg-green-100 text-green-800',
+                                        'Nazionale' => 'bg-purple-100 text-purple-800',
+                                        'Internazionale' => 'bg-red-100 text-red-800',
+                                        'Archivio' => 'bg-gray-100 text-gray-800',
+                                    ];
+                                @endphp
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $levelColors[$user->level] ?? 'bg-gray-100 text-gray-800' }}">
+                                    {{ referee_level_label($user->level) }}
+                                </span>
                             @else
                                 <span class="text-gray-400">-</span>
                             @endif
                         </td>
-                        @endif
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ $user->zone->name ?? 'N/A' }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            @if($user->is_active)
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                    Attivo
+                                </span>
+                            @else
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                    Inattivo
+                                </span>
+                            @endif
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div class="flex justify-end gap-2">
                                 {{-- Visualizza --}}
@@ -212,9 +247,9 @@
                                         @csrf
                                         @method('PATCH')
                                         <button type="submit"
-                                                class="{{ $user->active ?? true ? 'text-orange-600 hover:text-orange-900' : 'text-green-600 hover:text-green-900' }}"
-                                                title="{{ $user->active ?? true ? 'Disattiva' : 'Attiva' }}">
-                                            {{ $user->active ?? true ? '🔒' : '🔓' }}
+                                                class="{{ $user->is_active ? 'text-orange-600 hover:text-orange-900' : 'text-green-600 hover:text-green-900' }}"
+                                                title="{{ $user->is_active ? 'Disattiva' : 'Attiva' }}">
+                                            {{ $user->is_active ? '🔒' : '🔓' }}
                                         </button>
                                     </form>
                                 @endif
@@ -239,7 +274,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="{{ (isset($isNationalAdmin) && $isNationalAdmin) ? '6' : '5' }}" class="px-6 py-4 text-center text-gray-500">
+                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">
                             <div class="py-8">
                                 <span class="text-4xl">👥</span>
                                 <p class="mt-2">Nessun utente trovato</p>

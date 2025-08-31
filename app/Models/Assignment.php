@@ -18,6 +18,8 @@ class Assignment extends Model
         'user_id',
         'referee_id',
         'role',
+        'assigned_at',
+        'assigned_by',
         'status',
         'notes',
         'confirmed_at',
@@ -25,6 +27,7 @@ class Assignment extends Model
 
     protected $casts = [
         'confirmed_at' => 'datetime',
+        'assigned_at' => 'datetime',
     ];
 
     /**
@@ -51,6 +54,10 @@ class Assignment extends Model
     {
         return $this->user();
     }
+public function assigned_by()
+{
+    return $this->belongsTo(User::class, 'assigned_by');
+}
 
     /**
      * ACCESSORS

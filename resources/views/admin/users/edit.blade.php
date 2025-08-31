@@ -97,11 +97,10 @@
                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('level') border-red-500 @enderror"
                             required>
                             <option value="">Seleziona livello</option>
-
-                            {{-- ✅ FIX: usa referee_levels() e normalize_referee_level() --}}
-                            @foreach(referee_levels() as $key => $label)
+                            {{-- ✅ FIX: usa referee_levels(true) per includere Archivio --}}
+                            @foreach(referee_levels(true) as $key => $label)
                                 <option value="{{ $key }}"
-                                    {{ old('level', normalize_referee_level($user->level)) == $key ? 'selected' : '' }}>
+                                    {{ old('level', normalize_referee_level($user->level ?? 'Archivio')) == $key ? 'selected' : '' }}>
                                     {{ $label }}
                                 </option>
                             @endforeach

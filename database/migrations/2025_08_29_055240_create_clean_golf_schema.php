@@ -51,8 +51,8 @@ return new class extends Migration
             $table->string('email');
             $table->string('phone')->nullable();
             $table->text('address')->nullable();
-            $table->string('city');
-            $table->string('province', 2);
+            $table->string('city')->nullable();
+            $table->string('province', 2)->nullable();
             $table->foreignId('zone_id')->constrained()->onDelete('cascade');
             $table->boolean('is_active')->default(true);
             $table->timestamps();

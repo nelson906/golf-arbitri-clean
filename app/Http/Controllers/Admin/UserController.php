@@ -62,6 +62,19 @@ class UserController extends Controller
             $query->where('zone_id', $user->zone_id);
         }
 
+        // Filtro per stato attivo (di default mostra solo attivi se non specificato)
+        if ($request->has('status')) {
+            if ($request->status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($request->status === 'inactive') {
+                $query->where('is_active', false);
+            }
+            // Se status = 'all', non applica filtri
+        } else {
+            // Di default mostra solo gli attivi
+            $query->where('is_active', true);
+        }
+
         // Ordinamento e paginazione
         $users = $query->orderBy('name')->paginate(20);
 
@@ -78,6 +91,9 @@ class UserController extends Controller
 
         // Array dei livelli (se utilizzati)
         $levels = [
+            'AR' => 'Archivio',
+            'A' => 'Aspirante',
+            '1' => 'Primo Livello',
             'R' => 'Regionale',
             'N' => 'Nazionale',
             'I' => 'Internazionale'
@@ -165,8 +181,6 @@ class UserController extends Controller
         $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'user_type' => 'required|in:referee,admin' . ($isNationalAdmin ? ',national_admin,super_admin' : ''),
             'zone_id' => 'required|exists:zones,id',
         ];
 
@@ -176,24 +190,34 @@ class UserController extends Controller
         }
 
         if (Schema::hasColumn('users', 'level')) {
-            $rules['level'] = 'nullable|in:R,N,I';
+            $rules['level'] = 'required|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio';
         }
 
-        if (\Schema::hasColumn('users', 'phone')) {
+        if (Schema::hasColumn('users', 'phone')) {
             $rules['phone'] = 'nullable|string|max:20';
         }
 
         $validated = $request->validate($rules);
 
-        // Hash password
-        $validated['password'] = Hash::make($validated['password']);
+        // Imposta password predefinita (come indicato nel form)
+        $validated['password'] = Hash::make('password123');
+        
+        // Imposta tipo utente predefinito (referee)
+        $validated['user_type'] = 'referee';
+        
+        // Genera codice arbitro se la colonna esiste e non è fornito
+        if (Schema::hasColumn('users', 'referee_code') && empty($validated['referee_code'])) {
+            $lastUser = User::orderBy('id', 'desc')->first();
+            $nextId = $lastUser ? $lastUser->id + 1 : 1;
+            $validated['referee_code'] = 'REF' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+        }
 
         // Crea utente
         $user = User::create($validated);
 
         return redirect()
             ->route('admin.users.show', $user)
-            ->with('success', 'Utente creato con successo');
+            ->with('success', 'Utente creato con successo. L\'arbitro dovrà accedere con email e password temporanea: password123');
     }
 
     /**
@@ -262,7 +286,7 @@ class UserController extends Controller
         }
 
         if (\Schema::hasColumn('users', 'level')) {
-            $rules['level'] = 'nullable|in:R,N,I';
+            $rules['level'] = 'nullable|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio';
         }
 
         if (\Schema::hasColumn('users', 'phone')) {
@@ -327,15 +351,11 @@ class UserController extends Controller
             abort(403, 'Non autorizzato');
         }
 
-        // Toggle active se la colonna esiste
-        if (\Schema::hasColumn('users', 'active')) {
-            $user->active = !$user->active;
-            $user->save();
+        // Toggle is_active
+        $user->is_active = !$user->is_active;
+        $user->save();
 
-            $status = $user->active ? 'attivato' : 'disattivato';
-            return back()->with('success', "Utente {$status} con successo");
-        }
-
-        return back()->with('error', 'Funzionalità non disponibile');
+        $status = $user->is_active ? 'attivato' : 'disattivato';
+        return back()->with('success', "Utente {$status} con successo");
     }
 }

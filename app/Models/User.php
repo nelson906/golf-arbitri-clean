@@ -34,8 +34,11 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'active' => 'boolean',
         'is_active' => 'boolean',
+    ];
+    
+    protected $attributes = [
+        'is_active' => true,
     ];
     /**
      * Referee levels

@@ -129,6 +129,28 @@ class Tournament extends Model
     {
         return $query->where('start_date', '>=', Carbon::today());
     }
+/**
+ * Verifica se il torneo è modificabile
+ */
+public function isEditable()
+{
+    // Logica semplice: modificabile se non ha una data o se la data è futura
+    if (\Schema::hasColumn('tournaments', 'date')) {
+        return !$this->date || $this->date >= now()->startOfDay();
+    }
 
+    // Se non c'è campo date, sempre modificabile
+    return true;
+}
+    /**
+     * Check if tournament needs referees
+     */
+    public function needsReferees(): bool
+    {
+        $requiredReferees = $this->tournamentType->min_referees ?? 1;
+        $assignedReferees = $this->assignments()->count();
+
+        return $assignedReferees < $requiredReferees;
+    }
 
 }

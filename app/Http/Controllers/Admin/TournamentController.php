@@ -149,7 +149,7 @@ class TournamentController extends Controller
                     'zone' => $tournament->zone->name ?? 'N/A',
                     'zone_id' => $tournament->zone_id,
                     // ✅ FIXED: tournamentType relationship
-'tournament_type' => $tournament->tournamentType->name ?? 'N/A',
+                    'tournament_type' => $tournament->tournamentType->name ?? 'N/A',
                     'status' => $tournament->status,
                     'tournament_url' => route('admin.tournaments.show', $tournament),
                     'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
@@ -315,49 +315,49 @@ class TournamentController extends Controller
     /**
      * Display the specified tournament for admin view
      */
-public function show(Tournament $tournament)
-{
-    $user = auth()->user();
+    public function show(Tournament $tournament)
+    {
+        $user = auth()->user();
 
-    // Check permissions
-    if ($user->user_type === 'admin' && $user->zone_id !== $tournament->zone_id) {
-        abort(403, 'Non hai i permessi per visualizzare questo torneo.');
+        // Check permissions
+        if ($user->user_type === 'admin' && $user->zone_id !== $tournament->zone_id) {
+            abort(403, 'Non hai i permessi per visualizzare questo torneo.');
+        }
+
+        // Ora le relazioni funzioneranno con le tabelle corrette
+        $tournament->load([
+            'tournamentType',
+            'zone',
+            'club',
+            'assignments.user',
+            'availabilities.user'
+        ]);
+
+        // Ottieni gli arbitri assegnati
+        $assignedReferees = $tournament->assignedReferees;
+
+        $availableReferees = $tournament->availabilities()
+            ->with('user')
+            ->get();
+
+        // Statistics
+        $stats = [
+            'total_assignments' => $assignedReferees ? $assignedReferees->count() : 0,
+            'total_availabilities' => $availableReferees ? $availableReferees->count() : 0,
+            'assigned_referees' => $assignedReferees ? $assignedReferees->count() : 0,
+            'required_referees' => $tournament->tournamentType->min_referees ?? 2,
+            'days_until_deadline' => $tournament->availability_deadline
+                ? now()->diffInDays($tournament->availability_deadline, false)
+                : null
+        ];
+
+        return view('admin.tournaments.show', compact(
+            'tournament',
+            'assignedReferees',
+            'availableReferees',
+            'stats'
+        ));
     }
-
-    // Ora le relazioni funzioneranno con le tabelle corrette
-    $tournament->load([
-        'tournamentType',
-        'zone',
-        'club',
-        'assignments.user',
-        'availabilities.user'
-    ]);
-
-    // Ottieni gli arbitri assegnati
-    $assignedReferees = $tournament->assignedReferees;
-
-    $availableReferees = $tournament->availabilities()
-        ->with('user')
-        ->get();
-
-    // Statistics
-    $stats = [
-        'total_assignments' => $assignedReferees->count(),
-        'total_availabilities' => $availableReferees->count(),
-        'assigned_referees' => $assignedReferees->count(),
-        'required_referees' => $tournament->tournamentType->min_referees ?? 2,
-        'days_until_deadline' => $tournament->availability_deadline
-            ? now()->diffInDays($tournament->availability_deadline, false)
-            : null,
-    ];
-
-    return view('admin.tournaments.show', compact(
-        'tournament',
-        'assignedReferees',
-        'availableReferees',
-        'stats'
-    ));
-}
 
 
     /**
