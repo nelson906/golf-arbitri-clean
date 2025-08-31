@@ -100,27 +100,31 @@
                 </tr>
             </thead>
 <tbody class="bg-white divide-y divide-gray-200">
-    @forelse($assignments as $assignment)
+
+@forelse($assignments as $assignment)
     <tr class="hover:bg-gray-50 transition-colors duration-150">
         <td class="px-6 py-4">
             <div class="flex items-center">
                 <div>
                     <div class="text-sm font-medium text-gray-900">
-                        {{ $assignment->referee_name }}
+                        {{ $assignment->user->name }}
                     </div>
+                    @php
+
+                    @endphp
                     <div class="text-sm text-gray-500">
-                        {{ $assignment->user->referee_code ?? 'N/A' }} - {{ ucfirst($assignment->user->level ?? 'N/A') }}
+                        {{ ucfirst($assignment->user->level ?? 'N/A') }}
                     </div>
                 </div>
             </div>
         </td>
         <td class="px-6 py-4">
             <div class="text-sm font-medium text-gray-900">
-                {{ $assignment->tournament_name }}
+                {{ $assignment->tournament->name }}
             </div>
             <div class="text-sm text-gray-500">
                 {{ $assignment->club_name }} -
-                {{ $assignment->tournament_start_date ? Carbon\Carbon::parse($assignment->tournament_start_date)->format('d/m/Y') : 'N/A' }}
+                {{ $assignment->tournament->start_date ? Carbon\Carbon::parse($assignment->tournament->start_date)->format('d/m/Y') : 'N/A' }}
             </div>
         </td>
         <td class="px-6 py-4 whitespace-nowrap">

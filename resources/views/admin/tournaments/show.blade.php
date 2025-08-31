@@ -195,14 +195,16 @@
             </div>
         </div>
     </div>
+@php
 
+@endphp
     {{-- Arbitri Assegnati --}}
     <div class="bg-white rounded-lg shadow mb-6">
         <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h2 class="text-lg font-semibold text-gray-900">
                 👥 Arbitri Assegnati
-                @if(isset($assignments))
-                    ({{ $assignments->count() }})
+                @if(isset($tournament->assignments))
+                    ({{ $tournament->assignments->count() }})
                 @endif
             </h2>
             <a href="{{ route('admin.assignments.assign-referees', $tournament) }}"
@@ -211,9 +213,9 @@
             </a>
         </div>
         <div class="p-6">
-            @if(isset($assignments) && $assignments->count() > 0)
+            @if(isset($tournament->assignments) && $tournament->assignments->count() > 0)
                 <div class="space-y-3">
-                    @foreach($assignments as $assignment)
+                    @foreach($tournament->assignments as $assignment)
                     <div class="flex items-center justify-between py-2 px-3 bg-gray-50 rounded hover:bg-gray-100">
                         <div class="flex items-center space-x-3">
                             <div class="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
@@ -224,11 +226,8 @@
                                     {{ $assignment->user->name ?? 'N/A' }}
                                 </p>
                                 <p class="text-sm text-gray-500">
-                                    @if($assignment->user && $assignment->user->referee_code)
-                                        Codice: {{ $assignment->user->referee_code }}
-                                    @endif
                                     @if($assignment->role)
-                                        • Ruolo: {{ $assignment->role }}
+                                        {{ $assignment->role }}
                                     @endif
                                 </p>
                             </div>
@@ -295,7 +294,7 @@
                 <div>
                     <p class="text-sm text-gray-500">Arbitri Assegnati</p>
                     <p class="text-xl font-semibold text-gray-900">
-                        {{ isset($assignments) ? $assignments->count() : 0 }}
+                        {{ isset($tournament->assignments) ? $tournament->assignments->count() : 0 }}
                     </p>
                 </div>
             </div>

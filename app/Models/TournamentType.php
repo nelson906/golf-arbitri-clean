@@ -47,5 +47,20 @@ class TournamentType extends Model
         return $query->orderBy('name'); // Solo nome
     }
 
+    /**
+     * Get available for zones
+     */
+    public function isAvailableForZone($zoneId): bool
+    {
+        if ($this->is_national || $this->visibility_zones === 'all') {
+            return true;
+        }
+
+        if (is_array($this->visibility_zones)) {
+            return in_array($zoneId, $this->visibility_zones);
+        }
+
+        return false;
+    }
 
 }

@@ -334,11 +334,14 @@ class TournamentController extends Controller
         ]);
 
         // Ottieni gli arbitri assegnati
-        $assignedReferees = $tournament->assignedReferees;
+        $assignedReferees = $tournament->assignments()
+            ->with(relations: 'user')
+            ->get();
 
         $availableReferees = $tournament->availabilities()
-            ->with('user')
+            ->with(relations: 'user')
             ->get();
+
 
         // Statistics
         $stats = [

@@ -55,4 +55,13 @@ class Club extends Model
         }
         return $query;
     }
+
+        /**
+     * Order by name
+     */
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('name');
+    }
+
 }

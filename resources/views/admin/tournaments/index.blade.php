@@ -192,7 +192,7 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 <div class="text-sm text-gray-900">
-                                    {{ $tournament->assignments()->count() }} / {{ $tournament->required_referees }}
+                                    {{ $tournament->assignments()->count() }} / {{ $tournament->tournamentType->min_referees }}
                                 </div>
                                 <div class="text-xs text-gray-500">
                                     Disp: {{ $tournament->availabilities()->count() }}
