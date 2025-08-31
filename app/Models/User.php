@@ -37,6 +37,35 @@ class User extends Authenticatable
         'active' => 'boolean',
         'is_active' => 'boolean',
     ];
+    /**
+     * Referee levels
+     */
+    const LEVEL_ASPIRANTE = 'aspirante';
+    const LEVEL_PRIMO_LIVELLO = 'primo_livello';
+    const LEVEL_REGIONALE = 'regionale';
+    const LEVEL_NAZIONALE = 'nazionale';
+    const LEVEL_INTERNAZIONALE = 'internazionale';
+
+    const LEVELS = [
+        self::LEVEL_ASPIRANTE => 'Aspirante',
+        self::LEVEL_PRIMO_LIVELLO => 'Primo Livello',
+        self::LEVEL_REGIONALE => 'Regionale',
+        self::LEVEL_NAZIONALE => 'Nazionale',
+        self::LEVEL_INTERNAZIONALE => 'Internazionale',
+    ];
+
+    /**
+     * Referee categories
+     */
+    const CATEGORY_MASCHILE = 'maschile';
+    const CATEGORY_FEMMINILE = 'femminile';
+    const CATEGORY_MISTO = 'misto';
+
+    const CATEGORIES = [
+        self::CATEGORY_MASCHILE => 'Maschile',
+        self::CATEGORY_FEMMINILE => 'Femminile',
+        self::CATEGORY_MISTO => 'Misto',
+    ];
 
     /**
      * RELAZIONI

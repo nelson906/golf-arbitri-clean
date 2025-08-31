@@ -42,6 +42,10 @@ class ClubController extends Controller
         if ($request->filled('zone_id')) {
             $query->where('zone_id', $request->zone_id);
         }
+        // Apply status filter
+        if ($request->filled('status')) {
+            $query->where('is_active', $request->status === 'active');
+        }
 
         // Se non è admin nazionale, mostra solo i circoli della sua zona
         if (!$isNationalAdmin && $user->zone_id) {
@@ -49,7 +53,13 @@ class ClubController extends Controller
         }
 
         // Ordinamento
-        $clubs = $query->orderBy('name')->paginate(20);
+        $clubs = $query
+            ->withCount('tournaments')
+            ->orderBy('is_active', 'desc')
+            ->orderBy('name')
+            ->paginate(20)
+            ->withQueryString();
+
 
         // Zone per filtro
         $zones = Zone::orderBy('name')->get();

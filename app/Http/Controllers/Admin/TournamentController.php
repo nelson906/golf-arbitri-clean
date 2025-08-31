@@ -324,10 +324,6 @@ public function show(Tournament $tournament)
         abort(403, 'Non hai i permessi per visualizzare questo torneo.');
     }
 
-    // UNICA MODIFICA: Imposta l'anno per i Model dinamici
-    $year = \Carbon\Carbon::parse($tournament->start_date)->year;
-    session(['selected_year' => $year]);
-
     // Ora le relazioni funzioneranno con le tabelle corrette
     $tournament->load([
         'tournamentType',

@@ -23,6 +23,8 @@ use Illuminate\Support\Facades\Route;
             ->name('edit');
         Route::put('/{club}', [App\Http\Controllers\Admin\ClubController::class, 'update'])
             ->name('update');
+                Route::post('/{club}/deactivate', action: [ClubController::class, 'deactivate'])->name('deactivate');
+
         Route::delete('/{club}', [App\Http\Controllers\Admin\ClubController::class, 'destroy'])
             ->name('destroy');
         Route::patch('/{club}/toggle-active', [App\Http\Controllers\Admin\ClubController::class, 'toggleActive'])
