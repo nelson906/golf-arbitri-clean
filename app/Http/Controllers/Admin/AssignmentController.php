@@ -9,6 +9,7 @@ use App\Models\Tournament;
 use App\Models\User;
 use App\Models\Availability;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -432,6 +433,18 @@ class AssignmentController extends Controller
     private function checkAssignmentAccess($assignment): void
     {
         $this->checkTournamentAccess($assignment->tournament);
+    }
+    /**
+     * Confirm assignment.
+     */
+    public function confirm(Assignment $assignment): RedirectResponse
+    {
+        $this->checkAssignmentAccess($assignment);
+
+        $assignment->update(['is_confirmed' => true]);
+
+        return redirect()->back()
+            ->with('success', 'Assegnazione confermata con successo.');
     }
 
 }

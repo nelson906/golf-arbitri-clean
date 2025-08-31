@@ -164,13 +164,13 @@
                                 <span class="text-sm text-gray-500 ml-2">- {{ $referee->zone->name }}</span>
                             @endif
                         </label>
-                        <select name="roles[{{ $referee->id }}]"
+                        {{-- <select name="roles[{{ $referee->id }}]"
                                 class="w-48 px-2 py-1 text-sm border border-gray-300 rounded">
                             <option value="">Seleziona ruolo</option>
                             <option value="Direttore di Torneo">Direttore di Torneo</option>
                             <option value="Arbitro">Arbitro</option>
                             <option value="Osservatore">Osservatore</option>
-                        </select>
+                        </select> --}}
                     </div>
                     @endforeach
                 </div>

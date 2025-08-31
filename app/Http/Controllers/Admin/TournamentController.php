@@ -202,27 +202,22 @@ class TournamentController extends Controller
     public function create()
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin';
+        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
-        // Get all active types (NON categories!)
-        $allTypes = TournamentType::active()->ordered()->get();
-
-        // Filter types based on user access
-        $types = $allTypes->filter(function ($type) use ($user, $isNationalAdmin) {
-            // National admins see all types
-            if ($isNationalAdmin) {
-                return true;
-            }
-
-            // National types are always visible
-            if ($type->is_national) {
-                return true;
-            }
-
-            // Check if zone user can see this zonal type
-            return $type->isAvailableForZone($user->zone_id);
-        });
-        $tournamentTypes = $types;
+        // Get tournament types based on user role
+        if ($isNationalAdmin) {
+            // National admin sees all active types
+            $tournamentTypes = TournamentType::active()->ordered()->get();
+        } else {
+            // Zone admin sees both national types AND zone-specific types
+            $tournamentTypes = TournamentType::active()
+                ->where(function ($query) {
+                    $query->where('is_national', true)  // National types
+                          ->orWhere('is_national', false); // Zone types
+                })
+                ->ordered()
+                ->get();
+        }
         // Get zones
         $zones = $isNationalAdmin
             ? Zone::orderBy('name')->get()
@@ -255,26 +250,22 @@ class TournamentController extends Controller
         }
 
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin';
+        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
-        // Get all active types (NON categories!)
-        $allTournamentTypes = TournamentType::active()->get();
-
-        // Filter types based on user access
-        $tournamentTypes = $allTournamentTypes->filter(function ($type) use ($user, $isNationalAdmin) {
-            // National admins see all types
-            if ($isNationalAdmin) {
-                return true;
-            }
-
-            // National types are always visible
-            if ($type->is_national) {
-                return true;
-            }
-
-            // Check if zone user can see this zonal type
-            return $type->isAvailableForZone($user->zone_id);
-        });
+        // Get tournament types based on user role - same logic as create
+        if ($isNationalAdmin) {
+            // National admin sees all active types
+            $tournamentTypes = TournamentType::active()->ordered()->get();
+        } else {
+            // Zone admin sees both national types AND zone-specific types
+            $tournamentTypes = TournamentType::active()
+                ->where(function ($query) {
+                    $query->where('is_national', true)  // National types
+                          ->orWhere('is_national', false); // Zone types
+                })
+                ->ordered()
+                ->get();
+        }
 
         // Get zones
         $zones = $isNationalAdmin

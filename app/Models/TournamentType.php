@@ -52,15 +52,11 @@ class TournamentType extends Model
      */
     public function isAvailableForZone($zoneId): bool
     {
-        if ($this->is_national || $this->visibility_zones === 'all') {
-            return true;
-        }
-
-        if (is_array($this->visibility_zones)) {
-            return in_array($zoneId, $this->visibility_zones);
-        }
-
-        return false;
+        // For now, all tournament types are available to all zones
+        // National types are marked with is_national = true
+        // Zone-specific types are marked with is_national = false
+        // Both should be visible to zone administrators
+        return true;
     }
 
 }
