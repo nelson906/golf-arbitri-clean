@@ -1,148 +1,116 @@
 <?php
-// app/Models/User.php - AGGIORNATO per schema unificato
+// ============================================
+// File: app/Models/User.php
+// ============================================
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
-        'name', 'first_name', 'last_name', 'email', 'password', 'user_type',
-        'referee_code', 'level', 'gender', 'certified_date', 'zone_id',
-        'phone', 'city', 'address', 'postal_code', 'tax_code', 'badge_number',
-        'first_certification_date', 'last_renewal_date', 'expiry_date', 'bio',
-        'experience_years', 'qualifications', 'languages', 'specializations',
-        'preferences', 'is_active', 'available_for_international',
-        'total_tournaments', 'tournaments_current_year', 'profile_completed_at'
+        'name',
+        'email',
+        'password',
+        'user_type',
+        'zone_id',
+        'referee_code',
+        'level',
+        'phone',
+        'active',
+        'is_active',  // alcuni DB usano questo
     ];
 
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'password' => 'hashed',
-        'certified_date' => 'date',
-        'first_certification_date' => 'date',
-        'last_renewal_date' => 'date',
-        'expiry_date' => 'date',
-        'qualifications' => 'array',
-        'languages' => 'array',
-        'specializations' => 'array',
-        'preferences' => 'array',
+        'active' => 'boolean',
         'is_active' => 'boolean',
-        'available_for_international' => 'boolean',
-        'last_login_at' => 'datetime',
-        'profile_completed_at' => 'datetime'
     ];
 
-    // Relationships
+    /**
+     * RELAZIONI
+     */
+
+    // Zona
     public function zone()
     {
         return $this->belongsTo(Zone::class);
     }
 
+    // Assegnazioni
     public function assignments()
     {
-        return $this->hasMany(Assignment::class);
+        $foreignKey = \Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
+        return $this->hasMany(Assignment::class, $foreignKey);
     }
 
+    // Disponibilità
     public function availabilities()
     {
-        return $this->hasMany(Availability::class);
+        if (\Schema::hasTable('availabilities')) {
+            $foreignKey = \Schema::hasColumn('availabilities', 'user_id') ? 'user_id' : 'referee_id';
+            return $this->hasMany(Availability::class, $foreignKey);
+        }
+        // Return empty collection if table doesn't exist
+        return $this->newCollection();
     }
 
-   public function createdTournaments()
+    // Tornei (attraverso assignments)
+    public function tournaments()
     {
-        return $this->hasMany(Tournament::class, 'created_by');
+        $userField = \Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
+
+        return $this->belongsToMany(Tournament::class, 'assignments', $userField, 'tournament_id')
+            ->withPivot('role', 'status', 'notes')
+            ->withTimestamps();
     }
 
+    // NON c'è una relazione 'referee' su User stesso!
+    // Se il codice cerca $user->referee, probabilmente è un errore
 
-    // Scopes
+    /**
+     * SCOPES
+     */
+
+    public function scopeReferees($query)
+    {
+        return $query->where('user_type', 'referee');
+    }
 
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
-    }
-
-    public function scopeInZone($query, $zoneId)
-    {
-        return $query->where('zone_id', $zoneId);
-    }
-
-    public function scopeByLevel($query, $level)
-    {
-        return $query->where('level', $level);
-    }
-
-    // Accessors
-    public function getIsRefereeAttribute()
-    {
-        return $this->user_type === 'referee';
-    }
-
-    public function getIsAdminAttribute()
-    {
-        return in_array($this->user_type, ['admin', 'national_admin', 'super_admin']);
-    }
-
-    public function getCanManageZoneAttribute()
-    {
-        return in_array($this->user_type, ['admin', 'super_admin']);
-    }
-
-    public function getCanManageNationalAttribute()
-    {
-        return in_array($this->user_type, ['national_admin', 'super_admin']);
-    }
-
-    public function getFullNameAttribute()
-    {
-        if ($this->first_name && $this->last_name) {
-            return "{$this->first_name} {$this->last_name}";
+        if (\Schema::hasColumn($this->getTable(), 'is_active')) {
+            return $query->where('is_active', true);
+        } elseif (\Schema::hasColumn($this->getTable(), 'active')) {
+            return $query->where('active', true);
         }
-        return $this->name;
+        return $query;
     }
-public function careerHistory()
-{
-    return $this->hasOne(RefereeCareerHistory::class);
-}
 
-public function scopeReferees($query)
-{
-    return $query->where('user_type', 'referee');
-}
+    /**
+     * ACCESSORS
+     */
 
-public function scopeAdmins($query)
-{
-    return $query->whereIn('user_type', ['admin', 'super_admin', 'national_admin']);
-}
-
-    // Constants
-    const USER_TYPES = [
-        'super_admin' => 'Super Admin',
-        'national_admin' => 'National Admin',
-        'admin' => 'Zone Admin',
-        'referee' => 'Referee'
-    ];
-
-    const LEVELS = [
-        'Aspirante' => 'Aspirante',
-        '1_livello' => 'Primo Livello',
-        'Regionale' => 'Regionale',
-        'Nazionale' => 'Nazionale',
-        'Internazionale' => 'Internazionale',
-        'Archivio' => 'Archivio'
-    ];
-
-    const GENDERS = [
-        'male' => 'Maschile',
-        'female' => 'Femminile',
-        'mixed' => 'Misto'
-    ];
+    // Normalizza active/is_active
+    public function getIsActiveAttribute()
+    {
+        if (isset($this->attributes['is_active'])) {
+            return $this->attributes['is_active'];
+        }
+        if (isset($this->attributes['active'])) {
+            return $this->attributes['active'];
+        }
+        return true; // default
+    }
 }

@@ -1,42 +1,70 @@
 <?php
 
+// ============================================
+// File: app/Models/Assignment.php
+// ============================================
+
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Assignment extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'tournament_id', 'role', 'notes', 'assigned_by', 'assigned_at'
+        'tournament_id',
+        'user_id',
+        'referee_id',
+        'role',
+        'status',
+        'notes',
+        'confirmed_at',
     ];
 
     protected $casts = [
-        'assigned_at' => 'datetime'
+        'confirmed_at' => 'datetime',
     ];
 
-    // Relationships
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
+    /**
+     * RELAZIONI
+     */
 
     public function tournament()
     {
         return $this->belongsTo(Tournament::class);
     }
 
-    public function assignedBy()
+    // Relazione principale con user
+    public function user()
     {
-        return $this->belongsTo(User::class, 'assigned_by');
+        if (\Schema::hasColumn('assignments', 'user_id')) {
+            return $this->belongsTo(User::class, 'user_id');
+        } else {
+            return $this->belongsTo(User::class, 'referee_id');
+        }
     }
 
-    // Constants
-    const ROLES = [
-        'Direttore di Torneo' => 'Direttore di Torneo',
-        'Arbitro' => 'Arbitro',
-        'Osservatore' => 'Osservatore'
-    ];
+    // Alias per retrocompatibilità
+    public function referee()
+    {
+        return $this->user();
+    }
+
+    /**
+     * ACCESSORS
+     */
+
+    // Ottieni user_id indipendentemente dal nome del campo
+    public function getUserIdAttribute()
+    {
+        if (isset($this->attributes['user_id'])) {
+            return $this->attributes['user_id'];
+        }
+        if (isset($this->attributes['referee_id'])) {
+            return $this->attributes['referee_id'];
+        }
+        return null;
+    }
 }

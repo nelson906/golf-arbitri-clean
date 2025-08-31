@@ -1,30 +1,51 @@
 <?php
 
+// ============================================
+// File: app/Models/Availability.php (se esiste)
+// ============================================
+
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Availability extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'user_id', 'tournament_id', 'notes', 'submitted_at'
+        'tournament_id',
+        'user_id',
+        'referee_id',
+        'is_available',
+        'notes',
     ];
 
     protected $casts = [
-        'submitted_at' => 'datetime'
+        'is_available' => 'boolean',
     ];
 
-    // Relationships
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
+    /**
+     * RELAZIONI
+     */
 
     public function tournament()
     {
         return $this->belongsTo(Tournament::class);
+    }
+
+    public function user()
+    {
+        if (\Schema::hasColumn('availabilities', 'user_id')) {
+            return $this->belongsTo(User::class, 'user_id');
+        } else {
+            return $this->belongsTo(User::class, 'referee_id');
+        }
+    }
+
+    // Alias
+    public function referee()
+    {
+        return $this->user();
     }
 }

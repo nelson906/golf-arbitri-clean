@@ -1,9 +1,13 @@
 <?php
 
+// ============================================
+// File: app/Models/TournamentType.php
+// ============================================
+
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class TournamentType extends Model
 {
@@ -11,36 +15,21 @@ class TournamentType extends Model
 
     protected $fillable = [
         'name',
-        'short_name',
-        'description',
+        'code',
         'is_national',
-        'level',
-        'required_level',
-        'min_referees',
-        'max_referees',
-        'sort_order',
-        'is_active',
-        'settings'
+        'description',
     ];
 
     protected $casts = [
         'is_national' => 'boolean',
-        'is_active' => 'boolean',
-        'settings' => 'array'
     ];
+
+    /**
+     * RELAZIONI
+     */
 
     public function tournaments()
     {
         return $this->hasMany(Tournament::class);
-    }
-
-    public function scopeActive($query)
-    {
-        return $query->where('is_active', true);
-    }
-
-    public function scopeOrdered($query)
-    {
-        return $query->orderBy('sort_order')->orderBy('name');
     }
 }

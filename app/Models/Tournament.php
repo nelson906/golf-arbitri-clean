@@ -1,98 +1,105 @@
 <?php
+// ============================================
+// File: app/Models/Tournament.php
+// ============================================
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Tournament extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'name', 'start_date', 'end_date', 'availability_deadline',
-        'club_id', 'tournament_type_id', 'zone_id', 'status',
-        'description', 'notes', 'created_by'
+        'name',
+        'club_id',
+        'tournament_type_id',
+        'date',           // se esiste
+        'status',         // se esiste
+        'notes',
     ];
 
     protected $casts = [
-        'start_date' => 'date',
-        'end_date' => 'date',
-        'availability_deadline' => 'datetime'
+        'date' => 'date',
     ];
 
-    // Relationships
+    /**
+     * RELAZIONI
+     */
+
+    // Relazione con circolo
     public function club()
     {
         return $this->belongsTo(Club::class);
     }
 
+    // Relazione con zona (attraverso il club)
+    public function zone()
+    {
+        return $this->hasOneThrough(
+            Zone::class,
+            Club::class,
+            'id',        // Foreign key on clubs table
+            'id',        // Foreign key on zones table
+            'club_id',   // Local key on tournaments table
+            'zone_id'    // Local key on clubs table
+        );
+    }
+
+    // Getter per zone_id (per retrocompatibilità)
+    public function getZoneIdAttribute()
+    {
+        return $this->club ? $this->club->zone_id : null;
+    }
+
+    // Relazione con tipo torneo
     public function tournamentType()
     {
         return $this->belongsTo(TournamentType::class);
     }
 
-    public function zone()
+    // Alias
+    public function type()
     {
-        return $this->belongsTo(Zone::class);
+        return $this->tournamentType();
     }
 
-    public function creator()
-    {
-        return $this->belongsTo(User::class, 'created_by');
-    }
-
+    // Assegnazioni
     public function assignments()
     {
         return $this->hasMany(Assignment::class);
     }
 
+    // Arbitri assegnati
+    public function referees()
+    {
+        $userField = \Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
+
+        return $this->belongsToMany(User::class, 'assignments', 'tournament_id', $userField)
+            ->withPivot('role', 'status', 'notes')
+            ->withTimestamps();
+    }
+
+    // Disponibilità dichiarate
     public function availabilities()
     {
+        if (\Schema::hasTable('availabilities')) {
+            return $this->hasMany(Availability::class);
+        }
         return $this->hasMany(Availability::class);
     }
 
-    // Scopes
-    public function scopeInZone($query, $zoneId)
-    {
-        return $query->where('zone_id', $zoneId);
-    }
-
-    public function scopeByStatus($query, $status)
-    {
-        return $query->where('status', $status);
-    }
-
-    public function scopeUpcoming($query)
-    {
-        return $query->where('start_date', '>', now());
-    }
-public function scopeActive($query)
-{
-    // Non fa nulla se il campo non esiste
-    if (\Schema::hasColumn($this->getTable(), 'active')) {
-        return $query->where('active', true);
-    }
-    return $query;
-}
     /**
-     * Scope alternativo per stato
+     * SCOPES
      */
-    public function scopeWithStatus($query, $status = 'active')
+
+    public function scopeActive($query)
     {
-        if (Schema::hasColumn($this->getTable(), 'status')) {
-            return $query->where('status', $status);
+        if (\Schema::hasColumn($this->getTable(), 'status')) {
+            return $query->where('status', 'active');
         }
         return $query;
     }
-
-    // Constants
-    const STATUSES = [
-        'draft' => 'Bozza',
-        'open' => 'Aperto',
-        'closed' => 'Chiuso',
-        'assigned' => 'Assegnato',
-        'completed' => 'Completato',
-        'cancelled' => 'Cancellato'
-    ];
 }

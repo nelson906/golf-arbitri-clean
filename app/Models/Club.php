@@ -1,24 +1,38 @@
 <?php
+// ============================================
+// File: app/Models/Club.php
+// ============================================
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Club extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'name', 'code', 'email', 'phone', 'address',
-        'city', 'province', 'zone_id', 'is_active'
+        'name',
+        'zone_id',
+        'code',
+        'city',
+        'address',
+        'phone',
+        'email',
+        'website',
+        'active',
+        'notes',
     ];
 
     protected $casts = [
-        'is_active' => 'boolean'
+        'active' => 'boolean',
     ];
 
-    // Relationships
+    /**
+     * RELAZIONI
+     */
+
     public function zone()
     {
         return $this->belongsTo(Zone::class);
@@ -29,24 +43,15 @@ class Club extends Model
         return $this->hasMany(Tournament::class);
     }
 
-    // Scopes
+    /**
+     * SCOPES
+     */
+
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        if (\Schema::hasColumn($this->getTable(), 'active')) {
+            return $query->where('active', true);
+        }
+        return $query;
     }
-
-    public function scopeInZone($query, $zoneId)
-    {
-        return $query->where('zone_id', $zoneId);
-    }
-
-        /**
-     * Order by name
-     */
-    public function scopeOrdered($query)
-    {
-        return $query->orderBy('name');
-    }
-
-
 }
