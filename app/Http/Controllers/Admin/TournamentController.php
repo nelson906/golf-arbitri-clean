@@ -27,9 +27,7 @@ class TournamentController extends Controller
 
         // Base query - ✅ FIXED: tournamentType relationship
         $query = Tournament::with(['club', 'zone', 'tournamentType']);
-if ($request->filled('year')) {
-    $query->whereYear('start_date', $request->year);
-}
+
 
         // Filter by zone for zone admins
         if (!$isNationalAdmin && !in_array($user->user_type, ['super_admin'])) {

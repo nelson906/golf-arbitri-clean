@@ -15,9 +15,10 @@ Route::resource('tournaments', TournamentController::class);
 Route::get('tournaments/{tournament}/assignments', [TournamentController::class, 'assignmentsForm'])->name('tournaments.assignments');
 
 Route::prefix('tournaments')->name('tournaments.')->group(function () {
-        Route::get('tournaments', function () {
-            return view('admin.placeholder', ['title' => 'Tournaments']);
-        })->name('tournaments.index');
+    Route::resource('tournaments', App\Http\Controllers\Admin\TournamentController::class);
+        // Route::get('tournaments', function () {
+        //     return view('admin.placeholder', ['title' => 'Tournaments']);
+        // })->name('tournaments.index');
 
     // CRUD Base
     Route::get('/', [TournamentController::class, 'index'])->name('index');

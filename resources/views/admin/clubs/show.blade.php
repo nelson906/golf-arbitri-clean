@@ -129,7 +129,7 @@
                 <div class="px-6 py-4 border-b border-gray-200">
                     <h2 class="text-lg font-medium text-gray-900">Tornei Recenti</h2>
                 </div>
-                @if($recentTournaments->count() > 0)
+                @if($tournaments->count() > 0)
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
@@ -141,7 +141,7 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200">
-                                @foreach($recentTournaments as $tournament)
+                                @foreach($tournaments as $tournament)
                                 <tr>
                                     <td class="px-6 py-4">
                                         <div class="text-sm font-medium text-gray-900">{{ $tournament->name }}</div>

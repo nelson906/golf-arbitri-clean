@@ -14,95 +14,59 @@ Route::resource('assignments', AssignmentController::class);
 
 Route::prefix('assignments')->name('assignments.')->group(function () {
 
-    // CRUD Base
-    Route::get('/', [AssignmentController::class, 'index'])->name('index');
-    Route::get('/create', [AssignmentController::class, 'create'])->name('create');
-    Route::post('/', [AssignmentController::class, 'store'])->name('store');
-    Route::get('/{assignment}', [AssignmentController::class, 'show'])->name('show');
-    Route::get('/{assignment}/edit', [AssignmentController::class, 'edit'])->name('edit');
-    Route::get('/{tournament}/assign', [AssignmentController::class, 'assignReferees'])->name('assign-referees');
-    Route::put('/{assignment}', [AssignmentController::class, 'update'])->name('update');
-    Route::delete('/{assignment}', [AssignmentController::class, 'destroy'])->name('destroy');
+        // CRUD standard
+        Route::get('/', [App\Http\Controllers\Admin\AssignmentController::class, 'index'])
+            ->name('index');
 
-    // Status Management
-    Route::post('/{assignment}/confirm', [AssignmentController::class, 'confirm'])->name('confirm');
-    Route::post('/{assignment}/unconfirm', [AssignmentController::class, 'unconfirm'])->name('unconfirm');
+        Route::get('/create', [App\Http\Controllers\Admin\AssignmentController::class, 'create'])
+            ->name('create');
 
-    // Bulk Operations
-    Route::post('/bulk-assign', [AssignmentController::class, 'bulkAssign'])->name('bulk-assign');
-    Route::post('/bulk-confirm', [AssignmentController::class, 'bulkConfirm'])->name('bulk-confirm');
-    Route::post('/bulk-delete', [AssignmentController::class, 'bulkDelete'])->name('bulk-delete');
-    Route::post('/bulk-action', [AssignmentController::class, 'bulkAction'])->name('bulk-action');
+        Route::post('/', [App\Http\Controllers\Admin\AssignmentController::class, 'store'])
+            ->name('store');
 
-    // Auto-Assignment Features
-    Route::prefix('auto')->name('auto.')->group(function () {
-        Route::get('/setup/{tournament}', [AssignmentController::class, 'autoAssignSetup'])->name('setup');
-        Route::post('/execute/{tournament}', [AssignmentController::class, 'autoAssign'])->name('execute');
-        Route::get('/preview/{tournament}', [AssignmentController::class, 'autoAssignPreview'])->name('preview');
-        Route::post('/batch-tournaments', [AssignmentController::class, 'batchAutoAssign'])->name('batch');
+        Route::get('/{assignment}', [App\Http\Controllers\Admin\AssignmentController::class, 'show'])
+            ->name('show');
+
+        Route::get('/{assignment}/edit', [App\Http\Controllers\Admin\AssignmentController::class, 'edit'])
+            ->name('edit');
+
+        Route::put('/{assignment}', [App\Http\Controllers\Admin\AssignmentController::class, 'update'])
+            ->name('update');
+
+        Route::delete('/{assignment}', [App\Http\Controllers\Admin\AssignmentController::class, 'destroy'])
+            ->name('destroy');
+
+        // Route speciali per assegnazione arbitri
+        Route::get('/tournament/{tournament}/assign-referees',
+            [App\Http\Controllers\Admin\AssignmentController::class, 'assignReferees'])
+            ->name('assign-referees');
+
+        Route::post('/tournament/{tournament}/assign-referees',
+            [App\Http\Controllers\Admin\AssignmentController::class, 'storeMultiple'])
+            ->name('storeMultiple');
+
+        Route::delete('/tournament/{tournament}/referee/{referee}',
+            [App\Http\Controllers\Admin\AssignmentController::class, 'removeFromTournament'])
+            ->name('removeFromTournament');
+
+        // Azioni aggiuntive
+        Route::post('/{assignment}/confirm',
+            [App\Http\Controllers\Admin\AssignmentController::class, 'confirm'])
+            ->name('confirm');
+
+        Route::post('/{assignment}/cancel',
+            [App\Http\Controllers\Admin\AssignmentController::class, 'cancel'])
+            ->name('cancel');
+
+        Route::post('/bulk-assign',
+            [App\Http\Controllers\Admin\AssignmentController::class, 'bulkAssign'])
+            ->name('bulk-assign');
+
+        Route::get('/export',
+            [App\Http\Controllers\Admin\AssignmentController::class, 'export'])
+            ->name('export');
     });
 
-    // Advanced Assignment Tools
-    Route::prefix('tools')->name('tools.')->group(function () {
-        Route::get('/', [AssignmentController::class, 'tools'])->name('index');
-        Route::get('/availability-match', [AssignmentController::class, 'availabilityMatch'])->name('availability-match');
-        Route::get('/referee-workload', [AssignmentController::class, 'refereeWorkload'])->name('referee-workload');
-        Route::get('/conflict-detector', [AssignmentController::class, 'conflictDetector'])->name('conflict-detector');
-        Route::get('/optimal-assignment', [AssignmentController::class, 'optimalAssignment'])->name('optimal-assignment');
-    });
-
-    // Export/Import
-    Route::get('/export', [AssignmentController::class, 'export'])->name('export');
-    Route::post('/import', [AssignmentController::class, 'import'])->name('import');
-    Route::get('/export-template', [AssignmentController::class, 'exportTemplate'])->name('export-template');
-
-    // Calendar & Schedule Views
-    Route::prefix('calendar')->name('calendar.')->group(function () {
-        Route::get('/', [AssignmentController::class, 'calendar'])->name('index');
-        Route::get('/referee/{user}', [AssignmentController::class, 'refereeCalendar'])->name('referee');
-        Route::get('/tournament/{tournament}', [AssignmentController::class, 'tournamentCalendar'])->name('tournament');
-        Route::get('/zone/{zone}', [AssignmentController::class, 'zoneCalendar'])->name('zone');
-        Route::get('/data', [AssignmentController::class, 'calendarData'])->name('data');
-    });
-
-    // Statistics & Reports
-    Route::prefix('reports')->name('reports.')->group(function () {
-        Route::get('/', [AssignmentController::class, 'reports'])->name('index');
-        Route::get('/by-referee', [AssignmentController::class, 'reportByReferee'])->name('by-referee');
-        Route::get('/by-tournament', [AssignmentController::class, 'reportByTournament'])->name('by-tournament');
-        Route::get('/by-zone', [AssignmentController::class, 'reportByZone'])->name('by-zone');
-        Route::get('/by-role', [AssignmentController::class, 'reportByRole'])->name('by-role');
-        Route::get('/confirmation-rate', [AssignmentController::class, 'confirmationRate'])->name('confirmation-rate');
-        Route::get('/workload-distribution', [AssignmentController::class, 'workloadDistribution'])->name('workload-distribution');
-    });
-
-    // Communication related to assignments
-    Route::prefix('communications')->name('communications.')->group(function () {
-        Route::get('/', [AssignmentController::class, 'communications'])->name('index');
-        Route::post('/notify-assignments', [AssignmentController::class, 'notifyAssignments'])->name('notify');
-        Route::post('/send-reminders', [AssignmentController::class, 'sendReminders'])->name('send-reminders');
-        Route::post('/request-confirmation', [AssignmentController::class, 'requestConfirmation'])->name('request-confirmation');
-
-        // Assignment-specific notifications
-        Route::post('/{assignment}/notify', [AssignmentController::class, 'notifyAssignment'])->name('notify-single');
-        Route::post('/{assignment}/resend-notification', [AssignmentController::class, 'resendNotification'])
-            ->name('resend-notification');
-    });
-
-    // Document Generation for assignments
-    Route::prefix('documents')->name('documents.')->group(function () {
-        Route::get('/{assignment}/letter', [AssignmentController::class, 'assignmentLetter'])->name('letter');
-        Route::get('/{assignment}/certificate', [AssignmentController::class, 'assignmentCertificate'])->name('certificate');
-        Route::get('/batch-letters', [AssignmentController::class, 'batchAssignmentLetters'])->name('batch-letters');
-        Route::get('/tournament/{tournament}/all-letters', [AssignmentController::class, 'tournamentAllLetters'])
-            ->name('tournament-all-letters');
-    });
-
-    // Search & Filter
-    Route::get('/search', [AssignmentController::class, 'search'])->name('search');
-    Route::get('/filter-options', [AssignmentController::class, 'filterOptions'])->name('filter-options');
-    Route::get('/referee-suggestions', [AssignmentController::class, 'refereeSuggestions'])->name('referee-suggestions');
-});
 
 // Assignment Validation & Quality Control
 Route::prefix('assignment-validation')->name('assignment-validation.')->group(function () {

@@ -7,6 +7,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Carbon\Carbon;
 
 class Tournament extends Model
 {
@@ -23,7 +24,26 @@ class Tournament extends Model
 
     protected $casts = [
         'date' => 'date',
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
+ ];
+    /**
+     * Tournament statuses
+     */
+    const STATUS_DRAFT = 'draft';
+    const STATUS_OPEN = 'open';
+    const STATUS_CLOSED = 'closed';
+    const STATUS_ASSIGNED = 'assigned';
+    const STATUS_COMPLETED = 'completed';
+
+    const STATUSES = [
+        self::STATUS_DRAFT => 'Bozza',
+        self::STATUS_OPEN => 'Aperto',
+        self::STATUS_CLOSED => 'Chiuso',
+        self::STATUS_ASSIGNED => 'Assegnato',
+        self::STATUS_COMPLETED => 'Completato',
     ];
+
 
     /**
      * RELAZIONI
@@ -102,4 +122,13 @@ class Tournament extends Model
         }
         return $query;
     }
+        /**
+     * Scope a query to only include upcoming tournaments.
+     */
+    public function scopeUpcoming($query)
+    {
+        return $query->where('start_date', '>=', Carbon::today());
+    }
+
+
 }

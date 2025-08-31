@@ -152,7 +152,7 @@
                                     {{ $tournament->name }}
                                 </div>
                                 <div class="text-sm text-gray-500">
-                                    {{-- Scadenza: {{ $tournament->availability_deadline->format('d/m/Y') ??}} --}}
+                                    Scadenza: {{ Carbon\Carbon::parse($tournament->availability_deadline)->format('d/m/Y') }}
                                     @if ($tournament->days_until_deadline >= 0)
                                         <span
                                             class="text-xs {{ $tournament->days_until_deadline <= 3 ? 'text-red-600 font-semibold' : 'text-gray-500' }}">
@@ -181,7 +181,7 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="flex items-center">
                                     <div class="w-3 h-3 rounded-full mr-2"
-                                        {{-- style="background-color: {{ $tournament->tournamentType->calendar_color }}"></div> --}}
+                                        style="background-color: {{ $tournament->tournamentType->calendar_color }}"></div>
                                     <span class="text-sm text-gray-900">
                                         {{ $tournament->tournamentType->short_name }}
                                     </span>

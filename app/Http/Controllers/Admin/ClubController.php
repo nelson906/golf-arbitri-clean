@@ -77,6 +77,9 @@ class ClubController extends Controller
             'total_assignments' => \DB::table('assignments')
                 ->whereIn('tournament_id', $club->tournaments()->pluck('id'))
                 ->count(),
+            'upcoming_tournaments' => $club->tournaments()->upcoming()->count(),
+            'completed_tournaments' => $club->tournaments()->where('status', 'completed')->count(),
+            'active_tournaments' => $club->tournaments()->active()->count(),
         ];
 
         $isNationalAdmin = in_array(auth()->user()->user_type, ['national_admin', 'super_admin']);
@@ -115,7 +118,6 @@ class ClubController extends Controller
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'website' => 'nullable|url|max:255',
-            'notes' => 'nullable|string',
         ];
 
         // Aggiungi validazione per campi opzionali se esistono
@@ -185,7 +187,6 @@ class ClubController extends Controller
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'website' => 'nullable|url|max:255',
-            'notes' => 'nullable|string',
         ];
 
         // Validazione campi opzionali

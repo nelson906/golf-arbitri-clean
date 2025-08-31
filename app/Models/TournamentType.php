@@ -32,4 +32,20 @@ class TournamentType extends Model
     {
         return $this->hasMany(Tournament::class);
     }
+        /**
+     * Scope a query to only include active types.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+    /**
+     * Scope a query to order by sort order.
+     */
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('name'); // Solo nome
+    }
+
+
 }
