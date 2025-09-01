@@ -34,8 +34,8 @@
                         <dt class="text-sm font-medium text-gray-500">Categoria</dt>
                         <dd class="mt-1 text-sm text-gray-900 flex items-center">
                             <div class="w-3 h-3 rounded-full mr-2"
-                                 style="background-color: {{ $tournament->tournamentCategory->calendar_color }}"></div>
-                            {{ $tournament->tournamentCategory->name }}
+                                 style="background-color: {{ $tournament->tournamentType?->calendar_color ?? '#CCCCCC' }}"></div>
+                            {{ $tournament->tournamentType?->name ?? 'Senza categoria' }}
                         </dd>
                     </div>
 
@@ -142,7 +142,7 @@
                 <div class="space-y-3">
                     <div class="flex justify-between">
                         <span class="text-sm text-gray-600">Arbitri richiesti</span>
-                        <span class="text-sm font-medium">{{ $tournament->required_referees ?? 'N/A' }}</span>
+                        <span class="text-sm font-medium">{{ $required_referees ?? 'N/A' }}</span>
                     </div>
 
                     <div class="flex justify-between">
@@ -158,7 +158,7 @@
                     @if($tournament->availability_deadline)
                     <div class="pt-3 border-t border-gray-200">
                         <span class="text-sm text-gray-600">Scadenza disponibilità</span>
-                        <div class="text-sm font-medium">{{ $tournament->availability_deadline->format('d/m/Y') }}</div>
+                        <div class="text-sm font-medium">{{ Carbon\Carbon::parse($tournament->availability_deadline)->format('d/m/Y') }}</div>
                     </div>
                     @endif
                 </div>

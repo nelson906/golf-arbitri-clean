@@ -17,8 +17,8 @@ class Availability extends Model
         'tournament_id',
         'user_id',
         'referee_id',
-        'is_available',
         'notes',
+        'submitted_at',
     ];
 
     protected $casts = [

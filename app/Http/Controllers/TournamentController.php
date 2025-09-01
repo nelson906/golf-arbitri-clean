@@ -163,7 +163,7 @@ class TournamentController extends Controller
                 'required_referees' => $tournament->required_referees ?? 1,
                 'max_referees' => $tournament->max_referees ?? 4,
                 'days_until_deadline' => $tournament->availability_deadline
-                    ? $tournament->availability_deadline->diffInDays(now(), false)
+                    ? Carbon::parse($tournament->availability_deadline)->diffInDays(now(), false)
                     : null,
                 'is_editable' => method_exists($tournament, 'isEditable') ? $tournament->isEditable() : true,
             ];
@@ -172,6 +172,9 @@ class TournamentController extends Controller
             $availableReferees = $tournament->availabilities()->with('user')->get();
         }
 
+        // Get required referees from tournament type
+        $required_referees = $tournament->tournamentType?->min_referees ?? 1;
+
         return view('tournaments.show', compact(
             'tournament',
             'userAvailability',
@@ -179,6 +182,7 @@ class TournamentController extends Controller
             'stats',
             'assignedReferees',
             'availableReferees',
+            'required_referees',
             'isAdmin'
         ));
     }

@@ -15,21 +15,21 @@ class Tournament extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name',
         'club_id',
+        'name',
         'tournament_type_id',
         'zone_id',
-        'start_date',        // DEVE esserci
-        'end_date',          // DEVE esserci
-        'availability_deadline', // DEVE esserci
-        'status',         // se esiste
+        'start_date',
+        'end_date',
+        'availability_deadline',
+        'status',
         'notes',
-        'created_by',  // <-- DEVE esserci
+        'created_by',
 ];
 
     protected $casts = [
-        'date' => 'date',
         'start_date' => 'datetime',
+        'date' => 'date',
         'end_date' => 'datetime',
     ];
     /**

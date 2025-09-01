@@ -1,130 +1,151 @@
-@extends('layouts.admin')
+@extends('layouts.app')
 
-@section('title', 'Tornei')
+@section('title', 'Lista Tornei')
 
 @section('content')
-<div class="container mx-auto px-4 py-8">
-    {{-- Header --}}
-    <div class="flex justify-between items-center mb-8">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-900">Tornei</h1>
-            <p class="mt-2 text-gray-600">Visualizza i tornei disponibili</p>
-        </div>
-        <div class="flex space-x-4">
-            <a href="{{ route('tournaments.calendar') }}"
-               class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition duration-200 flex items-center">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-                Calendario
-            </a>
-        </div>
-    </div>
-
-    {{-- Simple Search --}}
-    <div class="bg-white shadow rounded-lg p-4 mb-6">
-        <form method="GET" action="{{ route('tournaments.index') }}" class="flex gap-4">
-            <div class="flex-1">
-                <input type="text"
-                       name="search"
-                       value="{{ request('search') }}"
-                       placeholder="Cerca tornei..."
-                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-            </div>
-            <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700">
-                Cerca
-            </button>
-            @if(request('search'))
-            <a href="{{ route('tournaments.index') }}" class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
-                Reset
-            </a>
-            @endif
-        </form>
-    </div>
-
-    {{-- Tournaments Grid --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        @forelse($tournaments as $tournament)
-        <div class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-200">
-            <div class="p-6">
-                <div class="flex items-center justify-between mb-2">
-                    <h3 class="text-lg font-semibold text-gray-900 truncate">
-                        {{ $tournament->name }}
-                    </h3>
-                    <span class="px-2 py-1 text-xs font-medium rounded-full
-                        {{ $tournament->status === 'open' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
-                        {{ $tournament->status === 'open' ? 'Aperto' : ucfirst($tournament->status) }}
-                    </span>
+<div class="py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {{-- Header --}}
+        <div class="mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Lista Tornei</h1>
+                    <p class="mt-1 text-sm text-gray-600">
+                        Visualizza tutti i tornei disponibili
+                    </p>
                 </div>
-
-                <div class="space-y-2 text-sm text-gray-600 mb-4">
-                    <div class="flex items-center">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                        </svg>
-                        {{ $tournament->club->name }}
-                    </div>
-                    <div class="flex items-center">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                        </svg>
-                        {{ $tournament->start_date->format('d/m/Y') }} - {{ $tournament->end_date->format('d/m/Y') }}
-                    </div>
-                    <div class="flex items-center">
-                        <div class="w-3 h-3 rounded-full mr-2" style="background-color: {{ $tournament->tournamentCategory->calendar_color }}"></div>
-                        {{ $tournament->tournamentCategory->name }}
-                    </div>
-                </div>
-
-                <div class="flex justify-between items-center">
-                    {{-- Link Visualizza dettagli (esistente) --}}
-                    <a href="{{ route('tournaments.show', $tournament) }}"
-                       class="text-indigo-600 hover:text-indigo-800 font-medium">
-                        Visualizza dettagli →
+                <div>
+                    <a href="{{ route('tournaments.calendar') }}"
+                       class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        📅 Vista Calendario
                     </a>
-
-                    {{-- Pulsanti azione per Admin/SuperAdmin/NationalAdmin --}}
-                    @if(auth()->user()->hasRole('admin') || auth()->user()->hasRole('national_admin') || auth()->user()->hasRole('super_admin'))
-                        <div class="flex space-x-2">
-                            {{-- Pulsante Invia Notifica (se ci sono arbitri assegnati) --}}
-                            @if($tournament->assignedReferees && $tournament->assignedReferees->count() > 0)
-                                <a href="{{ route('admin.tournaments.show-assignment-form', $tournament) }}"
-                                   class="inline-flex items-center px-3 py-1 text-xs font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors">
-                                    📧 Notifica
-                                </a>
-                            @endif
-
-                            {{-- Pulsante Assegna Arbitri (se non ci sono arbitri assegnati) --}}
-                            @if(!$tournament->assignedReferees || $tournament->assignedReferees->count() == 0)
-                                <a href="{{ route('admin.tournaments.show', $tournament) }}"
-                                   class="inline-flex items-center px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
-                                    👥 Assegna
-                                </a>
-                            @endif
-
-                            {{-- Pulsante Modifica --}}
-                            <a href="{{ route('admin.tournaments.edit', $tournament) }}"
-                               class="inline-flex items-center px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors">
-                                ✏️ Modifica
-                            </a>
-                        </div>
-                    @endif
                 </div>
             </div>
         </div>
-        @empty
-        <div class="col-span-full text-center py-12">
-            <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-            </svg>
-            <p class="text-gray-500">Nessun torneo trovato</p>
-        </div>
-        @endforelse
-    </div>
 
-    {{-- Pagination --}}
-    <div class="mt-8">
-        {{ $tournaments->withQueryString()->links() }}
+        {{-- Filters --}}
+        <div class="mb-6 bg-white rounded-lg shadow p-4">
+            <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Cerca</label>
+                    <input type="text" name="search" id="search" value="{{ request('search') }}"
+                           placeholder="Nome torneo o circolo..."
+                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                </div>
+
+                <div>
+                    <label for="zone_id" class="block text-sm font-medium text-gray-700 mb-1">Zona</label>
+                    <select name="zone_id" id="zone_id" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                        <option value="">Tutte le zone</option>
+                        @foreach(\App\Models\Zone::orderBy('name')->get() as $zone)
+                            <option value="{{ $zone->id }}" {{ request('zone_id') == $zone->id ? 'selected' : '' }}>
+                                {{ $zone->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label for="month" class="block text-sm font-medium text-gray-700 mb-1">Mese</label>
+                    <input type="month" name="month" id="month" value="{{ request('month') }}"
+                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                </div>
+
+                <div class="flex items-end gap-2">
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        Filtra
+                    </button>
+                    <a href="{{ route('tournaments.index') }}"
+                       class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        {{-- Tournaments Table --}}
+        @if($tournaments->isEmpty())
+            <div class="bg-white rounded-lg shadow p-8 text-center">
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Nessun torneo trovato</h3>
+                <p class="text-gray-600">Non ci sono tornei corrispondenti ai filtri selezionati.</p>
+            </div>
+        @else
+            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Torneo
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Tipo
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Circolo / Zona
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Date
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Stato
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @foreach($tournaments as $tournament)
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">
+                                        {{ $tournament->name }}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">
+                                        {{ $tournament->tournamentType->name ?? 'N/A' }}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ $tournament->club->name ?? 'N/A' }}</div>
+                                    <div class="text-sm text-gray-500">{{ $tournament->zone->name ?? 'N/A' }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">
+                                        {{ $tournament->start_date->format('d/m/Y') }}
+                                        @if($tournament->end_date && $tournament->start_date->format('Y-m-d') !== $tournament->end_date->format('Y-m-d'))
+                                            - {{ $tournament->end_date->format('d/m/Y') }}
+                                        @endif
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    @php
+                                        $statusColors = [
+                                            'open' => 'bg-green-100 text-green-800',
+                                            'closed' => 'bg-red-100 text-red-800',
+                                            'assigned' => 'bg-blue-100 text-blue-800',
+                                            'completed' => 'bg-gray-100 text-gray-800',
+                                        ];
+                                        $statusLabels = [
+                                            'open' => 'Aperto',
+                                            'closed' => 'Chiuso',
+                                            'assigned' => 'Assegnato',
+                                            'completed' => 'Completato',
+                                        ];
+                                    @endphp
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $statusColors[$tournament->status] ?? 'bg-gray-100 text-gray-800' }}">
+                                        {{ $statusLabels[$tournament->status] ?? ucfirst($tournament->status) }}
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            {{-- Pagination --}}
+            <div class="mt-6">
+                {{ $tournaments->withQueryString()->links() }}
+            </div>
+        @endif
     </div>
 </div>
 @endsection

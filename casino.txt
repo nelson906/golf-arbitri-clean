@@ -1,0 +1,783 @@
+.
+├── README.md
+├── app
+│   ├── Console
+│   │   └── Commands
+│   │       ├── CodeExtractorCommand.php
+│   │       ├── MigrateCoreData.php
+│   │       ├── MigrateCurrentData.php
+│   │       ├── MigrateHistoricalToJson.php
+│   │       ├── MigrateViewsToBladeLayout.php
+│   │       ├── RemoveYearManagement.php
+│   │       └── UpdateControllers.php
+│   ├── Http
+│   │   ├── Controllers
+│   │   │   ├── Admin
+│   │   │   │   ├── AssignmentController.php
+│   │   │   │   ├── AvailabilityController.php
+│   │   │   │   ├── ClubController.php
+│   │   │   │   ├── DashboardController.php
+│   │   │   │   ├── MonitoringController.php
+│   │   │   │   ├── NotificationController.php
+│   │   │   │   ├── StatisticsDashboardController.php
+│   │   │   │   ├── StatisticsDashboardController.php.backup_year
+│   │   │   │   ├── TournamentController.php
+│   │   │   │   ├── UnifiedUserController.php
+│   │   │   │   └── UserController.php
+│   │   │   ├── Auth
+│   │   │   │   ├── AuthenticatedSessionController.php
+│   │   │   │   ├── ConfirmablePasswordController.php
+│   │   │   │   ├── EmailVerificationNotificationController.php
+│   │   │   │   ├── EmailVerificationPromptController.php
+│   │   │   │   ├── NewPasswordController.php
+│   │   │   │   ├── PasswordController.php
+│   │   │   │   ├── PasswordResetLinkController.php
+│   │   │   │   ├── RegisteredUserController.php
+│   │   │   │   └── VerifyEmailController.php
+│   │   │   ├── Controller.php
+│   │   │   ├── DashboardController.php
+│   │   │   ├── ProfileController.php
+│   │   │   ├── TournamentController.php
+│   │   │   ├── TournamentController.php.backup_year
+│   │   │   └── User
+│   │   │       └── AvailabilityController.php
+│   │   ├── Helpers
+│   │   │   ├── PermissionHelper.php
+│   │   │   ├── RefereeLevelsHelper.php
+│   │   │   ├── RefereeRoleHelper.php
+│   │   │   └── helpers.php
+│   │   ├── Middleware
+│   │   │   ├── AdminOrSuperAdmin.php
+│   │   │   ├── RefereeOnly.php
+│   │   │   └── ZoneAdmin.php
+│   │   └── Requests
+│   │       ├── AssignmentRequest.php
+│   │       ├── Auth
+│   │       │   └── LoginRequest.php
+│   │       ├── AvailabilityRequest.php
+│   │       ├── DocumentUploadRequest.php
+│   │       ├── ProfileUpdateRequest.php
+│   │       ├── RefereeRequest.php
+│   │       ├── TournamentRequest.php
+│   │       └── TournamentTypeRequest.php
+│   ├── Models
+│   │   ├── Assignment.php
+│   │   ├── Availability.php
+│   │   ├── Club.php
+│   │   ├── Notification.php
+│   │   ├── RefereeCareerHistory.php
+│   │   ├── Tournament.php
+│   │   ├── TournamentType.php
+│   │   ├── User.php
+│   │   └── Zone.php
+│   ├── Providers
+│   │   └── AppServiceProvider.php
+│   ├── Services
+│   │   ├── DocumentGenerationService.php
+│   │   ├── FileStorageService.php
+│   │   ├── MonitoringService.php
+│   │   ├── NotificationService.php
+│   │   └── ReportService.php
+│   └── View
+│       └── Components
+│           ├── AppLayout.php
+│           └── GuestLayout.php
+├── artisan
+├── bootstrap
+│   ├── app.php
+│   ├── cache
+│   │   ├── packages.php
+│   │   └── services.php
+│   └── providers.php
+├── casino.txt
+├── composer.json
+├── composer.lock
+├── config
+│   ├── app.php
+│   ├── auth.php
+│   ├── cache.php
+│   ├── database.php
+│   ├── filesystems.php
+│   ├── logging.php
+│   ├── mail.php
+│   ├── queue.php
+│   ├── services.php
+│   └── session.php
+├── database
+│   ├── factories
+│   │   └── UserFactory.php
+│   ├── migrations
+│   │   ├── 0001_01_01_000000_create_users_table.php
+│   │   ├── 0001_01_01_000001_create_cache_table.php
+│   │   ├── 0001_01_01_000002_create_jobs_table.php
+│   │   └── 2025_08_29_055240_create_clean_golf_schema.php
+│   └── seeders
+│       ├── CoreDataSeeder.php
+│       └── DatabaseSeeder.php
+├── migrate-all.sh
+├── package-lock.json
+├── package.json
+├── phpunit.xml
+├── postcss.config.js
+├── public
+│   ├── build
+│   │   ├── assets
+│   │   │   ├── app-BceAXg6C.css
+│   │   │   └── app-DlYOw6CL.js
+│   │   └── manifest.json
+│   ├── favicon.ico
+│   ├── index.php
+│   └── robots.txt
+├── resources
+│   ├── css
+│   │   └── app.css
+│   ├── js
+│   │   ├── app.js
+│   │   └── bootstrap.js
+│   └── views
+│       ├── admin
+│       │   ├── _partials
+│       │   │   └── page-header.blade.php
+│       │   ├── assignments
+│       │   │   ├── assign-referees.blade.php
+│       │   │   ├── create.blade.php
+│       │   │   ├── index.blade.php
+│       │   │   └── show.blade.php
+│       │   ├── clubs
+│       │   │   ├── _form.blade.php
+│       │   │   ├── create.blade.php
+│       │   │   ├── edit.blade.php
+│       │   │   ├── index.blade.php
+│       │   │   └── show.blade.php
+│       │   ├── dashboard.blade.php
+│       │   ├── monitoring
+│       │   │   ├── dashboard.blade.php
+│       │   │   ├── health.blade.php
+│       │   │   ├── logs.blade.php
+│       │   │   ├── metrics.blade.php
+│       │   │   └── performance.blade.php
+│       │   ├── placeholder.blade.php
+│       │   ├── statistics
+│       │   │   ├── arbitri.blade.php
+│       │   │   ├── assegnazioni.blade.php
+│       │   │   ├── dashboard.blade.php
+│       │   │   ├── disponibilita.blade.php
+│       │   │   ├── export.blade.php
+│       │   │   ├── tornei.blade.php
+│       │   │   └── zone.blade.php
+│       │   ├── tournaments
+│       │   │   ├── create.blade.php
+│       │   │   ├── edit.blade.php
+│       │   │   ├── index.blade.php
+│       │   │   ├── index.blade.php.backup_year
+│       │   │   └── show.blade.php
+│       │   └── users
+│       │       ├── create.blade.php
+│       │       ├── curricula.blade.php
+│       │       ├── edit.blade.php
+│       │       ├── index.blade.php
+│       │       └── show.blade.php
+│       ├── auth
+│       │   ├── confirm-password.blade.php
+│       │   ├── forgot-password.blade.php
+│       │   ├── login.blade.php
+│       │   ├── register.blade.php
+│       │   ├── reset-password.blade.php
+│       │   └── verify-email.blade.php
+│       ├── components
+│       │   ├── action-buttons.blade.php
+│       │   ├── application-logo.blade.php
+│       │   ├── auth-session-status.blade.php
+│       │   ├── button.blade.php
+│       │   ├── danger-button.blade.php
+│       │   ├── dropdown-link.blade.php
+│       │   ├── dropdown.blade.php
+│       │   ├── filter-field.blade.php
+│       │   ├── filter.blade.php
+│       │   ├── input-error.blade.php
+│       │   ├── input-label.blade.php
+│       │   ├── modal.blade.php
+│       │   ├── nav-link.blade.php
+│       │   ├── primary-button.blade.php
+│       │   ├── responsive-nav-link.blade.php
+│       │   ├── secondary-button.blade.php
+│       │   ├── status-badge.blade.php
+│       │   ├── table-actions-club.blade.php
+│       │   ├── table-actions-referee.blade.php
+│       │   ├── table-actions.blade.php
+│       │   ├── table-header.blade.php
+│       │   └── text-input.blade.php
+│       ├── dashboard.blade.php
+│       ├── layouts
+│       │   ├── admin.blade.php
+│       │   ├── admin.blade.php.backup_year
+│       │   ├── app.blade.php
+│       │   ├── guest.blade.php
+│       │   └── navigation.blade.php
+│       ├── profile
+│       │   ├── edit.blade.php
+│       │   └── partials
+│       │       ├── delete-user-form.blade.php
+│       │       ├── update-password-form.blade.php
+│       │       └── update-profile-information-form.blade.php
+│       ├── tournaments
+│       │   ├── calendar.blade.php
+│       │   ├── index.blade.php
+│       │   └── show.blade.php
+│       ├── user
+│       │   ├── availabilities
+│       │   │   ├── index.blade.php
+│       │   │   └── tournaments.blade.php
+│       │   ├── availability
+│       │   │   └── calendar.blade.php
+│       │   └── dashboard.blade.php
+│       ├── users
+│       │   └── index.blade.php
+│       └── welcome.blade.php
+├── routes
+│   ├── admin
+│   │   ├── assignment.php.backup
+│   │   ├── assignments.php
+│   │   ├── clubs.php
+│   │   ├── dashboard.php
+│   │   ├── monitoring.php
+│   │   ├── notifications.php
+│   │   ├── referees.php
+│   │   ├── reports.php
+│   │   ├── statistic.php
+│   │   ├── tournaments.php
+│   │   └── users.php
+│   ├── api
+│   │   ├── internal.php
+│   │   └── v1
+│   │       ├── notifications.php
+│   │       └── tournaments.php
+│   ├── auth.php
+│   ├── console.php
+│   ├── referee
+│   │   └── dashboard.php
+│   ├── user
+│   │   └── availability.php
+│   ├── web.php
+│   └── web.php.backup
+├── storage
+│   ├── app
+│   │   ├── private
+│   │   └── public
+│   ├── debugbar
+│   │   ├── 01K4087V3MYMDAVMHP8J8T147K.json
+│   │   ├── 01K408JJY230NAXJ2WGBHGBPZ8.json
+│   │   ├── 01K408JXVPXDSBRPHC2T9WEBAQ.json
+│   │   ├── 01K408K1XRZX7VR3692QRGJTH0.json
+│   │   ├── 01K408KNZHFT5DREKBG33RQCX9.json
+│   │   ├── 01K408N8V4NJMXBB9RWBVB6SHF.json
+│   │   ├── 01K408P0BH760BM92YBF59YA82.json
+│   │   ├── 01K408P0EWADMWGR2RGHZXX94X.json
+│   │   ├── 01K408P74WTGERM5RDASFCT3EJ.json
+│   │   ├── 01K408PBSA1A1FW6WK2HWJ1D76.json
+│   │   ├── 01K408PV9RB0FBVJ7DXC0WQHJP.json
+│   │   ├── 01K408Q2PQQMA9SBDDA87ZSPJF.json
+│   │   ├── 01K408QMATZKDT473TX04BM93Y.json
+│   │   ├── 01K408QMDZC1ZQQZM7N7KHMSG8.json
+│   │   ├── 01K408QQY1YTTKC07NPVWCGJQ4.json
+│   │   ├── 01K408QV9EK6DTVTE0CNYM4KDH.json
+│   │   ├── 01K408W6Q6WN39SD7EK2M2N4D7.json
+│   │   ├── 01K408W9Z5633ZTYKG27T2STG0.json
+│   │   ├── 01K408WHBCZBFDB5HPFKBWZ2G0.json
+│   │   ├── 01K408X8B3X1X7E9V35CBFK3H4.json
+│   │   ├── 01K408X8CJFDJBQPG3MZ82R7Q5.json
+│   │   ├── 01K408XE6TMVEFQA24ZH8YY119.json
+│   │   ├── 01K408XE99FD3QDA8T4FKXMBRC.json
+│   │   ├── 01K408YBR3NB9MEF64AWSMZG5H.json
+│   │   ├── 01K408YDK5BK8HQKK9TAA47B8M.json
+│   │   ├── 01K408YEDVPZSGKH9YXZPD7CBE.json
+│   │   ├── 01K4092H6WYBS2RDA2TYP798A1.json
+│   │   ├── 01K4098K00GQ13Y3W5P7K8VNDF.json
+│   │   ├── 01K409T0BVRN60PC6F1VK7M9KM.json
+│   │   ├── 01K409T1GXRVYCW5FT1NK9B04S.json
+│   │   ├── 01K409TZJAQH4KRMBKV8701MWF.json
+│   │   ├── 01K409V0GCTBX3N38E0CYWBGH9.json
+│   │   ├── 01K409V12A9ZYK513WKJ117QV9.json
+│   │   ├── 01K409V1DVCNACNNDT7VNZQ1KD.json
+│   │   ├── 01K409V1SDC1P3ZGBNS3NEK241.json
+│   │   ├── 01K409W64FDHS2FYJSYASRD6GQ.json
+│   │   ├── 01K409W65S921GHXC0PWNNAH3E.json
+│   │   ├── 01K409WBVYG9FZNYTA0GQAPJ07.json
+│   │   ├── 01K409WBYHHP9EGHQKXZ0GCC7A.json
+│   │   ├── 01K40A0PFRYPVZSK0A5ZSGKN02.json
+│   │   ├── 01K40A0SSAWCVSKPG7QW6R4J6S.json
+│   │   ├── 01K40A0Z38KNFS9GHCDFGSEWSS.json
+│   │   ├── 01K40A14CAYGKYFVC2T8VV1C04.json
+│   │   ├── 01K40A7911SV1RBDBJ1AWWX4DA.json
+│   │   ├── 01K40A86AQ8SX3N593F0FFN99E.json
+│   │   ├── 01K40A94E4P2PQY7K7ZG4N9D89.json
+│   │   ├── 01K40A94FH1ZG5705VKD9TEHCG.json
+│   │   ├── 01K40A9A0DWQ340WZTXAB551FX.json
+│   │   ├── 01K40A9A2MR3RK6WCZKE98GAAN.json
+│   │   ├── 01K40AA4EBEZR0J405H4B2XVRW.json
+│   │   ├── 01K40AA4HWCJC7T4VJXB7HVJ1H.json
+│   │   ├── 01K40ADZ13VB2J9E3GKKCV2R4M.json
+│   │   ├── 01K40AE704EXFHJA5ECTY6QXZH.json
+│   │   ├── 01K40AGCNBF6QSB078BZFAY7V5.json
+│   │   ├── 01K40AHDZS2A4A999D5VVASRC6.json
+│   │   ├── 01K40AHE387FEDD9KP1ECMFBW3.json
+│   │   ├── 01K40AMWTTASG9TNJA26PD2FYK.json
+│   │   ├── 01K40AN1385321HJP87H06E196.json
+│   │   ├── 01K40AN78314NZ1R3YND8JJX07.json
+│   │   ├── 01K40ANZE9HW1H147SMJVGAE64.json
+│   │   ├── 01K40ANZJC4KEQQ3P7GC5XJ21X.json
+│   │   ├── 01K40AVGTXAJMTEDRJQ3ZFHBTE.json
+│   │   ├── 01K40AVP97SAHQJPV2CWHQV8R0.json
+│   │   ├── 01K40AW1KE7G89WKXEB1C48CDM.json
+│   │   ├── 01K40AX02WMJ6V1BXPWJ1X6J9X.json
+│   │   ├── 01K40AX03ZYDV3JJG98HE487YV.json
+│   │   ├── 01K40AX5Z12KZ0QAGPW4AE7D4Q.json
+│   │   ├── 01K40AX61CG0VMDQ7JFCSAP0J4.json
+│   │   ├── 01K40B2NRW4K7ZVCGZCKDEX3Y5.json
+│   │   ├── 01K40B2RSTNE7GFYHTACCDBTR9.json
+│   │   ├── 01K40B3ZNC7RKPTP9M0NTY7DMC.json
+│   │   ├── 01K40B3ZPX5WPAKV50ZJW0RAZJ.json
+│   │   ├── 01K40B45SDP3PH923CDDR3TKE2.json
+│   │   ├── 01K40B45VW0XVPSN5YFAS5QGZM.json
+│   │   ├── 01K40B5GS6NE28RQ460KDQBSK4.json
+│   │   ├── 01K40B5GWQ64Y47V50X6NKM331.json
+│   │   ├── 01K40B65NNX0AGQ0GPF09YMWFY.json
+│   │   ├── 01K40B6HF0QBCWTW8RB92D4JNP.json
+│   │   ├── 01K40BB71TA6DMFH5WDRCG27SN.json
+│   │   ├── 01K40BB73R0RBAY7FEPMKCJ93F.json
+│   │   ├── 01K40BBCMCWBAN9B6Y4J2QAP2P.json
+│   │   ├── 01K40BDD8H7G9G0ZD5QETK01R3.json
+│   │   ├── 01K40BDD9JF4KG8120X317NFFE.json
+│   │   ├── 01K40BDJJZZDP8ZZRPAHYY1SF3.json
+│   │   ├── 01K40BDJPM0APW89QDB1A8829Y.json
+│   │   ├── 01K40BFSCV4ABF27S14EY30XKC.json
+│   │   ├── 01K40BFSG5N7HK2CFNDXJG18VY.json
+│   │   ├── 01K40BH8QWSMS84RZB1A47X1BB.json
+│   │   ├── 01K40BHG5S6VBJ2699FAV41X6Z.json
+│   │   ├── 01K40BHYQDN3TDFFE1XRDSC0FA.json
+│   │   ├── 01K40BRW3T4RY0PH1QWHECHRXF.json
+│   │   ├── 01K40BRZPE4W6KK0PTBNF7WRMN.json
+│   │   ├── 01K40BSCJQVS7GTYK26NF5CE1Z.json
+│   │   ├── 01K40BSVVKPH4CYVR628YHSMXF.json
+│   │   ├── 01K40BSVZ42SW82DVNPGB1QJPX.json
+│   │   ├── 01K40BTT441W9R0CP9RNGSN8BY.json
+│   │   ├── 01K40BTY0ZFGTVPRS3C7KXF1GY.json
+│   │   ├── 01K40BXDJWM8JT1DRRPD0BF14N.json
+│   │   ├── 01K40BXFZZ3TB02ST19105KJHV.json
+│   │   ├── 01K40BZBJ44GGVCX6DVVJTQ5WQ.json
+│   │   ├── 01K40C0SR6Z37NNG8KB94NAS0X.json
+│   │   ├── 01K40C1HHRMM6DM4Z8FEX77VVP.json
+│   │   ├── 01K40C4JW80NF020K7J1E925TV.json
+│   │   ├── 01K40C5PZGS4J5DQ3J09P6C4AZ.json
+│   │   ├── 01K40CKDFQXFK04JPEZ1V2WAQ3.json
+│   │   ├── 01K40CKKKS2NYEN7250Q9R8RTV.json
+│   │   ├── 01K40CMB5GF0Y7WHX3HQJ3EVZQ.json
+│   │   ├── 01K40CMMQ6VVC94ZHWG08YGZBA.json
+│   │   ├── 01K40HQBA8F56MV3S7NSD3XHD8.json
+│   │   ├── 01K40HY3VY2TSWQ63CXQ38YWX9.json
+│   │   ├── 01K40HYBFHC0Q92GB9GN2CBEJK.json
+│   │   ├── 01K40J00CG0HJQ0C3JTS8H001K.json
+│   │   ├── 01K40J0WX3B3XPBBYZ26XPY5ZQ.json
+│   │   ├── 01K40J0X0WGRJE41066A0Y8JXC.json
+│   │   ├── 01K40J1FAMJZ2HF4ET3EY0R6Q5.json
+│   │   ├── 01K40J1FEQMQGHQNW6BXTMYG5S.json
+│   │   ├── 01K40J1W72DS9YCHEZNC395TQ7.json
+│   │   ├── 01K40J1WAVCK3J31YQE6W9X13Q.json
+│   │   ├── 01K40J266NQVRKBNZ71HYV0V17.json
+│   │   ├── 01K40J26AVZCKVEQZP64Z1TYVB.json
+│   │   ├── 01K40J28MYHMN6XVEMXJ6EAP2G.json
+│   │   ├── 01K40J2MFABETM25WQMN1NRN0V.json
+│   │   ├── 01K40J3JE9K1K8011WJA21D5DK.json
+│   │   ├── 01K40J3PM9TW9YYE20DGJQB43C.json
+│   │   ├── 01K40J3PQXWJWFXHEYAHQ1SKAR.json
+│   │   ├── 01K40J40EP4FDSSZVW1XMRNYTN.json
+│   │   ├── 01K40J40JQD1332QABYW3ZXKCS.json
+│   │   ├── 01K40J42Z80R8BG35CVDJTZKGF.json
+│   │   ├── 01K40J96JM94FHFSGCG1A7366Y.json
+│   │   ├── 01K40J96PR5VGKASE6WQ4MFE18.json
+│   │   ├── 01K40J9CF7JXF4AE1GFK6KW16R.json
+│   │   ├── 01K40J9CJZ46J8BAT9H8GRF72S.json
+│   │   ├── 01K40JBK4WRPHE4RRVGM8KCP63.json
+│   │   ├── 01K40JBNG03Z55Y0BSBTSXSQHV.json
+│   │   ├── 01K40JBTVQA32VYC7G7WB2RJZ5.json
+│   │   ├── 01K40JFT7SY5GQGGWDGKJEM2SG.json
+│   │   ├── 01K40JGXA04XY89JSQPK54YTVS.json
+│   │   ├── 01K40JH458PAQ2T7ABA5TM04M4.json
+│   │   ├── 01K40JHEJK2SD7R0D8QS529T4G.json
+│   │   ├── 01K40JJE5M8VV0VJE151RTVJAZ.json
+│   │   ├── 01K40JKMEWYCFJHWY0PRJQKNFJ.json
+│   │   ├── 01K40JKPT2BHXDAD9WVV0XDY74.json
+│   │   ├── 01K40JN2DPBK1AN97NE8PHJ2JK.json
+│   │   ├── 01K40N9BD5KZGQSWZJJY6RAMBF.json
+│   │   ├── 01K40NG0C5G9JMEN59CTCCAD5R.json
+│   │   ├── 01K40RJK654YVYHK7JY6C400G5.json
+│   │   ├── 01K40RTFK3F3ESW6VGBP0HT46H.json
+│   │   ├── 01K40RY3DEXXFQRCV4BJSWJC27.json
+│   │   ├── 01K40RY3FMKHBVW7412THS08YF.json
+│   │   ├── 01K40XFB32DVYJ57V8R12AW9RB.json
+│   │   ├── 01K40XFYH32D5XF5DPTJNJPTTP.json
+│   │   ├── 01K40XFYR5G4FNCFBH3ZA24TE4.json
+│   │   ├── 01K40XG24DK4W6W11XE70DJBMZ.json
+│   │   ├── 01K40XG7HX14X9SCS0KSNRWV61.json
+│   │   ├── 01K40XGG9PQXZH10QDY1Q8R8YH.json
+│   │   ├── 01K40XGGE2YCV18WK4VYK9VVMT.json
+│   │   ├── 01K40XN5HPEX47PKT6NGXJVBF8.json
+│   │   ├── 01K40XP2WMRZQFPBPHP7N7CC8N.json
+│   │   ├── 01K40XR48S76GMCTDBE9MSD5H0.json
+│   │   ├── 01K40XR89XR5EBTTSSFB2T0MD2.json
+│   │   ├── 01K40XR9N75BZGC0QFS7RW57QC.json
+│   │   ├── 01K40XRHQ2RA7GS3FM5R4FXVEG.json
+│   │   ├── 01K40XW1GY9E9T0P4G5EX0C6M7.json
+│   │   ├── 01K40XWGFT075WM56EQY4WPR85.json
+│   │   ├── 01K40XWV51J3FZFT8BN8XTKT0J.json
+│   │   ├── 01K40XWZPD2E9Y0SCJWN3JGJNT.json
+│   │   ├── 01K40XX3P4K63YHHYBJGRNA0N5.json
+│   │   ├── 01K40XX9QJ85J0298228E7N27P.json
+│   │   ├── 01K40XXESRFCPK9964AFKB89BJ.json
+│   │   ├── 01K40XXGSYSP0QW7F8WPQWMVDB.json
+│   │   ├── 01K40XXPTAWPGXQ33Z00DFNM33.json
+│   │   ├── 01K40XXWM4NRWF8H72SQ7RPJEW.json
+│   │   ├── 01K40XY1RXGHN3X703PTDEQWAK.json
+│   │   ├── 01K40XY7R802DQ0XSGXH1Q74SF.json
+│   │   ├── 01K40XYAEF7DKFJ9V2JFN5K12B.json
+│   │   ├── 01K40XYGTQXYXADGWKR4S5M72W.json
+│   │   ├── 01K40Y7V9FHBBTBP1NBP0Y3K82.json
+│   │   ├── 01K40Y7WT02T73XVBQWD98PQJX.json
+│   │   ├── 01K40Y841F9RDWSRNJAMNW8CSM.json
+│   │   ├── 01K40Y8CE7DZ8DZX9A6AZ43CG6.json
+│   │   ├── 01K40Y8KPP2WAE8GY4V3D265BV.json
+│   │   ├── 01K40Y8S090G54K5DBDMX29DCM.json
+│   │   ├── 01K40Y9BX5PZACRX2GF4875PNX.json
+│   │   ├── 01K40Y9G6X2E1G7M2D7YDP2FQV.json
+│   │   ├── 01K40Y9QE9BYXZNZXDKBMJEPNW.json
+│   │   ├── 01K40Y9SNRS2Y0FWAJ6EQ7XVG6.json
+│   │   ├── 01K40YHJ5B58Y3B23WSAKSAC49.json
+│   │   ├── 01K40YHQNEZM2PEHBHPFGF407Z.json
+│   │   ├── 01K40YHWMHGZFCNVFRTACN0B24.json
+│   │   ├── 01K40YJ1RHJV6Q8JSMPSN72GGC.json
+│   │   ├── 01K40YJ4V1QZC7HPVCB14EBHKR.json
+│   │   ├── 01K40YJGRJTCT2BF2BCFY0AKRJ.json
+│   │   ├── 01K40YJSXFG3SPFZEF7TPFQWHT.json
+│   │   ├── 01K40YJZD9PSKJGNPT78S4GVB5.json
+│   │   ├── 01K40YK32ZSDJVJZXDM8RJETZN.json
+│   │   ├── 01K40YKAX8JDZ1KND6N43P1QFV.json
+│   │   ├── 01K40YKM63MY71X7SP946M1E8F.json
+│   │   ├── 01K40YKV94AHSR4HPFDWK5E4VK.json
+│   │   ├── 01K40YM3DD95Z2DH56NKXAT6RB.json
+│   │   ├── 01K40YM5SEAVNHB8S4HJGKJRKD.json
+│   │   ├── 01K40YSV2H6FKPW3748MWCSG37.json
+│   │   ├── 01K40YT07BDHJHF18V37CC9NW2.json
+│   │   ├── 01K40YT0GX2MVFKF5NV4ADA1YS.json
+│   │   ├── 01K40YT5YN45AKSFNJ325WZ1K8.json
+│   │   ├── 01K40YT685SPCXCM43W85AMKN8.json
+│   │   ├── 01K40YTZBMDE5P39GZ077YBXAJ.json
+│   │   ├── 01K40YV1TQS9MRBAFTR4KWEVDF.json
+│   │   ├── 01K40ZJTVSMF262CR56NPPPHXM.json
+│   │   ├── 01K40ZK2GN792KZRVACJSXF9G1.json
+│   │   ├── 01K40ZK79XMP0Z2F2X5PTXTJC8.json
+│   │   ├── 01K40ZKCP1EW6C0DKJK4WZGCJ1.json
+│   │   ├── 01K40ZKF9Y91SXZED6A6D1EFG0.json
+│   │   ├── 01K40ZKHF5QD9BTKBV100DNKH6.json
+│   │   ├── 01K40ZM671G804850J7HPBWYXV.json
+│   │   ├── 01K40ZMC2YJ0V57BTNMXT39AHX.json
+│   │   ├── 01K40ZMHXNBGCGVDSESS7MESSY.json
+│   │   ├── 01K40ZMP4CP5H18FZEFPX4CPGV.json
+│   │   ├── 01K40ZN57SN41ZM4S2793RHG1V.json
+│   │   ├── 01K40ZPZAMJWKSHBN2Z6FQGE3C.json
+│   │   ├── 01K40ZQ0DV6ZFHBK0899CRQWT1.json
+│   │   ├── 01K40ZQ4EPP0RD0V3N3CXTTPDK.json
+│   │   ├── 01K40ZQG100A0N5PYW2ZZMET55.json
+│   │   ├── 01K40ZQMP0WWEVK9TMPH3J1VGS.json
+│   │   ├── 01K40ZQR135ZT1BMKD0YH0KFVZ.json
+│   │   ├── 01K40ZQYDPNM9BDZZQB7DRD0G2.json
+│   │   ├── 01K40ZR1F5GFBNCE22PWCN6N1Y.json
+│   │   ├── 01K40ZSBCCSZ62C85RMH2H0MNM.json
+│   │   ├── 01K40ZSFB0GF14PJ46HM9F1FPB.json
+│   │   ├── 01K40ZSK2J01E4AXVP1XT7BD4C.json
+│   │   ├── 01K40ZTSH8MXATN8XKT8FPTG79.json
+│   │   ├── 01K40ZTXNCRPPF632H7QM902C2.json
+│   │   ├── 01K40ZVBYF8ZJZG1F89NNJQ0HT.json
+│   │   ├── 01K40ZVBZZX848XYH7MZ5ZNZSK.json
+│   │   ├── 01K40ZVGDGB7Z767MH8Q55F1XR.json
+│   │   ├── 01K40ZVGH8Z0WBHDBBNYB5YGKR.json
+│   │   ├── 01K40ZVNRPV5B5S3DYH11Z9QJ3.json
+│   │   ├── 01K40ZW00D5HD0D25VAK4WY29X.json
+│   │   ├── 01K41008PQZE6GK6WXA1VGK7YF.json
+│   │   ├── 01K4100DFQ2F48FHM1A6PSZGDS.json
+│   │   ├── 01K4100FNRSZF5PKJMZTSCQZQ8.json
+│   │   ├── 01K410CXGPHDS2CK3494WNA1E5.json
+│   │   ├── 01K410D63GE96VXVH54BJ6J8QK.json
+│   │   ├── 01K410DB9F3VJPYQY7KZVVE7Q8.json
+│   │   ├── 01K410FAK3SMBYEPTAT2V3MGS4.json
+│   │   ├── 01K410FF6ATPPKS3HJ9S7ZWEZZ.json
+│   │   ├── 01K410FNFGN7H8E22YEJD2V1C2.json
+│   │   ├── 01K410HDXS4QGM6VFR2T9RJD6H.json
+│   │   ├── 01K410T9405393XQTPMHBPVT3E.json
+│   │   ├── 01K410TE6TDKN29959FSBRDN19.json
+│   │   ├── 01K410TP1HAWFTZBAYT65ZEEVW.json
+│   │   ├── 01K410Y133GK4E3X58WM5Z9B50.json
+│   │   ├── 01K410YCZ6C1W0GYC2T9SZ6WR4.json
+│   │   ├── 01K4110T2RR1NN2QVTB9X3QAX5.json
+│   │   ├── 01K411118GEWQKABG07GCWDY0Z.json
+│   │   ├── 01K41116W5WTJTPF38G58P9K5H.json
+│   │   ├── 01K41X70J469YZAVEEZ8CZ4Q89.json
+│   │   ├── 01K41X70NDQB5BR9MREHJJW9TJ.json
+│   │   ├── 01K41X75GR4018T7QGW05W8D83.json
+│   │   ├── 01K41X75SVJYJC0HVFY6FPHZ6D.json
+│   │   ├── 01K41X81EWN7F8PMXR36A49BXD.json
+│   │   ├── 01K41XE31J99VEM9YSYREAV1EG.json
+│   │   ├── 01K41XF0Y959JH59186RFWH2BP.json
+│   │   ├── 01K41XM30YPCRQ5RW7N0084DZP.json
+│   │   ├── 01K41XM4P4C4C8EH28CKK9RWF4.json
+│   │   ├── 01K41Y2AZDTKTZRGKEQHN5CP02.json
+│   │   ├── 01K41Y2GSJ36ABN4HXGYC472TB.json
+│   │   ├── 01K41Y2GVBQJ885X8R131FTV3F.json
+│   │   ├── 01K41Y2R71JFPNF96549ZK3FV9.json
+│   │   ├── 01K41Y2R8WTTX5BE8TPGWBZQD6.json
+│   │   ├── 01K41Y441C40MCE1E8TESBYF17.json
+│   │   ├── 01K41Y45QRYTHY954HNG80Q2M7.json
+│   │   ├── 01K41Y4BDJFW2EXPHRY7EJSBVB.json
+│   │   ├── 01K41Y4EZ3QJEC17NHQBHJ5Q47.json
+│   │   ├── 01K41Y4KCEGKVB8C4MJ0SCHHPF.json
+│   │   ├── 01K41Y4KE7D4EZ4981Z71M23VS.json
+│   │   ├── 01K41Y4W7DBE2PT2CSGY8NX2P4.json
+│   │   ├── 01K41Y558FEKXRYDTE32RDJECB.json
+│   │   ├── 01K41Y59885NK5QT8A0J59BP2B.json
+│   │   ├── 01K41YF0NSG7XP32RJFX1S509W.json
+│   │   ├── 01K41YT5PZ6N4EA0N5GWVYXS44.json
+│   │   ├── 01K41YTCQNSW4P1CT8S5ZPZJTG.json
+│   │   ├── 01K41YTCSXWJ6DJQVJMEJXHGTC.json
+│   │   ├── 01K41YTHSWYTVA28VDQZK9DYY3.json
+│   │   ├── 01K41YTNYKHZBENKX4WQ738NPK.json
+│   │   ├── 01K41YTXAJM8G53NQW7P6ABQEM.json
+│   │   ├── 01K41YWXR5MYZ9STR3KW2PZFKK.json
+│   │   ├── 01K41YX2Z599NYFW7QP6Q5YNW6.json
+│   │   ├── 01K41YX314KPDDJBH04BHJRH7M.json
+│   │   ├── 01K41YX97KJ6C1SY4BTEFXQGHP.json
+│   │   ├── 01K41YZHX84NHEF5ZT1XFARW2Q.json
+│   │   ├── 01K41YZQCZZNCVJ14WC232RP19.json
+│   │   ├── 01K41YZQERHS872V5TT8V3BYYG.json
+│   │   ├── 01K41YZVH06PMDXK7MX4848BA4.json
+│   │   ├── 01K41YZVJVZJPQSR57P5H0VQA9.json
+│   │   ├── 01K41ZFJYTW3W30R5M2ANBPX0V.json
+│   │   ├── 01K41ZGSHYZTR7ARR7BEN1HW04.json
+│   │   ├── 01K41ZH7K6758H1VCG8YMCDPDD.json
+│   │   ├── 01K41ZHBW93P89H8JN59WYJJ9V.json
+│   │   ├── 01K41ZHR0VJ53NY5M5CTXGPDF7.json
+│   │   ├── 01K421EPQGV56037S8CV8XCH4J.json
+│   │   ├── 01K421ET8YBWT30RCX8EWW1SE8.json
+│   │   ├── 01K421ETA9VVY4X9VGGQ4W19B3.json
+│   │   ├── 01K421ETBJ9TSCW9GMBPXP6HXY.json
+│   │   ├── 01K421F9RMZ81CW2A72JXH62XC.json
+│   │   ├── 01K421F9TK83Y1TT42XH9T34VX.json
+│   │   ├── 01K421FNA3KDX7876HYTPFYH2K.json
+│   │   ├── 01K421FT7RAW8HF7HSWY3Q0KXY.json
+│   │   ├── 01K421FXN570ZJSSF1E7VX01XN.json
+│   │   ├── 01K421G0Z88NNE0NZHQSVXJTDB.json
+│   │   ├── 01K421G4YDK27HY7440PZTKXJB.json
+│   │   ├── 01K421GMG7PKMM29YK2ZY4X57Q.json
+│   │   ├── 01K421GMHJ7PJS0PARG3RPZ2DV.json
+│   │   ├── 01K421GMJQRWW31XT47GMWV9VZ.json
+│   │   ├── 01K421GTB0MP2B09YDES11MQBW.json
+│   │   ├── 01K421GTCVBMAT3VHS6H7KVVQH.json
+│   │   ├── 01K42SG9QY1G0E80H18886Y2JD.json
+│   │   ├── 01K42SGESP00C6DBXDRSDATVRF.json
+│   │   ├── 01K42SGEV7E8TSMWSMTDWAY4G6.json
+│   │   ├── 01K42SGM9C6RQDP9KB75FY22XF.json
+│   │   ├── 01K42SGMB301DAE8ZMMRH39NAN.json
+│   │   ├── 01K42SGPWSVT4335M7H51ERXPW.json
+│   │   ├── 01K42SGT3S9HD3XD0QCVAJYC54.json
+│   │   ├── 01K42SGXEZS6GCHKFGKBB1DKD0.json
+│   │   ├── 01K42SH1EDEKSCC90QYGHGNBWS.json
+│   │   ├── 01K42SH4SZDMZFPE3FE8T98P18.json
+│   │   ├── 01K42SMRF9GP014N4EHBAHWCNW.json
+│   │   ├── 01K42SMRGT1S0KJANVEDP33E65.json
+│   │   ├── 01K42SMRJ1VZCBYPTERZM1AWTR.json
+│   │   ├── 01K42T6GJAV8W0TQ335JSAV66P.json
+│   │   ├── 01K42T6J4337ZRXW422HTH8T8F.json
+│   │   ├── 01K42T89QEEN28J6393NZPSWAT.json
+│   │   ├── 01K42T8FPCP68VQW52AT08Y7XB.json
+│   │   ├── 01K42T8G62RQ3C0Y031XTRH77N.json
+│   │   ├── 01K42T9JA6KREQSPCFENNSCA2D.json
+│   │   ├── 01K42T9JBN2VSH2GCJJMPD00E3.json
+│   │   ├── 01K42T9QFNDMJ2NXGF4Q0FWEFC.json
+│   │   ├── 01K42T9QGS7A8WAVSEH80KRGQ6.json
+│   │   ├── 01K42T9QJ6H4J2CT1WQS99KWTV.json
+│   │   ├── 01K42T9T8WH1C7CPFQX755H1TD.json
+│   │   ├── 01K42T9VTXGY6Z718FXJT3Y2DR.json
+│   │   ├── 01K42T9Y7FJ8D1HF9778YX0J7E.json
+│   │   ├── 01K42T9ZQVDS1Q4AZE8TWDZHJM.json
+│   │   ├── 01K42TA1X4AC0N7PWGYS9EVT8V.json
+│   │   ├── 01K42TA1YBKG0CDCFZBBYRS9PF.json
+│   │   ├── 01K42TA1ZFD947XYJZAA1ZFZH3.json
+│   │   ├── 01K42TBY1847J20SNJHXWESYZV.json
+│   │   ├── 01K42TBZ9W11E5AKS1CKPABTRH.json
+│   │   ├── 01K42TC62YDQ41WXREY548FKX2.json
+│   │   ├── 01K42TCMZKRV3KRQREZE9FFRN6.json
+│   │   ├── 01K42TCNNX24CZK32SHR91581Z.json
+│   │   ├── 01K42TD4YPBH2422X314NFC4FN.json
+│   │   ├── 01K42TD9Q5N1PB4MB26Q84FG1P.json
+│   │   ├── 01K42TDGWDJ11KKFEX9MPCWKPY.json
+│   │   ├── 01K42TKRM55WR7322HCCW8Q29H.json
+│   │   ├── 01K42TKT0QJRGP4VNRB29VYV21.json
+│   │   ├── 01K42TM118TXVFGKBXHHFW53KZ.json
+│   │   ├── 01K42TMB9EH2M8VRQYZC76Q948.json
+│   │   ├── 01K42TNEKA74PA5GAF56MXEGDM.json
+│   │   ├── 01K42TQPHJR8GE17D68WFBVGRX.json
+│   │   ├── 01K42TTYSPXAVNSNXY3S8REYJJ.json
+│   │   ├── 01K42TVFNE3N372NE65MYMD6N6.json
+│   │   └── 01K42TVK0W8V90AKQ3QZ4VAZMG.json
+│   ├── framework
+│   │   ├── cache
+│   │   │   └── data
+│   │   ├── sessions
+│   │   ├── testing
+│   │   └── views
+│   │       ├── 0121a52c26e861d6d86a7ce9a6874b1a.php
+│   │       ├── 0201f4ede5af49cb996a470cfc451e68.php
+│   │       ├── 03b37f1d8d03809a12a8b20433592b46.php
+│   │       ├── 05dbbcb6c4223584021f03e706dcb47a.php
+│   │       ├── 0640530408d9f3ed5d47abb18ed97e52.php
+│   │       ├── 08b17210533746559f5d9b68b3598e23.php
+│   │       ├── 09afd541805ac315ff9daca196c28838.php
+│   │       ├── 0c0321953c8ca046e5f77b74c5c605f2.php
+│   │       ├── 0c3858031aa8c81de2ed79cbd0f12a3c.php
+│   │       ├── 0d7b572e2823fa770d804bb024eb2dbf.php
+│   │       ├── 0e552fb4fdd489de5acbf307100d2c57.php
+│   │       ├── 0f28d1cd04355cf6a8d1faa1879465b0.php
+│   │       ├── 0f4df470ea3ed2b737d5524bc82c1cdf.php
+│   │       ├── 1369c388875f20c23e1f6d8975edf23d.php
+│   │       ├── 138bf8cdca165877d1741317609629d9.php
+│   │       ├── 159974fa5dd266bef6528e8cd7457c65.php
+│   │       ├── 15d37233517de68c00c9953fbd856092.php
+│   │       ├── 1686f1614ba32061613d0123754f9cbe.php
+│   │       ├── 16e495379deb5e7bf45c14291212a8ad.php
+│   │       ├── 1b71fb993f84bb1bc3856d9e321be504.php
+│   │       ├── 1c6eb13712ec6acb2d6c2320aeb41a8e.php
+│   │       ├── 1cd36fb4946fc874813293151075f1cf.php
+│   │       ├── 214c3f6bfff28864e229a6a9cfbc970d.php
+│   │       ├── 23fc51a9beabc0374354adb7dce3285f.php
+│   │       ├── 244a479909bcd437ab6557025511b115.php
+│   │       ├── 2612a77122ffd1cdfc34b1d8d49063b3.php
+│   │       ├── 283818ca0c80bd3c0d7cd2773e31289c.php
+│   │       ├── 2b9f2b0c9cfde87b629e23fbbcaee1b3.php
+│   │       ├── 2d2e307017317b0cfef2c048864c5286.php
+│   │       ├── 2d3bb986e5ea2d3f180be772ea07a210.php
+│   │       ├── 3096a37e7b45785aabb04ec74f2aedc2.php
+│   │       ├── 310bfe30fb6966a2edf6269430ae4fc2.php
+│   │       ├── 31ccfe2048806f664c514bda6d55d520.php
+│   │       ├── 3b51cc4b3011bab138dade25157a0452.php
+│   │       ├── 3e92272e2a57fa96f65f4dfd58e260c7.php
+│   │       ├── 3fbb06a5f3474941fdc650dc8f87f966.php
+│   │       ├── 428d1e48d750ab372681534f6c85edea.php
+│   │       ├── 432de1ecf9d8b95f7888a423b834ec60.php
+│   │       ├── 43b5e8897cc2dd73fa2c32a02fc396c9.php
+│   │       ├── 4410bdc7983871a58c1e1d6e999e24ae.php
+│   │       ├── 456e9902f0f132515fb93e732ee4bc89.php
+│   │       ├── 47ad91654b1e99e0e49ed649ca219b89.php
+│   │       ├── 4aa75ed151f49033404f367b7dee996e.php
+│   │       ├── 4b43f1addd3446506576e9fa5e26c411.php
+│   │       ├── 4cb3a3b5f56faa6f420a7419febadb35.php
+│   │       ├── 50e21dc60f2e0b334187c165fb05adb6.php
+│   │       ├── 50e997483b176941e0d4bb10bd187ddd.php
+│   │       ├── 539001d6a95411bb987c94e1f5c0d93c.php
+│   │       ├── 580f3e698060765d8030c1df21cf6f19.php
+│   │       ├── 5c62290f293cd101bb11343845209f7c.php
+│   │       ├── 5d6c6ad4956e064b617ab7a90517deba.php
+│   │       ├── 5e11a565c773398fc2b5b36ea38f4d6e.php
+│   │       ├── 601ee15e196131ff3ad563aafc09d37f.php
+│   │       ├── 61314a39e3481f3994b584ad982cae40.php
+│   │       ├── 63e04da8ea29ea316829747223d25850.php
+│   │       ├── 6532f70a77b7407825f429a1ba24257a.php
+│   │       ├── 6736c5a620acdb233c04c42c35659f90.php
+│   │       ├── 6a1ddeb790eacb6c3079bd096edc099b.php
+│   │       ├── 6b1369b6bbddb77f8d2d58ebef3dd2bc.php
+│   │       ├── 6ce50a4186879f3cd78f1509dfc98ee0.php
+│   │       ├── 70d98213af24e7fac0d8662e5c398fcf.php
+│   │       ├── 71207c05da8967317ae9e09df0fd2a18.php
+│   │       ├── 727d0bc9a38e8e77130bc7fd75a15a08.php
+│   │       ├── 79e1cd1cf8289e6d53bebd5559521fe5.php
+│   │       ├── 7a2fe716e51f1875882226af15c3710a.php
+│   │       ├── 7ac99e0cb57ea6720ae62889499860c0.php
+│   │       ├── 7dbd095c0b46c9118f102c15e88a5db7.php
+│   │       ├── 831bb26b16c7ec5e2611e09565e7bf2e.php
+│   │       ├── 83742d4aa28f28c8d2d0ef8a379fd5c8.php
+│   │       ├── 83fa097c15dc57f8a6398df683577c91.php
+│   │       ├── 87fcb5f23214556021b725be826b0086.php
+│   │       ├── 89ee5f8c50ada6b8707e4b0c8ae1ccda.php
+│   │       ├── 8b33fa72264bfc4faaec9936dbc8c1b9.php
+│   │       ├── 8b3bd4d6c23e3f6e329a2f317600ead7.php
+│   │       ├── 8c3a6f918d8f1ee13126c6f237902e9f.php
+│   │       ├── 902827485271cc47700098f31b857846.php
+│   │       ├── 922ac09e089611374b445a7a5be085ee.php
+│   │       ├── 92a01d8b17f77140a9b920e08136e525.php
+│   │       ├── 935f7474e584f13e9a4ada8c664b1d13.php
+│   │       ├── 95568fa367cdd070b5b005bcf139caad.php
+│   │       ├── 966d3b0a6de98ca44cedd706ca551fdf.php
+│   │       ├── 9834e3b4f98a0b9056bcc81067fef98c.php
+│   │       ├── 98e20f6ead3256814becde87d88f7d72.php
+│   │       ├── 9b8736fb8458509b70c9128d201d49b6.php
+│   │       ├── 9e63f8073349b69a0da1f5dc8cd828b7.php
+│   │       ├── a1bb6a6d6bf00ee7b29ced3120bd4cc9.php
+│   │       ├── a287332ba99a5155732259c7c37614b1.php
+│   │       ├── a4cd97a04d2afe1cc9d3262d8dcb6ea4.php
+│   │       ├── a6ff67401a54ec2496cb58bd9736cf4b.php
+│   │       ├── a756c846816fcb532bf1eab85c7319c9.php
+│   │       ├── a7b4720c810e630ed19214c64a7cc559.php
+│   │       ├── a88fddc006364bdfb199b95a24745ac8.php
+│   │       ├── aa9c9dc7a9a178274da383f3483bdf7c.php
+│   │       ├── aae1a5c644823a69a1cc55c04b54e41f.php
+│   │       ├── ac4dbf3e6471711c1f8f95a57195db1b.php
+│   │       ├── afe90bf4749bf323a572d1c9dd2b290f.php
+│   │       ├── b194f297e1734e2436afe03a554dcf4f.php
+│   │       ├── b4ac497305940b2a353951bd653819d3.php
+│   │       ├── b7f9cdf8a8407e919f52346ee4df8fa0.php
+│   │       ├── b8f7dfb5653a73af54f6e861ada67c8f.php
+│   │       ├── b9cefe15ccf1fd2be04c253da590cf68.php
+│   │       ├── c09cebe98ffc3878d8a8d27494815c87.php
+│   │       ├── c0d6a099322687a39f3f1b575cc2b539.php
+│   │       ├── c819e97379203f317252cc5bc46b0930.php
+│   │       ├── cc0d5ec88c9c056badc5dc506385a3f7.php
+│   │       ├── cff024f7aa4eea06547d328d9731bf3c.php
+│   │       ├── d02451f34e0adca842ddaa6c6b5d6ad3.php
+│   │       ├── d037ec72b3b3dab8b4bbe4df220760c0.php
+│   │       ├── d15a7d911815b3ce2be40d26f66d15c1.php
+│   │       ├── d16d01c3d20beb13a3244e671df9d85b.php
+│   │       ├── d21ebb9e8c7e0b7e4e255d2594addaec.php
+│   │       ├── d54767e3ebdc4b1576970a6bcccb5f05.php
+│   │       ├── d7a22418f584d4769736cbd5ef1bdcc4.php
+│   │       ├── da3ac08bb3d68a4421547548b3ae059b.php
+│   │       ├── e3ae4113eb78be5fc7d1a9ff77486a8b.php
+│   │       ├── e5f592db280d5cd47deef834a5ffc383.php
+│   │       ├── e82db3cec3b1efc5e792eaa369dbd5db.php
+│   │       ├── ea6c1ff91dd67a9256ed66b96cf5fc3a.php
+│   │       ├── edee43847032fcd29a4619c8c318ded4.php
+│   │       ├── ee5c57e02306bc300b2d740fa861c0f4.php
+│   │       ├── ef452b68f3698299a51afc7c8da9f49c.php
+│   │       ├── ef7ccefc9234f2a01e3021aec88d2730.php
+│   │       ├── f6b2d25be96b68e6f33af2d9bacaf7cb.php
+│   │       ├── f8efd39aa490b060dbfaa7590f69375b.php
+│   │       ├── f9e485f4b5362427495158027b0fd09d.php
+│   │       ├── fbaa14a95052e149a597b002574123af.php
+│   │       ├── fbf9bb54df9501f5cec455ff855824e6.php
+│   │       └── fe50d401a5606302f6e9e8a59759e33d.php
+│   └── logs
+│       └── laravel.log
+├── tailwind.config.js
+├── tests
+│   ├── Feature
+│   │   ├── Auth
+│   │   │   ├── AuthenticationTest.php
+│   │   │   ├── EmailVerificationTest.php
+│   │   │   ├── PasswordConfirmationTest.php
+│   │   │   ├── PasswordResetTest.php
+│   │   │   ├── PasswordUpdateTest.php
+│   │   │   └── RegistrationTest.php
+│   │   ├── ExampleTest.php
+│   │   └── ProfileTest.php
+│   ├── TestCase.php
+│   └── Unit
+│       └── ExampleTest.php
+└── vite.config.js
+
+72 directories, 709 files

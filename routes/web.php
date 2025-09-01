@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController;
 use Illuminate\Support\Facades\Route;
@@ -24,7 +24,7 @@ Route::get('/', function () {
 });
 
 // Dashboard principale - redirect intelligente basato su ruolo
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 });
 
@@ -37,11 +37,10 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth'])->group(function () {
     Route::prefix('tournaments')->name('tournaments.')->group(function () {
-        Route::get('tournaments', function () {
-            return view('admin.placeholder', ['title' => 'Tournaments']);
-        })->name('index');
+        Route::get('/', [TournamentController::class, 'index'])->name('index');
         Route::get('/calendar/view', [TournamentController::class, 'calendar'])->name('calendar');
         Route::get('/calendar/data', [TournamentController::class, 'calendarData'])->name('calendar-data');
+        Route::get('/{tournament}', [TournamentController::class, 'show'])->name('show');
     });
     Route::get(uri: 'reports', action: function () {
         return view('admin.placeholder', ['title' => 'Reports']);
@@ -121,21 +120,38 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
         require __DIR__ . '/admin/clubs.php';
         require __DIR__.'/admin/notifications.php';
         require __DIR__ . '/admin/reports.php';
-        require __DIR__.'/referee/dashboard.php';   // Se non esiste
+        // require __DIR__.'/referee/dashboard.php';   // Se non esiste
 
     });
 });
 
 /*
 |--------------------------------------------------------------------------
-| REFEREE ROUTES - Middleware: referee_or_admin
+| USER ROUTES (ex REFEREE) - Middleware: auth
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->group(function () {
+    // User routes
+    Route::prefix('user')->name('user.')->group(function () {
+        Route::get('/', function () {
+            return redirect()->route('user.availability.index');
+        });
+        
+        // Load modular user routes
+        require __DIR__.'/user/availability.php';
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| REFEREE ROUTES - Middleware: referee_or_admin (legacy compatibility)
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'referee_or_admin'])->group(function () {
-    // Dashboard Referee
+    // Legacy referee routes - redirect to user routes
     Route::prefix('referee')->name('referee.')->group(function () {
         Route::get('/', function () {
-            return redirect()->route('referee.dashboard');
+            return redirect()->route('user.availability.index');
         });
     });
 
