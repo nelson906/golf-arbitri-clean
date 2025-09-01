@@ -448,13 +448,6 @@ class AssignmentController extends Controller
             $assignment->is_confirmed = true;
             $assignment->save();
 
-            \Log::info('Assignment confirmed', [
-                'assignment_id' => $assignment->id,
-                'user_id' => $assignment->user_id,
-                'tournament_id' => $assignment->tournament_id,
-                'is_confirmed' => $assignment->is_confirmed
-            ]);
-
             return redirect()->back()
                 ->with('success', 'Assegnazione confermata con successo.');
         } catch (\Exception $e) {

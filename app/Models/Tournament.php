@@ -7,6 +7,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class Tournament extends Model
@@ -99,7 +100,7 @@ class Tournament extends Model
     // Arbitri assegnati
     public function referees()
     {
-        $userField = \Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
+        $userField = Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
 
         return $this->belongsToMany(User::class, 'assignments', 'tournament_id', $userField)
             ->withPivot('role', 'status', 'notes')
@@ -109,7 +110,7 @@ class Tournament extends Model
     // Disponibilità dichiarate
     public function availabilities()
     {
-        if (\Schema::hasTable('availabilities')) {
+        if (Schema::hasTable('availabilities')) {
             return $this->hasMany(Availability::class);
         }
         return $this->hasMany(Availability::class);
@@ -121,7 +122,7 @@ class Tournament extends Model
 
     public function scopeActive($query)
     {
-        if (\Schema::hasColumn($this->getTable(), 'status')) {
+        if (Schema::hasColumn($this->getTable(), 'status')) {
             return $query->where('status', 'active');
         }
         return $query;
@@ -139,7 +140,7 @@ class Tournament extends Model
     public function isEditable()
     {
         // Logica semplice: modificabile se non ha una data o se la data è futura
-        if (\Schema::hasColumn('tournaments', 'date')) {
+        if (Schema::hasColumn('tournaments', 'date')) {
             return !$this->date || $this->date >= now()->startOfDay();
         }
 

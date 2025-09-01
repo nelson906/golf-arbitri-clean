@@ -25,6 +25,8 @@ class User extends Authenticatable
         'phone',
         'active',
         'is_active',  // alcuni DB usano questo
+        'gender',
+        'notes',
     ];
 
     protected $hidden = [

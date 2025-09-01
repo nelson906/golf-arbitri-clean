@@ -24,9 +24,10 @@
             </a>
             <form method="POST" action="{{ route('admin.users.toggle-active', $user) }}" class="inline">
                 @csrf
+                @method('PATCH')
                 <button type="submit"
                         class="bg-{{ $user->is_active ? 'red' : 'green' }}-600 text-white px-4 py-2 rounded-lg hover:bg-{{ $user->is_active ? 'red' : 'green' }}-700 transition"
-                        onclick="return confirm('Confermi?')">
+                        onclick="return confirm('Confermi di voler {{ $user->is_active ? 'disattivare' : 'attivare' }} questo utente?')">
                     {{ $user->is_active ? 'Disattiva' : 'Attiva' }}
                 </button>
             </form>
@@ -49,7 +50,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-500">Codice Arbitro</label>
-                        <p class="text-sm text-gray-900">{{ $user->user_code }}</p>
+                        <p class="text-sm text-gray-900">{{ $user->referee_code ?? 'N/A' }}</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-500">Telefono</label>

@@ -105,6 +105,7 @@ return new class extends Migration
 
             $table->timestamp('last_login_at')->nullable();
             $table->timestamp('profile_completed_at')->nullable();
+            $table->text('notes')->nullable();
             $table->timestamps();
             $table->softDeletes();
 

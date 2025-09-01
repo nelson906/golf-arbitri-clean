@@ -40,6 +40,9 @@
             <form method="POST" action="{{ route('admin.users.update', $user) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
+                
+                {{-- Hidden field for user_type --}}
+                <input type="hidden" name="user_type" value="{{ old('user_type', $user->user_type) }}">
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {{-- Nome (dall'User) --}}
@@ -64,15 +67,14 @@
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
-                    {{-- Codice Arbitro - CORRETTO: dal User, non dal user --}}
+                    {{-- Codice Arbitro --}}
                     <div>
-                        <label for="user_code" class="block text-sm font-medium text-gray-700 mb-1">
+                        <label for="referee_code" class="block text-sm font-medium text-gray-700 mb-1">
                             Codice Arbitro
                             <span class="text-gray-500 text-xs">(Generato automaticamente)</span>
                         </label>
-                        {{-- ✅ FIX: usa $user->user_code --}}
-                        <input type="text" name="user_code" id="user_code"
-                            value="{{ old('user_code', $user->user_code) }}"
+                        <input type="text" name="referee_code" id="referee_code"
+                            value="{{ old('referee_code', $user->referee_code) }}"
                             class="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
                             readonly>
                         <p class="mt-1 text-xs text-gray-500">Il codice viene generato automaticamente e non può essere
@@ -130,21 +132,21 @@
                         @enderror
                     </div>
 
-                    {{-- Categoria (dal user) --}}
+                    {{-- Gender --}}
                     <div>
-                        <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                        <select name="category" id="category"
+                        <label for="gender" class="block text-sm font-medium text-gray-700 mb-1">Genere</label>
+                        <select name="gender" id="gender"
                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
-                            <option value="misto"
-                                {{ old('category', $user->category ?? 'misto') == 'misto' ? 'selected' : '' }}>
+                            <option value="mixed"
+                                {{ old('gender', $user->gender ?? 'mixed') == 'mixed' ? 'selected' : '' }}>
                                 Misto
                             </option>
-                            <option value="maschile"
-                                {{ old('category', $user->category ?? 'misto') == 'maschile' ? 'selected' : '' }}>
+                            <option value="male"
+                                {{ old('gender', $user->gender ?? 'mixed') == 'male' ? 'selected' : '' }}>
                                 Maschile
                             </option>
-                            <option value="femminile"
-                                {{ old('category', $user->category ?? 'misto') == 'femminile' ? 'selected' : '' }}>
+                            <option value="female"
+                                {{ old('gender', $user->gender ?? 'mixed') == 'female' ? 'selected' : '' }}>
                                 Femminile
                             </option>
                         </select>

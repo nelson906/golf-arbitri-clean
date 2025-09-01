@@ -34,7 +34,7 @@ class UserController extends Controller
         }
 
         // Filtro per livello (se esiste la colonna)
-        if ($request->filled('level') && \Schema::hasColumn('users', 'level')) {
+        if ($request->filled('level') && Schema::hasColumn('users', 'level')) {
             $query->where('level', $request->level);
         }
 
@@ -128,12 +128,12 @@ class UserController extends Controller
         $user->load(['zone']);
 
         // Carica assegnazioni se la tabella esiste
-        if (\Schema::hasTable('assignments')) {
+        if (Schema::hasTable('assignments')) {
             $user->load(['assignments.tournament']);
         }
 
         // Carica disponibilità se la tabella esiste
-        if (\Schema::hasTable('availabilities')) {
+        if (Schema::hasTable('availabilities')) {
             $user->load(['availabilities']);
         }
 
@@ -292,6 +292,14 @@ class UserController extends Controller
         if (\Schema::hasColumn('users', 'phone')) {
             $rules['phone'] = 'nullable|string|max:20';
         }
+        
+        if (\Schema::hasColumn('users', 'gender')) {
+            $rules['gender'] = 'nullable|in:male,female,mixed';
+        }
+        
+        if (\Schema::hasColumn('users', 'notes')) {
+            $rules['notes'] = 'nullable|string';
+        }
 
         $validated = $request->validate($rules);
 
@@ -299,6 +307,9 @@ class UserController extends Controller
         if ($request->filled('password')) {
             $validated['password'] = Hash::make($validated['password']);
         }
+        
+        // Gestisci il campo is_active (checkbox)
+        $validated['is_active'] = $request->has('is_active');
 
         // Aggiorna utente
         $user->update($validated);
