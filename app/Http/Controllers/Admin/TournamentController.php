@@ -25,13 +25,14 @@ class TournamentController extends Controller
         $user = auth()->user();
         $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
-        // Base query - ✅ FIXED: tournamentType relationship
-        $query = Tournament::with(['club', 'zone', 'tournamentType']);
-
+        // Base query with eager loading
+        $query = Tournament::with(['club.zone', 'tournamentType']);
 
         // Filter by zone for zone admins
-        if (!$isNationalAdmin && !in_array($user->user_type, ['super_admin'])) {
-            $query->where('zone_id', $user->zone_id);
+        if (!$isNationalAdmin) {
+            $query->whereHas('club', function($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
         }
 
         // Apply filters
@@ -40,10 +41,12 @@ class TournamentController extends Controller
         }
 
         if ($request->has('zone_id') && $request->zone_id !== '') {
-            $query->where('zone_id', $request->zone_id);
+            $query->whereHas('club', function($q) use ($request) {
+                $q->where('zone_id', $request->zone_id);
+            });
         }
 
-        // ✅ FIXED: tournament_type_id filter name
+        // Tournament type filter
         if ($request->has('tournament_type_id') && $request->tournament_type_id !== '') {
             $query->where('tournament_type_id', $request->tournament_type_id);
         }
@@ -57,21 +60,24 @@ class TournamentController extends Controller
             });
         }
 
-        // Search
+        // Search in tournament name or club name
         if ($request->filled('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhereHas('club', function($clubQuery) use ($search) {
+                      $clubQuery->where('name', 'like', '%' . $search . '%');
+                  });
+            });
         }
 
-        // Order by start date descending
+        // Order by start date descending and paginate
         $tournaments = $query->orderBy('start_date', 'desc')->paginate(20);
 
         // Get data for filters
         $zones = $isNationalAdmin ? Zone::orderBy('name')->get() : collect();
-
-        // ✅ FIXED: Variable name from $categories to $tournamentTypes
         $tournamentTypes = TournamentType::active()->ordered()->get();
         $statuses = Tournament::STATUSES;
-        $tournaments = $query->paginate(20);
 
         // ✅ FIXED: compact() uses tournamentTypes instead of categories
         return view('admin.tournaments.index', compact(
@@ -294,12 +300,13 @@ class TournamentController extends Controller
             $club = club::findOrFail($data['club_id']);
             $data['zone_id'] = $club->zone_id;
         }
+    $data['created_by'] = auth()->id();
 
         // Create tournament
         $tournament = Tournament::create($data);
 
         return redirect()
-            ->route('tournaments.show', $tournament)
+            ->route('admin.tournaments.show', $tournament)
             ->with('success', 'Torneo creato con successo!');
     }
 

@@ -17,16 +17,20 @@ class Tournament extends Model
         'name',
         'club_id',
         'tournament_type_id',
-        'date',           // se esiste
+        'zone_id',
+        'start_date',        // DEVE esserci
+        'end_date',          // DEVE esserci
+        'availability_deadline', // DEVE esserci
         'status',         // se esiste
         'notes',
-    ];
+        'created_by',  // <-- DEVE esserci
+];
 
     protected $casts = [
         'date' => 'date',
         'start_date' => 'datetime',
         'end_date' => 'datetime',
- ];
+    ];
     /**
      * Tournament statuses
      */
@@ -122,26 +126,26 @@ class Tournament extends Model
         }
         return $query;
     }
-        /**
+    /**
      * Scope a query to only include upcoming tournaments.
      */
     public function scopeUpcoming($query)
     {
         return $query->where('start_date', '>=', Carbon::today());
     }
-/**
- * Verifica se il torneo è modificabile
- */
-public function isEditable()
-{
-    // Logica semplice: modificabile se non ha una data o se la data è futura
-    if (\Schema::hasColumn('tournaments', 'date')) {
-        return !$this->date || $this->date >= now()->startOfDay();
-    }
+    /**
+     * Verifica se il torneo è modificabile
+     */
+    public function isEditable()
+    {
+        // Logica semplice: modificabile se non ha una data o se la data è futura
+        if (\Schema::hasColumn('tournaments', 'date')) {
+            return !$this->date || $this->date >= now()->startOfDay();
+        }
 
-    // Se non c'è campo date, sempre modificabile
-    return true;
-}
+        // Se non c'è campo date, sempre modificabile
+        return true;
+    }
     /**
      * Check if tournament needs referees
      */
@@ -152,5 +156,4 @@ public function isEditable()
 
         return $assignedReferees < $requiredReferees;
     }
-
 }

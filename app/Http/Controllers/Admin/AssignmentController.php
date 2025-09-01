@@ -331,11 +331,14 @@ class AssignmentController extends Controller
         $user = auth()->user();
         $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
 
-        $query = Assignment::with(['tournament.club', 'user']);
-
-        // Filtri
+        $query = Assignment::with(['tournament.club.zone', 'user', 'tournament.tournamentType']);
+                // Filtri
         if ($request->filled('tournament_id')) {
             $query->where('tournament_id', $request->tournament_id);
+        }
+
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
         }
 
         // Restrizioni per zona
@@ -347,7 +350,7 @@ class AssignmentController extends Controller
 
         $assignments = $query->orderBy('id', 'desc')->paginate(20);
 
-        $tournaments = Tournament::orderBy('name')->get();
+        $tournaments = Tournament::with('club')->orderBy('name')->get();
         $referees = User::where('user_type', 'referee')->orderBy('name')->get();
 
         return view('admin.assignments.index', compact(
@@ -441,10 +444,28 @@ class AssignmentController extends Controller
     {
         $this->checkAssignmentAccess($assignment);
 
-        $assignment->update(['is_confirmed' => true]);
+        try {
+            $assignment->is_confirmed = true;
+            $assignment->save();
 
-        return redirect()->back()
-            ->with('success', 'Assegnazione confermata con successo.');
+            \Log::info('Assignment confirmed', [
+                'assignment_id' => $assignment->id,
+                'user_id' => $assignment->user_id,
+                'tournament_id' => $assignment->tournament_id,
+                'is_confirmed' => $assignment->is_confirmed
+            ]);
+
+            return redirect()->back()
+                ->with('success', 'Assegnazione confermata con successo.');
+        } catch (\Exception $e) {
+            \Log::error('Error confirming assignment', [
+                'assignment_id' => $assignment->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return redirect()->back()
+                ->with('error', 'Errore durante la conferma dell\'assegnazione: ' . $e->getMessage());
+        }
     }
 
 }

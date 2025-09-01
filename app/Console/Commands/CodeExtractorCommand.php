@@ -193,7 +193,7 @@ use App\Models\User;
 use App\Models\Zone;
 use App\Models\Referee;
 use App\Traits\CrudActions;
-use App\Helpers\RefereeLevelsHelper;
+use App\Helpers\Http\RefereeLevelsHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;';

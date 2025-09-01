@@ -9,7 +9,7 @@ use App\Models\Zone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
-use App\Helpers\RefereeLevelsHelper;
+use App\Helpers\Http\RefereeLevelsHelper;
 
 class UserController extends Controller
 {
@@ -201,10 +201,10 @@ class UserController extends Controller
 
         // Imposta password predefinita (come indicato nel form)
         $validated['password'] = Hash::make('password123');
-        
+
         // Imposta tipo utente predefinito (referee)
         $validated['user_type'] = 'referee';
-        
+
         // Genera codice arbitro se la colonna esiste e non è fornito
         if (Schema::hasColumn('users', 'referee_code') && empty($validated['referee_code'])) {
             $lastUser = User::orderBy('id', 'desc')->first();

@@ -42,7 +42,7 @@
                     <option value="">Tutti i tornei</option>
                     @foreach($tournaments as $tournament)
                         <option value="{{ $tournament->id }}" {{ request('tournament_id') == $tournament->id ? 'selected' : '' }}>
-                            {{ $tournament->name }} - {{ $tournament->club_name }}
+                            {{ $tournament->name }} - {{ $tournament->club->name }}
                         </option>
                     @endforeach
                 </select>
@@ -55,7 +55,7 @@
                     <option value="">Tutti gli arbitri</option>
                     @foreach($referees as $referee)
                         <option value="{{ $referee->id }}" {{ request('user_id') == $referee->id ? 'selected' : '' }}>
-                            {{ $referee->name }} ({{ $referee->referee_code }})
+                            {{ $referee->name }}
                         </option>
                     @endforeach
                 </select>
@@ -123,7 +123,7 @@
                 {{ $assignment->tournament->name }}
             </div>
             <div class="text-sm text-gray-500">
-                {{ $assignment->club_name }} -
+                {{ $assignment->tournament->club->name ?? 'N/A' }} -
                 {{ $assignment->tournament->start_date ? Carbon\Carbon::parse($assignment->tournament->start_date)->format('d/m/Y') : 'N/A' }}
             </div>
         </td>
@@ -134,9 +134,9 @@
             <div class="text-sm text-gray-900">
                 {{ $assignment->assigned_at ? Carbon\Carbon::parse($assignment->assigned_at)->format('d/m/Y H:i') : 'N/A' }}
             </div>
-            @if($assignment->assignedBy)
+            @if($assignment->assigned_by)
                 <div class="text-xs text-gray-500">
-                    da {{ $assignment->assignedBy->name }}
+                    da {{ $assignment->assigned_by->name ?? 'N/A' }}
                 </div>
             @endif
         </td>
@@ -199,7 +199,6 @@
             <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
             </svg>
-            <p class="text-gray-500">Nessuna assegnazione trovata per l'anno {{ $year }}</p>
             <p class="text-sm text-gray-400 mt-1">Prova a modificare i filtri di ricerca o seleziona un anno diverso</p>
         </td>
     </tr>

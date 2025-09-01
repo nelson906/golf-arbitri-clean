@@ -23,11 +23,13 @@ class Assignment extends Model
         'status',
         'notes',
         'confirmed_at',
+        'is_confirmed',
     ];
 
     protected $casts = [
         'confirmed_at' => 'datetime',
         'assigned_at' => 'datetime',
+        'is_confirmed' => 'boolean',
     ];
 
     /**

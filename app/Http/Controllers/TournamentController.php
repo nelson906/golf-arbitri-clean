@@ -269,7 +269,7 @@ class TournamentController extends Controller
                     ? route('admin.tournaments.edit', $tournament)
                     : route('tournaments.show', $tournament),
 
-                'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
+                'deadline' => Carbon::parse($tournament->availability_deadline)?->format('d/m/Y') ?? 'N/A',
                 'type_id' => $tournament->tournament_type_id,
 
                 // Referee-specific
@@ -416,7 +416,7 @@ class TournamentController extends Controller
             // Calcola giorni fino alla deadline
             $daysUntilDeadline = 999;
             if ($tournament->availability_deadline) {
-                $daysUntilDeadline = $tournament->availability_deadline->diffInDays(now(), false);
+                $daysUntilDeadline = Carbon::parse($tournament->availability_deadline)->diffInDays(now(), false);
             }
 
             // Urgent: Missing referees or overdue deadline

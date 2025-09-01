@@ -76,13 +76,13 @@
 
                 {{-- Category Filter --}}
                 <div>
-                    <label for="category_id" class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                    <select name="type_id" id="type_id"
+                    <label for="tournament_type_id" class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                    <select name="tournament_type_id" id="tournament_type_id"
                         class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="">Tutte le categorie</option>
                         @foreach ($tournamentTypes as $type)
                             <option value="{{ $type->id }}"
-                                {{ request('category_id') == $type->id ? 'selected' : '' }}>
+                                {{ request('tournament_type_id') == $type->id ? 'selected' : '' }}>
                                 {{ $type->name }}
                             </option>
                         @endforeach
@@ -174,8 +174,8 @@
                             </td>
                             <td class="px-6 py-4">
                                 <div class="text-sm text-gray-900">{{ $tournament->club->name }}</div>
-                                @if ($isNationalAdmin)
-                                    <div class="text-xs text-gray-500">{{ $tournament->zone->name }}</div>
+                                @if ($isNationalAdmin && $tournament->club->zone)
+                                    <div class="text-xs text-gray-500">{{ $tournament->club->zone->name }}</div>
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
