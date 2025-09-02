@@ -71,6 +71,10 @@ Route::prefix('tournaments')->name('tournaments.')->group(function () {
             Route::post('/send-assignment-letters', [TournamentController::class, 'sendAssignmentLetters'])
                 ->name('send-assignment-letters');
         });
+        
+        // Notification form route
+        Route::get('/assignment-form', [\App\Http\Controllers\Admin\NotificationController::class, 'showAssignmentForm'])
+            ->name('show-assignment-form');
 
         // Documents & Reports (nested in tournament context)
         Route::prefix('documents')->name('documents.')->group(function () {
@@ -101,6 +105,14 @@ Route::prefix('tournaments')->name('tournaments.')->group(function () {
         Route::get('/assignment-stats', [TournamentController::class, 'assignmentStats'])->name('assignment-stats');
         Route::get('/zone-distribution', [TournamentController::class, 'zoneDistribution'])->name('zone-distribution');
     });
+});
+
+// Tournament notification routes - outside the tournament prefix to avoid double tournament parameter
+Route::prefix('tournaments/{tournament}')->name('tournaments.')->group(function () {
+    Route::post('/send-assignment', [\App\Http\Controllers\Admin\NotificationController::class, 'sendTournamentAssignment'])
+        ->name('send-assignment');
+    Route::post('/send-assignment-with-convocation', [\App\Http\Controllers\Admin\NotificationController::class, 'sendAssignmentWithConvocation'])
+        ->name('send-assignment-with-convocation');
 });
 
 // Additional utility routes outside the tournaments prefix

@@ -98,15 +98,14 @@ class Tournament extends Model
     }
 
     // Arbitri assegnati
-    public function referees()
-    {
-        $userField = Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
+public function referees()
+{
+    $userField = \Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
 
-        return $this->belongsToMany(User::class, 'assignments', 'tournament_id', $userField)
-            ->withPivot('role', 'status', 'notes')
-            ->withTimestamps();
-    }
-
+    return $this->belongsToMany(User::class, 'assignments', 'tournament_id', $userField)
+        ->withPivot('role', 'notes')  // <-- SENZA 'status'
+        ->withTimestamps();
+}
     // Disponibilità dichiarate
     public function availabilities()
     {

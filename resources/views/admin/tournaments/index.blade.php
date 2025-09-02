@@ -219,6 +219,12 @@
                                         <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
                                             {{ $tournament->assignments()->count() }} assegnati
                                         </span>
+                                        
+                                        {{-- Pulsante Invia Notifica --}}
+                                        <a href="{{ route('admin.tournaments.show-assignment-form', $tournament) }}"
+                                            class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700">
+                                            📧 Notifica
+                                        </a>
                                     @endif
                                 </div>
                             </td>

@@ -32,6 +32,7 @@ use Carbon\Carbon;
 
 class NotificationController extends Controller
 {
+
     protected $fileStorage;
     protected $documentService;
     protected $notificationService;
@@ -240,9 +241,9 @@ class NotificationController extends Controller
         }
 
         $assignments = $this->getTournamentAssignments($tournament);
-        $templates = LetterTemplate::where('is_active', true)
-            ->where('type', 'assignment')
-            ->get();
+        // $templates = LetterTemplate::where('is_active', true)
+        //     ->where('type', 'assignment')
+        //     ->get();
         $institutionalEmails = InstitutionalEmail::where('is_active', true)
             ->orderBy('category')
             ->orderBy('name')
@@ -250,7 +251,7 @@ class NotificationController extends Controller
         $groupedEmails = $institutionalEmails->groupBy('category');
 
         // Get assigned referees
-        $assignedReferees = $tournament->assignedReferees()->get();
+        $assignedReferees = $tournament->referees()->get();
 
         // Check existing documents
         $documentStatus = $this->checkDocumentStatus($tournament);
@@ -263,7 +264,7 @@ class NotificationController extends Controller
             'groupedEmails',
             'documentStatus',
             'hasExistingConvocation',
-            'templates',
+            // 'templates',
             'institutionalEmails'
         ));
     }
@@ -972,12 +973,21 @@ class NotificationController extends Controller
 
     private function checkAssignmentFormAuthorization(Tournament $tournament)
     {
-        if (!Auth::user()->hasRole('admin') && !Auth::user()->hasRole('super_admin') && !Auth::user()->hasRole('national_admin')) {
+        $user = Auth::user();
+        $allowedTypes = ['admin', 'super_admin', 'national_admin'];
+
+        if (!in_array($user->user_type, $allowedTypes)) {
             abort(403, 'Non hai i permessi per inviare notifiche.');
         }
 
-        if (Auth::user()->hasRole('national_admin') && (!$tournament->tournamentType || !$tournament->tournamentType->is_national)) {
+        // National admin can only access national tournaments
+        if ($user->user_type === 'national_admin' && (!$tournament->tournamentType || !$tournament->tournamentType->is_national)) {
             abort(403, 'Non hai accesso a questo torneo non nazionale.');
+        }
+
+        // Zone admin can only access their zone tournaments
+        if ($user->user_type === 'admin' && $tournament->zone_id !== $user->zone_id) {
+            abort(403, 'Non hai accesso a tornei di altre zone.');
         }
     }
 
@@ -1000,8 +1010,8 @@ class NotificationController extends Controller
                     'tournament_id' => $tournament->id
                 ]);
 
-                // ✅ 2. Try alternative: get from pivot table (assignedReferees)
-                $assignedReferees = $tournament->assignedReferees ?? collect();
+                // ✅ 2. Try alternative: get from pivot table (referees)
+                $assignedReferees = $tournament->referees ?? collect();
 
                 if ($assignedReferees->isNotEmpty()) {
                     Log::info('Found assigned referees via pivot', [

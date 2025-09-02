@@ -38,7 +38,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'is_active' => 'boolean',
     ];
-    
+
     protected $attributes = [
         'is_active' => true,
     ];
@@ -105,9 +105,9 @@ class User extends Authenticatable
     {
         $userField = \Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
 
-        return $this->belongsToMany(Tournament::class, 'assignments', $userField, 'tournament_id')
-            ->withPivot('role', 'status', 'notes')
-            ->withTimestamps();
+    return $this->belongsToMany(Tournament::class, 'assignments')
+        ->withPivot('role', 'notes')  // <-- SENZA 'status'
+        ->withTimestamps();
     }
 
     // NON c'è una relazione 'referee' su User stesso!
