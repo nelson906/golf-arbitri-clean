@@ -247,7 +247,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('institutional_addresses', function (Blueprint $table) {
+        Schema::create('institutional_emails', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('email');
@@ -272,7 +272,7 @@ return new class extends Migration
         Schema::dropIfExists('tournament_types');
         Schema::dropIfExists('notifications');
         Schema::dropIfExists('notification_recipients');
-        Schema::dropIfExists('institutional_addresses');
+        Schema::dropIfExists('institutional_emails');
     }
 
     private function seedBasicData(): void
@@ -288,7 +288,7 @@ return new class extends Migration
             ['code' => 'CRC', 'name' => 'Comitato Regole Campionati', 'description' => 'Comitato Regole e Campionati', 'is_national' => true],
         ]);
 
-        DB::table('institutional_addresses')->insert([
+        DB::table('institutional_emails')->insert([
             // FIG
             ['name' => 'Federazione Italiana Golf - Segreteria', 'email' => 'segreteria@federgolf.it', 'category' => 'FIG', 'is_global' => true, 'zone_id' => null, 'is_active' => true],
             ['name' => 'FIG - Direzione Tecnica', 'email' => 'tecnica@federgolf.it', 'category' => 'FIG', 'is_global' => true, 'zone_id' => null, 'is_active' => true],
