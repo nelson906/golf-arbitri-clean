@@ -14,7 +14,6 @@ export const DEFAULT_CONFIG = {
   garaNT: 'Gara 54 buche',
   garaNT36: 'Normale',
   doppiePartenze: 'Doppie Partenze',
-  simmetrico: 'Asimmetrico',
   compatto: 'Early/Late',
   
   // Time configuration
@@ -63,10 +62,6 @@ export const TEE_TYPES = {
   SINGLE: 'Tee Unico'
 };
 
-export const LAYOUT_TYPES = {
-  SYMMETRIC: 'Simmetrico',
-  ASYMMETRIC: 'Asimmetrico'
-};
 
 export const ROUND_TYPES = {
   FIRST: 'prima',

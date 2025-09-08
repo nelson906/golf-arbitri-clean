@@ -6,7 +6,6 @@
 import { 
   DEFAULT_CONFIG, 
   TEE_TYPES,
-  LAYOUT_TYPES,
   ROUND_TYPES,
   COMPETITION_TYPES
 } from './config.js';
@@ -92,7 +91,6 @@ class QuadrantiApp {
     $('#gap').val(this.config.gap);
     $('#compatto').val(this.config.compatto);
     $('#doppie_partenze').val(this.config.doppiePartenze);
-    $('#simmetrico').val(this.config.simmetrico);
     
     // Show/hide compact option based on player count
     this.toggleCompactOption();
@@ -167,7 +165,6 @@ class QuadrantiApp {
     this.config.gap = $('#gap').val();
     this.config.compatto = $('#compatto').val();
     this.config.doppiePartenze = $('#doppie_partenze').val();
-    this.config.simmetrico = $('#simmetrico').val();
     
     // Save configuration
     this.saveConfiguration();
@@ -263,13 +260,21 @@ class QuadrantiApp {
       const data = response;
       
       if (data && data[0] && data[1]) {
-        const atlete = Object.values(data[0]);
-        const atleti = Object.values(data[1]);
+        const atlete = data[0]; // Già un array, non serve Object.values
+        const atleti = data[1]; // Già un array, non serve Object.values
         
         storage.set('atlete', atlete);
         storage.set('atleti', atleti);
         storage.set('storedPlayersCount', atleti.length);
         storage.set('storedProetteCount', atlete.length);
+        
+        // Aggiorna anche i contatori nell'interfaccia
+        $('#players').val(atleti.length);
+        $('#proette').val(atlete.length);
+        this.config.players = atleti.length;
+        this.config.proette = atlete.length;
+        storage.set('players', atleti.length);
+        storage.set('proette', atlete.length);
         
         this.config.nominativo = 'On';
         storage.set('nominativo', 'On');
@@ -278,7 +283,7 @@ class QuadrantiApp {
         this.logic.updateConfig(this.config);
         this.generateTable();
         
-        alert('File caricato con successo!');
+        alert(`File caricato con successo!\n${atleti.length} atleti\n${atlete.length} atlete`);
       }
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -368,7 +373,6 @@ class QuadrantiApp {
   generateTable() {
     let tableHTML = '';
     const doppiePartenze = this.config.doppiePartenze;
-    const simmetrico = this.config.simmetrico;
     const giornata = this.config.giornata;
     const mod = parseInt(this.config.playersPerFlight);
     
@@ -376,16 +380,10 @@ class QuadrantiApp {
     if (doppiePartenze === TEE_TYPES.DOUBLE) {
       tableHTML = this.logic.generateTableHeader(true);
       
-      if (simmetrico === LAYOUT_TYPES.SYMMETRIC) {
-        // Symmetric layout not implemented in original code
-        // Would need to implement tee_doppio_simmetrico logic
-        tableHTML += this.logic.generateDoubleTee(giornata);
-      } else {
-        tableHTML += this.logic.generateDoubleTee(giornata);
-      }
+      tableHTML += this.logic.generateDoubleTee(giornata);
     } else {
       tableHTML = this.logic.generateTableHeader(false);
-      tableHTML = this.logic.generateSingleTee(simmetrico, giornata);
+      tableHTML = this.logic.generateSingleTee(giornata);
     }
     
     $('#first_table').html(tableHTML);

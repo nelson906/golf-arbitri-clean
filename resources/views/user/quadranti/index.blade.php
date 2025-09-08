@@ -124,13 +124,6 @@
                             </select>
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Layout:</label>
-                            <select id="simmetrico" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                                <option value="Asimmetrico">Asimmetrico</option>
-                                <option value="Simmetrico">Simmetrico</option>
-                            </select>
-                        </div>
 
                         <div class="compatto">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Modalità:</label>
