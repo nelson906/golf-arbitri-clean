@@ -137,50 +137,119 @@ class QuadrantiController extends Controller
 
         $coord = $coordinates[$geoArea] ?? $coordinates['CENTRO'];
         
+        Log::info('Calcolo alba/tramonto', [
+            'geo_area' => $geoArea,
+            'date' => $date,
+            'coordinates' => $coord
+        ]);
+        
         try {
-            // Converti la data dal formato italiano
-            $dateParts = explode('/', $date);
+            // Converti la data dal formato italiano (potrebbe arrivare con / o -)
+            $dateParts = preg_split('/[\/\-]/', $date);
             if (count($dateParts) !== 3) {
-                throw new \Exception('Invalid date format');
+                throw new \Exception('Invalid date format: ' . $date);
+            }
+            
+            // Estrai giorno, mese e anno
+            $giorno = intval($dateParts[0]);
+            $mese = intval($dateParts[1]);
+            $anno = intval($dateParts[2]);
+            
+            // Valida i valori
+            if ($giorno < 1 || $giorno > 31 || $mese < 1 || $mese > 12 || $anno < 2000 || $anno > 2100) {
+                throw new \Exception('Invalid date values: ' . $date);
             }
             
             // Crea un oggetto DateTime
             $dateTime = new \DateTime();
-            $dateTime->setDate($dateParts[2], $dateParts[1], $dateParts[0]);
-            $dateTime->setTime(12, 0, 0); // Mezzogiorno per il calcolo
+            $dateTime->setDate($anno, $mese, $giorno);
+            $dateTime->setTime(12, 0, 0);
             
-            // Calcola alba e tramonto usando una formula approssimata
-            $dayOfYear = $dateTime->format('z') + 1;
+            // Calcola il numero di giorni dall'inizio dell'anno
+            $dayOfYear = $dateTime->format('z');
+            
+            // Latitudine e longitudine in radianti
             $lat = deg2rad($coord['lat']);
+            $lon = deg2rad($coord['lon']);
             
-            // Declinazione solare approssimata
-            $P = asin(0.39795 * cos(0.98563 * ($dayOfYear - 173) * pi() / 180));
+            // Calcola la declinazione solare
+            $declinazione = 0.4093 * sin(2 * pi() * ($dayOfYear - 81) / 365);
             
-            // Angolo orario del sole
-            $sunrise_angle = acos(-tan($P) * tan($lat));
-            $sunset_angle = -$sunrise_angle;
+            // Calcola l'angolo orario del sole all'alba/tramonto
+            $cosH = -tan($lat) * tan($declinazione);
             
-            // Converti in ore
-            $sunrise_hours = 12 - $sunrise_angle * 12 / pi();
-            $sunset_hours = 12 - $sunset_angle * 12 / pi();
+            // Gestisci i casi estremi (sole sempre sopra o sotto l'orizzonte)
+            if ($cosH < -1) {
+                // Sole sempre sopra l'orizzonte (giorno polare)
+                return response()->json([
+                    'sunrise' => '00:00',
+                    'sunset' => '23:59'
+                ]);
+            } elseif ($cosH > 1) {
+                // Sole sempre sotto l'orizzonte (notte polare)
+                return response()->json([
+                    'sunrise' => '--:--',
+                    'sunset' => '--:--'
+                ]);
+            }
             
-            // Aggiungi correzione per longitudine (15° = 1 ora)
-            $longitude_correction = ($coord['lon'] - 15) / 15;
+            // Calcola l'angolo orario
+            $H = acos($cosH);
             
-            // Considera anche l'ora legale se applicabile
-            $dst = $dateTime->format('I'); // 1 se ora legale, 0 altrimenti
+            // Equazione del tempo (correzione per l'orbita ellittica)
+            $E = 0.0172 * sin(2 * pi() * ($dayOfYear - 4) / 365) - 0.1340 * sin(4 * pi() * $dayOfYear / 365);
             
-            $sunrise_hours += $longitude_correction - $dst;
-            $sunset_hours += $longitude_correction - $dst;
+            // Tempo solare medio
+            $sunrise_solar = 12 - $H * 12 / pi() - $E;
+            $sunset_solar = 12 + $H * 12 / pi() - $E;
+            
+            // Correzione per la longitudine (differenza dal meridiano di riferimento)
+            // Il meridiano di riferimento per l'Europa Centrale è 15°E
+            $longitude_correction = ($coord['lon'] - 15) * 4 / 60; // 4 minuti per grado
+            
+            // Applica le correzioni
+            $sunrise_local = $sunrise_solar + $longitude_correction;
+            $sunset_local = $sunset_solar + $longitude_correction;
+            
+            // Aggiungi 1 ora per l'ora solare europea (CET) e un'altra per l'ora legale se applicabile
+            $timezone_offset = 1; // CET
+            if ($dateTime->format('I') == 1) {
+                $timezone_offset = 2; // CEST (ora legale)
+            }
+            
+            $sunrise_final = $sunrise_local + $timezone_offset;
+            $sunset_final = $sunset_local + $timezone_offset;
             
             // Formatta i risultati
-            $sunrise_h = floor($sunrise_hours);
-            $sunrise_m = round(($sunrise_hours - $sunrise_h) * 60);
-            $sunset_h = floor($sunset_hours);
-            $sunset_m = round(($sunset_hours - $sunset_h) * 60);
+            $sunrise_h = floor($sunrise_final);
+            $sunrise_m = round(($sunrise_final - $sunrise_h) * 60);
+            $sunset_h = floor($sunset_final);
+            $sunset_m = round(($sunset_final - $sunset_h) * 60);
+            
+            // Gestisci i minuti che vanno oltre 60
+            if ($sunrise_m >= 60) {
+                $sunrise_h++;
+                $sunrise_m -= 60;
+            }
+            if ($sunset_m >= 60) {
+                $sunset_h++;
+                $sunset_m -= 60;
+            }
             
             $sunrise = sprintf('%02d:%02d', $sunrise_h, $sunrise_m);
             $sunset = sprintf('%02d:%02d', $sunset_h, $sunset_m);
+            
+            Log::info('Risultati calcolo alba/tramonto', [
+                'dayOfYear' => $dayOfYear,
+                'declinazione' => $declinazione,
+                'H' => rad2deg($H),
+                'sunrise_solar' => $sunrise_solar,
+                'sunset_solar' => $sunset_solar,
+                'longitude_correction' => $longitude_correction,
+                'timezone_offset' => $timezone_offset,
+                'sunrise' => $sunrise,
+                'sunset' => $sunset
+            ]);
 
             return response()->json([
                 'sunrise' => $sunrise,
