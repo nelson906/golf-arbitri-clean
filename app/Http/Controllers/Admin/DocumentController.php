@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\User;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Document;
@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Str;
 
 /**
- * 📁 DocumentController - Gestione documenti e file
+ * 📁 Admin DocumentController - Gestione documenti e file (Admin)
  */
 class DocumentController extends Controller
 {
@@ -28,14 +28,14 @@ class DocumentController extends Controller
         $query = Document::with(['uploader', 'tournament', 'zone'])
             ->orderBy('created_at', 'desc');
 
-        // Filtro accesso per zona
-        if ($user->user_type !== 'national_admin' && $user->user_type !== 'super_admin') {
+        // Admin di zona vede solo documenti della sua zona o globali
+        if ($user->user_type === 'admin') {
             $query->where(function($q) use ($user) {
                 $q->where('zone_id', $user->zone_id)
-                  ->orWhereNull('zone_id')
-                  ->orWhere('uploader_id', $user->id); // I propri documenti
+                  ->orWhereNull('zone_id');
             });
         }
+        // National admin e super admin vedono tutto
 
         // Filtri opzionali
         if ($request->filled('type')) {
@@ -44,6 +44,10 @@ class DocumentController extends Controller
 
         if ($request->filled('category')) {
             $query->where('category', $request->category);
+        }
+
+        if ($request->filled('zone_id') && in_array($user->user_type, ['national_admin', 'super_admin'])) {
+            $query->where('zone_id', $request->zone_id);
         }
 
         if ($request->filled('search')) {
@@ -70,6 +74,22 @@ class DocumentController extends Controller
     }
 
     /**
+     * Show the form for creating a new document
+     */
+    public function create(): View
+    {
+        return view('documents.create');
+    }
+
+    /**
+     * Store a newly created document
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        return $this->upload($request);
+    }
+
+    /**
      * Upload a new document
      */
     public function upload(Request $request): JsonResponse|RedirectResponse
@@ -79,6 +99,7 @@ class DocumentController extends Controller
             'category' => 'required|string|in:general,tournament,regulation,form,template',
             'description' => 'nullable|string|max:500',
             'tournament_id' => 'nullable|exists:tournaments,id',
+            'zone_id' => 'nullable|exists:zones,id',
             'is_public' => 'boolean',
         ]);
 
@@ -101,9 +122,15 @@ class DocumentController extends Controller
             // Salva il file
             $filePath = $file->storeAs($storagePath, $fileName, 'public');
 
+            // Per admin, usa la zone_id fornita o quella dell'utente
+            $zoneId = $request->zone_id;
+            if (!$zoneId && $user->user_type === 'admin') {
+                $zoneId = $user->zone_id;
+            }
+
             // Crea record nel database
             $document = Document::create([
-                'name' => pathinfo($originalName, PATHINFO_FILENAME),
+                'name' => $request->name ?? pathinfo($originalName, PATHINFO_FILENAME),
                 'original_name' => $originalName,
                 'file_path' => $filePath,
                 'file_size' => $file->getSize(),
@@ -112,7 +139,7 @@ class DocumentController extends Controller
                 'type' => $this->determineDocumentType($file->getMimeType()),
                 'description' => $request->description,
                 'tournament_id' => $request->tournament_id,
-                'zone_id' => $user->zone_id,
+                'zone_id' => $zoneId,
                 'uploader_id' => $user->id,
                 'is_public' => $request->boolean('is_public', false),
             ]);
@@ -125,7 +152,9 @@ class DocumentController extends Controller
                 ]);
             }
 
-            return back()->with('success', 'Documento caricato con successo!');
+            return redirect()
+                ->route('admin.documents.index')
+                ->with('success', 'Documento caricato con successo!');
 
         } catch (\Exception $e) {
             if ($request->expectsJson()) {
@@ -139,6 +168,48 @@ class DocumentController extends Controller
                 ->withInput()
                 ->with('error', 'Errore durante il caricamento: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Display the specified document
+     */
+    public function show(Document $document): View
+    {
+        $this->authorizeDocumentAccess($document);
+        
+        return view('documents.show', compact('document'));
+    }
+
+    /**
+     * Show the form for editing the document
+     */
+    public function edit(Document $document): View
+    {
+        $this->authorizeDocumentAccess($document, true);
+        
+        return view('documents.edit', compact('document'));
+    }
+
+    /**
+     * Update the specified document
+     */
+    public function update(Request $request, Document $document): RedirectResponse
+    {
+        $this->authorizeDocumentAccess($document, true);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:500',
+            'category' => 'required|string|in:general,tournament,regulation,form,template',
+            'is_public' => 'boolean',
+            'zone_id' => 'nullable|exists:zones,id',
+        ]);
+
+        $document->update($request->only(['name', 'description', 'category', 'is_public', 'zone_id']));
+
+        return redirect()
+            ->route('admin.documents.show', $document)
+            ->with('success', 'Documento aggiornato con successo!');
     }
 
     /**
@@ -177,7 +248,9 @@ class DocumentController extends Controller
             // Elimina il record dal database
             $document->delete();
 
-            return back()->with('success', 'Documento eliminato con successo!');
+            return redirect()
+                ->route('admin.documents.index')
+                ->with('success', 'Documento eliminato con successo!');
 
         } catch (\Exception $e) {
             return back()->with('error', 'Errore durante l\'eliminazione: ' . $e->getMessage());
@@ -211,15 +284,25 @@ class DocumentController extends Controller
             return;
         }
 
-        // Se richiede ownership, verifica che sia il proprietario
-        if ($requireOwnership && $document->uploader_id !== $user->id) {
-            abort(403, 'Puoi eliminare solo i tuoi documenti.');
+        // Se richiede ownership per modifica/cancellazione
+        if ($requireOwnership) {
+            // Admin può modificare/cancellare documenti della propria zona
+            if ($user->user_type === 'admin') {
+                if ($document->zone_id && $document->zone_id !== $user->zone_id) {
+                    abort(403, 'Non puoi modificare documenti di altre zone.');
+                }
+                return;
+            }
+            // Altri utenti possono modificare solo i propri documenti
+            if ($document->uploader_id !== $user->id) {
+                abort(403, 'Puoi modificare solo i tuoi documenti.');
+            }
         }
 
-        // Verifica accesso per zona
-        if ($document->zone_id && $document->zone_id !== $user->zone_id) {
-            // Verifica se è un documento pubblico o dell'utente
-            if (!$document->is_public && $document->uploader_id !== $user->id) {
+        // Verifica accesso per lettura
+        if ($user->user_type === 'admin') {
+            // Admin può vedere documenti della propria zona o globali
+            if ($document->zone_id && $document->zone_id !== $user->zone_id) {
                 abort(403, 'Accesso negato a questo documento.');
             }
         }
