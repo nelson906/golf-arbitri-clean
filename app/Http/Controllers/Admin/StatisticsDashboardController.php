@@ -28,7 +28,6 @@ class StatisticsDashboardController extends Controller
         // Filtri temporali
         $period = $request->get('period', '30'); // giorni
         $startDate = Carbon::now()->subDays($period);
-        $year = $request->get('year', Carbon::now()->year);
 
         // Statistiche generali
         $generalStats = $this->getGeneralStats($user, $isNationalAdmin);
@@ -40,10 +39,10 @@ class StatisticsDashboardController extends Controller
         $zoneStats = $this->getZoneStats($user, $isNationalAdmin);
 
         // Statistiche arbitri
-        $refereeStats = $this->getRefereeStats($user, $isNationalAdmin, $year);
+        $refereeStats = $this->getRefereeStats($user, $isNationalAdmin);
 
         // Statistiche tornei
-        $tournamentStats = $this->getTournamentStats($user, $isNationalAdmin, $year);
+        $tournamentStats = $this->getTournamentStats($user, $isNationalAdmin);
 
         // Grafici dati (ultimi 12 mesi)
         $chartData = $this->getChartData($user, $isNationalAdmin);
@@ -60,8 +59,7 @@ class StatisticsDashboardController extends Controller
             'chartData',
             'performanceMetrics',
             'isNationalAdmin',
-            'period',
-            'year'
+            'period'
         ));
     }
 
@@ -73,8 +71,9 @@ class StatisticsDashboardController extends Controller
         $user = auth()->user();
         $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
-        $year = $request->get('year', Carbon::now()->year);
         $month = $request->get('month');
+        $dateFrom = $request->get('date_from');
+        $dateTo = $request->get('date_to');
 
         // Query base
         $query = Availability::with(['referee', 'tournament.club', 'tournament.zone', 'tournament.tournamentType']);
@@ -87,43 +86,50 @@ class StatisticsDashboardController extends Controller
         }
 
         // Filtri temporali
-        $query->whereHas('tournament', function ($q) use ($year, $month) {
-            $q->;
-            if ($month) {
-                $q;
-            }
-        });
+        if ($dateFrom) {
+            $query->whereHas('tournament', function ($q) use ($dateFrom) {
+                $q->where('start_date', '>=', $dateFrom);
+            });
+        }
+        if ($dateTo) {
+            $query->whereHas('tournament', function ($q) use ($dateTo) {
+                $q->where('start_date', '<=', $dateTo);
+            });
+        }
+        if ($month) {
+            $query->whereHas('tournament', function ($q) use ($month) {
+                $q->whereMonth('start_date', $month);
+            });
+        }
 
         $availabilities = $query->paginate(50);
 
         // Statistiche riepilogo
         $stats = [
             'total' => $query->count(),
-            // 'by_status' => $query->clone()->select('is_available', DB::raw('count(*) as count'))
-            //     ->groupBy('is_available')->pluck('count', 'is_available'),
-            'by_zone' => $isNationalAdmin ? $this->getAvailabilityByZone($year, $month) : [],
-            'by_level' => $this->getAvailabilityByLevel($user, $isNationalAdmin, $year, $month),
-            'conversion_rate' => $this->getAvailabilityConversionRate($user, $isNationalAdmin, $year, $month),
+            'by_zone' => $isNationalAdmin ? $this->getAvailabilityByZone($month) : [],
+            'by_level' => $this->getAvailabilityByLevel($user, $isNationalAdmin, $month),
+            'conversion_rate' => $this->getAvailabilityConversionRate($user, $isNationalAdmin, $month),
             'totale_disponibilita' => Availability::count(),
             'arbitri_con_disponibilita' => Availability::distinct('user_id')->count(),
             'tornei_con_disponibilita' => Availability::distinct('tournament_id')->count(),
             'disponibilita_per_mese' => Availability::selectRaw('MONTH(created_at) as mese, COUNT(*) as totale')
-                ->)
+                ->whereYear('created_at', date('Y'))
                 ->groupBy('mese')
                 ->pluck('totale', 'mese'),
             'top_arbitri' => User::withCount('availabilities')
                 ->orderBy('availabilities_count', 'desc')
                 ->limit(10)
                 ->get()
-
         ];
 
         return view('admin.statistics.disponibilita', compact(
             'availabilities',
             'stats',
             'isNationalAdmin',
-            'year',
-            'month'
+            'month',
+            'dateFrom',
+            'dateTo'
         ));
     }
 
@@ -135,8 +141,9 @@ class StatisticsDashboardController extends Controller
         $user = auth()->user();
         $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
-        $year = $request->get('year', Carbon::now()->year);
         $status = $request->get('status');
+        $dateFrom = $request->get('date_from');
+        $dateTo = $request->get('date_to');
 
         // Query base
         $query = Assignment::with(['referee', 'tournament.club', 'tournament.zone', 'tournament.tournamentType']);
@@ -148,10 +155,17 @@ class StatisticsDashboardController extends Controller
             });
         }
 
-        // Filtri
-        $query->whereHas('tournament', function ($q) use ($year) {
-            $q->;
-        });
+        // Filtri temporali
+        if ($dateFrom) {
+            $query->whereHas('tournament', function ($q) use ($dateFrom) {
+                $q->where('start_date', '>=', $dateFrom);
+            });
+        }
+        if ($dateTo) {
+            $query->whereHas('tournament', function ($q) use ($dateTo) {
+                $q->where('start_date', '<=', $dateTo);
+            });
+        }
 
         if ($status) {
             if ($status === 'confirmed') {
@@ -171,11 +185,12 @@ class StatisticsDashboardController extends Controller
             'by_role' => $query->clone()->select('role', DB::raw('count(*) as count'))
                 ->orderByRaw("FIELD(role, \"Direttore di Torneo\", \"Arbitro\", \"Osservatore\")")
                 ->groupBy('role')->pluck('count', 'role'),
-            'by_zone' => $isNationalAdmin ? $this->getAssignmentsByZone($year) : [],
-            'by_level' => $this->getAssignmentsByLevel($user, $isNationalAdmin, $year),
-            'workload' => $this->getWorkloadStats($user, $isNationalAdmin, $year),
+            'by_zone' => $isNationalAdmin ? $this->getAssignmentsByZone() : [],
+            'by_level' => $this->getAssignmentsByLevel($user, $isNationalAdmin),
+            'workload' => $this->getWorkloadStats($user, $isNationalAdmin),
             'totale_assegnazioni' => Assignment::count(),
-            'per_zona' => Assignment::join('zones', "assignments_{$year}.assigned_by_id", '=', 'zones.id')
+            'per_zona' => Assignment::join('tournaments', 'assignments.tournament_id', '=', 'tournaments.id')
+                ->join('zones', 'tournaments.zone_id', '=', 'zones.id')
                 ->selectRaw('zones.name, COUNT(*) as totale')
                 ->orderBy('zones.name')
                 ->groupBy('zones.name')
@@ -198,8 +213,9 @@ class StatisticsDashboardController extends Controller
             'assignments',
             'stats',
             'isNationalAdmin',
-            'year',
-            'status'
+            'status',
+            'dateFrom',
+            'dateTo'
         ));
     }
 
@@ -211,9 +227,10 @@ class StatisticsDashboardController extends Controller
         $user = auth()->user();
         $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
-        $year = $request->get('year', Carbon::now()->year);
         $status = $request->get('status');
         $category = $request->get('category');
+        $dateFrom = $request->get('date_from');
+        $dateTo = $request->get('date_to');
 
         // Query base
         $query = Tournament::with(['club', 'zone', 'tournamentType']);
@@ -223,11 +240,16 @@ class StatisticsDashboardController extends Controller
             $query->where('zone_id', $user->zone_id);
         }
 
-        // Filtri
-        $query->;
+        // Filtri temporali
+        if ($dateFrom) {
+            $query->where('start_date', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $query->where('start_date', '<=', $dateTo);
+        }
 
         if ($status) {
-            $query;
+            $query->where('status', $status);
         }
 
         if ($category) {
@@ -245,15 +267,14 @@ class StatisticsDashboardController extends Controller
                 ->orderBy('tournament_type_id')
                 ->groupBy('tournament_type_id')->with('tournamentType')->get()
                 ->pluck('count', 'tournamentType.name'),
-            'by_zone' => $isNationalAdmin ? $this->getTournamentsByZone($year) : [],
-            'by_month' => $this->getTournamentsByMonth($user, $isNationalAdmin, $year),
-            'avg_referees' => $this->getAverageRefereesPerTournament($user, $isNationalAdmin, $year),
+            'by_zone' => $isNationalAdmin ? $this->getTournamentsByZone() : [],
+            'by_month' => $this->getTournamentsByMonth($user, $isNationalAdmin),
+            'avg_referees' => $this->getAverageRefereesPerTournament($user, $isNationalAdmin),
             'totale_tornei' => Tournament::count(),
             'per_stato' => Tournament::selectRaw('status, COUNT(*) as totale')
                 ->groupBy('status')
                 ->pluck('totale', 'status'),
-            'per_zona' => Tournament::join('clubs', "tournaments_{$year}.club_id", '=', 'clubs.id')
-                ->join('zones', 'clubs.zone_id', '=', 'zones.id')
+            'per_zona' => Tournament::join('zones', 'tournaments.zone_id', '=', 'zones.id')
                 ->selectRaw('zones.name, COUNT(*) as totale')
                 ->orderBy('zones.name')
                 ->groupBy('zones.name')
@@ -269,9 +290,10 @@ class StatisticsDashboardController extends Controller
             'tournaments',
             'stats',
             'isNationalAdmin',
-            'year',
             'status',
-            'category'
+            'category',
+            'dateFrom',
+            'dateTo'
         ));
     }
 
@@ -285,7 +307,6 @@ class StatisticsDashboardController extends Controller
 
         $level = $request->get('level');
         $zone = $request->get('zone');
-        $year = $request->get('year', Carbon::now()->year);
 
         // Query base
         $query = User::where('user_type', 'referee')->with(['zone']);
@@ -313,8 +334,8 @@ class StatisticsDashboardController extends Controller
             'by_level' => $query->clone()->select('level', DB::raw('count(*) as count'))
                 ->groupBy('level')->pluck('count', 'level'),
             'by_zone' => $isNationalAdmin ? $this->getRefereesByZone() : [],
-            'activity' => $this->getRefereeActivityStats($user, $isNationalAdmin, $year),
-            'availability_rate' => $this->getRefereeAvailabilityRate($user, $isNationalAdmin, $year),
+            'activity' => $this->getRefereeActivityStats($user, $isNationalAdmin),
+            'availability_rate' => $this->getRefereeAvailabilityRate($user, $isNationalAdmin),
             'totale_arbitri' => User::where('user_type', 'referee')
                 ->where('level', "<>", 'Archivio')
                 ->count(),
@@ -345,8 +366,7 @@ class StatisticsDashboardController extends Controller
             'stats',
             'isNationalAdmin',
             'level',
-            'zone',
-            'year'
+            'zone'
         ));
     }
 
@@ -363,28 +383,50 @@ class StatisticsDashboardController extends Controller
             abort(403, 'Accesso non autorizzato');
         }
 
-        $year = $request->get('year', Carbon::now()->year);
+        $dateFrom = $request->get('date_from');
+        $dateTo = $request->get('date_to');
 
         $zones = Zone::with(['users', 'clubs', 'tournaments'])->get();
 
         $zoneStats = [];
         foreach ($zones as $zone) {
+            $tournamentsQuery = $zone->tournaments();
+            if ($dateFrom) {
+                $tournamentsQuery->where('start_date', '>=', $dateFrom);
+            }
+            if ($dateTo) {
+                $tournamentsQuery->where('start_date', '<=', $dateTo);
+            }
+            
+            $assignmentsQuery = Assignment::whereHas('tournament', function ($q) use ($zone) {
+                $q->where('zone_id', $zone->id);
+            });
+            if ($dateFrom) {
+                $assignmentsQuery->whereHas('tournament', function ($q) use ($dateFrom) {
+                    $q->where('start_date', '>=', $dateFrom);
+                });
+            }
+            if ($dateTo) {
+                $assignmentsQuery->whereHas('tournament', function ($q) use ($dateTo) {
+                    $q->where('start_date', '<=', $dateTo);
+                });
+            }
+            
             $zoneStats[] = [
                 'zone' => $zone,
                 'referees' => $zone->users()->where('user_type', 'referee')->count(),
                 'clubs' => $zone->clubs()->count(),
-                'tournaments' => $zone->tournaments()->->count(),
-                'assignments' => Assignment::whereHas('tournament', function ($q) use ($zone, $year) {
-                    $q->where('zone_id', $zone->id)->;
-                })->count(),
-                'availability_rate' => $this->getZoneAvailabilityRate($zone->id, $year),
-                'activity_score' => $this->getZoneActivityScore($zone->id, $year)
+                'tournaments' => $tournamentsQuery->count(),
+                'assignments' => $assignmentsQuery->count(),
+                'availability_rate' => $this->getZoneAvailabilityRate($zone->id),
+                'activity_score' => $this->getZoneActivityScore($zone->id)
             ];
         }
 
         return view('admin.statistics.zone', compact(
             'zoneStats',
-            'year'
+            'dateFrom',
+            'dateTo'
         ));
     }
 
@@ -538,7 +580,7 @@ class StatisticsDashboardController extends Controller
             });
     }
 
-    private function getRefereeStats($user, $isNationalAdmin, $year)
+    private function getRefereeStats($user, $isNationalAdmin)
     {
         $query = $isNationalAdmin ?
             User::where('user_type', 'referee') :
@@ -551,11 +593,11 @@ class StatisticsDashboardController extends Controller
         ];
     }
 
-    private function getTournamentStats($user, $isNationalAdmin, $year)
+    private function getTournamentStats($user, $isNationalAdmin)
     {
         $query = $isNationalAdmin ?
-            Tournament:: :
-            Tournament::where('zone_id', $user->zone_id)->;
+            Tournament::query() :
+            Tournament::where('zone_id', $user->zone_id);
 
         return [
             'by_status' => $query->clone()->select('status', DB::raw('count(*) as count'))
@@ -586,39 +628,39 @@ class StatisticsDashboardController extends Controller
     }
 
     // Additional helper methods for specific statistics...
-    private function getAvailabilityByZone($year, $month)
+    private function getAvailabilityByZone($month)
     {
         return [];
     }
-    private function getAvailabilityByLevel($user, $isNationalAdmin, $year, $month)
+    private function getAvailabilityByLevel($user, $isNationalAdmin, $month)
     {
         return [];
     }
-    private function getAvailabilityConversionRate($user, $isNationalAdmin, $year, $month)
+    private function getAvailabilityConversionRate($user, $isNationalAdmin, $month)
     {
         return 0;
     }
-    private function getAssignmentsByZone($year)
+    private function getAssignmentsByZone()
     {
         return [];
     }
-    private function getAssignmentsByLevel($user, $isNationalAdmin, $year)
+    private function getAssignmentsByLevel($user, $isNationalAdmin)
     {
         return [];
     }
-    private function getWorkloadStats($user, $isNationalAdmin, $year)
+    private function getWorkloadStats($user, $isNationalAdmin)
     {
         return [];
     }
-    private function getTournamentsByZone($year)
+    private function getTournamentsByZone()
     {
         return [];
     }
-    private function getTournamentsByMonth($user, $isNationalAdmin, $year)
+    private function getTournamentsByMonth($user, $isNationalAdmin)
     {
         return [];
     }
-    private function getAverageRefereesPerTournament($user, $isNationalAdmin, $year)
+    private function getAverageRefereesPerTournament($user, $isNationalAdmin)
     {
         return 0;
     }
@@ -626,19 +668,19 @@ class StatisticsDashboardController extends Controller
     {
         return [];
     }
-    private function getRefereeActivityStats($user, $isNationalAdmin, $year)
+    private function getRefereeActivityStats($user, $isNationalAdmin)
     {
         return [];
     }
-    private function getRefereeAvailabilityRate($user, $isNationalAdmin, $year)
+    private function getRefereeAvailabilityRate($user, $isNationalAdmin)
     {
         return 0;
     }
-    private function getZoneAvailabilityRate($zoneId, $year)
+    private function getZoneAvailabilityRate($zoneId)
     {
         return 0;
     }
-    private function getZoneActivityScore($zoneId, $year)
+    private function getZoneActivityScore($zoneId)
     {
         return 0;
     }

@@ -563,6 +563,14 @@
             <div id="documentManagerContent" class="py-4">
                 {{-- Contenuto caricato dinamicamente --}}
             </div>
+            
+            {{-- Pulsante Chiudi in basso --}}
+            <div class="pt-4 border-t mt-4">
+                <button type="button" onclick="closeModal('documentManagerModal')"
+                    class="w-full sm:w-auto px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2">
+                    Chiudi
+                </button>
+            </div>
         </div>
     </div>
 
@@ -773,92 +781,152 @@
         // Genera documento
         function generateDocument(notificationId, type) {
             if (confirm('Generare il documento?')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `/admin/tournament-notifications/${notificationId}/generate/${type}`;
-
-                const token = document.createElement('input');
-                token.type = 'hidden';
-                token.name = '_token';
-                token.value = '{{ csrf_token() }}';
-                form.appendChild(token);
-
-                document.body.appendChild(form);
-                form.submit();
+                // Mostra loading
+                const content = document.getElementById('documentManagerContent');
+                content.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-4xl text-blue-500"></i><p class="mt-4">Generazione in corso...</p></div>';
+                
+                fetch(`/admin/tournament-notifications/${notificationId}/generate/${type}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        // Ricarica il contenuto del modal
+                        setTimeout(() => openDocumentManager(notificationId), 1000);
+                    } else {
+                        alert('Errore nella generazione del documento');
+                        openDocumentManager(notificationId);
+                    }
+                })
+                .catch(error => {
+                    alert('Errore: ' + error.message);
+                    openDocumentManager(notificationId);
+                });
             }
         }
 
         // Rigenera documento
         function regenerateDocument(notificationId, type) {
             if (confirm('Rigenerare il documento? Questo sovrascriverà il file esistente.')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `/admin/tournament-notifications/${notificationId}/regenerate/${type}`;
-
-                const token = document.createElement('input');
-                token.type = 'hidden';
-                token.name = '_token';
-                token.value = '{{ csrf_token() }}';
-                form.appendChild(token);
-
-                document.body.appendChild(form);
-                form.submit();
+                // Mostra loading
+                const content = document.getElementById('documentManagerContent');
+                content.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-4xl text-orange-500"></i><p class="mt-4">Rigenerazione in corso...</p></div>';
+                
+                fetch(`/admin/tournament-notifications/${notificationId}/regenerate/${type}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        // Ricarica il contenuto del modal
+                        setTimeout(() => openDocumentManager(notificationId), 1000);
+                    } else {
+                        alert('Errore nella rigenerazione del documento');
+                        openDocumentManager(notificationId);
+                    }
+                })
+                .catch(error => {
+                    alert('Errore: ' + error.message);
+                    openDocumentManager(notificationId);
+                });
             }
         }
 
         // Elimina documento
         function deleteDocument(notificationId, type) {
             if (confirm('Eliminare il documento?')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = `/admin/tournament-notifications/${notificationId}/document/${type}`;
-
-                const token = document.createElement('input');
-                token.type = 'hidden';
-                token.name = '_token';
-                token.value = '{{ csrf_token() }}';
-                form.appendChild(token);
-
-                const method = document.createElement('input');
-                method.type = 'hidden';
-                method.name = '_method';
-                method.value = 'DELETE';
-                form.appendChild(method);
-
-                document.body.appendChild(form);
-                form.submit();
+                // Mostra loading
+                const content = document.getElementById('documentManagerContent');
+                content.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-4xl text-red-500"></i><p class="mt-4">Eliminazione in corso...</p></div>';
+                
+                // Usa AJAX per rimanere nel modal
+                fetch(`/admin/tournament-notifications/${notificationId}/document/${type}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-HTTP-Method-Override': 'DELETE'
+                    },
+                    body: JSON.stringify({
+                        '_method': 'DELETE'
+                    })
+                })
+                .then(response => {
+                    if (response.ok) {
+                        // Aspetta un attimo e poi ricarica il contenuto del modal
+                        setTimeout(() => {
+                            openDocumentManager(notificationId);
+                        }, 500);
+                    } else {
+                        return response.text().then(text => {
+                            console.error('Response:', text);
+                            alert('Errore nell\'eliminazione del documento');
+                            openDocumentManager(notificationId);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Errore di connessione: ' + error.message);
+                    openDocumentManager(notificationId);
+                });
             }
         }
 
-        // Chiudi modal cliccando fuori
+        // Chiudi modal cliccando fuori SOLO per uploadDocumentModal
         window.onclick = function(event) {
-            const modals = ['documentManagerModal', 'uploadDocumentModal'];
-            modals.forEach(modalId => {
-                const modal = document.getElementById(modalId);
-                if (event.target === modal) {
-                    closeModal(modalId);
-                }
-            });
-        }
-        // Chiudi modal cliccando fuori
-        window.onclick = function(event) {
-            const modals = ['documentManagerModal', 'uploadDocumentModal'];
-            modals.forEach(modalId => {
-                const modal = document.getElementById(modalId);
-                if (event.target === modal) {
-                    closeModal(modalId);
-                }
-            });
+            const modal = document.getElementById('uploadDocumentModal');
+            if (event.target === modal) {
+                closeModal('uploadDocumentModal');
+            }
         }
 
-        // AGGIUNGI QUI IL REFRESH DOPO UPLOAD
+        // Gestione upload documento
         document.addEventListener('DOMContentLoaded', function() {
             const uploadForm = document.getElementById('uploadDocumentForm');
             if (uploadForm) {
-                uploadForm.addEventListener('submit', function() {
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2500);
+                uploadForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const formData = new FormData(this);
+                    const notificationId = this.action.match(/\/(\d+)\/upload/)[1];
+                    
+                    // Chiudi modal upload
+                    closeModal('uploadDocumentModal');
+                    
+                    // Mostra loading nel modal principale
+                    const content = document.getElementById('documentManagerContent');
+                    content.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-4xl text-purple-500"></i><p class="mt-4">Caricamento in corso...</p></div>';
+                    
+                    fetch(this.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    })
+                    .then(response => {
+                        if (response.ok) {
+                            // Ricarica il contenuto del modal
+                            setTimeout(() => openDocumentManager(notificationId), 1500);
+                        } else {
+                            alert('Errore nel caricamento del documento');
+                            openDocumentManager(notificationId);
+                        }
+                    })
+                    .catch(error => {
+                        alert('Errore: ' + error.message);
+                        openDocumentManager(notificationId);
+                    });
                 });
             }
         });

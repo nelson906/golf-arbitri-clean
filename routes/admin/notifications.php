@@ -91,3 +91,30 @@ Route::prefix('communication-settings')->name('communication-settings.')->group(
     Route::post('/test-connection', [NotificationController::class, 'testConnection'])->name('test-connection');
     Route::get('/delivery-providers', [NotificationController::class, 'deliveryProviders'])->name('providers');
 });
+
+// Tournament Notifications System (Document Management)
+Route::prefix('tournament-notifications')->name('tournament-notifications.')->group(function () {
+    // Lista e ricerca
+    Route::get('/', [NotificationController::class, 'index'])->name('index');
+    Route::get('/find-by-tournament/{tournament}', [NotificationController::class, 'findByTournament'])->name('find-by-tournament');
+    
+    // Operazioni su tournament
+    Route::post('/{tournament}/store', [NotificationController::class, 'store'])->name('store');
+    Route::post('/{tournament}/prepare', [NotificationController::class, 'prepare'])->name('prepare');
+    
+    // Document Management Routes (MESSE PRIMA per evitare conflitti)
+    Route::get('/{notification}/documents-status', [NotificationController::class, 'documentsStatus'])->name('documents-status');
+    Route::get('/{notification}/download/{type}', [NotificationController::class, 'downloadDocument'])->name('download-document');
+    Route::post('/{notification}/upload/{type}', [NotificationController::class, 'uploadDocument'])->name('upload-document');
+    Route::post('/{notification}/generate/{type}', [NotificationController::class, 'generateDocument'])->name('generate-document');
+    Route::post('/{notification}/regenerate/{type}', [NotificationController::class, 'regenerateDocument'])->name('regenerate-document');
+    Route::delete('/{notification}/document/{type}', [NotificationController::class, 'deleteDocument'])->name('delete-document');
+    
+    // Operazioni su notification
+    Route::post('/{notification}/send', [NotificationController::class, 'send'])->name('send');
+    Route::post('/{notification}/resend', [NotificationController::class, 'resend'])->name('resend');
+    Route::get('/{notification}/edit', [NotificationController::class, 'edit'])->name('edit');
+    Route::put('/{notification}', [NotificationController::class, 'update'])->name('update');
+    Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
+    Route::get('/{notification}', [NotificationController::class, 'show'])->name('show'); // MESSA PER ULTIMA
+});

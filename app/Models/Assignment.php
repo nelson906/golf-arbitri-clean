@@ -56,9 +56,9 @@ class Assignment extends Model
     {
         return $this->user();
     }
-public function assigned_by()
+public function assignedBy()
 {
-    return $this->belongsTo(User::class, 'assigned_by');
+    return $this->belongsTo(User::class, 'assigned_by_id');
 }
 
     /**

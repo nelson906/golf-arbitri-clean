@@ -32,9 +32,10 @@
             </div>
         @endif
 
+
         {{-- Filters --}}
         <div class="bg-white shadow rounded-lg p-6 mb-6">
-            <form method="GET" action="{{ route('admin.tournaments.index') }}"
+            <form method="GET" action="{{ route('admin.tournaments.index') }}" id="filterForm"
                 class="grid grid-cols-1 md:grid-cols-5 gap-4">
                 {{-- Search --}}
                 <div>
@@ -66,7 +67,7 @@
                             class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                             <option value="">Tutte le zone</option>
                             @foreach ($zones as $zone)
-                                <option value="{{ $zone->id }}" {{ request('zone_id') == $zone->id ? 'selected' : '' }}>
+                            <option value="{{ $zone->id }}" {{ request('zone_id') == $zone->id ? 'selected' : '' }}>
                                     {{ $zone->name }}
                                 </option>
                             @endforeach
@@ -281,3 +282,46 @@
         </div>
     </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('filterForm');
+        if (form) {
+            // Gestisci l'invio del form
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Crea un nuovo FormData dal form
+                const formData = new FormData(form);
+                const params = new URLSearchParams();
+                
+                // Aggiungi solo i parametri non vuoti
+                for (let [key, value] of formData.entries()) {
+                    if (value && value.trim() !== '') {
+                        params.append(key, value);
+                    }
+                }
+                
+                // Costruisci l'URL
+                const baseUrl = form.action;
+                const queryString = params.toString();
+                const finalUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
+                
+                // Naviga all'URL
+                window.location.href = finalUrl;
+            });
+            
+            // Auto-submit quando cambia un filtro
+            const inputs = form.querySelectorAll('select, input[type="text"], input[type="month"]');
+            inputs.forEach(input => {
+                if (input.type !== 'text') { // Non auto-submit per il campo di ricerca
+                    input.addEventListener('change', function() {
+                        form.dispatchEvent(new Event('submit'));
+                    });
+                }
+            });
+        }
+    });
+</script>
+@endpush

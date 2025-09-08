@@ -115,6 +115,12 @@ public function referees()
         return $this->hasMany(Availability::class);
     }
 
+    // Notifiche del torneo
+    public function notifications()
+    {
+        return $this->hasMany(TournamentNotification::class);
+    }
+
     /**
      * SCOPES
      */

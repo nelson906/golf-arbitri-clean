@@ -144,46 +144,6 @@ const AdminCalendar = ({ calendarData }) => {
                 </div>
             )}
 
-            {/* Management Legend */}
-            <div className="mb-6 bg-white rounded-lg shadow p-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Legenda Gestionale</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    <div>
-                        <h4 className="font-medium text-gray-600 mb-2">Colori (Tipo Torneo):</h4>
-                        <div className="space-y-1">
-                            <div className="flex items-center">
-                                <div className="w-4 h-4 rounded mr-2" style={{backgroundColor: '#FF6B6B'}}></div>
-                                <span>Categoria A</span>
-                            </div>
-                            <div className="flex items-center">
-                                <div className="w-4 h-4 rounded mr-2" style={{backgroundColor: '#4ECDC4'}}></div>
-                                <span>Categoria B</span>
-                            </div>
-                            <div className="flex items-center">
-                                <div className="w-4 h-4 rounded mr-2" style={{backgroundColor: '#45B7D1'}}></div>
-                                <span>Categoria C</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <h4 className="font-medium text-gray-600 mb-2">Priorità Gestionale:</h4>
-                        <div className="space-y-1">
-                            <div className="flex items-center">
-                                <div className="w-4 h-4 rounded mr-2 bg-red-100"></div>
-                                <span>Urgente</span>
-                            </div>
-                            <div className="flex items-center">
-                                <div className="w-4 h-4 rounded mr-2 bg-yellow-100"></div>
-                                <span>In Progress</span>
-                            </div>
-                            <div className="flex items-center">
-                                <div className="w-4 h-4 rounded mr-2 bg-green-100"></div>
-                                <span>Completo</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             {/* Calendar */}
             <div className="bg-white rounded-lg shadow">

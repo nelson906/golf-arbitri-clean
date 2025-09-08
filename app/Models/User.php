@@ -147,4 +147,69 @@ class User extends Authenticatable
         }
         return true; // default
     }
+
+    /**
+     * Check if user has a specific role based on user_type
+     */
+    public function hasRole($role): bool
+    {
+        // Mapping dei ruoli al user_type per compatibilità
+        $roleMapping = [
+            'admin' => ['admin', 'national_admin', 'super_admin'],
+            'zone_admin' => ['admin'], // zone_admin è un alias per admin
+            'national_admin' => ['national_admin', 'super_admin'],
+            'super_admin' => ['super_admin'],
+            'referee' => ['referee'],
+            'administrator' => ['admin', 'national_admin', 'super_admin'],
+        ];
+
+        // Se il ruolo non è mappato, verifica direttamente con user_type
+        if (!isset($roleMapping[$role])) {
+            return $this->user_type === $role;
+        }
+
+        // Verifica se user_type è incluso nel mapping del ruolo
+        return in_array($this->user_type, $roleMapping[$role]);
+    }
+
+    /**
+     * Check if user has any of the specified roles
+     */
+    public function hasAnyRole($roles): bool
+    {
+        if (is_string($roles)) {
+            $roles = [$roles];
+        }
+
+        foreach ($roles as $role) {
+            if ($this->hasRole($role)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Helper methods for user type checking
+     */
+    public function isAdmin(): bool
+    {
+        return in_array($this->user_type, ['admin', 'national_admin', 'super_admin']);
+    }
+
+    public function isReferee(): bool
+    {
+        return $this->user_type === 'referee';
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->user_type === 'super_admin';
+    }
+
+    public function isNationalAdmin(): bool
+    {
+        return in_array($this->user_type, ['national_admin', 'super_admin']);
+    }
 }

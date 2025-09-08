@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
-use App\Helpers\RefereeRoleHelper;
+use App\Http\Helpers\RefereeRoleHelper;
 
 class DocumentGenerationService
 {
@@ -109,7 +109,10 @@ public function generateConvocationForTournament(Tournament $tournament): array
 
         $this->addFooter($section, $tournament->zone);
 
-        $filename = 'convocazione-' . Str::slug($tournament->name) . '-' . date('Ymd') . '.docx';
+        // Genera nome file con pattern standard come in gestione_arbitri
+        $tournamentName = preg_replace('/[^A-Za-z0-9\-]/', '_', $tournament->name);
+        $tournamentName = substr($tournamentName, 0, 50);
+        $filename = "convocazione_{$tournament->id}_{$tournamentName}.docx";
         $tempPath = storage_path('app/temp/' . $filename);
 
         if (!is_dir(dirname($tempPath))) {
@@ -290,7 +293,12 @@ public function generateClubDocument(Tournament $tournament): array
             foreach ($sortedAssignments as $assignment) {
                 // Controllo null safety
                 if ($assignment && $assignment->user && $assignment->user->name) {
-                    $ruolo = $assignment->role === 'Direttore di Torneo' ? 'Direttore di Torneo' : 'Arbitro';
+                    // Gestione corretta di tutti i ruoli incluso Osservatore
+                    $ruolo = match($assignment->role) {
+                        'Direttore di Torneo' => 'Direttore di Torneo',
+                        'Osservatore' => 'Osservatore',
+                        default => 'Arbitro'
+                    };
                     $section->addText(
                         $assignment->user->name . "\t" . $ruolo,
                         ['bold' => true],
@@ -355,8 +363,10 @@ public function generateClubDocument(Tournament $tournament): array
                 'spacing' => 120
             ]);
 
-            // Mantieni la tua logica di salvataggio
-            $filename = 'facsimile-' . Str::slug($tournament->club->name) . '-' . Str::slug($tournament->name) . '.docx';
+            // Genera nome file con pattern standard come in gestione_arbitri
+            $tournamentName = preg_replace('/[^A-Za-z0-9\-]/', '_', $tournament->name);
+            $tournamentName = substr($tournamentName, 0, 50);
+            $filename = "lettera_circolo_{$tournament->id}_{$tournamentName}.docx";
             $tempPath = storage_path('app/temp/' . $filename);
 
             if (!is_dir(dirname($tempPath))) {
@@ -700,8 +710,10 @@ public function generateConvocationPDF(Tournament $tournament): string
         $pdf = Pdf::loadView('documents.convocation-pdf', $data);
         $pdf->setPaper('A4', 'portrait');
 
-        // Nome file
-        $filename = "convocazione_" . Str::slug($tournament->name) . ".pdf";
+        // USA LO STESSO FORMATO DEL DOCX!
+        $tournamentName = preg_replace('/[^A-Za-z0-9\-]/', '_', $tournament->name);
+        $tournamentName = substr($tournamentName, 0, 50);
+        $filename = "convocazione_{$tournament->id}_{$tournamentName}.pdf";
 
         // Salva nella zona corretta
         $zone = $this->fileStorage->getZoneFolder($tournament);
@@ -709,6 +721,7 @@ public function generateConvocationPDF(Tournament $tournament): string
 
         Storage::disk('public')->put($relativePath, $pdf->output());
 
+        Log::info('Generated PDF with filename: ' . $filename);
         return $relativePath;
 
     } catch (\Exception $e) {

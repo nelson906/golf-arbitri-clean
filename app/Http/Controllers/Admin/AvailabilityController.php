@@ -7,7 +7,7 @@ use App\Models\Tournament;
 use App\Models\Availability;
 use App\Models\Zone;
 use App\Models\TournamentType;
-use App\Helpers\RefereeLevelsHelper;
+use App\Http\Helpers\RefereeLevelsHelper;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\View\View;

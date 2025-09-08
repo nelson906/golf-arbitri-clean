@@ -44,7 +44,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class InstitutionalEmail extends Model
 {
     use HasFactory;
-        protected $table = 'institutional_addresses';
 
     /**
      * Available categories for institutional emails

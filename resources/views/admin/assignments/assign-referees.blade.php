@@ -60,10 +60,19 @@
     {{-- Arbitri Già Assegnati --}}
     @if($assignedReferees && $assignedReferees->count() > 0)
     <div class="bg-white rounded-lg shadow mb-6">
-        <div class="px-6 py-4 border-b border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h2 class="text-lg font-semibold text-gray-900">
                 ✅ Arbitri Già Assegnati ({{ $assignedReferees->count() }})
             </h2>
+            <a href="{{ route('admin.tournaments.show-assignment-form', $tournament) }}"
+               class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors text-sm inline-flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                    </path>
+                </svg>
+                Invia Notifiche
+            </a>
         </div>
         <div class="p-6">
             <div class="space-y-2">

@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Admin\TournamentController;
-use App\Http\Controllers\Admin\TournamentTypeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -10,31 +9,15 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Gestione completa tornei per admin (Zone Admin, National Admin, Super Admin)
 | Tutte le routes sono prefissate con 'admin.' nel name
-*/
-Route::resource('tournaments', TournamentController::class);
-Route::get('tournaments/{tournament}/assignments', [TournamentController::class, 'assignmentsForm'])->name('tournaments.assignments');
-
+|*/
 Route::prefix('tournaments')->name('tournaments.')->group(function () {
-    Route::resource('tournaments', App\Http\Controllers\Admin\TournamentController::class);
-        // Route::get('tournaments', function () {
-        //     return view('admin.placeholder', ['title' => 'Tournaments']);
-        // })->name('tournaments.index');
-
-    // CRUD Base
-    Route::get('/', [TournamentController::class, 'index'])->name('index');
-    Route::get('/create', [TournamentController::class, 'create'])->name('create');
-    Route::post('/', [TournamentController::class, 'store'])->name('store');
-    Route::get('/{tournament}', [TournamentController::class, 'show'])->name('show');
-    Route::get('/{tournament}/edit', [TournamentController::class, 'edit'])->name('edit');
-    Route::put('/{tournament}', [TournamentController::class, 'update'])->name('update');
-    Route::delete('/{tournament}', [TournamentController::class, 'destroy'])->name('destroy');
+    // CRUD Base using resource
+    Route::resource('/', TournamentController::class)->parameters(['' => 'tournament']);
 
     // Status Management
     Route::post('/{tournament}/status', [TournamentController::class, 'changeStatus'])->name('change-status');
 
-    // Calendar Views
-    Route::get('/calendar/view', [TournamentController::class, 'calendar'])->name('calendar');
-    Route::get('/calendar/data', [TournamentController::class, 'calendarData'])->name('calendar-data');
+    // Calendar Views - removed, using the unified calendar in web.php
 
     // Bulk Operations
     Route::post('/bulk-action', [TournamentController::class, 'bulkAction'])->name('bulk-action');

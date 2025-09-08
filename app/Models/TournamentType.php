@@ -18,6 +18,10 @@ class TournamentType extends Model
         'code',
         'is_national',
         'description',
+        'calendar_color',
+        'short_name',
+        'is_active',
+        'sort_order'
     ];
 
     protected $casts = [
@@ -44,7 +48,7 @@ class TournamentType extends Model
      */
     public function scopeOrdered($query)
     {
-        return $query->orderBy('name'); // Solo nome
+        return $query->orderBy('sort_order')->orderBy('name');
     }
 
     /**

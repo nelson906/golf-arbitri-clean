@@ -9,7 +9,7 @@ use App\Models\Zone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
-use App\Helpers\Http\RefereeLevelsHelper;
+use App\Http\Helpers\RefereeLevelsHelper;
 
 class UserController extends Controller
 {

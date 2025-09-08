@@ -55,7 +55,7 @@ class CoreDataSeeder extends Seeder
 
     private function seedInstitutionalMails(): void
     {
-        DB::table('institutional_addresses')->insert([
+        DB::table('institutional_emails')->insert([
             // FIG
             ['name' => 'Federazione Italiana Golf - Segreteria', 'email' => 'segreteria@federgolf.it', 'category' => 'FIG', 'is_global' => true, 'zone_id' => null, 'is_active' => true],
             ['name' => 'FIG - Direzione Tecnica', 'email' => 'tecnica@federgolf.it', 'category' => 'FIG', 'is_global' => true, 'zone_id' => null, 'is_active' => true],

@@ -64,12 +64,16 @@ class TournamentController extends Controller
         $isAdmin = $this->isAdmin($user);
         $isNationalReferee = $this->isNationalReferee($user);
 
-        // Query base con relazioni necessarie
-        $query = Tournament::with(['tournamentType', 'zone', 'club']);
+        // Query base con relazioni necessarie ottimizzate
+        $query = Tournament::with([
+            'tournamentType:id,name,short_name,calendar_color',
+            'club:id,name,zone_id',
+            'club.zone:id,name'
+        ]);
 
         // Load additional relations based on user type
         if ($isAdmin) {
-            $query->with(['assignments', 'availabilities']);
+            $query->withCount(['assignments', 'availabilities']);
         }
 
         // 🔐 STESSO FILTRO ACCESSO di index()
@@ -84,6 +88,27 @@ class TournamentController extends Controller
             }
         }
 
+        // Filtri opzionali per ottimizzare il caricamento
+        $currentYear = $request->get('year', now()->year);
+        $startDate = Carbon::create($currentYear, 1, 1)->startOfYear();
+        $endDate = Carbon::create($currentYear, 12, 31)->endOfYear();
+        
+        $query->whereBetween('start_date', [$startDate, $endDate]);
+        
+        // Filtro per zona
+        if ($request->filled('zone_id')) {
+            $query->whereHas('club', function($q) use ($request) {
+                $q->where('zone_id', $request->zone_id);
+            });
+        }
+        
+        // Filtro per tipo torneo
+        if ($request->filled('type_id')) {
+            $query->where('tournament_type_id', $request->type_id);
+        }
+        
+        $query->orderBy('start_date');
+        
         $tournaments = $query->get();
 
         // 👤 USER-SPECIFIC DATA
@@ -282,9 +307,9 @@ class TournamentController extends Controller
                 'can_apply' => $this->canApply($tournament, $user),
                 'personal_status' => $isAssigned ? 'assigned' : ($isAvailable ? 'available' : 'can_apply'),
 
-                // Admin-specific
-                'availabilities_count' => $isAdmin ? $tournament->availabilities()->count() : 0,
-                'assignments_count' => $isAdmin ? $tournament->assignments()->count() : 0,
+                // Admin-specific - usa i count già caricati se disponibili
+                'availabilities_count' => $isAdmin ? ($tournament->availabilities_count ?? $tournament->availabilities()->count()) : 0,
+                'assignments_count' => $isAdmin ? ($tournament->assignments_count ?? $tournament->assignments()->count()) : 0,
                 'required_referees' => $tournament->required_referees ?? 1,
                 'max_referees' => $tournament->max_referees ?? 4,
                 'management_priority' => $isAdmin ? $this->getManagementPriority($tournament) : 'none',
@@ -346,35 +371,8 @@ class TournamentController extends Controller
     private function getEventColor($tournament, $isAssigned = false, $isAvailable = false, $isAdmin = false): string
     {
         if ($isAdmin) {
-            // Admin: colore basato su CATEGORIA TORNEO (logica originale)
-        // Usa short_name per mappatura più efficiente
-        $shortName = $tournament->tournamentType->short_name ?? 'default';
-
-        return match ($shortName) {
-            // 🟢 GARE GIOVANILI (Verde chiaro)
-            'G12', 'G14', 'G16', 'G18' => '#96CEB4',  // Verde - Gare Giovanili
-            'S14', 'T18' => '#96CEB4',                 // Verde - Circuiti Giovanili
-            'USK' => '#96CEB4',                        // Verde - US Kids
-
-            // 🔵 GARE NORMALI (Blu)
-            'GN36', 'GN54', 'GN72' => '#45B7D1',      // Blu - Gare normali
-            'MP' => '#45B7D1',                         // Blu - Match Play
-            'EVEN' => '#45B7D1',                       // Blu - Eventi
-
-            // 🟡 TROFEI (Teal)
-            'TG', 'TGF' => '#4ECDC4',                  // Teal - Trofei Giovanili
-            'TR', 'TNZ' => '#4ECDC4',                  // Teal - Trofei Regionali/Nazionali
-
-            // 🔴 CAMPIONATI (Rosso)
-            'CR', 'CNZ', 'CI' => '#FF6B6B',           // Rosso - Campionati
-
-            // 🟠 PROFESSIONALI (Amber)
-            'PRO', 'PATR' => '#F59E0B',               // Amber - Professionistiche/Patrocinate
-            'GRS' => '#F59E0B',                        // Amber - Regolamento Speciale
-
-            // 🔵 DEFAULT
-            default => '#3B82F6'                       // Blu default
-            };
+            // Admin: usa il colore dal database
+            return $tournament->tournamentType->calendar_color ?? '#3B82F6';
         } else {
             // Referee: colore basato su personal status
             if ($isAssigned) return '#10B981';  // Green - Assigned

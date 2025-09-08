@@ -15,17 +15,11 @@
 
 {{-- Super Admin Menu Items --}}
 @if(auth()->user()->user_type === 'super_admin')
-    <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-
         {{-- Dashboard --}}
         <x-nav-link :href="route('super-admin.institutional-emails.index')" :active="request()->routeIs('super-admin.*')">
             🏠 Dashboard SuperAdmin
         </x-nav-link>
 
-        {{-- Gestione Utenti --}}
-        <x-nav-link :href="route('super-admin.users.index')" :active="request()->routeIs('super-admin.users.*')">
-            👥 Gestione Utenti
-        </x-nav-link>
 
         {{-- Zone Management --}}
         <x-nav-link :href="route('super-admin.zones.index')" :active="request()->routeIs('super-admin.zones.*')">
@@ -51,13 +45,10 @@
         <x-nav-link :href="route('super-admin.system.logs')" :active="request()->routeIs('super-admin.system.*')">
             📊 Monitoraggio Sistema
         </x-nav-link>
-    </div>
 @endif
 
 {{-- Admin Menu Items --}}
-@if(in_array(auth()->user()->user_type ?? '', ['admin', 'national_admin', 'super_admin']))
-    <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-
+@if(in_array(auth()->user()->user_type ?? '', ['admin', 'national_admin', 'super_admin']) && auth()->user()->user_type !== 'super_admin')
         {{-- Dashboard Admin --}}
         <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">
             🏠 Dashboard Admin
@@ -69,7 +60,7 @@
         </x-nav-link>
 
         {{-- Calendar --}}
-        <x-nav-link :href="route('tournaments.calendar')" :active="request()->routeIs('tournaments.calendar', 'admin.assignments.calendar')">
+        <x-nav-link :href="route('tournaments.calendar')" :active="request()->routeIs('tournaments.calendar')">
             📅 Calendario
         </x-nav-link>
 
@@ -109,9 +100,9 @@
         </x-nav-link>
 
         {{-- ✅ STATISTICS MENU - AGGIUNTO --}}
-        {{-- <x-nav-link :href="route('admin.statistics.dashboard')" :active="request()->routeIs('admin.statistics.*')">
+        <x-nav-link :href="route('admin.statistics.dashboard')" :active="request()->routeIs('admin.statistics.*')">
             📊 Statistiche
-        </x-nav-link> --}}
+        </x-nav-link>
 
         {{-- Reports --}}
         {{-- <x-nav-link :href="route('reports.dashboard')" :active="request()->routeIs('reports.*')">
@@ -132,13 +123,47 @@
         {{-- <x-nav-link :href="route('admin.settings')" :active="request()->routeIs('admin.settings')">
             ⚙️ Impostazioni
         </x-nav-link> --}}
-    </div>
 @endif
+
+{{-- Menu Amministratore per Super Admin --}}
+@if(auth()->user()->user_type === 'super_admin')
+    <x-dropdown align="left" width="48">
+        <x-slot name="trigger">
+            <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
+                <div>👨‍💼 Amministratore</div>
+                <div class="ml-1">
+                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+            </button>
+        </x-slot>
+        <x-slot name="content">
+            <x-dropdown-link :href="route('admin.dashboard')">
+                🏠 Dashboard Admin
+            </x-dropdown-link>
+            <x-dropdown-link :href="route('admin.tournaments.index')">
+                📋 Gestione Tornei
+            </x-dropdown-link>
+            <x-dropdown-link :href="route('admin.users.index')">
+                👨‍💼 Gestione Arbitri
+            </x-dropdown-link>
+            <x-dropdown-link :href="route('admin.assignments.index')">
+                📝 Assegnazioni
+            </x-dropdown-link>
+            <x-dropdown-link :href="route('admin.clubs.index')">
+                🏌️ Gestione Circoli
+            </x-dropdown-link>
+            <x-dropdown-link :href="route('admin.statistics.dashboard')">
+                📊 Statistiche
+            </x-dropdown-link>
+        </x-slot>
+    </x-dropdown>
+@endif
+
 
 {{-- User (Referee) Menu Items --}}
 @if(auth()->user()->user_type === 'referee')
-    <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-
         {{-- User Dashboard --}}
         <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
             🏠 La Mia Dashboard
@@ -156,27 +181,14 @@
 
         {{-- Personal Calendar --}}
         <x-nav-link :href="route('user.availability.calendar')" :active="request()->routeIs('user.availability.calendar')">
-            📅 Mio Calendario
+            📅 Il Mio Calendario
         </x-nav-link>
 
-        {{-- Assignments - TODO: create these routes --}}
-        {{-- <x-nav-link :href="route('user.assignments.index')" :active="request()->routeIs('user.assignments.*')">
-            📋 Le Mie Assegnazioni
-        </x-nav-link> --}}
-
-        {{-- Applications - TODO: create these routes --}}
-        {{-- <x-nav-link :href="route('user.applications.index')" :active="request()->routeIs('user.applications.*')">
-            📋 Le Mie Candidature
-        </x-nav-link> --}}
-
-        {{-- Documents - TODO: create these routes --}}
-        {{-- <x-nav-link :href="route('user.documents.index')" :active="request()->routeIs('user.documents.*')">
-            📁 I Miei Documenti
-        </x-nav-link> --}}
-    </div>
+        {{-- Simulatore Tempi Partenza --}}
+        <x-nav-link :href="route('user.quadranti.index')" :active="request()->routeIs('user.quadranti.*')">
+            ⏰ Simulatore Tempi Partenza
+        </x-nav-link>
 @endif
-                </div>
-            </div>
 
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ml-6">
@@ -194,18 +206,34 @@
                     </x-slot>
 
                     <x-slot name="content">
+                        {{-- User Info Header --}}
+                        <div class="px-4 py-2 border-b border-gray-200">
+                            <div class="text-sm font-medium text-gray-900">{{ Auth::user()->name }}</div>
+                            <div class="text-xs text-gray-500">{{ Auth::user()->email }}</div>
+                            <div class="text-xs text-gray-400 mt-1">
+                                @if(Auth::user()->user_type === 'super_admin')
+                                    Super Amministratore
+                                @elseif(Auth::user()->user_type === 'national_admin')
+                                    Amministratore Nazionale
+                                @elseif(Auth::user()->user_type === 'admin')
+                                    Amministratore di Zona
+                                @else
+                                    Arbitro
+                                @endif
+                            </div>
+                        </div>
+
                         <x-dropdown-link :href="route('profile.edit')">
-                            {{ __('Profile') }}
+                            👤 Profilo
                         </x-dropdown-link>
 
                         <!-- Authentication -->
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
-
                             <x-dropdown-link :href="route('logout')"
                                     onclick="event.preventDefault();
                                                 this.closest('form').submit();">
-                                {{ __('Log Out') }}
+                                🚪 Esci
                             </x-dropdown-link>
                         </form>
                     </x-slot>
@@ -310,9 +338,9 @@
                 </x-responsive-nav-link>
 
                 {{-- ✅ STATISTICS MOBILE MENU - AGGIUNTO --}}
-                {{-- <x-responsive-nav-link :href="route('admin.statistics.dashboard')" :active="request()->routeIs('admin.statistics.*')">
+                <x-responsive-nav-link :href="route('admin.statistics.dashboard')" :active="request()->routeIs('admin.statistics.*')">
                     📊 Statistiche
-                </x-responsive-nav-link> --}}
+                </x-responsive-nav-link>
 
                 {{-- <x-responsive-nav-link :href="route('reports.dashboard')" :active="request()->routeIs('reports.*')">
                     📈 Report
@@ -341,6 +369,9 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('user.availability.calendar')" :active="request()->routeIs('user.availability.calendar')">
                     📅 Mio Calendario Personale
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('user.quadranti.index')" :active="request()->routeIs('user.quadranti.*')">
+                    ⏰ Simulatore Tempi Partenza
                 </x-responsive-nav-link>
                 {{-- TODO: create these routes
                 <x-responsive-nav-link :href="route('user.assignments.index')" :active="request()->routeIs('user.assignments.*')">

@@ -57,6 +57,6 @@ class DashboardController extends Controller
                 ->get(),
         ];
 
-        return view('referee.dashboard', compact('stats'));
+        return view('dashboard', compact('stats'));
     }
 }

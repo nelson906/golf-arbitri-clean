@@ -51,6 +51,9 @@ Route::middleware(['auth'])->group(function () {
 // Authentication routes (Laravel Breeze/standard)
 require __DIR__ . '/auth.php';
 
+// Super Admin routes
+require __DIR__ . '/super-admin.php';
+
 /*
 |--------------------------------------------------------------------------
 | ADMIN ROUTES - Middleware: admin_or_superadmin
@@ -139,6 +142,7 @@ Route::middleware(['auth'])->group(function () {
         
         // Load modular user routes
         require __DIR__.'/user/availability.php';
+        require __DIR__.'/user/quadranti.php';
     });
 });
 
