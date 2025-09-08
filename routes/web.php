@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CommunicationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController;
@@ -79,29 +80,35 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
         //     return view('admin.placeholder', ['title' => 'Assignments']);
         // })->name('assignments.index');
 
-        Route::get(uri: 'communications', action: function () {
-            return view('admin.placeholder', ['title' => 'Communications']);
-        })->name('communications.index');
+        // Communications routes
+        Route::prefix('communications')->name('communications.')->group(function () {
+            Route::get('/', [CommunicationController::class, 'index'])->name('index');
+            Route::get('/create', [CommunicationController::class, 'create'])->name('create');
+            Route::post('/', [CommunicationController::class, 'store'])->name('store');
+            Route::get('/{communication}', [CommunicationController::class, 'show'])->name('show');
+            Route::delete('/{communication}', [CommunicationController::class, 'destroy'])->name('destroy');
+            Route::patch('/{communication}/publish', [CommunicationController::class, 'publish'])->name('publish');
+            Route::patch('/{communication}/expire', [CommunicationController::class, 'expire'])->name('expire');
+        });
 
-        Route::get('letterheads', action: function () {
-            return view('admin.placeholder', ['title' => 'Letterheads']);
-        })->name('letterheads.index');
 
-        // Route::get('clubs', action: function () {
-        //     return view('admin.placeholder', ['title' => 'Clubs']);
-        // })->name('clubs.index');
-
-        Route::get(uri: 'letter-templates', action: function () {
-            return view('admin.placeholder', ['title' => 'Templates']);
-        })->name('letter-templates.index');
+        // Letter Templates Management
+        Route::prefix('letter-templates')->name('letter-templates.')->group(function () {
+            Route::get('/', [App\Http\Controllers\Admin\LetterTemplateController::class, 'index'])->name('index');
+            Route::get('/create', [App\Http\Controllers\Admin\LetterTemplateController::class, 'create'])->name('create');
+            Route::post('/', [App\Http\Controllers\Admin\LetterTemplateController::class, 'store'])->name('store');
+            Route::get('/{template}', [App\Http\Controllers\Admin\LetterTemplateController::class, 'show'])->name('show');
+            Route::get('/{template}/edit', [App\Http\Controllers\Admin\LetterTemplateController::class, 'edit'])->name('edit');
+            Route::put('/{template}', [App\Http\Controllers\Admin\LetterTemplateController::class, 'update'])->name('update');
+            Route::delete('/{template}', [App\Http\Controllers\Admin\LetterTemplateController::class, 'destroy'])->name('destroy');
+            Route::post('/{template}/duplicate', [App\Http\Controllers\Admin\LetterTemplateController::class, 'duplicate'])->name('duplicate');
+            Route::get('/{template}/preview', [App\Http\Controllers\Admin\LetterTemplateController::class, 'preview'])->name('preview');
+            Route::post('/{template}/toggle-active', [App\Http\Controllers\Admin\LetterTemplateController::class, 'toggleActive'])->name('toggle-active');
+        });
 
         Route::get(uri: 'tournament-notifications', action: function () {
             return view('admin.placeholder', ['title' => 'Tournament-notifications']);
         })->name('tournament-notifications.index');
-
-        Route::get(uri: 'documents', action: function () {
-            return view('admin.placeholder', ['title' => 'Documents']);
-        })->name('documents.index');
 
         Route::get(uri: 'settings', action: function () {
             return view('admin.placeholder', ['title' => 'Settings']);
@@ -120,10 +127,11 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
         require __DIR__ . '/admin/dashboard.php';
         require __DIR__ . '/admin/statistic.php';
         require __DIR__ . '/admin/monitoring.php';
+        require __DIR__ . '/admin/letterheads.php';
         require __DIR__ . '/admin/clubs.php';
-        require __DIR__.'/admin/notifications.php';
+        require __DIR__ . '/admin/notifications.php';
         require __DIR__ . '/admin/reports.php';
-        // require __DIR__.'/referee/dashboard.php';   // Se non esiste
+        require __DIR__ . '/admin/documents.php';
 
     });
 });
@@ -139,10 +147,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', function () {
             return redirect()->route('user.availability.index');
         });
-        
+
         // Load modular user routes
         require __DIR__.'/user/availability.php';
         require __DIR__.'/user/quadranti.php';
+        require __DIR__.'/user/documents.php';
     });
 });
 

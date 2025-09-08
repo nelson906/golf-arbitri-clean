@@ -116,7 +116,7 @@
                                 <x-dropdown-link :href="route('admin.letterheads.index')">
                                     📄 Carta Intestata
                                 </x-dropdown-link>
-                                <x-dropdown-link :href="route('admin.communications.index')">
+                                <x-dropdown-link :href="route('communications.index')">
                                     📢 Comunicazioni
                                 </x-dropdown-link>
                                 <x-dropdown-link :href="route('admin.tournament-notifications.index')">

@@ -80,7 +80,7 @@
         </x-nav-link>
 
         {{-- Communications --}}
-        <x-nav-link :href="route('admin.communications.index')" :active="request()->routeIs('admin.communications.*')">
+        <x-nav-link :href="route('communications.index')" :active="request()->routeIs('communications.*')">
             📢 Comunicazioni
         </x-nav-link>
 
@@ -321,7 +321,7 @@
                 <x-responsive-nav-link :href="route('admin.clubs.index')" :active="request()->routeIs('admin.clubs.*')">
                     🏌️ Gestione Circoli
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.communications.index')" :active="request()->routeIs('admin.communications.*')">
+                <x-responsive-nav-link :href="route('communications.index')" :active="request()->routeIs('communications.*')">
                     📢 Comunicazioni
                 </x-responsive-nav-link>
 

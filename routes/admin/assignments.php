@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Gestione completa assegnazioni arbitri ai tornei
 | Separate dalle tournament routes per maggiore modularità
-*/
-Route::resource('assignments', AssignmentController::class);
+|*/
+// Route::resource('assignments', AssignmentController::class); // Commentato perché le route sono definite manualmente sotto
 
 Route::prefix('assignments')->name('assignments.')->group(function () {
 

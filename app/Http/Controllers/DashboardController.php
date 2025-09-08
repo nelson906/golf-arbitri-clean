@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Communication;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -38,6 +39,22 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
         
+        // Get active communications for user's zone or global
+        $activeCommunications = Communication::with(['author', 'zone'])
+            ->where('status', 'published')
+            ->where(function($q) use ($user) {
+                $q->whereNull('zone_id') // Global communications
+                  ->orWhere('zone_id', $user->zone_id); // User's zone communications
+            })
+            ->where(function($q) {
+                $q->whereNull('expires_at')
+                  ->orWhere('expires_at', '>', now());
+            })
+            ->orderBy('priority', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+        
         // Get user stats
         $stats = [
             'availabilities_count' => $user->availabilities()->count(),
@@ -57,6 +74,6 @@ class DashboardController extends Controller
                 ->get(),
         ];
 
-        return view('dashboard', compact('stats'));
+        return view('dashboard', compact('stats', 'activeCommunications'));
     }
 }
