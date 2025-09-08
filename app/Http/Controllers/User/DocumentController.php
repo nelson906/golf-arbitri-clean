@@ -66,7 +66,7 @@ class DocumentController extends Controller
                                 ->toArray(),
         ];
 
-        return view('documents.index', compact('documents', 'stats'));
+        return view('user.documents.index', compact('documents', 'stats'));
     }
 
     /**

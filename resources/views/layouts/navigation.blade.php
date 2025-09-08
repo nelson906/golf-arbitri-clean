@@ -188,6 +188,11 @@
         <x-nav-link :href="route('user.quadranti.index')" :active="request()->routeIs('user.quadranti.*')">
             ⏰ Simulatore Tempi Partenza
         </x-nav-link>
+        
+        {{-- Documents --}}
+        <x-nav-link :href="route('user.documents.index')" :active="request()->routeIs('user.documents.*')">
+            📁 I Miei Documenti
+        </x-nav-link>
 @endif
 
             <!-- Settings Dropdown -->
@@ -380,10 +385,10 @@
                 <x-responsive-nav-link :href="route('user.applications.index')" :active="request()->routeIs('user.applications.*')">
                     📋 Le Mie Candidature
                 </x-responsive-nav-link>
+                --}}
                 <x-responsive-nav-link :href="route('user.documents.index')" :active="request()->routeIs('user.documents.*')">
                     📁 I Miei Documenti
                 </x-responsive-nav-link>
-                --}}
             @endif
         @endauth
     </div>

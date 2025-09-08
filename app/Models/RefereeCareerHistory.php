@@ -9,6 +9,8 @@ class RefereeCareerHistory extends Model
 {
     use HasFactory;
 
+    protected $table = 'referee_career_history';
+
     protected $fillable = [
         'user_id', 'tournaments_by_year', 'assignments_by_year',
         'availabilities_by_year', 'level_changes_by_year',

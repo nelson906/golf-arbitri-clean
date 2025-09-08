@@ -193,7 +193,7 @@ php artisan tinker --execute="
     echo 'Tournaments: ' . \App\Models\Tournament::count() . PHP_EOL;
     echo 'Assignments: ' . \App\Models\Assignment::count() . PHP_EOL;
     echo 'Availabilities: ' . \App\Models\Availability::count() . PHP_EOL;
-    echo 'Availabilities: ' . \App\Models\RefereeCareerHistory::count() . PHP_EOL;
+    echo 'Referee Career History: ' . \App\Models\RefereeCareerHistory::count() . PHP_EOL;
 "
 
 echo ""
