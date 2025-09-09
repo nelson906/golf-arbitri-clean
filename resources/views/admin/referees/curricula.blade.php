@@ -57,10 +57,10 @@
                                 <option value="desc" {{ request('direction') === 'desc' ? 'selected' : '' }}>Decrescente</option>
                             </select>
 
-                            <button type="submit"
+                            {{-- <button type="submit"
                                     class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 Filtra
-                            </button>
+                            </button> --}}
 
                             @if(request()->anyFilled(['search', 'zone', 'level', 'sort', 'direction']))
                                 <a href="{{ route('admin.referees.curricula', ['year' => $year]) }}"
@@ -164,4 +164,22 @@
         </div>
     </div>
 </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Autosubmit dei filtri select
+        document.querySelectorAll('select').forEach(select => {
+            select.addEventListener('change', () => {
+                select.form.submit();
+            });
+        });
+
+        // Submit al press di Enter nel campo search
+        document.querySelector('input[name="search"]').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.form.submit();
+            }
+        });
+    });
+</script>
 @endsection
