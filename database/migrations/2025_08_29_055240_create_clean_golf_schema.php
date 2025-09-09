@@ -189,6 +189,7 @@ return new class extends Migration
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
             $table->foreignId('assignment_id')->nullable()->constrained()->onDelete('cascade');
+            $table->foreignId('tournament_id')->nullable()->constrained()->onDelete('cascade');
             $table->enum('recipient_type', ['referee', 'club', 'institutional']);
             $table->string('recipient_email')->nullable();
             $table->string('recipient_name')->nullable();
@@ -210,6 +211,9 @@ return new class extends Migration
             $table->index(['assignment_id', 'recipient_type']);
             $table->index(['status', 'created_at']);
             $table->index(['recipient_email', 'status']);
+            $table->index(['tournament_id', 'recipient_type']);
+            $table->index(['status', 'sent_at']);
+
             // $table->index(['status', 'priority', 'created_at'], 'idx_notifications_queue');
             // $table->index(['recipient_type', 'created_at'], 'idx_notifications_type_date');
         });
@@ -417,6 +421,26 @@ return new class extends Migration
             $table->index('author_id', 'idx_communications_author');
         });
 
+        Schema::create('tournament_notifications', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('tournament_id')->constrained()->onDelete('cascade');
+            $table->enum('status', ['sent', 'partial', 'failed', 'pending'])->default('pending');
+            $table->integer('total_recipients')->default(0);
+            $table->text('referee_list')->nullable();
+            $table->timestamp('sent_at')->nullable();
+            $table->foreignId('sent_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->json('details')->nullable();
+            $table->json('templates_used')->nullable();
+            $table->text('error_message')->nullable();
+            $table->json('attachments')->nullable();
+            $table->timestamps();
+
+            $table->index(['tournament_id', 'status']);
+            $table->index(['sent_at']);
+            $table->index(['status']);
+        });
+
+
         $this->seedBasicData();
     }
 
@@ -436,6 +460,7 @@ return new class extends Migration
         Schema::dropIfExists('letter_templates');
         Schema::dropIfExists('documents');
         Schema::dropIfExists('communications');
+        Schema::dropIfExists('tournament_notifications');
     }
 
     private function seedBasicData(): void
