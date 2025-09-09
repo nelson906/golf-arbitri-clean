@@ -239,8 +239,8 @@ class AssignmentController extends Controller
                     if (Schema::hasColumn('assignments', 'assigned_at')) {
                         $data['assigned_at'] = now();
                     }
-                    if (Schema::hasColumn('assignments', 'assigned_by')) {
-                        $data['assigned_by'] = auth()->id();
+                    if (Schema::hasColumn('assignments', 'assignedBy')) {
+                        $data['assignedBy'] = auth()->id();
                     }                    // Aggiungi status se il campo esiste
                     if (Schema::hasColumn('assignments', 'status')) {
                         $data['status'] = 'pending';
@@ -413,7 +413,7 @@ class AssignmentController extends Controller
             'user',
             'tournament.club',
             'tournament.tournamentType',
-            'assigned_by'
+            'assignedBy'
         ])
             ->find($assignmentId);
 
