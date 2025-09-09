@@ -156,6 +156,36 @@ return new class extends Migration
             $table->index(['tournament_type_id', 'status']);
         });
 
+        Schema::create('assignments', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('tournament_id')->constrained()->onDelete('cascade');
+            $table->enum('role', ['Direttore di Torneo', 'Arbitro', 'Osservatore']);
+            $table->string('status', 50)->default('assigned');
+            $table->boolean('is_confirmed')->default(false);
+            $table->timestamp('confirmed_at')->nullable();
+            $table->text('notes')->nullable();
+            $table->foreignId('assigned_by')->constrained('users');
+            $table->timestamp('assigned_at');
+            $table->timestamps();
+
+            $table->unique(['user_id', 'tournament_id']);
+            $table->index(['tournament_id', 'role']);
+            $table->index(['user_id', 'assigned_at']);
+        });
+
+        Schema::create('availabilities', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('tournament_id')->constrained()->onDelete('cascade');
+            $table->text('notes')->nullable();
+            $table->timestamp('submitted_at');
+            $table->timestamps();
+
+            $table->unique(['user_id', 'tournament_id']);
+            $table->index(['tournament_id', 'submitted_at']);
+        });
+
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
             $table->foreign('assignment_id')
@@ -185,57 +215,6 @@ return new class extends Migration
             $table->index(['recipient_email', 'status']);
             // $table->index(['status', 'priority', 'created_at'], 'idx_notifications_queue');
             // $table->index(['recipient_type', 'created_at'], 'idx_notifications_type_date');
-        });
-
-        Schema::create('assignments', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('tournament_id')->constrained()->onDelete('cascade');
-            $table->enum('role', ['Direttore di Torneo', 'Arbitro', 'Osservatore']);
-            $table->text('notes')->nullable();
-            $table->foreignId('assigned_by')->constrained('users');
-            $table->timestamp('assigned_at');
-            $table->timestamps();
-
-            $table->unique(['user_id', 'tournament_id']);
-            $table->index(['tournament_id', 'role']);
-            $table->index(['user_id', 'assigned_at']);
-        });
-
-        Schema::create('availabilities', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('tournament_id')->constrained()->onDelete('cascade');
-            $table->text('notes')->nullable();
-            $table->timestamp('submitted_at');
-            $table->timestamps();
-
-            $table->unique(['user_id', 'tournament_id']);
-            $table->index(['tournament_id', 'submitted_at']);
-        });
-
-        Schema::create('notifications', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('tournament_id')->constrained()->onDelete('cascade');
-            $table->enum('type', ['availability_confirmation', 'assignment_notification', 'assignment_with_convocation']);
-
-            // Destinatari
-            $table->json('recipients'); // [{type: 'referee', email: '...', name: '...'}, ...]
-            $table->json('institutional_recipients')->nullable(); // Indirizzi istituzionali
-
-            // Contenuto
-            $table->string('subject');
-            $table->text('message');
-            $table->json('attachments')->nullable(); // PDF generati
-
-            // Invio
-            $table->enum('status', ['pending', 'sent', 'failed'])->default('pending');
-            $table->timestamp('sent_at')->nullable();
-            $table->integer('total_recipients')->default(0);
-            $table->text('error_message')->nullable();
-
-            $table->foreignId('sent_by')->constrained('users');
-            $table->timestamps();
         });
 
         Schema::create('notification_recipients', function (Blueprint $table) {
@@ -386,6 +365,61 @@ return new class extends Migration
             $table->index('file_size', 'idx_documents_size');
         });
 
+        Schema::create('communications', function (Blueprint $table) {
+            $table->id();
+
+            // Contenuto principale
+            $table->string('title');
+            $table->text('content');
+
+            // Tipologia e classificazione
+            $table->enum('type', ['announcement', 'alert', 'maintenance', 'info'])
+                ->default('info')
+                ->comment('Tipo di comunicazione');
+
+            $table->enum('status', ['draft', 'published', 'expired'])
+                ->default('draft')
+                ->comment('Stato della comunicazione');
+
+            $table->enum('priority', ['low', 'normal', 'high', 'urgent'])
+                ->default('normal')
+                ->comment('Priorità della comunicazione');
+
+            // Relazioni
+            $table->foreignId('zone_id')
+                ->nullable()
+                ->constrained('zones')
+                ->onDelete('cascade')
+                ->comment('Zona specifica (null = globale)');
+
+            $table->foreignId('author_id')
+                ->constrained('users')
+                ->onDelete('cascade')
+                ->comment('Autore della comunicazione');
+
+            // Programmazione temporale
+            $table->timestamp('scheduled_at')
+                ->nullable()
+                ->comment('Quando pubblicare (null = subito)');
+
+            $table->timestamp('expires_at')
+                ->nullable()
+                ->comment('Quando far scadere (null = mai)');
+
+            $table->timestamp('published_at')
+                ->nullable()
+                ->comment('Quando è stata effettivamente pubblicata');
+
+            $table->timestamps();
+
+            // Indici per performance
+            $table->index(['status', 'type'], 'idx_communications_status_type');
+            $table->index(['zone_id', 'status'], 'idx_communications_zone_status');
+            $table->index('scheduled_at', 'idx_communications_scheduled');
+            $table->index(['expires_at', 'status'], 'idx_communications_expires_status');
+            $table->index('author_id', 'idx_communications_author');
+        });
+
         $this->seedBasicData();
     }
 
@@ -404,6 +438,7 @@ return new class extends Migration
         Schema::dropIfExists('letterheads');
         Schema::dropIfExists('letter_templates');
         Schema::dropIfExists('documents');
+        Schema::dropIfExists('communications');
     }
 
     private function seedBasicData(): void
