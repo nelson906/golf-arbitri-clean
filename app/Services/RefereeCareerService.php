@@ -28,7 +28,7 @@ class RefereeCareerService
                 'tournaments' => [$currentYear => $currentYearData['tournaments']],
                 'assignments' => [$currentYear => $currentYearData['assignments']],
                 'availability' => [],
-                'career_levels' => [$currentYear => ['level' => $user->level, 'effective_date' => now()->startOfYear()]],
+                'career_levels' => [$currentYear => ['level' => $referee->level, 'effective_date' => now()->startOfYear()->format('Y-m-d')]],
                 'career_summary' => [
                     'total_assignments' => count($currentYearData['assignments']),
                     'total_years' => 1,
@@ -38,11 +38,11 @@ class RefereeCareerService
         }
 
         $historicalData = [
-            'tournaments' => json_decode($careerHistory->tournaments, true),
-            'assignments' => json_decode($careerHistory->assignments, true),
-            'availability' => json_decode($careerHistory->availability, true),
-            'career_levels' => json_decode($careerHistory->career_levels, true),
-            'career_summary' => json_decode($careerHistory->career_summary, true),
+            'tournaments' => $careerHistory->tournaments_by_year,
+            'assignments' => $careerHistory->assignments_by_year,
+            'availability' => $careerHistory->availabilities_by_year,
+            'career_levels' => $careerHistory->level_changes_by_year,
+            'career_summary' => $careerHistory->career_stats,
         ];
 
         // If year is specified, return only that year's data
@@ -60,19 +60,15 @@ class RefereeCareerService
         $currentYear = now()->year;
         $currentYearData = $this->getCurrentYearData($referee);
 
-        if (isset($historicalData['tournaments'][$currentYear])) {
-            $historicalData['tournaments'][$currentYear] = array_merge(
-                $historicalData['tournaments'][$currentYear],
-                $currentYearData['tournaments']
-            );
-            // $historicalData['assignments'][$currentYear] = array_merge(
-            //     $historicalData['assignments'][$currentYear],
-            //     $currentYearData['assignments']
-            // );
-        } else {
-            $historicalData['tournaments'][$currentYear] = $currentYearData['tournaments'];
-            $historicalData['assignments'][$currentYear] = $currentYearData['assignments'];
-        }
+        // Merge current year data with historical data
+        $historicalData['tournaments'][$currentYear] = array_merge(
+            $historicalData['tournaments'][$currentYear] ?? [],
+            $currentYearData['tournaments']
+        );
+        $historicalData['assignments'][$currentYear] = array_merge(
+            $historicalData['assignments'][$currentYear] ?? [],
+            $currentYearData['assignments']
+        );
 
         return $historicalData;
     }
@@ -139,7 +135,7 @@ class RefereeCareerService
      */
     public function getHistoricalStats(?int $year = null): Collection
     {
-        $query = RefereeCareerHistory::with('referee');
+        $query = RefereeCareerHistory::with('user');
 
         if ($year) {
             // Add any year-specific filtering if needed
