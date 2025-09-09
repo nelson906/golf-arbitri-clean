@@ -65,8 +65,13 @@
         </x-nav-link>
 
         {{-- Referee Management --}}
-        <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.referees.*')">
+        <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
             👨‍💼 Gestione Arbitri
+        </x-nav-link>
+
+        {{-- Referee Curricula --}}
+        <x-nav-link :href="route('admin.referees.curricula')" :active="request()->routeIs('referees.*')">
+            📋 Curriculum Arbitri
         </x-nav-link>
 
         {{-- Assignments --}}
@@ -80,7 +85,7 @@
         </x-nav-link>
 
         {{-- Communications --}}
-        <x-nav-link :href="route('communications.index')" :active="request()->routeIs('communications.*')">
+        <x-nav-link :href="route('admin.communications.index')" :active="request()->routeIs('communications.*')">
             📢 Comunicazioni
         </x-nav-link>
 
@@ -184,11 +189,16 @@
             📅 Il Mio Calendario
         </x-nav-link>
 
+        {{-- Curriculum --}}
+        <x-nav-link :href="route('user.curriculum')" :active="request()->routeIs('user.curriculum')">
+            📋 Il Mio Curriculum
+        </x-nav-link>
+
         {{-- Simulatore Tempi Partenza --}}
         <x-nav-link :href="route('user.quadranti.index')" :active="request()->routeIs('user.quadranti.*')">
             ⏰ Simulatore Tempi Partenza
         </x-nav-link>
-        
+
         {{-- Documents --}}
         <x-nav-link :href="route('user.documents.index')" :active="request()->routeIs('user.documents.*')">
             📁 I Miei Documenti
@@ -317,8 +327,11 @@
                 <x-responsive-nav-link :href="route('admin.tournaments.index')" :active="request()->routeIs('admin.tournaments.*')">
                     📋 Gestione Tornei
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.referees.*')">
+                <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
                     👨‍💼 Gestione Arbitri
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('admin.referees.curricula')" :active="request()->routeIs('referees.*')">
+                    📋 Curriculum Arbitri
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.assignments.index')" :active="request()->routeIs('admin.assignments.*')">
                     📝 Assegnazioni
@@ -326,7 +339,7 @@
                 <x-responsive-nav-link :href="route('admin.clubs.index')" :active="request()->routeIs('admin.clubs.*')">
                     🏌️ Gestione Circoli
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('communications.index')" :active="request()->routeIs('communications.*')">
+                <x-responsive-nav-link :href="route('admin.communications.index')" :active="request()->routeIs('communications.*')">
                     📢 Comunicazioni
                 </x-responsive-nav-link>
 
@@ -374,6 +387,9 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('user.availability.calendar')" :active="request()->routeIs('user.availability.calendar')">
                     📅 Mio Calendario Personale
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('user.curriculum')" :active="request()->routeIs('user.curriculum')">
+                    📋 Il Mio Curriculum
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('user.quadranti.index')" :active="request()->routeIs('user.quadranti.*')">
                     ⏰ Simulatore Tempi Partenza

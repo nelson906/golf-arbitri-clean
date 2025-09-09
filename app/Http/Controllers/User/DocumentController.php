@@ -33,7 +33,8 @@ class DocumentController extends Controller
             $query->where(function($q) use ($user) {
                 $q->where('zone_id', $user->zone_id)
                   ->orWhereNull('zone_id')
-                  ->orWhere('uploader_id', $user->id); // I propri documenti
+                  ->orWhere('uploader_id', $user->id) // I propri documenti
+                  ->orWhere('is_public', true); // Documenti pubblici
             });
         }
 

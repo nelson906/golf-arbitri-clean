@@ -114,6 +114,11 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
             return view('admin.placeholder', ['title' => 'Settings']);
         })->name('settings');
 
+        // Referee Career routes
+        Route::prefix('referees')->name('referees.')->group(function () {
+            Route::get('/curricula', [\App\Http\Controllers\Admin\RefereeCareerController::class, 'curricula'])->name('curricula');
+            Route::get('/{referee}/curriculum', [\App\Http\Controllers\Admin\RefereeCareerController::class, 'curriculum'])->name('curriculum');
+        });
 
 
         // Quick stats API
@@ -133,6 +138,7 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
         require __DIR__ . '/admin/reports.php';
         require __DIR__ . '/admin/documents.php';
 
+
     });
 });
 
@@ -151,6 +157,7 @@ Route::middleware(['auth'])->group(function () {
         // Load modular user routes
         require __DIR__.'/user/availability.php';
         require __DIR__.'/user/quadranti.php';
+        require __DIR__.'/user/curriculum.php';
         require __DIR__.'/user/documents.php';
     });
 });

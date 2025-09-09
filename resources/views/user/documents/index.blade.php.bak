@@ -1,12 +1,16 @@
 @extends('layouts.app')
 
-@section('header')
-    <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-        📁 I Miei Documenti
-    </h2>
-@endsection
-
 @section('content')
+<div class="container">
+    <h1>I Miei Documenti</h1>
+    
+    {{-- DEBUG --}}
+    <div class="bg-red-100 p-4">
+        <p>Documents count: {{ $documents->count() ?? 'null' }}</p>
+        <p>Total: {{ $documents->total() ?? 'null' }}</p>
+        <p>Stats: {{ json_encode($stats ?? []) }}</p>
+    </div>
+
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             {{-- Statistiche --}}
@@ -14,7 +18,7 @@
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
                     <div class="text-gray-900">
                         <div class="text-2xl font-bold">{{ $documents->total() }}</div>
-                        <div class="text-sm text-gray-600">Documenti Visibili</div>
+                        <div class="text-sm text-gray-600">Documenti Totali</div>
                     </div>
                 </div>
             </div>
@@ -149,22 +153,19 @@
                                             </td>
                                         </tr>
                                     @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {{-- Paginazione --}}
-                        <div class="mt-6">
-                            {{ $documents->links() }}
-                        </div>
-                    @else
-                        <div class="text-center py-12">
-                            <div class="text-gray-400 text-6xl mb-4">📁</div>
-                            <p class="text-gray-500">Nessun documento trovato</p>
-                        </div>
-                    @endif
-                </div>
-            </div>
+                </tbody>
+            </table>
         </div>
-    </div>
+
+        {{-- Paginazione --}}
+        <div class="mt-6">
+            {{ $documents->links() }}
+        </div>
+    @else
+        <div class="text-center py-12">
+            <div class="text-gray-400 text-6xl mb-4">📁</div>
+            <p class="text-gray-500">Nessun documento trovato</p>
+        </div>
+    @endif
+</div>
 @endsection

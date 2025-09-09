@@ -100,7 +100,7 @@ class DocumentController extends Controller
             'description' => 'nullable|string|max:500',
             'tournament_id' => 'nullable|exists:tournaments,id',
             'zone_id' => 'nullable|exists:zones,id',
-            'is_public' => 'boolean',
+            // 'is_public' => 'boolean', // checkbox invia 'on' non boolean
         ]);
 
         try {
@@ -173,10 +173,10 @@ class DocumentController extends Controller
     /**
      * Display the specified document
      */
-    public function show(Document $document): View
+    public function show(Document $document)
     {
         $this->authorizeDocumentAccess($document);
-        
+
         return view('documents.show', compact('document'));
     }
 
@@ -186,7 +186,7 @@ class DocumentController extends Controller
     public function edit(Document $document): View
     {
         $this->authorizeDocumentAccess($document, true);
-        
+
         return view('documents.edit', compact('document'));
     }
 
