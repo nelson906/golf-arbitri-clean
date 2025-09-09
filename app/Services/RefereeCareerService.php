@@ -56,19 +56,23 @@ class RefereeCareerService
             ];
         }
 
-        // For current year, merge with live data
+        // For current year, decide whether to merge or replace
         $currentYear = now()->year;
         $currentYearData = $this->getCurrentYearData($referee);
 
-        // Merge current year data with historical data
-        $historicalData['tournaments'][$currentYear] = array_merge(
-            $historicalData['tournaments'][$currentYear] ?? [],
-            $currentYearData['tournaments']
-        );
-        $historicalData['assignments'][$currentYear] = array_merge(
-            $historicalData['assignments'][$currentYear] ?? [],
-            $currentYearData['assignments']
-        );
+        // Check if current year data exists in historical
+        $hasCurrentYearHistorical = isset($historicalData['assignments'][$currentYear]) &&
+            !empty($historicalData['assignments'][$currentYear]);
+
+        if ($hasCurrentYearHistorical) {
+            // Current year data exists in historical - use ONLY live data to avoid duplicates
+            $historicalData['tournaments'][$currentYear] = $currentYearData['tournaments'];
+            $historicalData['assignments'][$currentYear] = $currentYearData['assignments'];
+        } else {
+            // No historical data for current year - safe to add live data
+            $historicalData['tournaments'][$currentYear] = $currentYearData['tournaments'];
+            $historicalData['assignments'][$currentYear] = $currentYearData['assignments'];
+        }
 
         return $historicalData;
     }

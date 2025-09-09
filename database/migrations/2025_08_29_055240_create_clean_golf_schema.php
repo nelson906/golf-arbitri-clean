@@ -188,10 +188,7 @@ return new class extends Migration
 
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
-            $table->foreign('assignment_id')
-                ->references('id')
-                ->on('assignments')
-                ->onDelete('cascade');
+            $table->foreignId('assignment_id')->nullable()->constrained()->onDelete('cascade');
             $table->enum('recipient_type', ['referee', 'club', 'institutional']);
             $table->string('recipient_email')->nullable();
             $table->string('recipient_name')->nullable();

@@ -9,18 +9,67 @@
                     <h2 class="text-2xl font-semibold text-gray-900">
                         📊 Curriculum Arbitri
                     </h2>
-
                     {{-- Filtri --}}
-                    <div class="flex gap-4">
-                        <select name="year"
-                                class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                onchange="window.location.href='{{ route('admin.referees.curricula') }}?year=' + this.value">
-                            @foreach($years as $y)
-                                <option value="{{ $y }}" {{ $y == $year ? 'selected' : '' }}>
-                                    {{ $y }}
-                                </option>
-                            @endforeach
-                        </select>
+                    <div class="flex flex-wrap gap-4">
+                        <form method="GET" class="flex flex-wrap gap-4" action="{{ route('admin.referees.curricula') }}">
+                            <input type="text"
+                                   name="search"
+                                   placeholder="Cerca arbitro..."
+                                   value="{{ request('search') }}"
+                                   class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+
+                            <select name="year"
+                                    class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                @foreach($years as $y)
+                                    <option value="{{ $y }}" {{ $y == $year ? 'selected' : '' }}>
+                                        {{ $y }}
+                                    </option>
+                                @endforeach
+                            </select>
+
+                            <select name="zone"
+                                    class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">Tutte le zone</option>
+                                @foreach(\App\Models\Zone::orderBy('name')->get() as $z)
+                                    <option value="{{ $z->id }}" {{ request('zone') == $z->id ? 'selected' : '' }}>
+                                        {{ $z->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+
+                            <select name="level"
+                                    class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">Tutti i livelli</option>
+                                <option value="Nazionale" {{ request('level') === 'Nazionale' ? 'selected' : '' }}>Nazionale</option>
+                                <option value="Zonale" {{ request('level') === 'Zonale' ? 'selected' : '' }}>Zonale</option>
+                            </select>
+
+                            <select name="sort"
+                                    class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="last_name" {{ request('sort', 'last_name') === 'last_name' ? 'selected' : '' }}>Cognome</option>
+                                <option value="first_name" {{ request('sort') === 'first_name' ? 'selected' : '' }}>Nome</option>
+                                <option value="referee_code" {{ request('sort') === 'referee_code' ? 'selected' : '' }}>Codice</option>
+                            </select>
+
+                            <select name="direction"
+                                    class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="asc" {{ request('direction', 'asc') === 'asc' ? 'selected' : '' }}>Crescente</option>
+                                <option value="desc" {{ request('direction') === 'desc' ? 'selected' : '' }}>Decrescente</option>
+                            </select>
+
+                            <button type="submit"
+                                    class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                Filtra
+                            </button>
+
+                            @if(request()->anyFilled(['search', 'zone', 'level', 'sort', 'direction']))
+                                <a href="{{ route('admin.referees.curricula', ['year' => $year]) }}"
+                                   class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">
+                                    Reset
+                                </a>
+                            @endif
+                        </form>
+                    </div>
                     </div>
                 </div>
 
@@ -59,17 +108,17 @@
                                         <div class="flex items-center">
                                             <div>
                                                 <div class="text-sm font-medium text-gray-900">
-                                                    {{ $stat['user']->name }}
+                                                    {{ $stat['referee']->name }}
                                                 </div>
                                                 <div class="text-sm text-gray-500">
-                                                    {{ $stat['user']->referee_code }}
+                                                    {{ $stat['referee']->referee_code }}
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-900">
-                                            {{ $stat['user']->zone->name ?? 'N/A' }}
+                                            {{ $stat['referee']->zone->name ?? 'N/A' }}
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
@@ -101,7 +150,7 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <a href="{{ route('admin.referees.curriculum', $stat['user']) }}"
+                                        <a href="{{ route('admin.referees.curriculum', $stat['referee']) }}"
                                            class="text-indigo-600 hover:text-indigo-900">
                                             Dettaglio
                                         </a>
