@@ -16,19 +16,19 @@ class RefereeCareerService
      */
     public function getCareerData(User $referee, ?int $year = null): array
     {
-        // Get historical data from referee_career_history (user_id)
+        // Get historical data from referee_career_history
         $careerHistory = RefereeCareerHistory::where('user_id', $referee->id)->first();
-        
+
         // Start with current year data
         $currentYearData = $this->getCurrentYearData($referee);
         $currentYear = now()->year;
-        
+
         if (!$careerHistory) {
             return [
                 'tournaments' => [$currentYear => $currentYearData['tournaments']],
                 'assignments' => [$currentYear => $currentYearData['assignments']],
                 'availability' => [],
-                'career_levels' => [$currentYear => ['level' => $referee->level, 'effective_date' => now()->startOfYear()->format('Y-m-d')]],
+                'career_levels' => [$currentYear => ['level' => $user->level, 'effective_date' => now()->startOfYear()]],
                 'career_summary' => [
                     'total_assignments' => count($currentYearData['assignments']),
                     'total_years' => 1,
@@ -37,13 +37,12 @@ class RefereeCareerService
             ];
         }
 
-        // Align to real column names
         $historicalData = [
-            'tournaments' => $careerHistory->tournaments_by_year ?? [],
-            'assignments' => $careerHistory->assignments_by_year ?? [],
-            'availability' => $careerHistory->availabilities_by_year ?? [],
-            'career_levels' => $careerHistory->level_changes_by_year ?? [],
-            'career_summary' => $careerHistory->career_stats ?? [],
+            'tournaments' => json_decode($careerHistory->tournaments, true),
+            'assignments' => json_decode($careerHistory->assignments, true),
+            'availability' => json_decode($careerHistory->availability, true),
+            'career_levels' => json_decode($careerHistory->career_levels, true),
+            'career_summary' => json_decode($careerHistory->career_summary, true),
         ];
 
         // If year is specified, return only that year's data
@@ -66,10 +65,10 @@ class RefereeCareerService
                 $historicalData['tournaments'][$currentYear],
                 $currentYearData['tournaments']
             );
-            $historicalData['assignments'][$currentYear] = array_merge(
-                $historicalData['assignments'][$currentYear],
-                $currentYearData['assignments']
-            );
+            // $historicalData['assignments'][$currentYear] = array_merge(
+            //     $historicalData['assignments'][$currentYear],
+            //     $currentYearData['assignments']
+            // );
         } else {
             $historicalData['tournaments'][$currentYear] = $currentYearData['tournaments'];
             $historicalData['assignments'][$currentYear] = $currentYearData['assignments'];
@@ -94,22 +93,17 @@ class RefereeCareerService
         // Format tournaments and assignments data
         $tournamentsData = [];
         $assignmentsData = [];
-        $processedTournaments = [];
 
         foreach ($assignments as $assignment) {
             $tournament = $assignment->tournament;
 
-            // Add tournament only if not already processed
-            if (!isset($processedTournaments[$tournament->id])) {
-                $tournamentsData[] = [
-                    'id' => $tournament->id,
-                    'name' => $tournament->name,
-                    'club_id' => $tournament->club_id,
-                    'start_date' => $tournament->start_date,
-                    'end_date' => $tournament->end_date,
-                ];
-                $processedTournaments[$tournament->id] = true;
-            }
+            $tournamentsData[] = [
+                'id' => $tournament->id,
+                'name' => $tournament->name,
+                'club_id' => $tournament->club_id,
+                'start_date' => $tournament->start_date,
+                'end_date' => $tournament->end_date,
+            ];
 
             $assignmentsData[] = [
                 'role' => $assignment->role,
@@ -145,18 +139,17 @@ class RefereeCareerService
      */
     public function getHistoricalStats(?int $year = null): Collection
     {
-        $query = RefereeCareerHistory::with('user');
+        $query = RefereeCareerHistory::with('referee');
 
         if ($year) {
             // Add any year-specific filtering if needed
         }
 
         return $query->get()->map(function ($history) use ($year) {
-            $ref = $history->user;
-            $data = $this->getCareerData($ref, $year);
-            
+            $data = $this->getCareerData($history->user, $year);
+
             return [
-                'referee' => $ref,
+                'user' => $history->user,
                 'stats' => $data['career_summary'] ?? null,
                 'year_data' => $year ? ($data['year_summary'] ?? null) : null,
             ];

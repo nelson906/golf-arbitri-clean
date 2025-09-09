@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RefereeCareerHistory extends Model
 {
@@ -27,7 +28,11 @@ class RefereeCareerHistory extends Model
     ];
 
     // Relationships
-    public function user()
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+    public function referee(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
