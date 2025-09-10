@@ -4,35 +4,36 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\LetterTemplate;
+use App\Models\Tournament;
 use App\Models\Zone;
 use App\Models\TournamentType;
 use Illuminate\Http\Request;
 
 class LetterTemplateController extends Controller
 {
-/**
- * Display a listing of letter templates.
- */
-public function index()
-{
-    $templates = LetterTemplate::with(['zone', 'tournamentType'])
-        ->orderBy('type')
-        ->orderBy('name')
-        ->paginate(15);
+    /**
+     * Display a listing of letter templates.
+     */
+    public function index()
+    {
+        $templates = LetterTemplate::with(['zone', 'tournamentType'])
+            ->orderBy('type')
+            ->orderBy('name')
+            ->paginate(15);
 
-    // ✅ AGGIUNGI QUESTA VARIABILE MANCANTE:
-    $types = [
-        'assignment' => 'Assegnazione',
-        'convocation' => 'Convocazione',
-        'club' => 'Circolo',
-        'institutional' => 'Istituzionale'
-    ];
+        // ✅ AGGIUNGI QUESTA VARIABILE MANCANTE:
+        $types = [
+            'assignment' => 'Assegnazione',
+            'convocation' => 'Convocazione',
+            'club' => 'Circolo',
+            'institutional' => 'Istituzionale'
+        ];
 
-    // ✅ AGGIUNGI ANCHE QUESTA VARIABILE MANCANTE:
-    $zones = Zone::where('is_active', true)->orderBy('name')->get();
+        // ✅ AGGIUNGI ANCHE QUESTA VARIABILE MANCANTE:
+        $zones = Zone::where('is_active', true)->orderBy('name')->get();
 
-    return view('admin.letter-templates.index', compact('templates', 'types', 'zones'));
-}
+        return view('admin.letter-templates.index', compact('templates', 'types', 'zones'));
+    }
     /**
      * Show the form for creating a new template.
      */
@@ -40,8 +41,8 @@ public function index()
     {
         $zones = Zone::where('is_active', true)->orderBy('name')->get();
         $tournamentTypes = TournamentType::where('is_active', true)->orderBy('name')->get();
-
-        return view('admin.letter-templates.create', compact('zones', 'tournamentTypes'));
+        $tournament = Tournament::all(); // Aggiungi questa riga per ottenere i tornei
+        return view('admin.letter-templates.create', compact('zones', 'tournamentTypes', 'tournament'));
     }
 
     /**
@@ -153,19 +154,21 @@ public function index()
      */
     public function preview(LetterTemplate $template)
     {
-        // Dati di esempio per la preview
-        $sampleData = [
-            'tournament_name' => 'Campionato Zonale di Esempio',
-            'tournament_dates' => '15-16 Settembre 2025',
-            'club_name' => 'Golf Club Esempio',
-            'club_address' => 'Via del Golf 123, Milano',
-            'referee_name' => 'Mario Rossi',
-            'assignment_role' => 'Arbitro Principale',
-            'zone_name' => 'SZR1',
-            'assigned_date' => now()->format('d/m/Y'),
-            'tournament_category' => 'Zonale',
-        ];
-
+        // Dati di esempio COMPLETI basati sul seeder attuale
+$sampleData = [
+    'user_name' => 'Mario Rossi',  // ✅ CAMBIATO
+    'tournament_name' => 'Campionato Zonale di Esempio',
+    'tournament_date' => '15 Settembre 2025',  // ✅ AGGIUNTO
+    'tournament_dates' => '15-16 Settembre 2025',
+    'club_name' => 'Golf Club Esempio',
+    'club_address' => 'Via del Golf 123, Milano',
+    'assignment_role' => 'Direttore di Gara',  // ✅ CAMBIATO
+    'fee_amount' => '50,00',  // ✅ AGGIUNTO
+    'contact_person' => 'Dott. Giuseppe Verdi',  // ✅ AGGIUNTO
+    'zone_name' => 'SZR1',
+    'assigned_date' => now()->format('d/m/Y'),
+    'tournament_category' => 'Zonale',
+];
         // Sostituisci le variabili nel template
         $previewSubject = $this->replaceVariables($template->subject, $sampleData);
         $previewBody = $this->replaceVariables($template->body, $sampleData);

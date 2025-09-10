@@ -22,9 +22,9 @@
 
 
         {{-- Zone Management --}}
-        <x-nav-link :href="route('super-admin.zones.index')" :active="request()->routeIs('super-admin.zones.*')">
+        {{-- <x-nav-link :href="route('super-admin.zones.index')" :active="request()->routeIs('super-admin.zones.*')">
             🌍 Gestione Zone
-        </x-nav-link>
+        </x-nav-link> --}}
 
         {{-- Tournament Types --}}
         <x-nav-link :href="route('super-admin.tournament-types.index')" :active="request()->routeIs('super-admin.tournament-types.*')">
@@ -299,9 +299,9 @@
                 <x-responsive-nav-link :href="route('super-admin.users.index')" :active="request()->routeIs('super-admin.users.*')">
                     👥 Gestione Utenti
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('super-admin.zones.index')" :active="request()->routeIs('super-admin.zones.*')">
+                {{-- <x-responsive-nav-link :href="route('super-admin.zones.index')" :active="request()->routeIs('super-admin.zones.*')">
                     🌍 Gestione Zone
-                </x-responsive-nav-link>
+                </x-responsive-nav-link> --}}
                 <x-responsive-nav-link :href="route('super-admin.tournament-types.index')" :active="request()->routeIs('super-admin.tournament-types.*')">
                     🏆 Categorie Tornei
                 </x-responsive-nav-link>

@@ -27,7 +27,7 @@
                 <div>
                     <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Nome Template *</label>
                     <input type="text" name="name" id="name" value="{{ old('name') }}"
-                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('name') border-red-500 @enderror"
+                           class="w-full border rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('name') border-red-500 @enderror"
                            placeholder="Es: Template Assegnazione SZR1"
                            required>
                     @error('name')
@@ -39,7 +39,7 @@
                 <div>
                     <label for="type" class="block text-sm font-medium text-gray-700 mb-1">Tipo Template *</label>
                     <select name="type" id="type"
-                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('type') border-red-500 @enderror"
+                            class="w-full border rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('type') border-red-500 @enderror"
                             required>
                         <option value="">Seleziona tipo...</option>
                         <option value="assignment" {{ old('type') === 'assignment' ? 'selected' : '' }}>
@@ -64,7 +64,7 @@
                 <div>
                     <label for="zone_id" class="block text-sm font-medium text-gray-700 mb-1">Zona</label>
                     <select name="zone_id" id="zone_id"
-                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('zone_id') border-red-500 @enderror">
+                            class="w-full border rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('zone_id') border-red-500 @enderror">
                         <option value="">Tutte le zone</option>
                         @foreach($zones as $zone)
                             <option value="{{ $zone->id }}" {{ old('zone_id') == $zone->id ? 'selected' : '' }}>
@@ -84,7 +84,7 @@
                 <div>
                     <label for="tournament_type_id" class="block text-sm font-medium text-gray-700 mb-1">Tipo Torneo</label>
                     <select name="tournament_type_id" id="tournament_type_id"
-                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('tournament_type_id') border-red-500 @enderror">
+                            class="w-full border rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('tournament_type_id') border-red-500 @enderror">
                         <option value="">Tutti i tipi</option>
                         @foreach($tournamentTypes as $type)
                             <option value="{{ $type->id }}" {{ old('tournament_type_id') == $type->id ? 'selected' : '' }}>
@@ -106,13 +106,13 @@
                 <label for="subject" class="block text-sm font-medium text-gray-700 mb-1">Oggetto Email *</label>
                 <input type="text" name="subject" id="subject" value="{{ old('subject') }}"
                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('subject') border-red-500 @enderror"
-                       placeholder="Es: Assegnazione {{tournament_name}} - {{assigned_date}}"
+                       placeholder="Es: Assegnazione {{'tournament_name'}} - {{'assigned_date'}}"
                        required>
                 @error('subject')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
                 <p class="mt-1 text-xs text-gray-500">
-                    Usa le variabili (es: {{tournament_name}}) per inserire dati dinamici
+                    Usa le variabili (es: {{'tournament_name'}}) per inserire dati dinamici
                 </p>
             </div>
 
@@ -124,11 +124,11 @@
                           placeholder="Scrivi il contenuto del template qui...
 
 Esempio:
-Gentile {{referee_name}},
+Gentile {{'referee_name'}},
 
-La informiamo che è stato assegnato al torneo {{tournament_name}} che si svolgerà il {{tournament_dates}} presso il {{club_name}}.
+La informiamo che è stato assegnato al torneo {{'tournament_name'}} che si svolgerà il {{'tournament_dates'}} presso il {{'club_name'}}.
 
-Il suo ruolo sarà: {{assignment_role}}
+Il suo ruolo sarà: {{'assignment_role'}}
 
 Cordiali saluti,
 Federazione Italiana Golf"
@@ -168,24 +168,29 @@ Federazione Italiana Golf"
                     Usa queste variabili nel tuo template. Verranno sostituite automaticamente con i dati reali durante l'invio.
                 </p>
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-                    @php
-                        $variables = [
-                            'tournament_name' => 'Nome torneo',
-                            'tournament_dates' => 'Date torneo',
-                            'club_name' => 'Nome circolo',
-                            'club_address' => 'Indirizzo circolo',
-                            'referee_name' => 'Nome arbitro',
-                            'assignment_role' => 'Ruolo',
-                            'zone_name' => 'Nome zona',
-                            'assigned_date' => 'Data assegnazione',
-                            'tournament_category' => 'Categoria torneo',
-                        ];
-                    @endphp
+                        @php
+                            $variables = [
+                                'user_name' => 'Nome utente',
+                                'user_email' => 'Email utente',
+                                'user_phone' => 'Telefono utente',
+                                'tournament_name' => 'Nome torneo',
+                                'tournament_dates' => 'Date torneo',
+                                'tournament_date' => 'Data torneo (singola)',
+                                'club_name' => 'Nome circolo',
+                                'club_address' => 'Indirizzo circolo',
+                                'assignment_role' => 'Ruolo assegnazione',
+                                'role' => 'Ruolo (breve)',
+                                'zone_name' => 'Nome zona',
+                                'assigned_date' => 'Data assegnazione',
+                                'tournament_category' => 'Categoria torneo',
+                                'fee_amount' => 'Importo compenso',
+                            ];
+                        @endphp
 
                     @foreach($variables as $var => $desc)
                         <div class="cursor-pointer hover:bg-blue-100 p-1 rounded"
                              onclick="insertVariable('{{$var}}')">
-                            <code class="bg-white px-1 py-0.5 rounded text-blue-800">{{{{$var}}}}</code>
+                            <code class="bg-white px-1 py-0.5 rounded text-blue-800">{{$var}}/code>
                             <div class="text-blue-700">{{ $desc }}</div>
                         </div>
                     @endforeach
@@ -194,7 +199,7 @@ Federazione Italiana Golf"
 
             {{-- Actions --}}
             <div class="flex justify-between">
-                <a href="{{ route('adminletter-templates.index') }}"
+                <a href="{{ route('admin.letter-templates.index') }}"
                    class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                     Annulla
                 </a>
