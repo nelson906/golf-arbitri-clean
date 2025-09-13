@@ -63,22 +63,9 @@ require __DIR__ . '/super-admin.php';
 Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
     // Dashboard Admin
     Route::prefix('admin')->name('admin.')->group(function () {
-        Route::get('/', function () {
-            return redirect()->route('admin.dashboard');
-        });
+        Route::get('/', fn() => redirect()->route('admin.dashboard'));
+
         Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
-        // Placeholder routes
-        // Route::get('tournaments', function () {
-        //     return view('admin.placeholder', ['title' => 'Tournaments']);
-        // })->name('tournaments.index');
-
-        Route::get('tournaments/create', function () {
-            return view('admin.placeholder', ['title' => 'Create Tournament']);
-        })->name('tournaments.create');
-
-        // Route::get('assignments', action: function () {
-        //     return view('admin.placeholder', ['title' => 'Assignments']);
-        // })->name('assignments.index');
 
         // Communications routes
         Route::prefix('communications')->name('communications.')->group(function () {
@@ -105,10 +92,6 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
             Route::get('/{template}/preview', [App\Http\Controllers\Admin\LetterTemplateController::class, 'preview'])->name('preview');
             Route::post('/{template}/toggle-active', [App\Http\Controllers\Admin\LetterTemplateController::class, 'toggleActive'])->name('toggle-active');
         });
-
-        Route::get(uri: 'tournament-notifications', action: function () {
-            return view('admin.placeholder', ['title' => 'Tournament-notifications']);
-        })->name('tournament-notifications.index');
 
         Route::get(uri: 'settings', action: function () {
             return view('admin.placeholder', ['title' => 'Settings']);
@@ -150,9 +133,7 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
 Route::middleware(['auth'])->group(function () {
     // User routes
     Route::prefix('user')->name('user.')->group(function () {
-        Route::get('/', function () {
-            return redirect()->route('user.availability.index');
-        });
+        Route::get('/', fn(): RedirectResponse => redirect()->route('user.availability.index'));
 
         // Load modular user routes
         require __DIR__.'/user/availability.php';
@@ -170,10 +151,8 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth', 'referee_or_admin'])->group(function () {
     // Legacy referee routes - redirect to user routes
     Route::prefix('referee')->name('referee.')->group(function () {
-        Route::get('/', function () {
-            return redirect()->route('user.availability.index');
+        Route::get('/', fn(): RedirectResponse => redirect()->route('user.availability.index'));
         });
-    });
 
     // Load modular referee routes
     // require __DIR__.'/referee/dashboard.php';
