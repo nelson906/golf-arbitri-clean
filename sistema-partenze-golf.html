@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Partenze Golf - 18 Buche</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/alpinejs/3.14.1/cdn.js" defer></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            color: #2c5530;
+            margin-bottom: 30px;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .control-group input,
+        .control-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .info-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #e8f5e8;
+            border-radius: 8px;
+        }
+
+        .info-item {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-item strong {
+            display: block;
+            font-size: 18px;
+            color: #2c5530;
+        }
+
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .schedule-table th,
+        .schedule-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        .schedule-table th {
+            background-color: #2c5530;
+            color: white;
+            font-weight: bold;
+        }
+
+        .male-early-row {
+            background-color: #e8f5e8;
+        }
+
+        .male-late-row {
+            background-color: #fff3cd;
+        }
+
+        .female-early-row {
+            background-color: #fce4ec;
+        }
+
+        .female-late-row {
+            background-color: #f8d7da;
+        }
+
+        .quadrant-header {
+            background-color: #6c757d !important;
+            color: white;
+            font-weight: bold;
+        }
+
+        .tee-1 {
+            background-color: #d4edda;
+        }
+
+        .tee-10 {
+            background-color: #cce5ff;
+        }
+
+        .btn {
+            background-color: #2c5530;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            background-color: #1e3a21;
+        }
+
+        .time-input {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container" x-data="golfScheduler()">
+        <div class="header">
+            <h1>🏌️ Sistema Gestione Partenze Golf - 18 Buche</h1>
+            <p>Gestione schemi di partenza con doppie partenze da Tee 1 e Tee 10</p>
+            <p x-text="`Schema per ${dayNumber === 1 ? 'Primo Giorno' : 'Secondo Giorno'} - Gara 54 Buche`"
+                style="font-weight: bold; color: #2c5530;"></p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="totalPlayers">Numero Giocatori:</label>
+                <input type="number" id="totalPlayers" x-model.number="totalPlayers" min="1" max="200">
+            </div>
+
+            <div class="control-group">
+                <label for="playersPerMatch">Giocatori per Partenza:</label>
+                <select id="playersPerMatch" x-model.number="playersPerMatch">
+                    <option value="3">3 giocatori</option>
+                    <option value="4">4 giocatori</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="gameTimeHours">Tempo di Gioco (ore):</label>
+                <input type="number" id="gameTimeHours" x-model.number="gameTimeHours" min="3" max="8" step="0.5">
+            </div>
+
+            <div class="control-group">
+                <label for="startTime">Orario Prima Partenza:</label>
+                <div class="time-input">
+                    <input type="time" id="startTime" x-model="startTime">
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="intervalMinutes">Intervallo tra Partenze (min):</label>
+                <input type="number" id="intervalMinutes" x-model.number="intervalMinutes" min="5" max="30" step="5">
+            </div>
+
+            <div class="control-group">
+                <label for="includeWomen">Includi Categorie Femminili:</label>
+                <select id="includeWomen" x-model="includeWomen">
+                    <option value="false">Solo Uomini</option>
+                    <option value="true">Uomini e Donne</option>
+                </select>
+            </div>
+
+            <div class="control-group" x-show="includeWomen === 'true'">
+                <label for="totalWomen">Numero Giocatrici:</label>
+                <input type="number" id="totalWomen" x-model.number="totalWomen" min="1" max="200">
+            </div>
+
+            <div class="control-group">
+                <label for="dayNumber">Giorno di Gara:</label>
+                <select id="dayNumber" x-model.number="dayNumber">
+                    <option value="1">Giorno 1</option>
+                    <option value="2">Giorno 2</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <div class="info-item">
+                <strong x-text="totalPlayers"></strong>
+                <span>Giocatori Uomini</span>
+            </div>
+            <div class="info-item" x-show="includeWomen === 'true'">
+                <strong x-text="totalWomen"></strong>
+                <span>Giocatrici Donne</span>
+            </div>
+            <div class="info-item">
+                <strong x-text="schedule.totalMatches"></strong>
+                <span>Partenze Totali Uomini</span>
+            </div>
+            <div class="info-item" x-show="includeWomen === 'true'">
+                <strong x-text="schedule.totalWomenMatches"></strong>
+                <span>Partenze Totali Donne</span>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <div class="info-item">
+                <strong x-text="formatTime(schedule.lastEarlyTime)"></strong>
+                <span>Ultima Partenza Early</span>
+            </div>
+            <div class="info-item">
+                <strong x-text="formatTime(schedule.firstLateTime)"></strong>
+                <span>Prima Partenza Late</span>
+            </div>
+            <div class="info-item">
+                <strong x-text="formatTime(schedule.finishTime)"></strong>
+                <span>Fine Gara Stimata</span>
+            </div>
+        </div>
+
+        <button class="btn" @click="generateSchedule()">Genera Schema Partenze</button>
+
+        <div x-show="schedule.matches.length > 0">
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th :colspan="2 + playersPerMatch" class="tee-1">TEE 1</th>
+                        <th :colspan="2"></th>
+                        <th :colspan="2 + playersPerMatch" class="tee-10">TEE 10</th>
+                    </tr>
+                    <tr>
+                        <th>Match</th>
+                        <th>Tee</th>
+                        <th>Gioc. 1</th>
+                        <th>Gioc. 2</th>
+                        <th x-show="playersPerMatch >= 3">Gioc. 3</th>
+                        <th x-show="playersPerMatch >= 4">Gioc. 4</th>
+                        <th>Orario</th>
+                        <th>Orario</th>
+                        <th>Gioc. 1</th>
+                        <th>Gioc. 2</th>
+                        <th x-show="playersPerMatch >= 3">Gioc. 3</th>
+                        <th x-show="playersPerMatch >= 4">Gioc. 4</th>
+                        <th>Tee</th>
+                        <th>Match</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="(match, index) in schedule.matches" :key="index">
+                        <tr :class="getRowClass(match)">
+                            <!-- TEE 1 -->
+                            <td x-text="match.tee1?.matchNumber || ''"></td>
+                            <td x-text="match.tee1 ? '1' : ''"></td>
+                            <td x-text="match.tee1?.players[0] || ''"></td>
+                            <td x-text="match.tee1?.players[1] || ''"></td>
+                            <td x-show="playersPerMatch >= 3" x-text="match.tee1?.players[2] || ''"></td>
+                            <td x-show="playersPerMatch >= 4" x-text="match.tee1?.players[3] || ''"></td>
+                            <td x-text="match.tee10?.time || ''"></td>
+
+                            <!-- TEE 10 -->
+                            <td x-text="match.tee10?.time || ''"></td>
+                            <td x-text="match.tee10?.players[0] || ''"></td>
+                            <td x-text="match.tee10?.players[1] || ''"></td>
+                            <td x-show="playersPerMatch >= 3" x-text="match.tee10?.players[2] || ''"></td>
+                            <td x-show="playersPerMatch >= 4" x-text="match.tee10?.players[3] || ''"></td>
+                            <td x-text="match.tee10 ? '10' : ''"></td>
+                            <td x-text="match.tee10?.matchNumber || ''"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        function golfScheduler() {
+            return {
+                totalPlayers: 48,
+                totalWomen: 24,
+                playersPerMatch: 3,
+                gameTimeHours: 5,
+                startTime: '08:00',
+                intervalMinutes: 10,
+                includeWomen: 'true',
+                dayNumber: 1,
+                schedule: {
+                    matches: [],
+                    totalMatches: 0,
+                    totalWomenMatches: 0,
+                    lastEarlyTime: '',
+                    firstLateTime: '',
+                    finishTime: ''
+                },
+
+                init() {
+                    console.log('Golf Scheduler initialized - includeWomen:', this.includeWomen);
+                    this.generateSchedule();
+                    this.$watch('includeWomen', () => {
+                        console.log('includeWomen changed to:', this.includeWomen);
+                        this.generateSchedule();
+                    });
+                    this.$watch('totalWomen', () => this.generateSchedule());
+                    this.$watch('totalPlayers', () => this.generateSchedule());
+                    this.$watch('playersPerMatch', () => this.generateSchedule());
+                    this.$watch('dayNumber', () => this.generateSchedule());
+                },
+
+                // Funzione per rimappare i quadranti per il giorno 2
+                remapQuadrant(originalQuadrant) {
+                    if (this.dayNumber === 1) {
+                        return originalQuadrant;
+                    }
+
+                    // Mappatura per giorno 2: Q1->Q4, Q2->Q3, Q3->Q1, Q4->Q2
+                    const mapping = {
+                        'Q1': 'Q4',
+                        'Q2': 'Q3',
+                        'Q3': 'Q1',
+                        'Q4': 'Q2'
+                    };
+
+                    return mapping[originalQuadrant] || originalQuadrant;
+                },
+
+                bilancia_quadranti(players, mod = 3) {
+                    let totalMatches = Math.ceil(players / mod);
+                    let Q1 = Math.floor(totalMatches / 4);
+                    let Q2 = Math.floor(totalMatches / 4);
+                    let Q3 = Math.floor(totalMatches / 4);
+                    let Q4 = Math.floor(totalMatches / 4);
+
+                    let remainder = totalMatches % 4;
+
+                    if (remainder > 0) Q1++;
+                    if (remainder > 1) Q2++;
+                    if (remainder > 2) Q4++;
+
+                    const rem12 = players % 12;
+
+                    if ((rem12 === 1 || rem12 === 2 || rem12 === 3) && Q3 > 0) {
+                        Q3--;
+                        Q2++;
+                    }
+
+                    return {
+                        Q1,
+                        Q2,
+                        Q3,
+                        Q4
+                    };
+                },
+
+                limiti_quadranti(players, mod) {
+                    let quadranti = this.bilancia_quadranti(players, mod);
+                    let sumQuadranti = 0;
+                    for (const key in quadranti) {
+                        sumQuadranti += quadranti[key];
+                    }
+
+                    let playersQ1 = mod * quadranti["Q1"];
+                    let playersQ2 = mod * quadranti["Q2"];
+                    let playersQ3 = mod * quadranti["Q3"];
+                    let playersQ4 = mod * quadranti["Q4"];
+
+                    let fullPlayers = sumQuadranti * mod;
+                    let difference = fullPlayers - players;
+                    playersQ1 = playersQ1 - difference;
+
+                    let limit1 = playersQ2;
+                    let limit2 = playersQ2 + playersQ1;
+                    let limit3 = players - playersQ3;
+
+                    return {
+                        limit1,
+                        limit2,
+                        limit3,
+                        players,
+                        quadranti,
+                        difference
+                    };
+                },
+
+                generatePlayerGroups(players, mod, category = 'M') {
+                    const limits = this.limiti_quadranti(players, mod);
+                    const groups = [];
+
+                    // Quadrante 2: da 1 a limit1 (ordinato discendente dal più grande al più piccolo)
+                    const q2Players = [];
+                    for (let i = 1; i <= limits.limit1; i++) {
+                        q2Players.push(i);
+                    }
+                    for (let i = q2Players.length - 1; i >= 0; i -= mod) {
+                        const group = [];
+                        for (let j = 0; j < mod && (i - j) >= 0; j++) {
+                            group.push(q2Players[i - j]);
+                        }
+                        if (group.length > 0) {
+                            groups.push({
+                                players: group,
+                                quadrant: 'Q2',
+                                type: 'Early',
+                                category: category
+                            });
+                        }
+                    }
+
+                    // Quadrante 1: da limit1+1 a limit2 (ordinato discendente dal più piccolo al più grande)
+                    const q1Players = [];
+                    for (let i = limits.limit1 + 1; i <= limits.limit2; i++) {
+                        q1Players.push(i);
+                    }
+
+                    const difference = limits.difference;
+                    let q1Groups = [];
+
+                    if (difference === 1 && q1Players.length > 0) {
+                        q1Groups.push({
+                            players: [q1Players[0], q1Players[1]],
+                            quadrant: 'Q1',
+                            type: 'Early',
+                            category: category
+                        });
+                        for (let i = 2; i < q1Players.length; i += mod) {
+                            const group = [];
+                            for (let j = 0; j < mod && (i + j) < q1Players.length; j++) {
+                                group.push(q1Players[i + j]);
+                            }
+                            if (group.length > 0) {
+                                q1Groups.push({
+                                    players: group,
+                                    quadrant: 'Q1',
+                                    type: 'Early',
+                                    category: category
+                                });
+                            }
+                        }
+                    } else if (difference === 2 && q1Players.length > 0) {
+                        if (q1Players.length >= 2) {
+                            q1Groups.push({
+                                players: [q1Players[0], q1Players[1]],
+                                quadrant: 'Q1',
+                                type: 'Early',
+                                category: category
+                            });
+                        }
+                        if (q1Players.length >= 4) {
+                            q1Groups.push({
+                                players: [q1Players[2], q1Players[3]],
+                                quadrant: 'Q1',
+                                type: 'Early',
+                                category: category
+                            });
+                        }
+                        for (let i = 4; i < q1Players.length; i += mod) {
+                            const group = [];
+                            for (let j = 0; j < mod && (i + j) < q1Players.length; j++) {
+                                group.push(q1Players[i + j]);
+                            }
+                            if (group.length > 0) {
+                                q1Groups.push({
+                                    players: group,
+                                    quadrant: 'Q1',
+                                    type: 'Early',
+                                    category: category
+                                });
+                            }
+                        }
+                    } else {
+                        for (let i = 0; i < q1Players.length; i += mod) {
+                            const group = [];
+                            for (let j = 0; j < mod && (i + j) < q1Players.length; j++) {
+                                group.push(q1Players[i + j]);
+                            }
+                            if (group.length > 0) {
+                                q1Groups.push({
+                                    players: group,
+                                    quadrant: 'Q1',
+                                    type: 'Early',
+                                    category: category
+                                });
+                            }
+                        }
+                    }
+
+                    groups.push(...q1Groups);
+
+                    // Quadrante 3: da limit3+1 a players (ordinato discendente dal più grande al più piccolo)
+                    const q3Players = [];
+                    for (let i = limits.limit3 + 1; i <= players; i++) {
+                        q3Players.push(i);
+                    }
+                    for (let i = q3Players.length - 1; i >= 0; i -= mod) {
+                        const group = [];
+                        for (let j = 0; j < mod && (i - j) >= 0; j++) {
+                            group.push(q3Players[i - j]);
+                        }
+                        if (group.length > 0) {
+                            groups.push({
+                                players: group,
+                                quadrant: 'Q3',
+                                type: 'Late',
+                                category: category
+                            });
+                        }
+                    }
+
+                    // Quadrante 4: da limit2+1 a limit3 (ordinato discendente dal più piccolo al più grande)
+                    const q4Players = [];
+                    for (let i = limits.limit2 + 1; i <= limits.limit3; i++) {
+                        q4Players.push(i);
+                    }
+                    for (let i = 0; i < q4Players.length; i += mod) {
+                        const group = [];
+                        for (let j = 0; j < mod && (i + j) < q4Players.length; j++) {
+                            group.push(q4Players[i + j]);
+                        }
+                        if (group.length > 0) {
+                            groups.push({
+                                players: group,
+                                quadrant: 'Q4',
+                                type: 'Late',
+                                category: category
+                            });
+                        }
+                    }
+
+                    return groups;
+                },
+
+                addMinutes(time, minutes) {
+                    const [hours, mins] = time.split(':').map(Number);
+                    const totalMinutes = hours * 60 + mins + minutes;
+                    const newHours = Math.floor(totalMinutes / 60) % 24;
+                    const newMins = totalMinutes % 60;
+                    return `${String(newHours).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`;
+                },
+
+                formatTime(time) {
+                    return time || '--:--';
+                },
+
+                generateSchedule() {
+                    console.log('=== GENERATING SCHEDULE ===');
+                    console.log('includeWomen:', this.includeWomen, 'totalWomen:', this.totalWomen);
+
+                    try {
+                        const limits = this.limiti_quadranti(this.totalPlayers, this.playersPerMatch);
+                        console.log('Limits calculated:', limits);
+
+                        const maleGroups = this.generatePlayerGroups(this.totalPlayers, this.playersPerMatch, 'M');
+                        console.log('Male groups generated:', maleGroups.length);
+
+                        let femaleGroups = [];
+                        let femaleLimits = null;
+                        if (this.includeWomen === 'true' && this.totalWomen > 0) {
+                            femaleLimits = this.limiti_quadranti(this.totalWomen, this.playersPerMatch);
+                            console.log('Female limits:', femaleLimits);
+                            femaleGroups = this.generatePlayerGroups(this.totalWomen, this.playersPerMatch, 'F');
+                            console.log('Female groups generated:', femaleGroups.length);
+                        }
+
+                        const matches = [];
+                        let currentTime = this.startTime;
+                        let maleMatchNumber = 1;
+                        let femaleMatchNumber = 1;
+
+                        const maleEarlyGroups = maleGroups.filter(g => g.type === 'Early');
+                        const maleLateGroups = maleGroups.filter(g => g.type === 'Late');
+
+                        let femaleEarlyGroups = [];
+                        let femaleLateGroups = [];
+                        if (femaleGroups.length > 0) {
+                            femaleEarlyGroups = femaleGroups.filter(g => g.type === 'Early');
+                            femaleLateGroups = femaleGroups.filter(g => g.type === 'Late');
+                            console.log('Female early groups:', femaleEarlyGroups.length, 'Female late groups:', femaleLateGroups.length);
+                        }
+
+                        const halfGameTimeMinutes = this.gameTimeHours * 60 / 2;
+
+                        // 1. PARTENZE EARLY MASCHILI
+                        // Giorno 1: Q1->Tee1, Q2->Tee10
+                        // Giorno 2: Q3->Tee1, Q4->Tee10 (i blocchi Q3,Q4 vanno in Early)
+                        const earlyTee1Source = this.dayNumber === 1 ? 'Q1' : 'Q3';
+                        const earlyTee10Source = this.dayNumber === 1 ? 'Q2' : 'Q4';
+
+                        // 1. PARTENZE EARLY
+                        // Giorno 1: Q1->Tee1, Q2->Tee10 (Early)
+                        // Giorno 2: Q3->Tee1, Q4->Tee10 (i Late diventano Early)
+                        const earlySource = this.dayNumber === 1 ? maleEarlyGroups : maleLateGroups;
+                        const earlyQ1 = this.dayNumber === 1 ? 'Q1' : 'Q3';
+                        const earlyQ2 = this.dayNumber === 1 ? 'Q2' : 'Q4';
+
+                        const maxMaleEarlyMatches = Math.max(
+                            earlySource.filter(g => g.quadrant === earlyQ1).length,
+                            earlySource.filter(g => g.quadrant === earlyQ2).length
+                        );
+
+                        let lastMaleEarlyTime = currentTime;
+                        for (let i = 0; i < maxMaleEarlyMatches; i++) {
+                            const match = {
+                                tee1: null,
+                                tee10: null
+                            };
+
+                            const q1Group = earlySource.filter(g => g.quadrant === earlyQ1)[i];
+                            const q2Group = earlySource.filter(g => g.quadrant === earlyQ2)[i];
+                            if (this.dayNumber === 2) {
+                                // Q3 → Tee10 (Q2), Q4 → Tee1 (Q1)
+                                if (q1Group) {  // q1Group è Q3
+                                    match.tee10 = {  // Q3 → Early Tee10
+                                        matchNumber: maleMatchNumber++,
+                                        category: 'M',
+                                        quadrant: this.remapQuadrant(q1Group.quadrant),
+                                        players: [...q1Group.players],
+                                        time: currentTime,
+                                        type: 'Male-Early'
+                                    };
+                                }
+
+                                if (q2Group) {  // q2Group è Q4
+                                    match.tee1 = {   // Q4 → Early Tee1
+                                        matchNumber: maleMatchNumber++,
+                                        category: 'M',
+                                        quadrant: this.remapQuadrant(q2Group.quadrant),
+                                        players: [...q2Group.players],
+                                        time: currentTime,
+                                        type: 'Male-Early'
+                                    };
+                                }
+
+                            } else {
+                                // Giorno 1: normale
+                                if (q1Group) {
+                                    match.tee1 = {
+                                        matchNumber: maleMatchNumber++,
+                                        category: 'M',
+                                        quadrant: this.remapQuadrant(q1Group.quadrant),
+                                        players: [...q1Group.players],
+                                        time: currentTime,
+                                        type: 'Male-Early'
+                                    };
+                                }
+
+                                if (q2Group) {
+                                    match.tee10 = {
+                                        matchNumber: maleMatchNumber++,
+                                        category: 'M',
+                                        quadrant: this.remapQuadrant(q2Group.quadrant),
+                                        players: [...q2Group.players],
+                                        time: currentTime,
+                                        type: 'Male-Early'
+                                    };
+                                }
+
+                            }
+
+
+                            if (match.tee1 || match.tee10) {
+                                matches.push(match);
+                                lastMaleEarlyTime = currentTime;
+                                currentTime = this.addMinutes(currentTime, this.intervalMinutes);
+                            }
+                        }
+
+                        // 2. PARTENZE EARLY FEMMINILI
+                        let lastFemaleEarlyTime = lastMaleEarlyTime;
+                        const femaleEarlySource = this.dayNumber === 1 ? femaleEarlyGroups : femaleLateGroups;
+                        if (femaleEarlySource.length > 0) {
+                            const maxFemaleEarlyMatches = Math.max(
+                                femaleEarlySource.filter(g => g.quadrant === earlyQ1).length,
+                                femaleEarlySource.filter(g => g.quadrant === earlyQ2).length
+                            );
+
+                            for (let i = 0; i < maxFemaleEarlyMatches; i++) {
+                                const match = {
+                                    tee1: null,
+                                    tee10: null
+                                };
+
+                                const q1Group = femaleEarlySource.filter(g => g.quadrant === earlyQ1)[i];
+                                const q2Group = femaleEarlySource.filter(g => g.quadrant === earlyQ2)[i];
+                                if (this.dayNumber === 2) {
+                                    // Q3 → Tee10 (Q2), Q4 → Tee1 (Q1)
+                                    if (q1Group) { // q1Group è Q3
+                                        match.tee10 = { // Q3 → Early Tee10
+                                            matchNumber: femaleMatchNumber++,
+                                            category: 'F',
+                                            quadrant: this.remapQuadrant(q1Group.quadrant),
+                                            players: [...q1Group.players],
+                                            time: currentTime,
+                                            type: 'Female-Early'
+                                        };
+                                    }
+
+                                    if (q2Group) { // q2Group è Q4
+                                        match.tee1 = { // Q4 → Early Tee1
+                                            matchNumber: femaleMatchNumber++,
+                                            category: 'F',
+                                            quadrant: this.remapQuadrant(q2Group.quadrant),
+                                            players: [...q2Group.players],
+                                            time: currentTime,
+                                            type: 'Female-Early'
+                                        };
+                                    }
+
+                                } else {
+                                    // Giorno 1: normale
+                                    if (q1Group) {
+                                        match.tee1 = {
+                                            matchNumber: femaleMatchNumber++,
+                                            category: 'F',
+                                            quadrant: this.remapQuadrant(q1Group.quadrant),
+                                            players: [...q1Group.players],
+                                            time: currentTime,
+                                            type: 'Female-Early'
+                                        };
+                                    }
+
+                                    if (q2Group) {
+                                        match.tee10 = {
+                                            matchNumber: femaleMatchNumber++,
+                                            category: 'F',
+                                            quadrant: this.remapQuadrant(q2Group.quadrant),
+                                            players: [...q2Group.players],
+                                            time: currentTime,
+                                            type: 'Female-Early'
+                                        };
+                                    }
+
+                                }
+
+
+                                if (match.tee1 || match.tee10) {
+                                    matches.push(match);
+                                    lastFemaleEarlyTime = currentTime;
+                                    currentTime = this.addMinutes(currentTime, this.intervalMinutes);
+                                }
+                            }
+                        }
+
+                        // 3. PARTENZE LATE FEMMINILI
+                        let firstFemaleLateTime = this.addMinutes(lastFemaleEarlyTime, halfGameTimeMinutes);
+                        let lastFemaleLateTime = firstFemaleLateTime;
+
+                        // Giorno 1: Q3->Tee1, Q4->Tee10 (Late)
+                        // Giorno 2: Q1->Tee10, Q2->Tee1 (gli Early diventano Late ma scambiati)
+                        const femaleLateSource = this.dayNumber === 1 ? femaleLateGroups : femaleEarlyGroups;
+                        const lateQ1 = this.dayNumber === 1 ? 'Q3' : 'Q1';
+                        const lateQ2 = this.dayNumber === 1 ? 'Q4' : 'Q2';
+
+                        if (femaleLateSource.length > 0) {
+                            currentTime = firstFemaleLateTime;
+
+                            const maxFemaleLateMatches = Math.max(
+                                femaleLateSource.filter(g => g.quadrant === lateQ1).length,
+                                femaleLateSource.filter(g => g.quadrant === lateQ2).length
+                            );
+
+                            for (let i = 0; i < maxFemaleLateMatches; i++) {
+                                const match = {
+                                    tee1: null,
+                                    tee10: null
+                                };
+
+                                const q3Group = femaleLateSource.filter(g => g.quadrant === lateQ1)[i];
+                                const q4Group = femaleLateSource.filter(g => g.quadrant === lateQ2)[i];
+
+                                // Per il giorno 2: Q1 va a Q4 (Late Tee10), Q2 va a Q3 (Late Tee1)
+                                if (this.dayNumber === 2) {
+                                    if (q3Group) {
+                                        match.tee10 = {
+                                            matchNumber: femaleMatchNumber++,
+                                            category: 'F',
+                                            quadrant: this.remapQuadrant(q3Group.quadrant),
+                                            players: [...q3Group.players],
+                                            time: currentTime,
+                                            type: 'Female-Late'
+                                        };
+                                    }
+
+                                    if (q4Group) {
+                                        match.tee1 = {
+                                            matchNumber: femaleMatchNumber++,
+                                            category: 'F',
+                                            quadrant: this.remapQuadrant(q4Group.quadrant),
+                                            players: [...q4Group.players],
+                                            time: currentTime,
+                                            type: 'Female-Late'
+                                        };
+                                    }
+                                } else {
+                                    // Giorno 1: normale
+                                    if (q3Group) {
+                                        match.tee1 = {
+                                            matchNumber: femaleMatchNumber++,
+                                            category: 'F',
+                                            quadrant: this.remapQuadrant(q3Group.quadrant),
+                                            players: [...q3Group.players],
+                                            time: currentTime,
+                                            type: 'Female-Late'
+                                        };
+                                    }
+
+                                    if (q4Group) {
+                                        match.tee10 = {
+                                            matchNumber: femaleMatchNumber++,
+                                            category: 'F',
+                                            quadrant: this.remapQuadrant(q4Group.quadrant),
+                                            players: [...q4Group.players],
+                                            time: currentTime,
+                                            type: 'Female-Late'
+                                        };
+                                    }
+                                }
+
+                                if (match.tee1 || match.tee10) {
+                                    matches.push(match);
+                                    lastFemaleLateTime = currentTime;
+                                    currentTime = this.addMinutes(currentTime, this.intervalMinutes);
+                                }
+                            }
+                        }
+
+                        // 4. PARTENZE LATE MASCHILI
+                        const firstMaleLateTime = this.addMinutes(lastFemaleLateTime, halfGameTimeMinutes);
+                        currentTime = firstMaleLateTime;
+
+                        const maleLateSource = this.dayNumber === 1 ? maleLateGroups : maleEarlyGroups;
+                        const maxMaleLateMatches = Math.max(
+                            maleLateSource.filter(g => g.quadrant === lateQ1).length,
+                            maleLateSource.filter(g => g.quadrant === lateQ2).length
+                        );
+
+                        for (let i = 0; i < maxMaleLateMatches; i++) {
+                            const match = {
+                                tee1: null,
+                                tee10: null
+                            };
+
+                            const q3Group = maleLateSource.filter(g => g.quadrant === lateQ1)[i];
+                            const q4Group = maleLateSource.filter(g => g.quadrant === lateQ2)[i];
+
+                            // Per il giorno 2: Q1 va a Q4 (Late Tee10), Q2 va a Q3 (Late Tee1)
+                            if (this.dayNumber === 2) {
+                                if (q3Group) {
+                                    match.tee10 = {
+                                        matchNumber: maleMatchNumber++,
+                                        category: 'M',
+                                        quadrant: this.remapQuadrant(q3Group.quadrant),
+                                        players: [...q3Group.players],
+                                        time: currentTime,
+                                        type: 'Male-Late'
+                                    };
+                                }
+
+                                if (q4Group) {
+                                    match.tee1 = {
+                                        matchNumber: maleMatchNumber++,
+                                        category: 'M',
+                                        quadrant: this.remapQuadrant(q4Group.quadrant),
+                                        players: [...q4Group.players],
+                                        time: currentTime,
+                                        type: 'Male-Late'
+                                    };
+                                }
+                            } else {
+                                // Giorno 1: normale
+                                if (q3Group) {
+                                    match.tee1 = {
+                                        matchNumber: maleMatchNumber++,
+                                        category: 'M',
+                                        quadrant: this.remapQuadrant(q3Group.quadrant),
+                                        players: [...q3Group.players],
+                                        time: currentTime,
+                                        type: 'Male-Late'
+                                    };
+                                }
+
+                                if (q4Group) {
+                                    match.tee10 = {
+                                        matchNumber: maleMatchNumber++,
+                                        category: 'M',
+                                        quadrant: this.remapQuadrant(q4Group.quadrant),
+                                        players: [...q4Group.players],
+                                        time: currentTime,
+                                        type: 'Male-Late'
+                                    };
+                                }
+                            }
+
+                            if (match.tee1 || match.tee10) {
+                                matches.push(match);
+                                currentTime = this.addMinutes(currentTime, this.intervalMinutes);
+                            }
+                        }
+
+                        const lastStartTime = matches[matches.length - 1]?.tee1?.time || matches[matches.length - 1]?.tee10?.time || currentTime;
+                        const finishTime = this.addMinutes(lastStartTime, this.gameTimeHours * 60);
+
+                        console.log('Total matches generated:', matches.length);
+
+                        this.schedule = {
+                            matches: matches,
+                            totalMatches: Math.ceil(this.totalPlayers / this.playersPerMatch),
+                            totalWomenMatches: femaleGroups.length > 0 ? Math.ceil(this.totalWomen / this.playersPerMatch) : 0,
+                            lastEarlyTime: lastMaleEarlyTime,
+                            firstLateTime: firstMaleLateTime,
+                            finishTime: finishTime,
+                            limits: limits,
+                            quadranti: limits.quadranti
+                        };
+
+                        console.log('Schedule object created:', this.schedule);
+
+                    } catch (error) {
+                        console.error('Error in generateSchedule:', error);
+                        alert('Errore nella generazione: ' + error.message);
+                    }
+                },
+
+                getRowClass(match) {
+                    if (match.tee1?.type === 'Male-Early' || match.tee10?.type === 'Male-Early') {
+                        return 'male-early-row';
+                    }
+                    if (match.tee1?.type === 'Male-Late' || match.tee10?.type === 'Male-Late') {
+                        return 'male-late-row';
+                    }
+                    if (match.tee1?.type === 'Female-Early' || match.tee10?.type === 'Female-Early') {
+                        return 'female-early-row';
+                    }
+                    if (match.tee1?.type === 'Female-Late' || match.tee10?.type === 'Female-Late') {
+                        return 'female-late-row';
+                    }
+                    return '';
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

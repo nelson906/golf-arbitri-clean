@@ -8,6 +8,7 @@ use App\Models\Club;
 use App\Models\Zone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 class ClubController extends Controller
 {
@@ -84,7 +85,7 @@ class ClubController extends Controller
         // Statistiche
         $stats = [
             'total_tournaments' => $club->tournaments()->count(),
-            'total_assignments' => \DB::table('assignments')
+            'total_assignments' => DB::table('assignments')
                 ->whereIn('tournament_id', $club->tournaments()->pluck('id'))
                 ->count(),
             'upcoming_tournaments' => $club->tournaments()->upcoming()->count(),
@@ -194,6 +195,7 @@ class ClubController extends Controller
             'name' => 'required|string|max:255',
             'zone_id' => 'required|exists:zones,id',
             'city' => 'nullable|string|max:255',
+            'province' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',

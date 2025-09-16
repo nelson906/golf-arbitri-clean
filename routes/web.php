@@ -6,6 +6,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Foundation\Application;  // Aggiungi questo import in cima
 
 /*
 |--------------------------------------------------------------------------
@@ -17,12 +18,20 @@ use Illuminate\Http\RedirectResponse;
 |
 */
 
-// Public routes
+// Route unica per '/'
 Route::get('/', function () {
+    // Se l'utente è autenticato, vai alla dashboard
     if (auth()->check()) {
         return redirect()->route('dashboard');
     }
-    return redirect()->route('login');
+
+    // Altrimenti mostra la welcome page
+    return view('welcome', [
+        'canLogin' => Route::has('login'),
+        'canRegister' => Route::has('register'),
+        'laravelVersion' => Application::VERSION,
+        'phpVersion' => PHP_VERSION,
+    ]);
 });
 
 // Dashboard principale - redirect intelligente basato su ruolo
