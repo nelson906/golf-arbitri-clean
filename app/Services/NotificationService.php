@@ -8,7 +8,6 @@ use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Models\InstitutionalEmail;
 use App\Models\Notification;
-use App\Models\LetterTemplate;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\AssignmentNotification;
 
@@ -236,36 +235,6 @@ class NotificationService
             $notification->markAsFailed($e->getMessage());
             throw $e;
         }
-    }
-
-    /**
-     * Get template subject with variables replaced.
-     */
-    private function getTemplateSubject(string $type, ?int $zoneId, array $variables): string
-    {
-        $template = LetterTemplate::getBestTemplate($type, $zoneId);
-
-        if ($template) {
-            return $this->replaceVariables($template->subject, $variables);
-        }
-
-        // Default subject
-        return $this->replaceVariables('Notifica {{tournament_name}}', $variables);
-    }
-
-    /**
-     * Get template body with variables replaced.
-     */
-    private function getTemplateBody(string $type, ?int $zoneId, array $variables): string
-    {
-        $template = LetterTemplate::getBestTemplate($type, $zoneId);
-
-        if ($template) {
-            return $this->replaceVariables($template->body, $variables);
-        }
-
-        // Default body
-        return $this->replaceVariables($this->getDefaultBody($type), $variables);
     }
 
     /**

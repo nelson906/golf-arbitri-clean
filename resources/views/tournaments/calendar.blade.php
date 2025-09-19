@@ -36,7 +36,7 @@
                                 @endforeach
                             </select>
                         @endif
-                        
+
                         {{-- Type Filter --}}
                         @if(isset($calendarData['types']) && count($calendarData['types']) > 0)
                             <select id="typeFilter" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
@@ -48,9 +48,9 @@
                                 @endforeach
                             </select>
                         @endif
-                        
-                        
-                        <a href="{{ route('tournaments.index') }}"
+
+
+                        <a href="{{ route('admin.tournaments.index') }}"
                             class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                             Lista Tornei
                         </a>
@@ -98,34 +98,34 @@
     {{-- Pass data to JavaScript --}}
     <script>
         window.adminCalendarData = @json($calendarData);
-        
+
         // Handle filters
         document.addEventListener('DOMContentLoaded', function() {
             const zoneFilter = document.getElementById('zoneFilter');
             const typeFilter = document.getElementById('typeFilter');
-            
+
             function updateFilters() {
                 const url = new URL(window.location);
-                
+
                 if (zoneFilter && zoneFilter.value) {
                     url.searchParams.set('zone_id', zoneFilter.value);
                 } else {
                     url.searchParams.delete('zone_id');
                 }
-                
+
                 if (typeFilter && typeFilter.value) {
                     url.searchParams.set('type_id', typeFilter.value);
                 } else {
                     url.searchParams.delete('type_id');
                 }
-                
+
                 window.location.href = url.toString();
             }
-            
+
             if (zoneFilter) {
                 zoneFilter.addEventListener('change', updateFilters);
             }
-            
+
             if (typeFilter) {
                 typeFilter.addEventListener('change', updateFilters);
             }

@@ -14,8 +14,6 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            LetterheadSeeder::class,
-            LetterTemplateSeeder::class,
             UpdateTournamentTypeColorsSeeder::class,
             CoreDataSeeder::class,
 ]);

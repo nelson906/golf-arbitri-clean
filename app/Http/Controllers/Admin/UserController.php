@@ -37,7 +37,19 @@ class UserController extends Controller
         if ($request->filled('level') && Schema::hasColumn('users', 'level')) {
             $query->where('level', $request->level);
         }
-
+if (request('sort')) {
+    switch (request('sort')) {
+        case 'surname_asc':
+            $query->orderBy('last_name');
+            break;
+        case 'surname_desc':
+            $query->orderByDesc('last_name');
+            break;
+        case 'name_asc':
+            $query->orderBy('name');
+            break;
+    }
+}
         // Filtro per zona
         if ($request->filled('zone_id')) {
             $query->where('zone_id', $request->zone_id);
@@ -292,11 +304,11 @@ class UserController extends Controller
         if (\Schema::hasColumn('users', 'phone')) {
             $rules['phone'] = 'nullable|string|max:20';
         }
-        
+
         if (\Schema::hasColumn('users', 'gender')) {
             $rules['gender'] = 'nullable|in:male,female,mixed';
         }
-        
+
         if (\Schema::hasColumn('users', 'notes')) {
             $rules['notes'] = 'nullable|string';
         }
@@ -307,7 +319,7 @@ class UserController extends Controller
         if ($request->filled('password')) {
             $validated['password'] = Hash::make($validated['password']);
         }
-        
+
         // Gestisci il campo is_active (checkbox)
         $validated['is_active'] = $request->has('is_active');
 

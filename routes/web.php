@@ -89,19 +89,7 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
         });
 
 
-        // Letter Templates Management
-        Route::prefix('letter-templates')->name('letter-templates.')->group(function () {
-            Route::get('/', [App\Http\Controllers\Admin\LetterTemplateController::class, 'index'])->name('index');
-            Route::get('/create', [App\Http\Controllers\Admin\LetterTemplateController::class, 'create'])->name('create');
-            Route::post('/', [App\Http\Controllers\Admin\LetterTemplateController::class, 'store'])->name('store');
-            Route::get('/{template}', [App\Http\Controllers\Admin\LetterTemplateController::class, 'show'])->name('show');
-            Route::get('/{template}/edit', [App\Http\Controllers\Admin\LetterTemplateController::class, 'edit'])->name('edit');
-            Route::put('/{template}', [App\Http\Controllers\Admin\LetterTemplateController::class, 'update'])->name('update');
-            Route::delete('/{template}', [App\Http\Controllers\Admin\LetterTemplateController::class, 'destroy'])->name('destroy');
-            Route::post('/{template}/duplicate', [App\Http\Controllers\Admin\LetterTemplateController::class, 'duplicate'])->name('duplicate');
-            Route::get('/{template}/preview', [App\Http\Controllers\Admin\LetterTemplateController::class, 'preview'])->name('preview');
-            Route::post('/{template}/toggle-active', [App\Http\Controllers\Admin\LetterTemplateController::class, 'toggleActive'])->name('toggle-active');
-        });
+        // Settings placeholder route
 
         Route::get(uri: 'settings', action: function () {
             return view('admin.placeholder', ['title' => 'Settings']);
@@ -125,7 +113,6 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
         require __DIR__ . '/admin/dashboard.php';
         require __DIR__ . '/admin/statistic.php';
         require __DIR__ . '/admin/monitoring.php';
-        require __DIR__ . '/admin/letterheads.php';
         require __DIR__ . '/admin/clubs.php';
         require __DIR__ . '/admin/notifications.php';
         require __DIR__ . '/admin/reports.php';

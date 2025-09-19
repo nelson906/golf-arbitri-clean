@@ -12,6 +12,7 @@ use Illuminate\View\View;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+
 /**
  * 🎯 TournamentController Unificato con Codifica Colori Recuperata
  */
@@ -52,7 +53,12 @@ class TournamentController extends Controller
             $stats = $this->calculateStats($tournaments);
         }
 
-        return view('tournaments.index', compact('tournaments', 'isAdmin', 'stats'));
+        return view('tournaments.index', [
+            'tournaments' => $tournaments,
+            'isAdmin' => $isAdmin,
+            'stats' => $stats,
+            'isNationalAdmin' => auth()->user()->user_type === 'national_admin' // ← AGGIUNGI QUESTA
+        ]);
     }
 
     /**
@@ -92,23 +98,23 @@ class TournamentController extends Controller
         $currentYear = $request->get('year', now()->year);
         $startDate = Carbon::create($currentYear, 1, 1)->startOfYear();
         $endDate = Carbon::create($currentYear, 12, 31)->endOfYear();
-        
+
         $query->whereBetween('start_date', [$startDate, $endDate]);
-        
+
         // Filtro per zona
         if ($request->filled('zone_id')) {
-            $query->whereHas('club', function($q) use ($request) {
+            $query->whereHas('club', function ($q) use ($request) {
                 $q->where('zone_id', $request->zone_id);
             });
         }
-        
+
         // Filtro per tipo torneo
         if ($request->filled('type_id')) {
             $query->where('tournament_type_id', $request->type_id);
         }
-        
+
         $query->orderBy('start_date');
-        
+
         $tournaments = $query->get();
 
         // 👤 USER-SPECIFIC DATA

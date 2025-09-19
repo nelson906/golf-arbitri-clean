@@ -176,4 +176,20 @@
             @endif
         </div>
     </div>
+    <script>
+let submitTimeout;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const selects = document.querySelectorAll('select');
+
+    selects.forEach(select => {
+        select.addEventListener('change', function() {
+            clearTimeout(submitTimeout);
+            submitTimeout = setTimeout(() => {
+                this.closest('form').submit();
+            }, 300); // Attendi 300ms
+        });
+    });
+});
+</script>
 @endsection

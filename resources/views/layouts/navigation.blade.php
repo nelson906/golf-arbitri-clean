@@ -89,16 +89,6 @@
             📢 Comunicazioni
         </x-nav-link>
 
-        {{-- ✅ LETTERHEAD MENU - AGGIUNTO --}}
-        <x-nav-link :href="route('admin.letterheads.index')" :active="request()->routeIs('admin.letterheads.*')">
-            📄 Carta Intestata
-        </x-nav-link>
-
-        {{-- Letter Templates --}}
-        <x-nav-link :href="route('admin.letter-templates.index')" :active="request()->routeIs('admin.letter-templates.*')">
-            📝 Template Lettere
-        </x-nav-link>
-
         {{-- Notifications --}}
         <x-nav-link :href="route('admin.tournament-notifications.index')" :active="request()->routeIs('admin.notifications.*')">
             🔔 Notifiche
@@ -343,14 +333,6 @@
                     📢 Comunicazioni
                 </x-responsive-nav-link>
 
-                {{-- ✅ LETTERHEAD MOBILE MENU - AGGIUNTO --}}
-                <x-responsive-nav-link :href="route('admin.letterheads.index')" :active="request()->routeIs('admin.letterheads.*')">
-                    📄 Carta Intestata
-                </x-responsive-nav-link>
-
-                <x-responsive-nav-link :href="route('admin.letter-templates.index')" :active="request()->routeIs('admin.letter-templates.*')">
-                    📝 Template Lettere
-                </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.tournament-notifications.index')" :active="request()->routeIs('admin.notifications.*')">
                     🔔 Notifiche
                 </x-responsive-nav-link>

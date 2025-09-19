@@ -317,12 +317,6 @@
                                     📋 Tutte le Notifiche a Questo Destinatario
                                 </a>
 
-                                @if($notification->template_used)
-                                    <a href="{{ route('letter-templates.index') }}?search={{ urlencode($notification->template_used) }}"
-                                       class="w-full inline-flex justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                                        📝 Gestisci Template
-                                    </a>
-                                @endif
                             </div>
                         </div>
                     </div>

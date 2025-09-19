@@ -2,8 +2,7 @@
 
 namespace App\Providers;
 
-use App\Models\Letterhead;
-use App\Policies\LetterheadPolicy;
+
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -23,6 +22,5 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Register policies
-        Gate::policy(Letterhead::class, LetterheadPolicy::class);
     }
 }

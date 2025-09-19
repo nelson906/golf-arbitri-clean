@@ -8,6 +8,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Schema;
 
 class Assignment extends Model
 {
@@ -44,7 +45,7 @@ class Assignment extends Model
     // Relazione principale con user
     public function user()
     {
-        if (\Schema::hasColumn('assignments', 'user_id')) {
+        if (Schema::hasColumn('assignments', 'user_id')) {
             return $this->belongsTo(User::class, 'user_id');
         } else {
             return $this->belongsTo(User::class, 'referee_id');
@@ -56,10 +57,10 @@ class Assignment extends Model
     {
         return $this->user();
     }
-public function assignedBy()
-{
-    return $this->belongsTo(User::class, 'assigned_by_id');
-}
+    public function assignedBy()
+    {
+        return $this->belongsTo(User::class, 'assigned_by_id');
+    }
 
     /**
      * ACCESSORS

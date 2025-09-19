@@ -125,22 +125,6 @@
                 </li>
 
                 <li>
-                    <a href="{{ route('admin.letter-templates.index') ?? '#' }}"
-                       class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.letter-templates.*') ? 'bg-blue-900' : '' }}">
-                        <span class="mr-3">📝</span>
-                        Template Lettere
-                    </a>
-                </li>
-
-                <li>
-                    <a href="{{ route('admin.letterheads.index') ?? '#' }}"
-                       class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.letterheads.*') ? 'bg-blue-900' : '' }}">
-                        <span class="mr-3">📄</span>
-                        Carta Intestata
-                    </a>
-                </li>
-
-                <li>
                     <a href="{{ route('admin.tournament-notifications.index') ?? '#' }}"
                        class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.tournament-notifications.*') || request()->routeIs('admin.notifications.*') ? 'bg-blue-900' : '' }}">
                         <span class="mr-3">🔔</span>

@@ -191,7 +191,6 @@ class RefereeOrAdmin
             'tournament' => \App\Models\Tournament::class,
             'referee' => \App\Models\User::class,
             'club' => \App\Models\Club::class,
-            'letterhead' => \App\Models\Letterhead::class,
         ];
 
         if (!isset($zoneRestrictedResources[$parameterName])) {

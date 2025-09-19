@@ -12,7 +12,7 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-                    
+
                     {{-- Dashboard comune a tutti --}}
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         🏠 Dashboard
@@ -110,11 +110,6 @@
                                 </button>
                             </x-slot>
                             <x-slot name="content">
-                                <x-dropdown-link :href="route('admin.letter-templates.index')">
-                                    📝 Template
-                                </x-dropdown-link>
-                                <x-dropdown-link :href="route('admin.letterheads.index')">
-                                    📄 Carta Intestata
                                 </x-dropdown-link>
                                 <x-dropdown-link :href="route('communications.index')">
                                     📢 Comunicazioni

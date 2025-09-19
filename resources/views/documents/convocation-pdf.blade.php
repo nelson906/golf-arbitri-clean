@@ -1,113 +1,67 @@
-<!DOCTYPE html>
-<html>
+@extends('layouts.pdf')
 
-<head>
-    <meta charset="utf-8">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
+@section('title', 'Convocazione Arbitri - ' . $tournament->name)
 
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
+@section('content')
+    {{-- Header corretto --}}
+    <header class="header">
+        @if($zone_logo)
+            <img src="data:image/png;base64,{{ $zone_logo }}" class="logo" alt="Logo {{ $zone_name }}" style="max-height: 120px;">
+        @endif
+        <div class="zone-title">{{ $zone_name }}</div>
+    </header>
 
-        .logo {
-            max-height: 80px;
-        }
+    <h1 class="document-title">Convocazione Arbitri</h1>
 
-        .title {
-            font-size: 18px;
-            font-weight: bold;
-            margin: 20px 0;
-        }
-
-        .content {
-            margin: 20px 0;
-        }
-
-        .referee-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-        }
-
-        .referee-table th,
-        .referee-table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-
-        .referee-table th {
-            background-color: #f2f2f2;
-        }
-
-        .footer {
-            margin-top: 50px;
-            text-align: center;
-            font-size: 10px;
-            color: #666;
-        }
-
-        .director-row {
-            background-color: #f3f4f6;
-        }
-
-        .font-bold {
-            font-weight: bold;
-        }
-    </style>
-</head>
-
-<body>
-    @if ($letterhead && $letterhead->logo_path)
-        <div class="header">
-            <img src="{{ storage_path('app/public/' . $letterhead->logo_path) }}" class="logo">
+    {{-- Informazioni torneo --}}
+    <section class="info-section">
+        <div class="info-item">
+            <span class="info-label">Torneo:</span>
+            <strong>{{ $tournament_name }}</strong>
         </div>
-    @endif
+        <div class="info-item">
+            <span class="info-label">Date:</span>
+            {{ $tournament_dates }}
+        </div>
+        <div class="info-item">
+            <span class="info-label">Circolo:</span>
+            {{ $club_name }}
+        </div>
+    </section>
 
-    <h1 class="title">CONVOCAZIONE UFFICIALE ARBITRI</h1>
+    {{-- Testo introduttivo --}}
+    <p>Con la presente si comunica che per la gara in oggetto hanno dato la propria disponibilità a far parte del Comitato di gara, con il possibile ruolo a fianco indicato, gli arbitri di seguito riportati:</p>
 
-    <div class="content">
-        <p><strong>Torneo:</strong> {{ $tournament->name }}</p>
-        <p><strong>Date:</strong> {{ $tournament->date_range }}</p>
-        <p><strong>Circolo:</strong> {{ $tournament->club->name }}</p>
-        <p><strong>Tipo:</strong> {{ $tournament->tournamentType->name ?? 'N/A' }}</p>
-    </div>
+    {{-- Lista arbitri (TORNA ALLA VERSIONE ORIGINALE) --}}
+    <section class="referees-section">
+        <h3>ARBITRI CONVOCATI:</h3>
 
-    <h3>Arbitri Convocati:</h3>
+        @foreach(['Direttore di Torneo', 'Arbitro', 'Osservatore'] as $role)
+            @php $roleReferees = $referees->where('role', $role); @endphp
 
-    <table class="referee-table">
-        <thead>
-            <tr>
-                <th>Nome</th>
-                <th>Codice</th>
-                <th>Livello</th>
-                <th>Ruolo</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($referees as $referee)
-                <tr class="{{ $referee['is_director'] ? 'director-row' : '' }}">
-                    <td class="{{ $referee['is_director'] ? 'font-bold' : '' }}">
-                        {{ $referee['name'] }}
-                    </td>
-                    <td>{{ $referee['code'] }}</td>
-                    <td>{{ $referee['level'] }}</td>
-                    <td class="{{ $referee['is_director'] ? 'font-bold' : '' }}">
-                        {{ $referee['role'] }}
-                    </td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
+            @if($roleReferees->isNotEmpty())
+                <div class="role-group">
+                    <div class="role-title">{{ $role }}</div>
+                    @foreach($roleReferees as $assignment)
+                        <div class="referee-item">
+                            • {{ $assignment->user->name }}
+                            @if($assignment->user->referee_code)
+                                <small>({{ $assignment->user->referee_code }})</small>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        @endforeach
+    </section>
 
-    <div class="footer">
-        <p>Documento generato il {{ $generated_at }}</p>
-        <p>Comitato Regionale Arbitri - {{ $tournament->zone->name }}</p>
-    </div>
-</body>
+    {{-- Testo contatti --}}
+    <p>Si prega cortesemente di inviare tramite e-mail la necessaria convocazione del Comitato di Gara nonché, per conoscenza, ai seguenti indirizzi:</p>
+    <p>Sezione Zonale Regole 6: szr6@federgolf.it</p>
+    <p>Ufficio Campionati: campionati@federgolf.it</p>
 
-</html>
+    <footer class="footer">
+        <p>{{ $zone_name }}</p>
+        <p>Documento generato il {{ $current_date }}</p>
+    </footer>
+@endsection
