@@ -41,18 +41,21 @@ const RefereeCalendar = ({ calendarData }) => {
         );
     };
 
-    // FUNZIONE TOGGLE FUNZIONANTE (non placeholder!)
+    // FUNZIONE TOGGLE FUNZIONANTE
     const handleToggleAvailability = async (tournamentId, isAvailable) => {
         try {
-            const response = await fetch('/referee/availability/toggle', {
+            // Use the working user availability endpoint
+            const response = await fetch('/user/availability/store', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify({
                     tournament_id: tournamentId,
-                    available: !isAvailable,
+                    available: !isAvailable ? 1 : 0,
                     notes: ''
                 })
             });

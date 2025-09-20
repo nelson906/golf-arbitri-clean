@@ -123,6 +123,12 @@ class AvailabilityController extends Controller
 
         // Verifica che l'utente possa dichiarare disponibilità per questo torneo
         if (!$this->canDeclareAvailability($user, $tournament)) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Non sei autorizzato a dichiarare disponibilità per questo torneo.'
+                ], 403);
+            }
             return back()->with('error', 'Non sei autorizzato a dichiarare disponibilità per questo torneo.');
         }
 
@@ -139,12 +145,26 @@ class AvailabilityController extends Controller
                 ]
             );
             $message = 'Disponibilità dichiarata con successo.';
+            
+            // Invia notifiche per disponibilità aggiunta
+            $this->handleSingleNotification($user, $tournament, 'added');
         } else {
             // Rimuovi disponibilità
             Availability::where('user_id', $user->id)
                 ->where('tournament_id', $tournament->id)
                 ->delete();
             $message = 'Disponibilità rimossa con successo.';
+            
+            // Invia notifiche per disponibilità rimossa
+            $this->handleSingleNotification($user, $tournament, 'removed');
+        }
+
+        // Return JSON for AJAX requests
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message
+            ]);
         }
 
         return back()->with('success', $message);
@@ -417,11 +437,24 @@ class AvailabilityController extends Controller
 
     private function getZoneAdminEmails($zoneId)
     {
-        // Per ora usa solo l'email istituzionale della zona
-        // In futuro si può aggiungere una tabella di admin per zona
-        $institutionalEmail = "szr{$zoneId}@federgolf.it";
+        $emails = [];
         
-        return [$institutionalEmail];
+        // Recupera gli admin della zona
+        $zoneAdmins = User::where('zone_id', $zoneId)
+            ->where('user_type', 'admin')
+            ->whereNotNull('email')
+            ->pluck('email')
+            ->toArray();
+        
+        // Aggiungi gli admin trovati
+        $emails = array_merge($emails, $zoneAdmins);
+        
+        // Aggiungi anche l'email istituzionale della zona come backup
+        $institutionalEmail = "szr{$zoneId}@federgolf.it";
+        $emails[] = $institutionalEmail;
+        
+        // Rimuovi duplicati e valori vuoti
+        return array_unique(array_filter($emails));
     }
 
     private function getEventColor($tournament, $isAvailable, $isAssigned): string
@@ -458,5 +491,55 @@ class AvailabilityController extends Controller
         if ($isAssigned) return 'assigned';
         if ($isAvailable) return 'available';
         return 'can_apply';
+    }
+    
+    /**
+     * Handle notifications for single availability declaration
+     */
+    private function handleSingleNotification($user, $tournament, $action)
+    {
+        try {
+            // Prepara i dati per le notifiche
+            $addedTournaments = $action === 'added' ? collect([$tournament]) : collect();
+            $removedTournaments = $action === 'removed' ? collect([$tournament]) : collect();
+            
+            // Notifica all'utente
+            if (!empty($user->email)) {
+                Mail::to($user->email)->send(new BatchAvailabilityNotification(
+                    $user,
+                    $addedTournaments,
+                    $removedTournaments
+                ));
+            }
+            
+            // Notifica agli admin della sezione
+            $zoneId = $tournament->club->zone_id ?? $user->zone_id;
+            $adminEmails = $this->getZoneAdminEmails($zoneId);
+            
+            if (!empty($adminEmails)) {
+                Mail::to($adminEmails)->send(new BatchAvailabilityAdminNotification(
+                    $user,
+                    $addedTournaments,
+                    $removedTournaments
+                ));
+            }
+            
+            // Log per tracciamento
+            Log::info('Notifiche disponibilità inviate', [
+                'user_id' => $user->id,
+                'tournament_id' => $tournament->id,
+                'action' => $action,
+                'admin_emails' => $adminEmails
+            ]);
+            
+        } catch (\Exception $e) {
+            // Non bloccare l'operazione se l'invio email fallisce
+            Log::error('Errore invio notifica disponibilità singola', [
+                'user_id' => $user->id,
+                'tournament_id' => $tournament->id,
+                'action' => $action,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }

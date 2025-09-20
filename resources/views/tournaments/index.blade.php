@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.app')
 
 @section('title', 'Lista Tornei')
 
@@ -168,16 +168,16 @@
                                     {{-- ✅ MIGLIORAMENTO: Layout azioni più compatto --}}
                                     <div class="flex items-center justify-end space-x-2">
                                         {{-- Link Visualizza --}}
-                                        <a href="{{ route('admin.tournaments.show', $tournament) }}"
+                                        <a href="{{ route('tournaments.show', $tournament) }}"
                                             class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
                                             Visualizza
                                         </a>
 
                                         {{-- Bottone Assegna Comitato --}}
-                                        <a href="{{ route('admin.assignments.assign-referees', $tournament) }}"
+                                        {{-- <a href="{{ route('admin.assignments.assign-referees', $tournament) }}"
                                             class="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-green-700 transition-colors">
                                             👥 Assegna
-                                        </a>
+                                        </a> --}}
 
                                         {{-- Stato Assegnazioni + Notifica --}}
                                         @if ($tournament->assignments()->count() > 0)
@@ -187,12 +187,6 @@
                                                     class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
                                                     {{ $tournament->assignments()->count() }} assegnati
                                                 </span>
-
-                                                {{-- Pulsante Invia Notifica --}}
-                                                <a href="{{ route('admin.tournaments.show-assignment-form', $tournament) }}"
-                                                    class="bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-indigo-700 transition-colors">
-                                                    📧 Notifica
-                                                </a>
                                             </div>
                                         @endif
                                     </div>

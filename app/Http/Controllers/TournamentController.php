@@ -67,7 +67,9 @@ class TournamentController extends Controller
     public function calendar(Request $request): View
     {
         $user = auth()->user();
-        $isAdmin = $this->isAdmin($user);
+        // Allow forcing user mode with ?view_as=user parameter
+        $forceUserMode = $request->get('view_as') === 'user';
+        $isAdmin = $forceUserMode ? false : $this->isAdmin($user);
         $isNationalReferee = $this->isNationalReferee($user);
 
         // Query base con relazioni necessarie ottimizzate

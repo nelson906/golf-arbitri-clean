@@ -50,10 +50,17 @@
                         @endif
 
 
-                        <a href="{{ route('admin.tournaments.index') }}"
-                            class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                            Lista Tornei
-                        </a>
+                        @if($calendarData['userType'] === 'referee' || request('view_as') === 'user')
+                            <a href="{{ route('tournaments.index') }}"
+                                class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                                Lista Tornei
+                            </a>
+                        @else
+                            <a href="{{ route('admin.tournaments.index') }}"
+                                class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                                Lista Tornei
+                            </a>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -90,14 +97,22 @@
                 </div>
             </div>
 
-            {{-- Public Calendar Container --}}
-            <div id="admin-calendar-root"></div>
+            {{-- Calendar Container --}}
+            @if($calendarData['userType'] === 'referee')
+                <div id="referee-calendar-root"></div>
+            @else
+                <div id="admin-calendar-root"></div>
+            @endif
         </div>
     </div>
 
     {{-- Pass data to JavaScript --}}
     <script>
-        window.adminCalendarData = @json($calendarData);
+        @if($calendarData['userType'] === 'referee')
+            window.refereeCalendarData = @json($calendarData);
+        @else
+            window.adminCalendarData = @json($calendarData);
+        @endif
 
         // Handle filters
         document.addEventListener('DOMContentLoaded', function() {

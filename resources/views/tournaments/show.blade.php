@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.app')
 
 @section('title', 'Torneo: ' . $tournament->name)
 
@@ -119,13 +119,13 @@
                             </div>
                         </div>
                     </div>
-                @elseif($tournament->status === 'open')
+                {{-- @elseif($tournament->status === 'open')
                     <form action="{{ route('referee.applications.apply', $tournament) }}" method="POST">
                         @csrf
                         <button type="submit" class="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition duration-200">
                             Dichiara Disponibilità
                         </button>
-                    </form>
+                    </form> --}}
                 @else
                     <p class="text-gray-500">Le iscrizioni per questo torneo sono chiuse.</p>
                 @endif

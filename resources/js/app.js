@@ -95,7 +95,10 @@ const CalendarErrorHandler = {
         // Type-specific validations
         switch (type) {
             case 'admin':
-                if (data.userType !== 'admin' && !data.userRoles?.includes('admin')) {
+                if (data.userType !== 'admin' && 
+                    !data.userRoles?.includes('admin') && 
+                    !data.userRoles?.includes('national_admin') && 
+                    !data.userRoles?.includes('super_admin')) {
                     errors.push('Dati admin non validi');
                 }
                 break;
