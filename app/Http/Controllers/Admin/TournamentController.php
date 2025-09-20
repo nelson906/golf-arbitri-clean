@@ -103,19 +103,6 @@ class TournamentController extends Controller
                 $q->where('zone_id', $user->zone_id);
             })
             ->get();
-        // === DEBUG START ===
-        \Log::info('=== DEBUG TOURNAMENT TYPES ===');
-        $allTypes = \App\Models\TournamentType::all();
-        foreach ($allTypes as $type) {
-            \Log::info("ID: {$type->id} | Name: '{$type->name}' | Short: {$type->short_name}");
-        }
-
-        \Log::info('=== DEBUG TOURNAMENTS WITH TYPES ===');
-        foreach ($tournaments->take(5) as $tournament) {
-            $typeName = $tournament->tournamentType->name ?? 'NULL';
-            \Log::info("Tournament: {$tournament->name} | Type: '{$typeName}'");
-        }
-        // === DEBUG END ===
 
         // Get zones for filter
         $zones = $isNationalAdmin
@@ -607,29 +594,6 @@ class TournamentController extends Controller
         };
     }
 
-    // ============================================
-    // 🔍 METODO DEBUG (aggiungere temporaneamente)
-    // ============================================
-
-    /**
-     * 🔍 Debug method - aggiungere temporaneamente per vedere i nomi effettivi
-     */
-    private function debugTournamentTypes()
-    {
-        $types = \App\Models\TournamentType::all();
-        \Log::info('=== DEBUG TOURNAMENT TYPES ===');
-        foreach ($types as $type) {
-            \Log::info("ID: {$type->id} | Name: '{$type->name}' | Short: {$type->short_name}");
-        }
-
-        // Debug also tournaments with their types
-        $tournaments = \App\Models\Tournament::with('tournamentType')->take(5)->get();
-        \Log::info('=== DEBUG TOURNAMENTS ===');
-        foreach ($tournaments as $tournament) {
-            $typeName = $tournament->tournamentType->name ?? 'NULL';
-            \Log::info("Tournament: {$tournament->name} | Type: '{$typeName}'");
-        }
-    }
     /**
      * 🎨 Get border color for admin calendar
      */
