@@ -523,7 +523,7 @@
                                 </div>
                                 {{-- Submit Buttons --}}
                                 <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-                                    <a href="{{ route('tournaments.show', $tournament) }}"
+                                    <a href="{{ route('admin.tournaments.show', $tournament) }}"
                                         class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
                                         Annulla
                                     </a>

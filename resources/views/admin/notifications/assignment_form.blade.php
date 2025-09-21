@@ -523,7 +523,7 @@
                                 </div>
                                 {{-- Submit Buttons --}}
                                 <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
-                                    <a href="{{ route('tournaments.show', $tournament) }}"
+                                    <a href="{{ route('admin.tournaments.show', $tournament) }}"
                                         class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
                                         Annulla
                                     </a>
@@ -563,7 +563,7 @@
             <div id="documentManagerContent" class="py-4">
                 {{-- Contenuto caricato dinamicamente --}}
             </div>
-            
+
             {{-- Pulsante Chiudi in basso --}}
             <div class="pt-4 border-t mt-4">
                 <button type="button" onclick="closeModal('documentManagerModal')"
@@ -784,7 +784,7 @@
                 // Mostra loading
                 const content = document.getElementById('documentManagerContent');
                 content.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-4xl text-blue-500"></i><p class="mt-4">Generazione in corso...</p></div>';
-                
+
                 fetch(`/admin/tournament-notifications/${notificationId}/generate/${type}`, {
                     method: 'POST',
                     headers: {
@@ -815,7 +815,7 @@
                 // Mostra loading
                 const content = document.getElementById('documentManagerContent');
                 content.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-4xl text-orange-500"></i><p class="mt-4">Rigenerazione in corso...</p></div>';
-                
+
                 fetch(`/admin/tournament-notifications/${notificationId}/regenerate/${type}`, {
                     method: 'POST',
                     headers: {
@@ -846,7 +846,7 @@
                 // Mostra loading
                 const content = document.getElementById('documentManagerContent');
                 content.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-4xl text-red-500"></i><p class="mt-4">Eliminazione in corso...</p></div>';
-                
+
                 // Usa AJAX per rimanere nel modal
                 fetch(`/admin/tournament-notifications/${notificationId}/document/${type}`, {
                     method: 'POST',
@@ -896,17 +896,17 @@
             if (uploadForm) {
                 uploadForm.addEventListener('submit', function(e) {
                     e.preventDefault();
-                    
+
                     const formData = new FormData(this);
                     const notificationId = this.action.match(/\/(\d+)\/upload/)[1];
-                    
+
                     // Chiudi modal upload
                     closeModal('uploadDocumentModal');
-                    
+
                     // Mostra loading nel modal principale
                     const content = document.getElementById('documentManagerContent');
                     content.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-4xl text-purple-500"></i><p class="mt-4">Caricamento in corso...</p></div>';
-                    
+
                     fetch(this.action, {
                         method: 'POST',
                         body: formData,

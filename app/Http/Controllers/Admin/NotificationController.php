@@ -287,7 +287,6 @@ public function edit(TournamentNotification $notification)
             'groupedEmails',
             'documentStatus',
             'hasExistingConvocation',
-            // 'templates',
             'institutionalEmails'
         ));
     }
