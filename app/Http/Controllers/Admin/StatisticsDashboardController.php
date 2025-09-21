@@ -74,18 +74,20 @@ class StatisticsDashboardController extends Controller
         $month = $request->get('month');
         $dateFrom = $request->get('date_from');
         $dateTo = $request->get('date_to');
+        $sortBy = $request->get('sort', 'availabilities_count');
+        $sortDirection = $request->get('direction', 'desc');
 
-        // Query base
+        // Query base per le disponibilità (INVARIATA)
         $query = Availability::with(['referee', 'tournament.club', 'tournament.zone', 'tournament.tournamentType']);
 
-        // Filtri zona per admin locali
+        // Filtri zona per admin locali (INVARIATO)
         if (!$isNationalAdmin) {
             $query->whereHas('tournament', function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id);
             });
         }
 
-        // Filtri temporali
+        // Filtri temporali (INVARIATI)
         if ($dateFrom) {
             $query->whereHas('tournament', function ($q) use ($dateFrom) {
                 $q->where('start_date', '>=', $dateFrom);
@@ -104,7 +106,24 @@ class StatisticsDashboardController extends Controller
 
         $availabilities = $query->paginate(50);
 
-        // Statistiche riepilogo
+        // ===== CLASSIFICA SOLO ARBITRI ATTIVI =====
+        $refereesQuery = User::where('user_type', 'referee')
+            ->where('is_active', true)  // ← AGGIUNTO FILTRO ATTIVI
+            ->with(['zone'])
+            ->withCount(['availabilities', 'assignments']);
+
+        if ($user->user_type === 'admin') {
+            $refereesQuery->where('zone_id', $user->zone_id);
+        } elseif ($user->user_type === 'national_admin') {
+            $refereesQuery->whereIn('level', ['Nazionale', 'Internazionale']);
+        }
+
+        $refereesRanking = $refereesQuery
+            ->orderBy($sortBy, $sortDirection)
+            ->orderBy('name', 'asc')
+            ->get();
+
+        // Statistiche riepilogo (aggiorna anche qui per coerenza)
         $stats = [
             'total' => $query->count(),
             'by_zone' => $isNationalAdmin ? $this->getAvailabilityByZone($month) : [],
@@ -117,10 +136,13 @@ class StatisticsDashboardController extends Controller
                 ->whereYear('created_at', date('Y'))
                 ->groupBy('mese')
                 ->pluck('totale', 'mese'),
-            'top_arbitri' => User::withCount('availabilities')
+            'top_arbitri' => User::where('user_type', 'referee')
+                ->where('is_active', true)  // ← AGGIUNTO ANCHE QUI
+                ->withCount('availabilities')
                 ->orderBy('availabilities_count', 'desc')
                 ->limit(10)
-                ->get()
+                ->get(),
+            'referees_ranking' => $refereesRanking,
         ];
 
         return view('admin.statistics.disponibilita', compact(
@@ -129,7 +151,9 @@ class StatisticsDashboardController extends Controller
             'isNationalAdmin',
             'month',
             'dateFrom',
-            'dateTo'
+            'dateTo',
+            'sortBy',
+            'sortDirection'
         ));
     }
 
@@ -397,7 +421,7 @@ class StatisticsDashboardController extends Controller
             if ($dateTo) {
                 $tournamentsQuery->where('start_date', '<=', $dateTo);
             }
-            
+
             $assignmentsQuery = Assignment::whereHas('tournament', function ($q) use ($zone) {
                 $q->where('zone_id', $zone->id);
             });
@@ -411,7 +435,7 @@ class StatisticsDashboardController extends Controller
                     $q->where('start_date', '<=', $dateTo);
                 });
             }
-            
+
             $zoneStats[] = [
                 'zone' => $zone,
                 'referees' => $zone->users()->where('user_type', 'referee')->count(),
@@ -634,7 +658,18 @@ class StatisticsDashboardController extends Controller
     }
     private function getAvailabilityByLevel($user, $isNationalAdmin, $month)
     {
-        return [];
+        $query = User::where('user_type', 'referee')
+            ->where('is_active', true)
+            ->withCount('availabilities');
+
+        if (!$isNationalAdmin) {
+            $query->where('zone_id', $user->zone_id);
+        }
+
+        return $query->select('level', DB::raw('count(*) as count'))
+            ->groupBy('level')
+            ->pluck('count', 'level')
+            ->toArray();
     }
     private function getAvailabilityConversionRate($user, $isNationalAdmin, $month)
     {
