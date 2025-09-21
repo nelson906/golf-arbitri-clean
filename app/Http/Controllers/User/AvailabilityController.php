@@ -123,13 +123,21 @@ class AvailabilityController extends Controller
 
         // Verifica che l'utente possa dichiarare disponibilità per questo torneo
         if (!$this->canDeclareAvailability($user, $tournament)) {
+            $errorMessage = 'Non sei autorizzato a dichiarare disponibilità per questo torneo.';
+
+            if ($tournament->start_date < now()) {
+                $errorMessage = 'Non puoi dichiarare disponibilità per tornei con date antecedenti a oggi.';
+            } elseif ($tournament->availability_deadline && $tournament->availability_deadline < now()) {
+                $errorMessage = 'Il termine per dichiarare disponibilità per questo torneo è scaduto.';
+            }
+
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Non sei autorizzato a dichiarare disponibilità per questo torneo.'
+                    'error' => $errorMessage
                 ], 403);
             }
-            return back()->with('error', 'Non sei autorizzato a dichiarare disponibilità per questo torneo.');
+            return back()->with('error', $errorMessage);
         }
 
         if ($request->available) {
@@ -145,7 +153,7 @@ class AvailabilityController extends Controller
                 ]
             );
             $message = 'Disponibilità dichiarata con successo.';
-            
+
             // Invia notifiche per disponibilità aggiunta
             $this->handleSingleNotification($user, $tournament, 'added');
         } else {
@@ -154,7 +162,7 @@ class AvailabilityController extends Controller
                 ->where('tournament_id', $tournament->id)
                 ->delete();
             $message = 'Disponibilità rimossa con successo.';
-            
+
             // Invia notifiche per disponibilità rimossa
             $this->handleSingleNotification($user, $tournament, 'removed');
         }
@@ -186,9 +194,9 @@ class AvailabilityController extends Controller
         // Recupera i tornei nella pagina corrente (quelli mostrati nel form)
         $pageQuery = Tournament::with(['club', 'zone', 'tournamentType'])
             ->where('start_date', '>=', now());
-            
+
         $isNationalUser = RefereeLevelsHelper::canAccessNationalTournaments($user->level);
-        
+
         if ($isNationalUser) {
             $pageQuery->where(function ($q) use ($user) {
                 $q->whereHas('club', function ($clubQuery) use ($user) {
@@ -202,7 +210,7 @@ class AvailabilityController extends Controller
                 $q->where('zone_id', $user->zone_id);
             });
         }
-        
+
         // Applica gli stessi filtri della vista
         if ($request->filled('zone_id')) {
             $pageQuery->whereHas('club', function ($q) use ($request) {
@@ -215,13 +223,13 @@ class AvailabilityController extends Controller
         if ($request->filled('month')) {
             $pageQuery->whereMonth('start_date', $request->month);
         }
-        
+
         // Ottieni solo i tornei della pagina corrente
         $pageTournamentIds = $pageQuery->pluck('id')->toArray();
-        
+
         // Filtra solo i tornei selezionati che sono nella pagina corrente
         $selectedTournaments = array_intersect($selectedTournaments, $pageTournamentIds);
-        
+
         // Ottieni le disponibilità esistenti solo per i tornei della pagina corrente
         $existingAvailabilities = Availability::where('user_id', $user->id)
             ->whereIn('tournament_id', $pageTournamentIds)
@@ -280,7 +288,7 @@ class AvailabilityController extends Controller
             // Disponibilità e assegnazioni dell'utente
             $userAvailabilities = $user->availabilities()->pluck('tournament_id')->toArray();
             $userAssignments = $user->assignments()->pluck('tournament_id')->toArray();
-            
+
             // Raccogli i tipi di torneo unici presenti
             $uniqueTournamentTypes = collect();
 
@@ -289,7 +297,7 @@ class AvailabilityController extends Controller
                 'tournaments' => $tournaments->map(function ($tournament) use ($userAvailabilities, $userAssignments, $user, &$uniqueTournamentTypes) {
                     $isAvailable = in_array($tournament->id, $userAvailabilities);
                     $isAssigned = in_array($tournament->id, $userAssignments);
-                    
+
                     // Raccogli i tipi di torneo unici (solo se non è assegnato o disponibile)
                     if (!$isAssigned && !$isAvailable && $tournament->tournamentType) {
                         $uniqueTournamentTypes->put($tournament->tournamentType->id, [
@@ -438,21 +446,21 @@ class AvailabilityController extends Controller
     private function getZoneAdminEmails($zoneId)
     {
         $emails = [];
-        
+
         // Recupera gli admin della zona
         $zoneAdmins = User::where('zone_id', $zoneId)
             ->where('user_type', 'admin')
             ->whereNotNull('email')
             ->pluck('email')
             ->toArray();
-        
+
         // Aggiungi gli admin trovati
         $emails = array_merge($emails, $zoneAdmins);
-        
+
         // Aggiungi anche l'email istituzionale della zona come backup
         $institutionalEmail = "szr{$zoneId}@federgolf.it";
         $emails[] = $institutionalEmail;
-        
+
         // Rimuovi duplicati e valori vuoti
         return array_unique(array_filter($emails));
     }
@@ -492,7 +500,7 @@ class AvailabilityController extends Controller
         if ($isAvailable) return 'available';
         return 'can_apply';
     }
-    
+
     /**
      * Handle notifications for single availability declaration
      */
@@ -502,7 +510,7 @@ class AvailabilityController extends Controller
             // Prepara i dati per le notifiche
             $addedTournaments = $action === 'added' ? collect([$tournament]) : collect();
             $removedTournaments = $action === 'removed' ? collect([$tournament]) : collect();
-            
+
             // Notifica all'utente
             if (!empty($user->email)) {
                 Mail::to($user->email)->send(new BatchAvailabilityNotification(
@@ -511,11 +519,11 @@ class AvailabilityController extends Controller
                     $removedTournaments
                 ));
             }
-            
+
             // Notifica agli admin della sezione
             $zoneId = $tournament->club->zone_id ?? $user->zone_id;
             $adminEmails = $this->getZoneAdminEmails($zoneId);
-            
+
             if (!empty($adminEmails)) {
                 Mail::to($adminEmails)->send(new BatchAvailabilityAdminNotification(
                     $user,
@@ -523,7 +531,7 @@ class AvailabilityController extends Controller
                     $removedTournaments
                 ));
             }
-            
+
             // Log per tracciamento
             Log::info('Notifiche disponibilità inviate', [
                 'user_id' => $user->id,
@@ -531,7 +539,6 @@ class AvailabilityController extends Controller
                 'action' => $action,
                 'admin_emails' => $adminEmails
             ]);
-            
         } catch (\Exception $e) {
             // Non bloccare l'operazione se l'invio email fallisce
             Log::error('Errore invio notifica disponibilità singola', [

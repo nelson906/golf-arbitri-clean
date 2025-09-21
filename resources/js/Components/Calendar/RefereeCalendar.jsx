@@ -85,6 +85,14 @@ const RefereeCalendar = ({ calendarData }) => {
         );
     }
 
+    const isTournamentPast = (startDate) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tournamentDate = new Date(startDate);
+        tournamentDate.setHours(0, 0, 0, 0);
+        return tournamentDate < today;
+    };
+
     return (
         <div className="referee-calendar">
             {/* Legenda collassabile - PRESERVATA ESATTAMENTE COME ERA */}
@@ -138,15 +146,15 @@ const RefereeCalendar = ({ calendarData }) => {
                                 <h4 className="font-medium text-gray-600 mb-2">Colori (Categoria):</h4>
                                 <div className="flex flex-wrap gap-3">
                                     <div className="flex items-center">
-                                        <div className="w-3 h-3 rounded mr-1" style={{backgroundColor: '#FF6B6B'}}></div>
+                                        <div className="w-3 h-3 rounded mr-1" style={{ backgroundColor: '#FF6B6B' }}></div>
                                         <span>Cat. A</span>
                                     </div>
                                     <div className="flex items-center">
-                                        <div className="w-3 h-3 rounded mr-1" style={{backgroundColor: '#4ECDC4'}}></div>
+                                        <div className="w-3 h-3 rounded mr-1" style={{ backgroundColor: '#4ECDC4' }}></div>
                                         <span>Cat. B</span>
                                     </div>
                                     <div className="flex items-center">
-                                        <div className="w-3 h-3 rounded mr-1" style={{backgroundColor: '#45B7D1'}}></div>
+                                        <div className="w-3 h-3 rounded mr-1" style={{ backgroundColor: '#45B7D1' }}></div>
                                         <span>Cat. C</span>
                                     </div>
                                 </div>
@@ -155,15 +163,15 @@ const RefereeCalendar = ({ calendarData }) => {
                                 <h4 className="font-medium text-gray-600 mb-2">Bordi (Status):</h4>
                                 <div className="flex flex-wrap gap-3">
                                     <div className="flex items-center">
-                                        <div className="w-3 h-3 rounded mr-1 border-2" style={{borderColor: '#10B981', backgroundColor: '#f0f0f0'}}></div>
+                                        <div className="w-3 h-3 rounded mr-1 border-2" style={{ borderColor: '#10B981', backgroundColor: '#f0f0f0' }}></div>
                                         <span>Assegnato</span>
                                     </div>
                                     <div className="flex items-center">
-                                        <div className="w-3 h-3 rounded mr-1 border-2" style={{borderColor: '#F59E0B', backgroundColor: '#f0f0f0'}}></div>
+                                        <div className="w-3 h-3 rounded mr-1 border-2" style={{ borderColor: '#F59E0B', backgroundColor: '#f0f0f0' }}></div>
                                         <span>Disponibile</span>
                                     </div>
                                     <div className="flex items-center">
-                                        <div className="w-3 h-3 rounded mr-1 border-2" style={{borderColor: '#3B82F6', backgroundColor: '#f0f0f0'}}></div>
+                                        <div className="w-3 h-3 rounded mr-1 border-2" style={{ borderColor: '#3B82F6', backgroundColor: '#f0f0f0' }}></div>
                                         <span>Candidabile</span>
                                     </div>
                                 </div>
@@ -243,6 +251,12 @@ const RefereeCalendar = ({ calendarData }) => {
                                             )}
                                         </span>
                                     </div>
+                                    {/* Controllo date passate */}
+                                    {isTournamentPast(selectedEvent.start) && (
+                                        <div className="border border-amber-200 bg-amber-50 rounded p-3 text-sm text-amber-800">
+                                            <span className="font-medium">⚠️ Torneo passato:</span> Non è possibile dichiarare disponibilità per tornei con date antecedenti a oggi.
+                                        </div>
+                                    )}
 
                                     {/* Days until deadline */}
                                     {selectedEvent.extendedProps.days_until_deadline !== undefined && (
@@ -274,6 +288,13 @@ const RefereeCalendar = ({ calendarData }) => {
                                         >
                                             Assegnato
                                         </button>
+                                    ) : isTournamentPast(selectedEvent.start) ? (
+                                        <button
+                                            disabled
+                                            className="px-4 py-2 text-sm font-medium text-white bg-gray-400 rounded-md cursor-not-allowed"
+                                        >
+                                            Data Passata
+                                        </button>
                                     ) : (
                                         <button
                                             onClick={() => {
@@ -283,11 +304,10 @@ const RefereeCalendar = ({ calendarData }) => {
                                                 );
                                                 closeModal();
                                             }}
-                                            className={`px-4 py-2 text-sm font-medium text-white rounded-md ${
-                                                selectedEvent.extendedProps.is_available
+                                            className={`px-4 py-2 text-sm font-medium text-white rounded-md ${selectedEvent.extendedProps.is_available
                                                     ? 'bg-red-600 hover:bg-red-700'
                                                     : 'bg-blue-600 hover:bg-blue-700'
-                                            }`}
+                                                }`}
                                         >
                                             {selectedEvent.extendedProps.is_available
                                                 ? 'Rimuovi Disponibilità'
