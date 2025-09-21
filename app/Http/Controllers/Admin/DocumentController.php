@@ -30,9 +30,9 @@ class DocumentController extends Controller
 
         // Admin di zona vede solo documenti della sua zona o globali
         if ($user->user_type === 'admin') {
-            $query->where(function($q) use ($user) {
+            $query->where(function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id)
-                  ->orWhereNull('zone_id');
+                    ->orWhereNull('zone_id');
             });
         }
         // National admin e super admin vedono tutto
@@ -51,10 +51,10 @@ class DocumentController extends Controller
         }
 
         if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
+            $query->where(function ($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('description', 'like', '%' . $request->search . '%')
-                  ->orWhere('original_name', 'like', '%' . $request->search . '%');
+                    ->orWhere('description', 'like', '%' . $request->search . '%')
+                    ->orWhere('original_name', 'like', '%' . $request->search . '%');
             });
         }
 
@@ -65,9 +65,9 @@ class DocumentController extends Controller
             'size_total' => Document::sum('file_size'),
             'this_month' => Document::whereMonth('created_at', now()->month)->count(),
             'by_type' => Document::selectRaw('type, COUNT(*) as count')
-                                ->groupBy('type')
-                                ->pluck('count', 'type')
-                                ->toArray(),
+                ->groupBy('type')
+                ->pluck('count', 'type')
+                ->toArray(),
         ];
 
         return view('documents.index', compact('documents', 'stats'));
@@ -111,7 +111,7 @@ class DocumentController extends Controller
             $originalName = $file->getClientOriginalName();
             $extension = $file->getClientOriginalExtension();
             $fileName = Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) . '_' .
-                       time() . '.' . $extension;
+                time() . '.' . $extension;
 
             // Determina il path di storage
             $category = $request->category;
@@ -155,7 +155,6 @@ class DocumentController extends Controller
             return redirect()
                 ->route('admin.documents.index')
                 ->with('success', 'Documento caricato con successo!');
-
         } catch (\Exception $e) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -226,9 +225,13 @@ class DocumentController extends Controller
         // Incrementa download counter
         $document->increment('download_count');
 
-        return Storage::disk('public')->download(
-            $document->file_path,
-            $document->original_name
+        $filePath = Storage::disk('public')->path($document->file_path);
+        return response()->download(
+            $filePath,
+            $document->original_name,
+            [
+                'Content-Type' => $document->mime_type,
+            ]
         );
     }
 
@@ -251,7 +254,6 @@ class DocumentController extends Controller
             return redirect()
                 ->route('admin.documents.index')
                 ->with('success', 'Documento eliminato con successo!');
-
         } catch (\Exception $e) {
             return back()->with('error', 'Errore durante l\'eliminazione: ' . $e->getMessage());
         }
@@ -262,7 +264,7 @@ class DocumentController extends Controller
      */
     private function determineDocumentType(string $mimeType): string
     {
-        return match(true) {
+        return match (true) {
             str_contains($mimeType, 'pdf') => 'pdf',
             str_contains($mimeType, 'word') || str_contains($mimeType, 'document') => 'document',
             str_contains($mimeType, 'spreadsheet') || str_contains($mimeType, 'excel') => 'spreadsheet',

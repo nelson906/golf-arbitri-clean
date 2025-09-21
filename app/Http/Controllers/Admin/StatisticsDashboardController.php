@@ -207,13 +207,13 @@ class StatisticsDashboardController extends Controller
             'confirmed' => $query->clone()->where('is_confirmed', true)->count(),
             'pending' => $query->clone()->where('is_confirmed', false)->count(),
             'by_role' => $this->getAssignmentsByRole($user, $isNationalAdmin),
-            'by_zone' => $isNationalAdmin ? $this->getAssignmentsByZone($user, $isNationalAdmin) : [],
+            'by_zone' => $isNationalAdmin ? $this->getAssignmentsByZone() : [],
             'by_level' => $this->getAssignmentsByLevel($user, $isNationalAdmin),
             'workload' => $this->getWorkloadStats($user, $isNationalAdmin),
 
             // Modificate per rispettare zona:
             'totale_assegnazioni' => $this->getTotalAssignments($user, $isNationalAdmin),
-            'per_zona' => $this->getAssignmentsByZone($user, $isNationalAdmin),
+            'per_zona' => $this->getAssignmentsByZone(),
             'tornei_assegnati' => $this->getTournamentsWithAssignments($user, $isNationalAdmin),
             'media_arbitri_torneo' => $this->getAverageRefereesPerTournament($user, $isNationalAdmin),
             'ultimi_30_giorni' => $this->getRecentAssignments($user, $isNationalAdmin)
