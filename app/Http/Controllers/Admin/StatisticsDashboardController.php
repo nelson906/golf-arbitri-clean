@@ -206,30 +206,17 @@ class StatisticsDashboardController extends Controller
             'total' => $query->count(),
             'confirmed' => $query->clone()->where('is_confirmed', true)->count(),
             'pending' => $query->clone()->where('is_confirmed', false)->count(),
-            'by_role' => $query->clone()->select('role', DB::raw('count(*) as count'))
-                ->orderByRaw("FIELD(role, \"Direttore di Torneo\", \"Arbitro\", \"Osservatore\")")
-                ->groupBy('role')->pluck('count', 'role'),
-            'by_zone' => $isNationalAdmin ? $this->getAssignmentsByZone() : [],
+            'by_role' => $this->getAssignmentsByRole($user, $isNationalAdmin),
+            'by_zone' => $isNationalAdmin ? $this->getAssignmentsByZone($user, $isNationalAdmin) : [],
             'by_level' => $this->getAssignmentsByLevel($user, $isNationalAdmin),
             'workload' => $this->getWorkloadStats($user, $isNationalAdmin),
-            'totale_assegnazioni' => Assignment::count(),
-            'per_zona' => Assignment::join('tournaments', 'assignments.tournament_id', '=', 'tournaments.id')
-                ->join('zones', 'tournaments.zone_id', '=', 'zones.id')
-                ->selectRaw('zones.name, COUNT(*) as totale')
-                ->orderBy('zones.name')
-                ->groupBy('zones.name')
-                ->pluck('totale', 'name'),
-            'per_ruolo' => Assignment::selectRaw('role, COUNT(*) as totale')
-                ->orderByRaw("FIELD(role, \"Direttore di Torneo\", \"Arbitro\", \"Osservatore\")")
-                ->groupBy('role')
-                ->pluck('totale', 'role'),
-            'tornei_assegnati' => Tournament::has('assignments')->count(),
-            'media_arbitri_torneo' => round(
-                Assignment::count() /
-                    Tournament::has('assignments')->count(),
-                2
-            ),
-            'ultimi_30_giorni' => Assignment::where('assigned_at', '>=', now()->subDays(30))->count()
+
+            // Modificate per rispettare zona:
+            'totale_assegnazioni' => $this->getTotalAssignments($user, $isNationalAdmin),
+            'per_zona' => $this->getAssignmentsByZone($user, $isNationalAdmin),
+            'tornei_assegnati' => $this->getTournamentsWithAssignments($user, $isNationalAdmin),
+            'media_arbitri_torneo' => $this->getAverageRefereesPerTournament($user, $isNationalAdmin),
+            'ultimi_30_giorni' => $this->getRecentAssignments($user, $isNationalAdmin)
 
         ];
 
@@ -285,24 +272,12 @@ class StatisticsDashboardController extends Controller
         // Statistiche riepilogo
         $stats = [
             'total' => $query->count(),
-            'by_status' => $query->clone()->select('status', DB::raw('count(*) as count'))
-                ->groupBy('status')->pluck('count', 'status'),
-            'by_category' => $query->clone()->select('tournament_type_id', DB::raw('count(*) as count'))
-                ->orderBy('tournament_type_id')
-                ->groupBy('tournament_type_id')->with('tournamentType')->get()
-                ->pluck('count', 'tournamentType.name'),
-            'by_zone' => $isNationalAdmin ? $this->getTournamentsByZone() : [],
+            'by_type' => $this->getTournamentsByType($user, $isNationalAdmin),
             'by_month' => $this->getTournamentsByMonth($user, $isNationalAdmin),
             'avg_referees' => $this->getAverageRefereesPerTournament($user, $isNationalAdmin),
-            'totale_tornei' => Tournament::count(),
-            'per_stato' => Tournament::selectRaw('status, COUNT(*) as totale')
-                ->groupBy('status')
-                ->pluck('totale', 'status'),
-            'per_zona' => Tournament::join('zones', 'tournaments.zone_id', '=', 'zones.id')
-                ->selectRaw('zones.name, COUNT(*) as totale')
-                ->orderBy('zones.name')
-                ->groupBy('zones.name')
-                ->pluck('totale', 'name'),
+            'totale_tornei' => $this->getTotalTournaments($user, $isNationalAdmin),
+            'per_stato' => $this->getTournamentsByStatus($user, $isNationalAdmin),
+            'per_zona' => $this->getTournamentsByZone($user, $isNationalAdmin),
             'prossimi_30_giorni' => Tournament::where('start_date', '>=', now())
                 ->where('start_date', '<=', now()->addDays(30))
                 ->count(),
@@ -675,29 +650,186 @@ class StatisticsDashboardController extends Controller
     {
         return 0;
     }
-    private function getAssignmentsByZone()
+    private function getAssignmentsByZone(): mixed
     {
-        return [];
+
+        $query = Assignment::join('tournaments', 'assignments.tournament_id', '=', 'tournaments.id')
+            ->join('zones', 'tournaments.zone_id', '=', 'zones.id');
+
+        return $query->selectRaw('zones.name, COUNT(*) as totale')
+            ->orderBy('zones.name')
+            ->groupBy('zones.name')
+            ->pluck('totale', 'name');
     }
     private function getAssignmentsByLevel($user, $isNationalAdmin)
     {
         return [];
     }
+    private function getTotalAssignments($user, $isNationalAdmin)
+    {
+        $query = Assignment::query();
+
+        if (!$isNationalAdmin) {
+            $query->whereHas('tournament', function ($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
+        }
+
+        return $query->count();
+    }
+
+    private function getTournamentsWithAssignments($user, $isNationalAdmin)
+    {
+        $query = Tournament::has('assignments');
+
+        if (!$isNationalAdmin) {
+            $query->where('zone_id', $user->zone_id);
+        }
+
+        return $query->count();
+    }
+
+    private function getAverageRefereesPerTournament($user, $isNationalAdmin)
+    {
+        $totalAssignments = $this->getTotalAssignments($user, $isNationalAdmin);
+        $tournamentsWithAssignments = $this->getTournamentsWithAssignments($user, $isNationalAdmin);
+
+        return $tournamentsWithAssignments > 0 ?
+            round($totalAssignments / $tournamentsWithAssignments, 2) : 0;
+    }
+
+    private function getRecentAssignments($user, $isNationalAdmin)
+    {
+        $query = Assignment::where('assigned_at', '>=', now()->subDays(30));
+
+        if (!$isNationalAdmin) {
+            $query->whereHas('tournament', function ($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
+        }
+
+        return $query->count();
+    }
+
+    private function getAssignmentsByRole($user, $isNationalAdmin)
+    {
+        $query = Assignment::selectRaw('role, COUNT(*) as totale')
+            ->orderByRaw("FIELD(role, \"Direttore di Torneo\", \"Arbitro\", \"Osservatore\")")
+            ->groupBy('role');
+
+        // Applica filtro zona per admin locali
+        if (!$isNationalAdmin) {
+            $query->whereHas('tournament', function ($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
+        }
+
+        return $query->pluck('totale', 'role');
+    }
     private function getWorkloadStats($user, $isNationalAdmin)
     {
-        return [];
+        $refereesQuery = User::where('user_type', 'referee')
+            ->where('is_active', true)
+            ->withCount('assignments');
+
+        if (!$isNationalAdmin) {
+            $refereesQuery->where('zone_id', $user->zone_id);
+        }
+
+        $referees = $refereesQuery->get();
+
+        return [
+            'avg_assignments' => $referees->avg('assignments_count'),
+            'max_assignments' => $referees->max('assignments_count'),
+            'min_assignments' => $referees->min('assignments_count'),
+            'overloaded_referees' => $referees->where('assignments_count', '>', 10)->count(), // soglia arbitraria
+        ];
     }
-    private function getTournamentsByZone()
+    private function getTournamentsByZone($user, $isNationalAdmin)
     {
-        return [];
+        $query = Tournament::join('zones', 'tournaments.zone_id', '=', 'zones.id');
+
+        // Applica filtro zona per admin locali
+        // if (!$isNationalAdmin) {
+        //     $query->where('tournaments.zone_id', $user->zone_id);
+        // }
+
+        return $query->selectRaw('zones.name, COUNT(*) as totale')
+            ->orderBy('zones.name')
+            ->groupBy('zones.name')
+            ->pluck('totale', 'name');
+    }
+    private function getTournamentsByType($user, $isNationalAdmin)
+    {
+        $query = Tournament::join('tournament_types', 'tournaments.tournament_type_id', '=', 'tournament_types.id');
+
+        if (!$isNationalAdmin) {
+            $query->where('tournaments.zone_id', $user->zone_id);
+        }
+
+        return $query->selectRaw('tournament_types.name, COUNT(*) as totale')
+            ->orderBy('tournament_types.name')
+            ->groupBy('tournament_types.name')
+            ->pluck('totale', 'name');
+    }
+    private function getTournamentsByStatus($user, $isNationalAdmin)
+    {
+        $query = Tournament::query();
+
+        if (!$isNationalAdmin) {
+            $query->where('zone_id', $user->zone_id);
+        }
+
+        return $query->selectRaw('status, COUNT(*) as totale')
+            ->groupBy('status')
+            ->pluck('totale', 'status');
     }
     private function getTournamentsByMonth($user, $isNationalAdmin)
     {
-        return [];
+        $query = Tournament::query();
+
+        if (!$isNationalAdmin) {
+            $query->where('zone_id', $user->zone_id);
+        }
+
+        $monthlyData = $query->selectRaw('MONTH(start_date) as month, COUNT(*) as totale')
+            ->whereYear('start_date', date('Y'))
+            ->groupBy('month')
+            ->orderBy('month')
+            ->pluck('totale', 'month');
+
+        // Trasforma in nomi mesi
+        $monthNames = [
+            1 => 'Gennaio',
+            2 => 'Febbraio',
+            3 => 'Marzo',
+            4 => 'Aprile',
+            5 => 'Maggio',
+            6 => 'Giugno',
+            7 => 'Luglio',
+            8 => 'Agosto',
+            9 => 'Settembre',
+            10 => 'Ottobre',
+            11 => 'Novembre',
+            12 => 'Dicembre'
+        ];
+
+        $result = [];
+        foreach ($monthlyData as $monthNum => $count) {
+            $result[$monthNames[$monthNum]] = $count;
+        }
+
+        return $result;
     }
-    private function getAverageRefereesPerTournament($user, $isNationalAdmin)
+    private function getTotalTournaments($user, $isNationalAdmin)
     {
-        return 0;
+        $query = Tournament::query();
+
+        if (!$isNationalAdmin) {
+            $query->where('zone_id', $user->zone_id);
+        }
+
+        return $query->count();
     }
     private function getRefereesByZone()
     {
