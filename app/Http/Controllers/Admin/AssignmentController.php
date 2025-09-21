@@ -92,12 +92,46 @@ class AssignmentController extends Controller
     /**
      * Show form creazione
      */
-    public function create()
+    public function create(Request $request)
     {
-        $tournaments = Tournament::with('club')->orderBy('name')->get();
-        $referees = User::where('user_type', 'referee')->orderBy('name')->get();
+        $tournament = null;
+        $availableReferees = collect();
+        $otherReferees = collect();
 
-        return view('admin.assignments.create', compact('tournaments', 'referees'));
+        if ($request->has('tournament_id')) {
+            $tournament = Tournament::with(['assignments.user', 'availabilities.user'])->find($request->tournament_id);
+
+            if ($tournament) {
+                // IDs arbitri già assegnati a questo torneo
+                $assignedRefereeIds = $tournament->assignments()->pluck('user_id')->toArray();
+
+                // Arbitri che hanno dato disponibilità per questo torneo
+                $availableRefereeIds = $tournament->availabilities()->pluck('user_id')->toArray();
+                $availableReferees = User::where('user_type', 'referee')
+                    ->whereIn('id', $availableRefereeIds)
+                    ->whereNotIn('id', $assignedRefereeIds)
+                    ->get();
+
+                // Altri arbitri della zona (non hanno dato disponibilità ma sono nella stessa zona)
+                $user = auth()->user();
+                $zoneId = $user->user_type === 'admin' ? $user->zone_id : null;
+
+                $otherReferees = User::where('user_type', 'referee')
+                    ->whereNotIn('id', $availableRefereeIds)
+                    ->whereNotIn('id', $assignedRefereeIds)
+                    ->when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
+                    ->get();
+            }
+        }
+
+        $tournaments = Tournament::where('status', 'open')->get();
+
+        return view('admin.assignments.create', compact(
+            'tournament',
+            'availableReferees',
+            'otherReferees',
+            'tournaments'
+        ));
     }
 
     /**
