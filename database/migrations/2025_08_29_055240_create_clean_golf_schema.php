@@ -80,6 +80,7 @@ return new class extends Migration
             $table->enum('gender', ['male', 'female', 'mixed'])->default('mixed');
             $table->date('certified_date')->nullable();
             $table->foreignId('zone_id')->nullable()->constrained()->onDelete('set null');
+            $table->string('club_member')->nullable();
 
             $table->string('phone')->nullable();
             $table->string('city')->nullable();

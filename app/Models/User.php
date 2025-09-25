@@ -22,6 +22,8 @@ class User extends Authenticatable
         'zone_id',
         'referee_code',
         'level',
+        'club_member', // nuovo campo
+        'city',
         'phone',
         'active',
         'is_active',  // alcuni DB usano questo

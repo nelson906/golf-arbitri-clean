@@ -40,7 +40,7 @@
             <form method="POST" action="{{ route('admin.users.update', $user) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
-                
+
                 {{-- Hidden field for user_type --}}
                 <input type="hidden" name="user_type" value="{{ old('user_type', $user->user_type) }}">
 
@@ -131,7 +131,25 @@
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
+{{-- Città --}}
+<div>
+    <label for="city" class="block text-sm font-medium text-gray-700">Città</label>
+    <input type="text" name="city" id="city" value="{{ old('city', $user->city) }}"
+           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+    @error('city')
+        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+    @enderror
+</div>
 
+{{-- Circolo --}}
+<div>
+    <label for="club" class="block text-sm font-medium text-gray-700">Circolo</label>
+    <input type="text" name="club_member" id="club" value="{{ old('club', $user->club_member) }}"
+           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+    @error('club')
+        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+    @enderror
+</div>
                     {{-- Gender --}}
                     <div>
                         <label for="gender" class="block text-sm font-medium text-gray-700 mb-1">Genere</label>

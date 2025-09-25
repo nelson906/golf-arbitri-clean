@@ -66,6 +66,14 @@
                         <label class="block text-sm font-medium text-gray-500">Zona</label>
                         <p class="text-sm text-gray-900">{{ $user->zone->name ?? 'N/A' }}</p>
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-500">Città</label>
+                        <p class="text-sm text-gray-900">{{ $user->city ?? 'N/A' }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-500">Circolo</label>
+                        <p class="text-sm text-gray-900">{{ $user->club_member ?? 'N/A' }}</p>
+                    </div>
                 </div>
 
                 @if($user->notes)

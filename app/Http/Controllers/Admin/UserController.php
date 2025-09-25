@@ -37,19 +37,19 @@ class UserController extends Controller
         if ($request->filled('level') && Schema::hasColumn('users', 'level')) {
             $query->where('level', $request->level);
         }
-if (request('sort')) {
-    switch (request('sort')) {
-        case 'surname_asc':
-            $query->orderBy('last_name');
-            break;
-        case 'surname_desc':
-            $query->orderByDesc('last_name');
-            break;
-        case 'name_asc':
-            $query->orderBy('name');
-            break;
-    }
-}
+        if (request('sort')) {
+            switch (request('sort')) {
+                case 'surname_asc':
+                    $query->orderBy('last_name');
+                    break;
+                case 'surname_desc':
+                    $query->orderByDesc('last_name');
+                    break;
+                case 'name_asc':
+                    $query->orderBy('name');
+                    break;
+            }
+        }
         // Filtro per zona
         if ($request->filled('zone_id')) {
             $query->where('zone_id', $request->zone_id);
@@ -58,9 +58,9 @@ if (request('sort')) {
         // Filtro ricerca
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
 
                 // Aggiungi referee_code solo se la colonna esiste
                 if (Schema::hasColumn('users', 'referee_code')) {
@@ -209,6 +209,14 @@ if (request('sort')) {
             $rules['phone'] = 'nullable|string|max:20';
         }
 
+        if (Schema::hasColumn('users', 'city')) {
+            $rules['city'] = 'nullable|string|max:255';
+        }
+
+        if (Schema::hasColumn('users', 'club_member')) {
+            $rules['club_member'] = 'nullable|string|max:255';
+        }
+
         $validated = $request->validate($rules);
 
         // Imposta password predefinita (come indicato nel form)
@@ -313,6 +321,13 @@ if (request('sort')) {
             $rules['notes'] = 'nullable|string';
         }
 
+        if (\Schema::hasColumn('users', 'city')) {
+            $rules['city'] = 'nullable|string|max:255';
+        }
+
+        if (\Schema::hasColumn('users', 'club_member')) {
+            $rules['club_member'] = 'nullable|string|max:255';
+        }
         $validated = $request->validate($rules);
 
         // Hash password se fornita
