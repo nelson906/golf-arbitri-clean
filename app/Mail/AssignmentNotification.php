@@ -51,7 +51,10 @@ public function content(): Content
             'club_name' => $this->variables['club_name'] ?? 'N/A',
             'tournament_name' => $this->variables['tournament_name'] ?? 'N/A',
             'tournament_dates' => $this->variables['tournament_dates'] ?? 'N/A',
-            'referees' => $this->getReferees(), // ← AGGIUNGI QUESTO
+            'referees' => $this->variables['referees'] ?? $this->getReferees(), // Usa prima i referees passati
+            'message_content' => $this->notification->body ?? '', // Aggiungi il messaggio personalizzato
+            'zone_email' => $this->variables['zone_email'] ?? null,
+            'club_email' => $this->variables['club_email'] ?? null,
             'notification' => $this->notification,
             'variables' => $this->variables,
         ],

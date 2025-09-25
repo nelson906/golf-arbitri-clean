@@ -218,10 +218,7 @@
                         <div class="p-6">
 
                             <form method="POST"
-                                action="{{ $hasExistingConvocation ||
-                                (isset($documentStatus) && ($documentStatus['hasConvocation'] || $documentStatus['hasClubLetter']))
-                                    ? route('admin.tournaments.send-assignment-with-convocation', $tournament)
-                                    : route('admin.tournaments.send-assignment', $tournament) }}"
+                                action="{{ route('admin.tournaments.send-assignment-with-convocation', $tournament) }}"
                                 class="space-y-6">
                                 @csrf
 
@@ -495,6 +492,36 @@
                                         </div>
                                     </div>
                                 @endif
+                                {{-- Sezione Mittente --}}
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-3">
+                                        📮 Sezione Mittente
+                                    </label>
+                                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" name="send_to_section" id="send_to_section"
+                                                value="1" {{ old('send_to_section', true) ? 'checked' : '' }}
+                                                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                            <label for="send_to_section" class="ml-2 text-sm text-gray-700">
+                                                <span class="font-medium">Invia copia alla sezione</span>
+                                            </label>
+                                        </div>
+                                        <div class="mt-2 ml-6 text-sm text-gray-600">
+                                            <p>La notifica verrà inviata anche alla sezione di zona:
+                                                <strong>{{ $tournament->club->zone->name ?? 'N/A' }}</strong>
+                                            </p>
+                                            @if ($tournament->club->zone->email ?? null)
+                                                <p class="text-xs text-gray-500 mt-1">
+                                                    Email: {{ $tournament->club->zone->email }}
+                                                </p>
+                                            @else
+                                                <p class="text-xs text-red-500 mt-1">
+                                                    ⚠️ Email della sezione non configurata
+                                                </p>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
                                 <!-- Email Aggiuntive -->
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-3">

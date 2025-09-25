@@ -137,7 +137,11 @@
             Gentile {{ $recipient_name }},
         </div>
 
-        <p>Vi comunichiamo gli arbitri assegnati per il torneo <strong>{{ $tournament_name }}</strong>:</p>
+        @if(!empty($message_content))
+            {!! nl2br(e($message_content)) !!}
+        @else
+            <p>Vi comunichiamo gli arbitri assegnati per il torneo <strong>{{ $tournament_name }}</strong>:</p>
+        @endif
 
         <div class="tournament-info">
             <strong>📅 Date:</strong> {{ $tournament_dates }}<br>
