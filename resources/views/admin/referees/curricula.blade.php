@@ -57,11 +57,6 @@
                                 <option value="desc" {{ request('direction') === 'desc' ? 'selected' : '' }}>Decrescente</option>
                             </select>
 
-                            {{-- <button type="submit"
-                                    class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                Filtra
-                            </button> --}}
-
                             @if(request()->anyFilled(['search', 'zone', 'level', 'sort', 'direction']))
                                 <a href="{{ route('admin.referees.curricula', ['year' => $year]) }}"
                                    class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500">
@@ -70,7 +65,11 @@
                             @endif
                         </form>
                     </div>
-                    </div>
+                </div>
+
+                {{-- Contatore risultati --}}
+                <div class="mb-4 text-sm text-gray-600">
+                    Trovati {{ count($stats) }} arbitri
                 </div>
 
                 {{-- Tabella --}}
@@ -102,7 +101,7 @@
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
-                            @foreach($stats as $stat)
+                            @forelse($stats as $stat)
                                 <tr class="hover:bg-gray-50">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center">
@@ -112,6 +111,7 @@
                                                 </div>
                                                 <div class="text-sm text-gray-500">
                                                     {{ $stat['referee']->referee_code }}
+                                                    <small>({{ $stat['referee']->level }})</small>
                                                 </div>
                                             </div>
                                         </div>
@@ -122,9 +122,9 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @if(isset($stat['year_data']['level']))
+                                        @if(isset($stat['year_data']['level']) && $stat['year_data']['level'])
                                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                                {{ $stat['year_data']['level'] === 'Nazionale' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800' }}">
+                                                {{ in_array($stat['year_data']['level'], ['Nazionale', 'Internazionale']) ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800' }}">
                                                 {{ $stat['year_data']['level'] }}
                                             </span>
                                         @else
@@ -146,7 +146,13 @@
                                             {{ $stat['stats']['total_assignments'] ?? 0 }}
                                         </div>
                                         <div class="text-xs text-gray-500">
-                                            dal {{ array_key_first($stat['stats']['roles_summary'] ?? []) ?? '-' }}
+                                            @if(isset($stat['stats']['first_year']) && $stat['stats']['first_year'])
+                                                dal {{ $stat['stats']['first_year'] }}
+                                            @elseif(isset($stat['stats']['total_assignments']) && $stat['stats']['total_assignments'] > 0)
+                                                dal {{ $year }}
+                                            @else
+                                                -
+                                            @endif
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -156,7 +162,13 @@
                                         </a>
                                     </td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                                        Nessun arbitro trovato con i criteri selezionati
+                                    </td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>

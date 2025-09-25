@@ -235,6 +235,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('email');
             $table->string('category'); // FIG, Regionale, etc.
+            $table->text(column: 'description')->nullable();
             $table->boolean('is_global')->default(false); // Per tutte le zone o specifica
             $table->foreignId('zone_id')->nullable()->constrained();
             $table->boolean('is_active')->default(true);
