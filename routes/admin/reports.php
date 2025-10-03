@@ -78,7 +78,7 @@ Route::prefix('reports')->name('reports.')->group(function () {
 */
 
 // AVAILABILITY MANAGEMENT - TODO: Create AvailabilityController
-// Route::prefix('referee/availability')->name('referee.availability.')->group(function () {
+// Route::prefix('referee/availability')->name('referee.availabilities.')->group(function () {
 //     Route::get('/', [AvailabilityController::class, 'index'])->name('index');
 //     Route::get('/calendar', [AvailabilityController::class, 'calendar'])->name('calendar');
 //     Route::get('/history', [AvailabilityController::class, 'history'])->name('history');
