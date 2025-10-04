@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\User\FedergolfController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController;
 use Illuminate\Support\Facades\Route;
@@ -54,6 +55,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('reports', function () {
         return view('admin.placeholder', ['title' => 'Reports']);
     })->name('reports.dashboard');
+});
+Route::middleware(['auth'])->prefix('user/federgolf')->group(function () {
+    Route::post('/load-all', [FedergolfController::class, 'loadAllCompetitions']);
+    Route::post('/iscritti', [FedergolfController::class, 'getIscritti']);
 });
 
 // Authentication routes

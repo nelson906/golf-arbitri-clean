@@ -3,15 +3,15 @@
  * Main entry point for the Quadranti (Starting Times Simulator) application
  */
 
-import { 
-  DEFAULT_CONFIG, 
+import {
+  DEFAULT_CONFIG,
   TEE_TYPES,
   ROUND_TYPES,
   COMPETITION_TYPES
 } from './config.js';
 
-import { 
-  storage, 
+import {
+  storage,
   formatDate,
   addTime,
   halfTime,
@@ -36,12 +36,12 @@ class QuadrantiApp {
    */
   loadConfiguration() {
     const config = {};
-    
+
     // Load each config value from storage with default fallback
     Object.keys(DEFAULT_CONFIG).forEach(key => {
       config[key] = storage.get(key, DEFAULT_CONFIG[key]);
     });
-    
+
     return config;
   }
 
@@ -59,7 +59,7 @@ class QuadrantiApp {
    */
   async init() {
     if (this.isInitialized) return;
-    
+
     try {
       this.initializeUI();
       this.attachEventHandlers();
@@ -77,7 +77,7 @@ class QuadrantiApp {
   initializeUI() {
     // Initialize datepicker
     this.logic.initializeDatepicker($);
-    
+
     // Set form values from configuration
     $('#geo_area').val(this.config.geoArea);
     $('#start').val(storage.get('start', formatDate(new Date())));
@@ -91,16 +91,16 @@ class QuadrantiApp {
     $('#gap').val(this.config.gap);
     $('#compatto').val(this.config.compatto);
     $('#doppie_partenze').val(this.config.doppiePartenze);
-    
+
     // Show/hide compact option based on player count
     this.toggleCompactOption();
-    
+
     // Update cross time display
     this.updateCrossTime();
-    
+
     // Show/hide nominativo buttons
     this.updateNominativoButtons();
-    
+
     // Update title based on round
     this.updateTableTitle();
   }
@@ -111,25 +111,32 @@ class QuadrantiApp {
   attachEventHandlers() {
     // Geographic area change
     $('#geo_area').on('change', () => this.handleGeoAreaChange());
-    
+
     // Date change
     $('.datepicker').on('change', () => this.handleDateChange());
-    
+
     // Form input changes (debounced to prevent rapid reloads)
     const handleFormChange = debounce(() => this.handleFormChange(), 300);
     $('input[type="text"], select').on('change', handleFormChange);
-    
+
     // Specific handlers for numeric inputs
     $('#players, #proette').on('input change', handleFormChange);
-    
+
     // Button clicks
     $('#refresh').on('click', () => this.handleReset());
     $('#excel').on('click', () => this.handleExcelExport());
     $('#btnClick').on('click', (e) => this.handleNominativoToggle(e, 'On'));
     $('#btnClock').on('click', (e) => this.handleNominativoToggle(e, 'Off'));
-    
+
     // File upload form submit
     $('#upload-form').on('submit', (e) => this.handleFileUpload(e));
+
+    // Pulsante carica gare Federgolf
+$('#load-federgolf-btn').on('click', () => this.handleLoadFedergolfGare());
+
+// Selezione gara
+$('#federgolf-gare-select').on('change', () => this.handleFedergolfGaraSelected());
+
   }
 
   /**
@@ -165,18 +172,18 @@ class QuadrantiApp {
     this.config.gap = $('#gap').val();
     this.config.compatto = $('#compatto').val();
     this.config.doppiePartenze = $('#doppie_partenze').val();
-    
+
     // Save configuration
     this.saveConfiguration();
-    
+
     // Update UI elements
     this.toggleCompactOption();
     this.updateCrossTime();
     this.updateTableTitle();
-    
+
     // Update logic configuration
     this.logic.updateConfig(this.config);
-    
+
     // Regenerate table
     this.generateTable();
   }
@@ -212,10 +219,10 @@ class QuadrantiApp {
    */
   handleNominativoToggle(e, mode) {
     e.preventDefault();
-    
+
     this.config.nominativo = mode;
     storage.set('nominativo', mode);
-    
+
     if (mode === 'On') {
       storage.set('display1', 'false');
       storage.set('display2', 'true');
@@ -223,7 +230,7 @@ class QuadrantiApp {
       storage.set('display1', 'true');
       storage.set('display2', 'false');
     }
-    
+
     this.updateNominativoButtons();
     this.logic.updateConfig(this.config);
     this.generateTable();
@@ -234,16 +241,16 @@ class QuadrantiApp {
    */
   async handleFileUpload(e) {
     e.preventDefault();
-    
+
     const file = $('#file')[0].files[0];
     if (!file) {
       alert('Seleziona un file Excel');
       return;
     }
-    
+
     const formData = new FormData();
     formData.append('file', file);
-    
+
     try {
       const response = await $.ajax({
         url: '/user/quadranti/upload-excel',
@@ -255,19 +262,19 @@ class QuadrantiApp {
           'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
         }
       });
-      
+
       // Response is already JSON from Laravel
       const data = response;
-      
+
       if (data && data[0] && data[1]) {
         const atlete = data[0]; // Già un array, non serve Object.values
         const atleti = data[1]; // Già un array, non serve Object.values
-        
+
         storage.set('atlete', atlete);
         storage.set('atleti', atleti);
         storage.set('storedPlayersCount', atleti.length);
         storage.set('storedProetteCount', atlete.length);
-        
+
         // Aggiorna anche i contatori nell'interfaccia
         $('#players').val(atleti.length);
         $('#proette').val(atlete.length);
@@ -275,14 +282,14 @@ class QuadrantiApp {
         this.config.proette = atlete.length;
         storage.set('players', atleti.length);
         storage.set('proette', atlete.length);
-        
+
         this.config.nominativo = 'On';
         storage.set('nominativo', 'On');
-        
+
         this.updateNominativoButtons();
         this.logic.updateConfig(this.config);
         this.generateTable();
-        
+
         alert(`File caricato con successo!\n${atleti.length} atleti\n${atlete.length} atlete`);
       }
     } catch (error) {
@@ -301,9 +308,9 @@ class QuadrantiApp {
   async updateEphemerisData() {
     const geoArea = this.config.geoArea;
     const date = $('#start').val() || formatDate(new Date());
-    
+
     const data = await this.logic.fetchEphemerisData(geoArea, date);
-    
+
     $('#sunrise').html(data.sunrise);
     $('#sunset').html(data.sunset);
   }
@@ -314,7 +321,7 @@ class QuadrantiApp {
   toggleCompactOption() {
     const totalPlayers = parseInt(this.config.players) + parseInt(this.config.proette);
     const mod = parseInt(this.config.playersPerFlight);
-    
+
     if (totalPlayers <= mod * 32) {
       $('.compatto').show();
     } else {
@@ -336,7 +343,7 @@ class QuadrantiApp {
   updateNominativoButtons() {
     const displayNominativo = storage.get('display1', 'true');
     const displayNumerico = storage.get('display2', 'false');
-    
+
     if (displayNominativo === 'true') {
       $('#2').hide();
       $('#1').show();
@@ -352,9 +359,9 @@ class QuadrantiApp {
   updateTableTitle() {
     const giornata = this.config.giornata;
     const gara = this.config.garaNT;
-    
+
     let title = '';
-    
+
     if (giornata === ROUND_TYPES.FIRST) {
       title = 'Prima Giornata';
     } else if (giornata === ROUND_TYPES.SECOND) {
@@ -363,7 +370,7 @@ class QuadrantiApp {
         title += ' per classifica';
       }
     }
-    
+
     $('#titolo_giornata').html(title);
   }
 
@@ -375,26 +382,189 @@ class QuadrantiApp {
     const doppiePartenze = this.config.doppiePartenze;
     const giornata = this.config.giornata;
     const mod = parseInt(this.config.playersPerFlight);
-    
+
     // Add table header
     if (doppiePartenze === TEE_TYPES.DOUBLE) {
       tableHTML = this.logic.generateTableHeader(true);
-      
+
       tableHTML += this.logic.generateDoubleTee(giornata);
     } else {
       tableHTML = this.logic.generateTableHeader(false);
       tableHTML = this.logic.generateSingleTee(giornata);
     }
-    
+
     $('#first_table').html(tableHTML);
+  }
+
+/**
+ * Carica TUTTE le gare da Federgolf
+ */
+async handleLoadFedergolfGare() {
+  try {
+    // Mostra loading
+    $('#load-federgolf-btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Caricamento...');
+
+    const response = await $.ajax({
+      url: '/user/federgolf/load-all',
+      type: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+      }
+    });
+
+    $('#load-federgolf-btn').prop('disabled', false).html('<i class="fas fa-globe mr-2"></i> Carica da Federgolf');
+
+    if (response.success && response.gare.length > 0) {
+      this.populateFedergolfDropdown(response.gare);
+      alert(`Trovate ${response.gare.length} gare`);
+    } else {
+      alert('Nessuna gara disponibile');
+    }
+  } catch (error) {
+    $('#load-federgolf-btn').prop('disabled', false).html('<i class="fas fa-globe mr-2"></i> Carica da Federgolf');
+    console.error('Errore:', error);
+    alert('Errore nel caricamento delle gare');
   }
 }
 
+/**
+ * Popola dropdown con gare trovate
+ */
+populateFedergolfDropdown(gare) {
+  const $dropdown = $('#federgolf-gare-select');
+  $dropdown.empty().append('<option value="">-- Seleziona una gara --</option>');
+
+  // Raggruppa gare per nome base (senza MASCHILE/FEMMINILE)
+  const gruppi = {};
+  gare.forEach(gara => {
+    const nomeBase = gara.title.replace(/\s*(MASCHILE|FEMMINILE)\s*/gi, '').trim();
+    const chiave = `${nomeBase}_${gara.date}`;
+
+    if (!gruppi[chiave]) {
+      gruppi[chiave] = {
+        nome: nomeBase,
+        data: gara.date, // già in formato dd/mm/yyyy
+        maschile: null,
+        femminile: null,
+        club: gara.club
+      };
+    }
+
+    if (gara.tipo === 'MASCHILE') {
+      gruppi[chiave].maschile = gara.id;
+    } else if (gara.tipo === 'FEMMINILE') {
+      gruppi[chiave].femminile = gara.id;
+    } else {
+      gruppi[chiave].maschile = gara.id;
+    }
+  });
+
+  // Crea opzioni raggruppate
+  Object.values(gruppi).forEach(gruppo => {
+    let label = `${gruppo.nome} - ${gruppo.data}`;
+    if (gruppo.club) {
+      label += ` (${gruppo.club})`;
+    }
+
+    let value = '';
+    let tipo = '';
+
+    if (gruppo.maschile && gruppo.femminile) {
+      label += ' [M+F]';
+      value = `${gruppo.maschile},${gruppo.femminile}`;
+      tipo = 'MISTA';
+    } else if (gruppo.maschile) {
+      label += ' [M]';
+      value = gruppo.maschile;
+      tipo = 'MASCHILE';
+    } else if (gruppo.femminile) {
+      label += ' [F]';
+      value = gruppo.femminile;
+      tipo = 'FEMMINILE';
+    }
+
+    if (value) {
+      $dropdown.append(`<option value="${value}" data-tipo="${tipo}">${label}</option>`);
+    }
+  });
+
+  $('#federgolf-container').show();
+  $dropdown.show();
+}
+
+  /**
+   * Carica iscritti dalla gara selezionata
+   */
+  async handleFedergolfGaraSelected() {
+    const $dropdown = $('#federgolf-gare-select');
+    const value = $dropdown.val();
+    if (!value) return;
+
+    const ids = value.split(',');
+    const tipo = $dropdown.find(':selected').data('tipo');
+
+    try {
+      let atleti = [];
+      let atlete = [];
+
+      // Carica prima gara (maschile o mista)
+      const response1 = await $.ajax({
+        url: '/user/federgolf/iscritti',
+        type: 'POST',
+        data: { gara_id: ids[0] },
+        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
+      });
+
+      if (tipo === 'FEMMINILE') {
+        atlete = response1.iscritti;
+      } else {
+        atleti = response1.iscritti;
+      }
+
+      // Se ci sono due gare (M+F), carica anche la seconda
+      if (ids.length > 1) {
+        const response2 = await $.ajax({
+          url: '/user/federgolf/iscritti',
+          type: 'POST',
+          data: { gara_id: ids[1] },
+          headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
+        });
+        atlete = response2.iscritti;
+      }
+
+      // Salva e aggiorna come fa l'upload Excel
+      storage.set('atlete', atlete);
+      storage.set('atleti', atleti);
+      storage.set('storedPlayersCount', atleti.length);
+      storage.set('storedProetteCount', atlete.length);
+
+      $('#players').val(atleti.length);
+      $('#proette').val(atlete.length);
+      this.config.players = atleti.length;
+      this.config.proette = atlete.length;
+      storage.set('players', atleti.length);
+      storage.set('proette', atlete.length);
+
+      this.config.nominativo = 'On';
+      storage.set('nominativo', 'On');
+
+      this.updateNominativoButtons();
+      this.logic.updateConfig(this.config);
+      this.generateTable();
+
+      alert(`Iscritti caricati!\n${atleti.length} atleti\n${atlete.length} atlete`);
+
+    } catch (error) {
+      alert('Errore nel caricamento degli iscritti');
+    }
+  }
+
+}
 // Initialize application when DOM is ready
 $(document).ready(() => {
   const app = new QuadrantiApp();
   app.init();
-  
+
   // Make app available globally for debugging
   window.quadrantiApp = app;
 });
