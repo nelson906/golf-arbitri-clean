@@ -1631,26 +1631,22 @@ class NotificationController extends Controller
             $convocationData = $this->documentService->generateConvocationForTournament($tournament);
             $convocationDocxPath = $this->fileStorage->storeInZone($convocationData, $tournament, 'docx');
 
-            // Genera PDF convocazione
-            $pdfPath = $this->documentService->generateConvocationPDF($tournament);
-
             // Genera DOCX lettera circolo
             $clubDocData = $this->documentService->generateClubDocument($tournament);
             $clubDocxPath = $this->fileStorage->storeInZone($clubDocData, $tournament, 'docx');
 
+            // Aggiorna il campo 'documents' (solo DOCX)
             $notification->update([
-                'attachments' => [
+                'documents' => [
                     'convocation' => basename($convocationDocxPath),
-                    'convocation_pdf' => basename($pdfPath),
                     'club_letter' => basename($clubDocxPath)
                 ]
             ]);
 
-            Log::info('All documents generated for tournament', [
+            Log::info('All documents generated for tournament (DOCX only)', [
                 'tournament_id' => $tournament->id,
                 'notification_id' => $notification->id,
                 'docx_convocation' => basename($convocationDocxPath),
-                'pdf_convocation' => basename($pdfPath),
                 'docx_club_letter' => basename($clubDocxPath)
             ]);
         } catch (\Exception $e) {
