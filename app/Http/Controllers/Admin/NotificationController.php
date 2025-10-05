@@ -1732,7 +1732,7 @@ class NotificationController extends Controller
             DB::commit();
 
             return redirect()
-                ->route('tournament-notifications.index')
+                ->route('admin.tournament-notifications.index')
                 ->with('success', 'Notifica eliminata con successo');
 
         } catch (\Exception $e) {
