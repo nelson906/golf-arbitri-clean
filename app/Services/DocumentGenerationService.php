@@ -133,49 +133,6 @@ class DocumentGenerationService
         }
     }
 
-    public function generateConvocationPDF(Tournament $tournament): string
-    {
-        try {
-            $tournament->load(['club', 'zone', 'tournamentType', 'assignments.user']);
-
-            // ORDINA GLI ARBITRI
-            $sortedAssignments = RefereeRoleHelper::sortByRole($tournament->assignments);
-
-            // Prepara dati per la view - AGGIUNGI zone_logo
-            $data = [
-                'tournament' => $tournament,
-                'zone_code' => $this->getZoneCode($tournament->zone_id),
-                'zone_logo' => $this->getZoneLogo($tournament->zone_id), // ✅ AGGIUNGI QUESTA RIGA
-                'zone_name' => $tournament->zone->name,
-                'tournament_name' => ucwords(strtolower($tournament->name)),
-                'tournament_dates' => $this->formatTournamentDates($tournament),
-                'club_name' => $tournament->club->name,
-                'current_date' => Carbon::now()->format('d/m/Y'),
-                'referees' => $sortedAssignments,
-                'generated_at' => Carbon::now()->format('d/m/Y H:i')
-            ];
-
-            // Genera PDF usando la view Blade
-            $pdf = Pdf::loadView('documents.convocation-pdf', $data);
-            $pdf->setPaper('A4', 'portrait');
-
-            $tournamentName = preg_replace('/[^A-Za-z0-9\-]/', '_', $tournament->name);
-            $tournamentName = substr($tournamentName, 0, 50);
-            $filename = "convocazione_{$tournament->id}_{$tournamentName}.pdf";
-
-            // Salva nella zona corretta
-            $zone = $this->fileStorage->getZoneFolder($tournament);
-            $relativePath = "convocazioni/{$zone}/generated/{$filename}";
-
-            Storage::disk('public')->put($relativePath, $pdf->output());
-
-            Log::info('Generated PDF with filename: ' . $filename);
-            return $relativePath;
-        } catch (\Exception $e) {
-            Log::error('Error generating convocation PDF: ' . $e->getMessage());
-            throw $e;
-        }
-    }
 
     /**
      * Generate facsimile for club
