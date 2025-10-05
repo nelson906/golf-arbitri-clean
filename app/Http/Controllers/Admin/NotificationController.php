@@ -1703,6 +1703,52 @@ class NotificationController extends Controller
     }
 
     /**
+     * Rimuovi una notifica
+     */
+    public function destroy(TournamentNotification $notification)
+    {
+        try {
+            DB::beginTransaction();
+
+            // Rimuovi i file allegati se esistono
+            if (!empty($notification->documents)) {
+                $zone = $this->fileStorage->getZoneFolder($notification->tournament);
+                $basePath = "convocazioni/{$zone}/generated/";
+
+                // Rimuovi convocazione
+                if (!empty($notification->documents['convocation'])) {
+                    Storage::disk('public')->delete($basePath . $notification->documents['convocation']);
+                }
+
+                // Rimuovi lettera circolo
+                if (!empty($notification->documents['club_letter'])) {
+                    Storage::disk('public')->delete($basePath . $notification->documents['club_letter']);
+                }
+            }
+
+            // Elimina la notifica
+            $notification->delete();
+
+            DB::commit();
+
+            return redirect()
+                ->route('tournament-notifications.index')
+                ->with('success', 'Notifica eliminata con successo');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error deleting notification', [
+                'notification_id' => $notification->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return redirect()
+                ->back()
+                ->with('error', 'Errore durante l\'eliminazione della notifica: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Generate all documents for tournament notification
      * Centralizza la generazione di tutti i documenti per evitare duplicazione di codice
      */
