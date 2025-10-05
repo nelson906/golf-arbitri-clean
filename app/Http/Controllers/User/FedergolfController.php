@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
@@ -78,81 +79,81 @@ class FedergolfController extends Controller
         return response()->json(['success' => true, 'iscritti' => $iscritti]);
     }
 
-public function loadAllCompetitions(Request $request)
-{
-    try {
-        $response = Http::timeout(30)
-            ->asForm()
-            ->withHeaders([
-                'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-                'Accept' => 'application/json',
-                'X-Requested-With' => 'XMLHttpRequest'
-            ])
-            ->post('https://www.federgolf.it/wp-admin/admin-ajax.php', [
-                'action' => 'competitions-search',
-                'tipo' => '',
-                'keyword' => '',
-                'anno' => date('Y'),
-                'mese' => ''
-            ]);
+    public function loadAllCompetitions(Request $request)
+    {
+        try {
+            $response = Http::timeout(30)
+                ->asForm()
+                ->withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                    'Accept' => 'application/json',
+                    'X-Requested-With' => 'XMLHttpRequest'
+                ])
+                ->post('https://www.federgolf.it/wp-admin/admin-ajax.php', [
+                    'action' => 'competitions-search',
+                    'tipo' => '',
+                    'keyword' => '',
+                    'anno' => date('Y'),
+                    'mese' => ''
+                ]);
 
-        if (!$response->successful()) {
-            return response()->json(['success' => false, 'message' => 'Errore connessione']);
+            if (!$response->successful()) {
+                return response()->json(['success' => false, 'message' => 'Errore connessione']);
+            }
+
+            $data = $response->json();
+            $oggi = new \DateTime();
+            $gare = [];
+
+            foreach ($data['data'] ?? [] as $gara) {
+                // Salta gare annullate
+                if ($gara['annullata'] == 1) {
+                    continue;
+                }
+
+                // Salta gare con titolo che contiene "ANNULLATA" o "RINVIATA"
+                if (
+                    stripos($gara['nome'], 'ANNULLATA') !== false ||
+                    stripos($gara['nome'], 'RINVIATA') !== false ||
+                    stripos($gara['nome'], 'RINVIATO') !== false
+                ) {
+                    continue;
+                }
+
+                // Converti data da formato dd/mm/yyyy
+                $dataGara = \DateTime::createFromFormat('d/m/Y', $gara['data']);
+
+                // Salta gare passate
+                if ($dataGara && $dataGara < $oggi) {
+                    continue;
+                }
+
+                $tipo = 'MISTA';
+                if (stripos($gara['nome'], 'MASCHILE') !== false) {
+                    $tipo = 'MASCHILE';
+                } elseif (stripos($gara['nome'], 'FEMMINILE') !== false) {
+                    $tipo = 'FEMMINILE';
+                }
+
+                $gare[] = [
+                    'id' => $gara['competition_id'],
+                    'title' => $gara['nome'],
+                    'tipo' => $tipo,
+                    'date' => $gara['data'],
+                    'club' => $gara['club'] ?? null
+                ];
+            }
+
+            // Ordina per data crescente
+            usort($gare, function ($a, $b) {
+                $dateA = \DateTime::createFromFormat('d/m/Y', $a['date']);
+                $dateB = \DateTime::createFromFormat('d/m/Y', $b['date']);
+                return $dateA <=> $dateB;
+            });
+
+            return response()->json(['success' => true, 'gare' => $gare]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
-
-        $data = $response->json();
-        $oggi = new \DateTime();
-        $gare = [];
-
-        foreach ($data['data'] ?? [] as $gara) {
-            // Salta gare annullate
-            if ($gara['annullata'] == 1) {
-                continue;
-            }
-
-            // Salta gare con titolo che contiene "ANNULLATA" o "RINVIATA"
-            if (stripos($gara['nome'], 'ANNULLATA') !== false ||
-                stripos($gara['nome'], 'RINVIATA') !== false ||
-                stripos($gara['nome'], 'RINVIATO') !== false) {
-                continue;
-            }
-
-            // Converti data da formato dd/mm/yyyy
-            $dataGara = \DateTime::createFromFormat('d/m/Y', $gara['data']);
-
-            // Salta gare passate
-            if ($dataGara && $dataGara < $oggi) {
-                continue;
-            }
-
-            $tipo = 'MISTA';
-            if (stripos($gara['nome'], 'MASCHILE') !== false) {
-                $tipo = 'MASCHILE';
-            } elseif (stripos($gara['nome'], 'FEMMINILE') !== false) {
-                $tipo = 'FEMMINILE';
-            }
-
-            $gare[] = [
-                'id' => $gara['competition_id'],
-                'title' => $gara['nome'],
-                'tipo' => $tipo,
-                'date' => $gara['data'],
-                'club' => $gara['club'] ?? null
-            ];
-        }
-
-        // Ordina per data crescente
-        usort($gare, function($a, $b) {
-            $dateA = \DateTime::createFromFormat('d/m/Y', $a['date']);
-            $dateB = \DateTime::createFromFormat('d/m/Y', $b['date']);
-            return $dateA <=> $dateB;
-        });
-
-        return response()->json(['success' => true, 'gare' => $gare]);
-
-    } catch (\Exception $e) {
-        return response()->json(['success' => false, 'message' => $e->getMessage()]);
     }
-}
-
 }
