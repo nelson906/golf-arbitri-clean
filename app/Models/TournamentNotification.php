@@ -59,23 +59,21 @@ class TournamentNotification extends Model
 
     protected $fillable = [
         'tournament_id',
-        'status',
-        'total_recipients',
-        'sent_at',
+        'recipients',    // JSON: { club: true, referees: [ids], institutional: [ids] }
+        'content',       // JSON: { subject, message }
+        'documents',     // JSON: { convocation: filename, club_letter: filename }
+        'metadata',      // JSON: { error, retry_count, etc }
+        'status',        // pending, sent, failed
         'sent_by',
-        'details',
-        'templates_used',
-        'error_message',
-        'attachments',
-        'referee_list',  // ← AGGIUNGI QUESTA RIGA
-        'prepared_at',   // ← E ANCHE QUESTA SE MANCA
+        'sent_at'
     ];
 
     protected $casts = [
-        'sent_at' => 'datetime',
-        'details' => 'array',
-        'templates_used' => 'array',
-        'attachments' => 'json'
+        'recipients' => 'array',
+        'content' => 'array',
+        'documents' => 'array',
+        'metadata' => 'array',
+        'sent_at' => 'datetime'
     ];
 
     /**

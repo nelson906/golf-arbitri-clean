@@ -248,6 +248,9 @@ class NotificationController extends Controller
     public function showAssignmentForm(Tournament $tournament)
     {
         $this->checkAssignmentFormAuthorization($tournament);
+
+        // Prepara o recupera la notifica
+        $notification = $this->notificationService->prepareNotification($tournament);
         // CREA O TROVA LA NOTIFICATION
         $notification = TournamentNotification::firstOrCreate(
             ['tournament_id' => $tournament->id],
@@ -295,39 +298,31 @@ class NotificationController extends Controller
      */
     public function sendTournamentAssignment(Request $request, Tournament $tournament)
     {
-
         $validated = $this->validateAssignmentRequest($request);
 
         try {
             DB::beginTransaction();
-
-            $assignments = $this->getTournamentAssignments($tournament);
-            $emailData = [
-                'tournament' => $tournament,
-                'assignments' => $assignments,
-                'subject' => $validated['subject'],
-                'message' => $validated['message']
-            ];
-
-            // Salva i metadati nella TournamentNotification per il metodo send()
+            
+            // Prepara o recupera la notifica
             $notification = TournamentNotification::where('tournament_id', $tournament->id)
                 ->orderBy('created_at', 'desc')
-                ->first();
-                
-            if ($notification) {
-                $notification->update([
-                    'metadata' => [
-                        'recipients' => $request->all(),
-                        'subject' => $validated['subject'],
-                        'message' => $validated['message'],
-                        'send_to_section' => $request->boolean('send_to_section'),
-                        'send_to_club' => $request->boolean('send_to_club'),
-                        'attach_convocation' => false  // Questo metodo non ha allegati
-                    ]
-                ]);
-            }
+                ->firstOrFail();
 
-            $this->processEmailSending($request, $emailData, $tournament);
+            // Aggiorna i dati della notifica
+            $notification->update([
+                'content' => [
+                    'subject' => $validated['subject'],
+                    'message' => $validated['message']
+                ],
+                'recipients' => [
+                    'club' => $request->boolean('send_to_club', true),
+                    'referees' => $request->input('recipients', []),
+                    'institutional' => $request->input('fixed_addresses', [])
+                ]
+            ]);
+
+            // Invia la notifica
+            $this->notificationService->send($notification);
 
             DB::commit();
             return redirect()->back()->with('success', 'Notifiche inviate con successo');
