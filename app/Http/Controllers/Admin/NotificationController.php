@@ -545,10 +545,40 @@ class NotificationController extends Controller
      */
     public function stats(Request $request)
     {
+        // Helper function per contare i destinatari
+        $countRecipients = function ($notification) {
+            $recipients = $notification->recipients ?? [];
+            $total = 0;
+            
+            if (isset($recipients['referees'])) {
+                $total += count($recipients['referees']);
+            }
+            if (isset($recipients['club']) && $recipients['club'] === true) {
+                $total += 1;
+            }
+            if (isset($recipients['institutional'])) {
+                $total += count($recipients['institutional']);
+            }
+            
+            return $total;
+        };
+
+        // Statistiche giornaliere
+        $todayNotifications = TournamentNotification::whereDate('sent_at', today())->get();
+        $todayRecipients = $todayNotifications->sum($countRecipients);
+
+        // Statistiche settimanali
+        $weekNotifications = TournamentNotification::whereBetween('sent_at', [now()->startOfWeek(), now()->endOfWeek()])->get();
+        $weekRecipients = $weekNotifications->sum($countRecipients);
+
+        // Statistiche mensili
+        $monthNotifications = TournamentNotification::whereMonth('sent_at', now()->month)->get();
+        $monthRecipients = $monthNotifications->sum($countRecipients);
+
         $stats = [
-            'today' => TournamentNotification::whereDate('sent_at', today())->sum('total_recipients'),
-            'this_week' => TournamentNotification::whereBetween('sent_at', [now()->startOfWeek(), now()->endOfWeek()])->sum('total_recipients'),
-            'this_month' => TournamentNotification::whereMonth('sent_at', now()->month)->sum('total_recipients'),
+            'today' => $todayRecipients,
+            'this_week' => $weekRecipients,
+            'this_month' => $monthRecipients,
             'success_rate' => $this->calculateSuccessRate(),
             'pending_tournaments' => Tournament::whereIn('status', ['closed', 'assigned'])->doesntHave('notifications')->count(),
             'failed_today' => TournamentNotification::whereDate('sent_at', today())->where('status', 'failed')->count(),
@@ -557,10 +587,19 @@ class NotificationController extends Controller
 
         // Statistiche per zona se richiesto
         if ($request->filled('zone_id')) {
-            $stats['zone_stats'] = TournamentNotification::forZone($request->zone_id)
-                ->selectRaw('status, COUNT(*) as count, SUM(total_recipients) as recipients')
-                ->groupBy('status')
-                ->get();
+            $zoneNotifications = TournamentNotification::whereHas('tournament', function ($query) use ($request) {
+                $query->where('zone_id', $request->zone_id);
+            })
+            ->get()
+            ->groupBy('status');
+
+            $stats['zone_stats'] = $zoneNotifications->map(function ($notifications, $status) use ($countRecipients) {
+                return [
+                    'status' => $status,
+                    'count' => $notifications->count(),
+                    'recipients' => $notifications->sum($countRecipients)
+                ];
+            })->values();
         }
 
         return response()->json($stats);
@@ -1575,17 +1614,39 @@ class NotificationController extends Controller
     /**
      * Get filtered stats by status
      */
-    private function getFilteredStats($status, $user, $isNationalAdmin): int
+    private function getFilteredStats($status, $user, $isNationalAdmin): array
     {
-        $query = TournamentNotification::where('status', $status);
+        $notifications = TournamentNotification::where('status', $status)
+            ->when(!$isNationalAdmin && $user->user_type !== 'super_admin', function ($query) use ($user) {
+                $query->whereHas('tournament', function ($q) use ($user) {
+                    $q->where('zone_id', $user->zone_id);
+                });
+            })
+            ->get();
 
-        if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
-            $query->whereHas('tournament', function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            });
+        $total = 0;
+        $totalRecipients = 0;
+
+        foreach ($notifications as $notification) {
+            $total++;
+            $recipients = $notification->recipients ?? [];
+            
+            // Conta i destinatari
+            if (isset($recipients['referees'])) {
+                $totalRecipients += count($recipients['referees']);
+            }
+            if (isset($recipients['club']) && $recipients['club'] === true) {
+                $totalRecipients += 1;
+            }
+            if (isset($recipients['institutional'])) {
+                $totalRecipients += count($recipients['institutional']);
+            }
         }
 
-        return $query->count();
+        return [
+            'count' => $total,
+            'recipients' => $totalRecipients
+        ];
     }
 
     /**
@@ -1593,16 +1654,37 @@ class NotificationController extends Controller
      */
     private function getFilteredStatsThisMonth($user, $isNationalAdmin): int
     {
-        $query = TournamentNotification::whereMonth('sent_at', now()->month)
-            ->whereYear('sent_at', now()->year);
+        $notifications = TournamentNotification::whereMonth('sent_at', now()->month)
+            ->whereYear('sent_at', now()->year)
+            ->when(!$isNationalAdmin && $user->user_type !== 'super_admin', function ($query) use ($user) {
+                $query->whereHas('tournament', function ($q) use ($user) {
+                    $q->where('zone_id', $user->zone_id);
+                });
+            })
+            ->get();
 
-        if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
-            $query->whereHas('tournament', function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            });
-        }
-
-        return $query->sum('total_recipients');
+        // Calcola il totale dei destinatari dai dati JSON
+        return $notifications->sum(function ($notification) {
+            $recipients = $notification->recipients ?? [];
+            $total = 0;
+            
+            // Aggiungi i referee
+            if (isset($recipients['referees'])) {
+                $total += count($recipients['referees']);
+            }
+            
+            // Aggiungi il club se presente
+            if (isset($recipients['club']) && $recipients['club'] === true) {
+                $total += 1;
+            }
+            
+            // Aggiungi gli istituzionali
+            if (isset($recipients['institutional'])) {
+                $total += count($recipients['institutional']);
+            }
+            
+            return $total;
+        });
     }
 
     /**
