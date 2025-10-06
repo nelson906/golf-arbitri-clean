@@ -1,11 +1,79 @@
 <?php
 
+use Illuminate\Support\Facades\Route;
+use App\Models\Tournament;
+use App\Models\TournamentNotification;
+use App\Services\DocumentGenerationService;
+use App\Services\FileStorageService;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\User\FedergolfController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Http\RedirectResponse;
+use App\Http\Controllers\FedergolfController;
+
+Route::get('/test-doc-gen', function () {
+    try {
+        $tournament = Tournament::where('name', 'like', '%pippo 3%')
+            ->with(['zone', 'club.zone', 'assignments.user'])
+            ->firstOrFail();
+
+        Log::info('Found tournament for test', [
+            'id' => $tournament->id,
+            'name' => $tournament->name,
+            'zone_id' => $tournament->zone_id,
+            'club_zone_id' => $tournament->club->zone_id,
+            'assignments' => $tournament->assignments->count()
+        ]);
+
+        // Crea o trova la notifica
+        $notification = TournamentNotification::firstOrCreate(
+            ['tournament_id' => $tournament->id],
+            [
+                'status' => 'pending',
+                'referee_list' => $tournament->assignments->pluck('user.name')->implode(', '),
+                'total_recipients' => $tournament->assignments->count() + 1,
+                'sent_by' => 1
+            ]
+        );
+
+        $docService = app(DocumentGenerationService::class);
+        $fileService = app(FileStorageService::class);
+
+        // 1. Genera DOCX convocazione
+        $convocationData = $docService->generateConvocationForTournament($tournament);
+        $convocationDocxPath = $fileService->storeInZone($convocationData, $tournament, 'docx');
+
+        // 2. Genera PDF
+        $pdfPath = $docService->generateConvocationPDF($tournament);
+        $pdfData = [
+            'path' => $pdfPath,
+            'filename' => basename($pdfPath),
+            'type' => 'convocation_pdf'
+        ];
+        $storedPdfPath = $fileService->storeInZone($pdfData, $tournament, 'pdf');
+
+        // 3. Genera lettera circolo
+        $clubDocData = $docService->generateClubDocument($tournament);
+        $clubDocxPath = $fileService->storeInZone($clubDocData, $tournament, 'docx');
+
+        $attachments = [
+            'convocation' => basename($convocationDocxPath),
+            'convocation_pdf' => basename($storedPdfPath),
+            'club_letter' => basename($clubDocxPath)
+        ];
+
+        $notification->update(['attachments' => $attachments]);
+
+        return ['success' => true, 'attachments' => $attachments];
+
+    } catch (\Exception $e) {
+        Log::error('Test document generation failed', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+});
 use Illuminate\Foundation\Application;
 
 /*
@@ -32,7 +100,7 @@ Route::get('/', function () {
 
 // Dashboard principale con redirect intelligente per ruolo
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 });
 
 // Profile management (tutti gli utenti autenticati)

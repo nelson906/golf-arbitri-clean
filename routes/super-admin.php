@@ -37,4 +37,17 @@ Route::prefix('super-admin')->name('super-admin.')->middleware(['auth', 'super_a
     Route::get('/system/logs', function() {
         return view('admin.placeholder', ['title' => 'Logs Sistema']);
     })->name('system.logs');
+
+    // Notification Clauses
+    Route::controller(\App\Http\Controllers\SuperAdmin\NotificationClauseController::class)->group(function () {
+        Route::get('clauses', 'index')->name('clauses.index');
+        Route::get('clauses/create', 'create')->name('clauses.create');
+        Route::post('clauses', 'store')->name('clauses.store');
+        Route::get('clauses/{clause}/edit', 'edit')->name('clauses.edit');
+        Route::put('clauses/{clause}', 'update')->name('clauses.update');
+        Route::delete('clauses/{clause}', 'destroy')->name('clauses.destroy');
+        Route::post('clauses/{clause}/toggle-active', 'toggleActive')->name('clauses.toggle-active');
+        Route::post('clauses/reorder', 'reorder')->name('clauses.reorder');
+        Route::get('clauses/{clause}/preview', 'preview')->name('clauses.preview');
+    });
 });

@@ -4,9 +4,10 @@ namespace App\Services;
 
 use App\Models\Assignment;
 use App\Models\Tournament;
+use App\Models\TournamentNotification;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\IOFactory;
-use PhpOffice\PhpWord\TemplateProcessor;  // ← AGGIUNGI QUESTA RIGA
+use PhpOffice\PhpWord\TemplateProcessor;
 use PhpOffice\PhpWord\Shared\Html;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
@@ -58,24 +59,69 @@ class DocumentGenerationService
         }
     }
 
-    /**
+/**
      * Generate convocation for entire tournament
      */
-    public function generateConvocationForTournament(Tournament $tournament): array
+    public function generateConvocationForTournament(Tournament $tournament, ?TournamentNotification $notification = null): array
     {
+        Log::info('Starting convocation generation for tournament', [
+            'tournament_id' => $tournament->id,
+            'tournament_name' => $tournament->name,
+            'zone_id' => $tournament->zone_id
+        ]);
         try {
-            $tournament->load(['club', 'zone', 'tournamentType', 'assignments.user']);
+            $tournament->load([
+                'club', 
+                'zone', 
+                'tournamentType', 
+                'assignments.user'
+            ]);
+
+            // If a specific notification is not provided, try to find the latest one
+            if (!$notification) {
+                $notification = TournamentNotification::where('tournament_id', $tournament->id)
+                    ->latest()
+                    ->first();
+            }
+
+            if ($notification) {
+                $notification->loadMissing('clauseSelections.clause');
+            }
 
             // Carica template dalla zona
             $templatePath = $this->getZoneTemplatePath($tournament->zone_id);
+            
+            Log::info('Selected template path', [
+                'template_path' => $templatePath
+            ]);
 
             // Prepara variabili per sostituzione
+            // Prepara le clausole dal database (usando la notifica specifica se presente)
+            $selectedClauses = [];
+            
+            if ($notification) {
+                $selectedClauses = $notification->clauseSelections
+                    ->mapWithKeys(function ($selection) {
+                        return [
+                            $selection->placeholder_code => [
+                                'content' => $selection->clause->content,
+                                'title' => $selection->clause->title,
+                                'category' => $selection->clause->category
+                            ]
+                        ];
+                    })
+                    ->toArray();
+            }
+            
+            Log::info('Selected clauses', ['clauses' => $selectedClauses]);
+            
             $variables = [
                 'tournament_name' => ucwords(strtolower($tournament->name)), // ✅ Prima lettera maiuscola
                 'tournament_dates' => $this->formatTournamentDates($tournament), // ✅ Date formattate
                 'club_name' => $tournament->club->name,
                 'zone_name' => $tournament->zone->name ?? 'Zona Non Specificata',
                 'current_date' => Carbon::now()->format('d/m/Y'),
+                'clauses' => $selectedClauses
             ];
 
             // Genera nome file
@@ -84,8 +130,8 @@ class DocumentGenerationService
             $filename = "convocazione_{$tournament->id}_{$tournamentName}.docx";
             $outputPath = storage_path('app/temp/' . $filename);
 
-            // Carica template, sostituisci variabili e aggiungi arbitri
-            $this->processTemplateWithReferees($templatePath, $variables, $tournament, $outputPath);
+            // Carica template, sostituisci variabili e aggiungi arbitri (docType: referee)
+            $this->processTemplateWithReferees($templatePath, $variables, $tournament, $outputPath, 'referee');
 
             return [
                 'path' => $outputPath,
@@ -93,15 +139,21 @@ class DocumentGenerationService
                 'type' => 'convocation'
             ];
         } catch (\Exception $e) {
-            Log::error('Error generating tournament convocation: ' . $e->getMessage());
-            throw $e;
+            Log::error('Error generating tournament convocation', [
+                'tournament_id' => $tournament->id,
+                'tournament_name' => $tournament->name,
+                'zone_id' => $tournament->zone_id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw new \Exception('Errore nella generazione della convocazione: ' . $e->getMessage());
         }
     }
 
     /**
      * Generate club letter for a tournament
      */
-    public function generateClubLetter(Tournament $tournament): string
+    public function generateClubLetter(Tournament $tournament, ?TournamentNotification $notification = null): string
     {
         try {
             $tournament->load(['club', 'zone', 'tournamentType', 'assignments.user']);
@@ -110,11 +162,31 @@ class DocumentGenerationService
             $templatePath = $this->getZoneTemplatePath($tournament->zone_id);
             $variables = $this->getClubLetterVariables($tournament);
 
+            // Carica clausole dalla notifica (se presente)
+            if (!$notification) {
+                $notification = TournamentNotification::where('tournament_id', $tournament->id)
+                    ->latest()
+                    ->first();
+            }
+            if ($notification) {
+                $notification->loadMissing('clauseSelections.clause');
+                $variables['clauses'] = $notification->clauseSelections
+                    ->mapWithKeys(function ($selection) {
+                        return [
+                            $selection->placeholder_code => [
+                                'content' => $selection->clause->content,
+                                'title' => $selection->clause->title,
+                                'category' => $selection->clause->category
+                            ]
+                        ];
+                    })->toArray();
+            }
+
             $filename = $this->generateFilename('club_letter', $tournament);
             $outputPath = storage_path('app/temp/' . $filename);
 
-            // Carica template e sostituisci variabili
-            $this->processTemplateWithReferees($templatePath, $variables, $tournament, $outputPath);
+            // Carica template e sostituisci variabili (docType: club)
+            $this->processTemplateWithReferees($templatePath, $variables, $tournament, $outputPath, 'club');
 
             $path = $this->saveGeneratedFile($outputPath, $tournament, $filename);
 
@@ -585,15 +657,33 @@ class DocumentGenerationService
      */
     protected function getZoneTemplatePath($zoneId): string
     {
+        Log::info('Getting zone template path', [
+            'zone_id' => $zoneId
+        ]);
         $zoneCode = $this->getZoneCode($zoneId);
-        $templatePath = storage_path("lettere_intestate/lettera_intestata_{$zoneCode}.docx");
+        // Check if storage directory exists
+        $storageDir = storage_path('lettere_intestate');
+        if (!is_dir($storageDir)) {
+            Log::error('Template directory does not exist', ['directory' => $storageDir]);
+            throw new \Exception('Directory dei template non trovata. Contattare l\'amministratore.');
+        }
+
+        $templatePath = "{$storageDir}/lettera_intestata_{$zoneCode}.docx";
 
         if (!file_exists($templatePath)) {
+            Log::warning('Zone template not found, using default', [
+                'zone_id' => $zoneId,
+                'attempted_path' => $templatePath
+            ]);
             $templatePath = storage_path("lettere_intestate/lettera_intestata_default.docx");
         }
 
         if (!file_exists($templatePath)) {
-            throw new \Exception("Template non trovato: {$templatePath}");
+            Log::error('Template not found', [
+                'zone_id' => $zoneId,
+                'template_path' => $templatePath
+            ]);
+            throw new \Exception("Template non trovato: {$templatePath}. Controlla che i file template esistano in storage/lettere_intestate/");
         }
 
         return $templatePath;
@@ -622,8 +712,15 @@ class DocumentGenerationService
     {
         $zoneCode = $this->getZoneCode($zoneId);
 
+        // Check if logo directory exists
+        $logoDir = storage_path('logo');
+        if (!is_dir($logoDir)) {
+            Log::error('Logo directory does not exist', ['directory' => $logoDir]);
+            return null;
+        }
+
         // Prova logo specifico zona
-        $logoPath = storage_path("logo/fig-{$zoneCode}.png");
+        $logoPath = "{$logoDir}/fig-{$zoneCode}.png";
         if (file_exists($logoPath)) {
             return base64_encode(file_get_contents($logoPath));
         }
@@ -640,19 +737,86 @@ class DocumentGenerationService
     /**
      * Process template with TemplateProcessor
      */
-    protected function processTemplate($templatePath, array $variables, $outputPath): void
+    protected function processTemplate($templatePath, array $variables, $outputPath, string $docType): void
     {
+        // Verify template exists
+        if (!file_exists($templatePath)) {
+            Log::error('Template file not found', ['path' => $templatePath]);
+            throw new \Exception('Template non trovato: ' . basename($templatePath));
+        }
+
         if (!class_exists('\PhpOffice\PhpWord\TemplateProcessor')) {
             throw new \Exception("TemplateProcessor class not found. Install PhpWord with composer require phpoffice/phpword");
         }
 
         $templateProcessor = new TemplateProcessor($templatePath);
-
-        // Sostituisci tutte le variabili
-        // TemplateProcessor usa ${variable}, non {{variable}}
-        foreach ($variables as $key => $value) {
-            $templateProcessor->setValue($key, $value ?? '');
+        
+        // Log variabili disponibili nel template
+        try {
+            $templateVars = $templateProcessor->getVariables();
+            Log::info('Template variables found:', ['variables' => $templateVars]);
+        } catch (\Throwable $e) {
+            Log::warning('Could not read template variables: ' . $e->getMessage());
         }
+
+        // Sostituisci tutte le variabili base (escluse le clausole)
+        foreach ($variables as $key => $value) {
+            if ($key !== 'clauses') {
+                $templateProcessor->setValue($key, $value ?? '');
+            }
+        }
+
+        // Gestisci le clausole
+        if (!empty($variables['clauses'])) {
+            Log::info('Document type passed:', [
+                'template' => basename($templatePath),
+                'docType' => $docType
+            ]);
+            
+            // Ottieni i placeholder disponibili per questo tipo
+            $availablePlaceholders = $this->getPlaceholdersForDocumentType($docType);
+            Log::info('Available placeholders for type:', [
+                'docType' => $docType,
+                'placeholders' => $availablePlaceholders
+            ]);
+            
+            // Log delle clausole ricevute
+            Log::info('Clauses received:', [
+                'clauses' => array_keys($variables['clauses'])
+            ]);
+            
+            // Sostituisci le clausole
+            foreach ($variables['clauses'] as $placeholderCode => $clause) {
+                Log::info('Processing clause:', [
+                    'placeholderCode' => $placeholderCode,
+                    'hasContent' => isset($clause['content']),
+                    'isAvailable' => in_array($placeholderCode, $availablePlaceholders),
+                    'content' => $clause['content'] ?? null
+                ]);
+                
+                if (in_array($placeholderCode, $availablePlaceholders) && isset($clause['content'])) {
+                    $this->replacePlaceholdersWithClauses($templateProcessor, [$placeholderCode => $clause['content']], $docType);
+                }
+            }
+            
+            // Verifica le variabili dopo la sostituzione
+            try {
+                $remainingVars = $templateProcessor->getVariables();
+                Log::info('Remaining variables after substitution:', ['variables' => $remainingVars]);
+            } catch (\Throwable $e) {
+                Log::warning('Could not read remaining variables: ' . $e->getMessage());
+            }
+            
+            // Pulisci i placeholder non utilizzati
+            $this->clearUnusedPlaceholders($templateProcessor);
+        }
+        
+        // Crea directory se non esiste
+        if (!is_dir(dirname($outputPath))) {
+            mkdir(dirname($outputPath), 0777, true);
+        }
+
+        $templateProcessor->saveAs($outputPath);
 
         // Crea directory se non esiste
         if (!is_dir(dirname($outputPath))) {
@@ -665,7 +829,7 @@ class DocumentGenerationService
     /**
      * Process template with referees list
      */
-    protected function processTemplateWithReferees($templatePath, array $variables, Tournament $tournament, $outputPath): void
+    protected function processTemplateWithReferees($templatePath, array $variables, Tournament $tournament, $outputPath, string $docType): void
     {
         if (!class_exists('\PhpOffice\PhpWord\TemplateProcessor')) {
             throw new \Exception("TemplateProcessor class not found. Install PhpWord with composer require phpoffice/phpword");
@@ -673,10 +837,37 @@ class DocumentGenerationService
 
         $templateProcessor = new TemplateProcessor($templatePath);
 
+        // Log variabili disponibili nel template
+        try {
+            $templateVars = $templateProcessor->getVariables();
+            Log::info('Template variables found (with referees):', ['variables' => $templateVars]);
+        } catch (\Throwable $e) {
+            Log::warning('Could not read template variables (with referees): ' . $e->getMessage());
+        }
+
         // Sostituisci variabili base
         // TemplateProcessor usa ${variable}, NON {{variable}}
         foreach ($variables as $key => $value) {
-            $templateProcessor->setValue($key, $value ?? '');
+            // Skip clauses array as it's handled separately
+            if ($key !== 'clauses') {
+                $templateProcessor->setValue($key, $value ?? '');
+            }
+        }
+
+        // Gestione speciale per le clausole
+        if (isset($variables['clauses']) && is_array($variables['clauses'])) {
+            // Ottieni i placeholder disponibili per questo tipo
+            $availablePlaceholders = $this->getPlaceholdersForDocumentType($docType);
+            
+            // Sostituisci le clausole
+            foreach ($variables['clauses'] as $placeholderCode => $clause) {
+                if (in_array($placeholderCode, $availablePlaceholders) && isset($clause['content'])) {
+                    $this->replacePlaceholdersWithClauses($templateProcessor, [$placeholderCode => $clause['content']], $docType);
+                }
+            }
+            
+            // Pulisci i placeholder non utilizzati
+            $this->clearUnusedPlaceholders($templateProcessor);
         }
 
         // Aggiungi lista arbitri se il template ha placeholder
@@ -756,6 +947,60 @@ class DocumentGenerationService
     }
 
     /**
+     * Generate PDF version of convocation
+     */
+    public function generateConvocationPDF(Tournament $tournament): string
+    {
+        try {
+            // First generate the DOCX
+            $convocationData = $this->generateConvocationForTournament($tournament);
+            
+            // Convert DOCX to HTML using PhpWord
+            $phpWord = IOFactory::load($convocationData['path']);
+            
+        // Create temp directory if it doesn't exist
+        $tempDir = storage_path('app/temp');
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0777, true);
+        }
+
+        // Create temp HTML file
+        $htmlPath = "{$tempDir}/convocation.html";
+        $htmlWriter = IOFactory::createWriter($phpWord, 'HTML');
+            $htmlWriter->save($htmlPath);
+            
+            // Read HTML content
+            $htmlContent = file_get_contents($htmlPath);
+            
+            // Generate PDF using Barryvdh\DomPDF
+            $pdf = PDF::loadHTML($htmlContent);
+            
+            // Generate filename
+            $tournamentName = preg_replace('/[^A-Za-z0-9\-]/', '_', $tournament->name);
+            $tournamentName = substr($tournamentName, 0, 50);
+            $filename = "convocazione_{$tournament->id}_{$tournamentName}.pdf";
+            
+            // Save PDF
+            $tempPath = storage_path('app/temp/' . $filename);
+            $pdf->save($tempPath);
+            
+            // Clean up HTML file
+            if (file_exists($htmlPath)) {
+                unlink($htmlPath);
+            }
+            
+            return $tempPath;
+        } catch (\Exception $e) {
+            Log::error('Error generating PDF convocation', [
+                'tournament_id' => $tournament->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Format tournament dates for templates
      */
     protected function formatTournamentDates(Tournament $tournament): string
@@ -775,5 +1020,69 @@ class DocumentGenerationService
 
         // Mesi diversi
         return $startDate->format('d/m/Y') . ' - ' . $endDate->format('d/m/Y');
+    }
+
+    /**
+     * Replace clause placeholders in Word document
+     */
+    private function replacePlaceholdersWithClauses($templateProcessor, array $clauses, string $documentType): void
+    {
+        // Sostituisci i placeholder con il contenuto delle clausole
+        foreach ($clauses as $placeholderCode => $clauseContent) {
+            try {
+                $templateProcessor->setValue($placeholderCode, $clauseContent);
+                
+                Log::debug("Replaced placeholder in {$documentType}", [
+                    'placeholder' => $placeholderCode,
+                    'content_length' => strlen($clauseContent)
+                ]);
+            } catch (\Exception $e) {
+                Log::warning("Could not replace placeholder {$placeholderCode}: " . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Clear unused clause placeholders from document
+     */
+    private function clearUnusedPlaceholders($templateProcessor): void
+    {
+        try {
+            $variables = $templateProcessor->getVariables();
+            
+            foreach ($variables as $variable) {
+                // Rimuovi solo i placeholder delle clausole non compilati
+                if (str_starts_with($variable, 'CLAUSOLA_')) {
+                    $templateProcessor->setValue($variable, '');
+                    
+                    Log::debug('Cleared unused placeholder', ['placeholder' => $variable]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('Could not clear unused placeholders: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get available placeholders for document type
+     */
+    private function getPlaceholdersForDocumentType(string $type): array
+    {
+        $placeholders = [
+            'club' => [
+                'CLAUSOLA_SPESE',
+                'CLAUSOLA_LOGISTICA', 
+                'CLAUSOLA_RESPONSABILITA'
+            ],
+            'referee' => [
+                'CLAUSOLA_RESPONSABILITA',
+                'CLAUSOLA_COMUNICAZIONI'
+            ],
+            'institutional' => [
+                'CLAUSOLA_RESPONSABILITA'
+            ]
+        ];
+
+        return $placeholders[$type] ?? [];
     }
 }

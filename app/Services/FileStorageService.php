@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Tournament;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class FileStorageService
@@ -13,16 +14,68 @@ class FileStorageService
      */
 public function storeInZone($fileData, Tournament $tournament, $extension)
 {
+    Log::info('Starting storeInZone', [
+        'tournament_id' => $tournament->id,
+        'extension' => $extension,
+        'file_data' => array_keys($fileData)
+    ]);
     $zone = $this->getZoneFolder($tournament);
     $filename = $fileData['filename'];
 
     $relativePath = "convocazioni/{$zone}/generated/{$filename}";
 
     // PRIMA leggi il contenuto
+    if (!file_exists($fileData['path'])) {
+        Log::error('Source file does not exist', [
+            'path' => $fileData['path'],
+            'tournament_id' => $tournament->id
+        ]);
+        throw new \Exception("File sorgente non trovato: {$fileData['path']}");
+    }
+    
     $content = file_get_contents($fileData['path']);
+    
+    if (!$content) {
+        Log::error('Could not read file content', [
+            'path' => $fileData['path'],
+            'tournament_id' => $tournament->id
+        ]);
+        throw new \Exception("Impossibile leggere il contenuto del file: {$fileData['path']}");
+    }
+
+    // Assicurati che la directory esista
+    $fullPath = Storage::disk('public')->path(dirname($relativePath));
+    if (!is_dir($fullPath)) {
+        mkdir($fullPath, 0777, true);
+    }
 
     // POI salva
-    Storage::disk('public')->put($relativePath, $content);
+    try {
+        Log::info('Attempting to store file', [
+            'full_path' => $fullPath,
+            'relative_path' => $relativePath,
+            'exists' => is_dir($fullPath)
+        ]);
+        $saved = Storage::disk('public')->put($relativePath, $content);
+        if (!$saved) {
+            Log::error('Failed to store file', [
+                'relative_path' => $relativePath,
+                'tournament_id' => $tournament->id
+            ]);
+            throw new \Exception("Impossibile salvare il file in: {$relativePath}");
+        }
+        Log::info('File stored successfully', [
+            'relative_path' => $relativePath,
+            'tournament_id' => $tournament->id
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Exception storing file', [
+            'relative_path' => $relativePath,
+            'tournament_id' => $tournament->id,
+            'error' => $e->getMessage()
+        ]);
+        throw $e;
+    }
 
     // INFINE elimina il file temporaneo
     if (file_exists($fileData['path'])) {

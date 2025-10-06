@@ -19,9 +19,10 @@ class ClubNotificationMail extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct(Tournament $tournament, array $attachmentPaths = [])
+    public function __construct(Tournament $tournament, ?string $content = null, array $attachmentPaths = [])
     {
         $this->tournament = $tournament;
+        $this->content = $content;
         $this->attachmentPaths = $attachmentPaths;
 
         // ORDINA GLI ARBITRI PER GERARCHIA
@@ -90,9 +91,26 @@ class ClubNotificationMail extends Mailable
     {
         $mailAttachments = [];
 
-        foreach ($this->attachmentPaths as $path) {
+        if (empty($this->attachmentPaths)) {
+            return $mailAttachments;
+        }
+
+        foreach ($this->attachmentPaths as $attachment) {
+            if (!is_array($attachment) || !isset($attachment['path'])) {
+                continue;
+            }
+            
+            $path = $attachment['path'];
+            $name = $attachment['name'] ?? basename($path);
+            
             if (file_exists($path)) {
-                $mailAttachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path);
+                $mailAttachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path)
+                    ->as($name);
+            } else {
+                Log::warning('Attachment file not found', [
+                    'path' => $path,
+                    'name' => $name
+                ]);
             }
         }
 

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\NotificationClauseSelection;
 
 /**
  * @property int $id
@@ -338,9 +339,37 @@ public function getAttachmentsAttribute($value)
     return $value ?? [];
 }
 
-public function setAttachmentsAttribute($value)
-{
-    $this->attributes['attachments'] = is_array($value) ? json_encode($value) : $value;
-}
+    public function setAttachmentsAttribute($value)
+    {
+        $this->attributes['attachments'] = is_array($value) ? json_encode($value) : $value;
+    }
+
+    /**
+     * 📝 Relazione con le clausole selezionate
+     */
+    public function clauseSelections(): HasMany
+    {
+        return $this->hasMany(NotificationClauseSelection::class);
+    }
+
+    /**
+     * 📝 Accessor: Ottieni clausole selezionate organizzate
+     */
+    public function getSelectedClausesAttribute(): array
+    {
+        return $this->clauseSelections()
+            ->with('clause')
+            ->get()
+            ->mapWithKeys(function ($selection) {
+                return [
+                    $selection->placeholder_code => [
+                        'content' => $selection->clause->content,
+                        'title' => $selection->clause->title,
+                        'category' => $selection->clause->category
+                    ]
+                ];
+            })
+            ->toArray();
+    }
 
 }

@@ -32,6 +32,25 @@
             </div>
         @endif
 
+        @if (session('warning'))
+            <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 mb-6" role="alert">
+                <p class="font-bold">Attenzione</p>
+                <p class="mb-3">{{ session('warning') }}</p>
+                @if (session('tournament_id'))
+                    <form action="{{ route('admin.tournaments.destroy', session('tournament_id')) }}" method="POST" class="inline-flex items-center gap-2">
+                        @csrf
+                        @method('DELETE')
+                        <input type="hidden" name="confirm" value="1">
+                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
+                            Conferma eliminazione di "{{ session('tournament_name') }}"
+                        </button>
+                        <a href="{{ route('admin.tournaments.index') }}" class="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50 text-gray-700">
+                            Annulla
+                        </a>
+                    </form>
+                @endif
+            </div>
+        @endif
 
         {{-- Filters --}}
         <div class="bg-white shadow rounded-lg p-6 mb-6">

@@ -381,22 +381,18 @@ class TournamentController extends Controller
     /**
      * Remove the specified tournament from storage.
      */
-    public function destroy(Tournament $tournament)
+    public function destroy(Request $request, Tournament $tournament)
     {
         // Check access
         $this->checkTournamentAccess($tournament);
 
-        // Check if can be deleted
-        if ($tournament->assignments()->exists()) {
+        // Check if has assignments and needs confirmation
+        if ($tournament->assignments()->exists() && !$request->has('confirm')) {
             return redirect()
                 ->route('admin.tournaments.index')
-                ->with('error', 'Impossibile eliminare un torneo con assegnazioni.');
-        }
-
-        if ($tournament->status !== 'draft') {
-            return redirect()
-                ->route('admin.tournaments.index')
-                ->with('error', 'Solo i tornei in bozza possono essere eliminati.');
+                ->with('warning', 'Questo torneo ha delle assegnazioni. Per eliminarlo, conferma nuovamente l\'eliminazione.')
+                ->with('tournament_id', $tournament->id)
+                ->with('tournament_name', $tournament->name);
         }
 
         $tournament->delete();

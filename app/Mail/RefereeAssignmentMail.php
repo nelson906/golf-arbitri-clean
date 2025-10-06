@@ -84,9 +84,21 @@ class RefereeAssignmentMail extends Mailable
     {
         $mailAttachments = [];
 
-        foreach ($this->attachmentPaths as $path) {
+        if (empty($this->attachmentPaths)) {
+            return $mailAttachments;
+        }
+
+        foreach ($this->attachmentPaths as $attachment) {
+            if (!is_array($attachment) || !isset($attachment['path'])) {
+                continue;
+            }
+            
+            $path = $attachment['path'];
+            $name = $attachment['name'] ?? basename($path);
+            
             if (file_exists($path)) {
-                $mailAttachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path);
+                $mailAttachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path)
+                    ->as($name);
             }
         }
 
