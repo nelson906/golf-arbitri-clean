@@ -106,24 +106,58 @@ class NotificationService
 
         Log::info('Proceeding with send', ['force' => $force, 'status' => $notification->status]);
 
-        // Get recipients from metadata if not set directly
-        if (empty($notification->recipients)) {
-            $metadata = is_string($notification->metadata) ? 
-                json_decode($notification->metadata, true) : 
-                ($notification->metadata ?? []);
+        // Normalize recipients from metadata and enforce alignment with current assignments
+        $metadata = is_string($notification->metadata)
+            ? (json_decode($notification->metadata, true) ?? [])
+            : ($notification->metadata ?? []);
 
-            Log::info('Extracted metadata', ['metadata' => $metadata]);
+        $recipients = $notification->recipients ?: ($metadata['recipients'] ?? [
+            'club' => false,
+            'referees' => [],
+            'institutional' => []
+        ]);
 
-            $notification->recipients = $metadata['recipients'] ?? [
-                'club' => false,
-                'referees' => [],
-                'institutional' => []
-            ];
+        // Get current assignments
+        $tournament = $notification->tournament;
+        $currentRefereeIds = $tournament->assignments()->pluck('user_id')->toArray();
 
-            Log::info('Using recipients from metadata', ['recipients' => $notification->recipients]);
+        // RESEND: use current assignments, ignoring stored recipients
+        if ($force === true) {
+            Log::info('Resend: using current assignments', [
+                'current_assignments' => $currentRefereeIds
+            ]);
+            $selectedRefereeIds = $currentRefereeIds;
+        }
+        // SEND: use specified recipients, but validate they exist in assignments
+        else {
+            Log::info('Send: using specified recipients', [
+                'recipients' => $recipients
+            ]);
+            $selectedRefereeIds = isset($recipients['referees']) && is_array($recipients['referees'])
+                ? $recipients['referees']
+                : [];
         }
 
-        $tournament = $notification->tournament;
+        // Default to sending to club unless explicitly disabled
+        if (!array_key_exists('club', $recipients)) {
+            $recipients['club'] = true;
+        }
+
+        // Enforce that only currently assigned referees are included
+        $finalRefereeIds = array_values(array_intersect($selectedRefereeIds, $currentRefereeIds));
+
+        // Persist back normalized recipients for traceability
+        $notification->recipients = [
+            'club' => (bool)($recipients['club'] ?? false),
+            'referees' => $finalRefereeIds,
+            'institutional' => is_array($recipients['institutional'] ?? null) ? $recipients['institutional'] : []
+        ];
+
+        Log::info('Normalized recipients for sending', [
+            'recipients' => $notification->recipients,
+            'current_assignments' => $currentRefereeIds
+        ]);
+
         $successCount = 0;
         $errorCount = 0;
 
@@ -135,11 +169,20 @@ class NotificationService
             }
 
             // 2. Invia agli arbitri
+            Log::info('Processing referee notifications', [
+                'has_referees' => isset($notification->recipients['referees']),
+                'is_array' => isset($notification->recipients['referees']) ? is_array($notification->recipients['referees']) : null,
+                'referees' => $notification->recipients['referees'] ?? null,
+                'raw_recipients' => $notification->recipients
+            ]);
+
             if (isset($notification->recipients['referees']) && is_array($notification->recipients['referees'])) {
+                Log::info('Sending to referees', ['referee_ids' => $notification->recipients['referees']]);
                 foreach ($notification->recipients['referees'] as $refereeId) {
                     try {
                         $this->sendToReferee($notification, $refereeId);
                         $successCount++;
+                        Log::info('Successfully sent to referee', ['referee_id' => $refereeId]);
                     } catch (\Exception $e) {
                         Log::error('Error sending to referee', [
                             'referee_id' => $refereeId,
@@ -148,6 +191,8 @@ class NotificationService
                         $errorCount++;
                     }
                 }
+            } else {
+                Log::warning('No referees to notify in recipients array');
             }
 
             // 3. Invia istituzionali
@@ -233,6 +278,13 @@ class NotificationService
             'attachments' => $attachments
         ]);
 
+        // Parse metadata for message and flags
+        $metadata = $notification->metadata ?? [];
+        if (is_string($metadata)) {
+            $metadata = json_decode($metadata, true) ?? [];
+        }
+        $content = $metadata['message'] ?? null;
+
         Log::info('Sending club notification', [
             'club_email' => $club->email,
             'attachments' => $attachments,
@@ -243,7 +295,7 @@ class NotificationService
         Mail::to($club->email)
             ->send(new ClubNotificationMail(
                 $tournament,
-                $notification->content,
+                $content,
                 $attachments
             ));
     }
@@ -274,10 +326,17 @@ class NotificationService
             throw new \Exception("Institutional email {$emailId} not found");
         }
 
+        // Parse metadata for institutional email
+        $metadata = $notification->metadata ?? [];
+        if (is_string($metadata)) {
+            $metadata = json_decode($metadata, true) ?? [];
+        }
+        $notificationType = $metadata['notification_type'] ?? 'Assegnazioni';
+
         Mail::to($institutionalEmail->email)
             ->send(new InstitutionalNotificationMail(
                 $notification->tournament,
-                $notification->content
+                $notificationType
             ));
     }
 

@@ -57,35 +57,41 @@
             </div>
 
             <div class="lg:col-span-1">
-                <div class="bg-blue-600 text-white rounded-lg shadow-md">
-                    <div class="px-6 py-4 border-b border-blue-500">
-                        <h5 class="text-lg font-semibold mb-0">📊 Statistiche Invio</h5>
+                <div class="bg-white rounded-lg shadow-md">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h5 class="text-lg font-semibold mb-0">📌 Status Invio</h5>
                     </div>
                     <div class="p-6">
-                        @php $stats = $tournamentNotification->stats @endphp
-                        @if ($tournamentNotification->status === 'sent')
-                            <div class="grid grid-cols-2 gap-4 text-center mb-4">
-                                <div>
-                                    <h3 class="text-2xl font-bold">{{ $stats['total_sent'] }}</h3>
+                        <div class="flex flex-col space-y-4">
+                            <!-- Stato -->
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-600">Stato:</span>
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
+                                    {{ $tournamentNotification->status === 'sent' ? 'bg-green-100 text-green-800' : '' }}
+                                    {{ $tournamentNotification->status === 'pending' ? 'bg-yellow-100 text-yellow-800' : '' }}
+                                    {{ $tournamentNotification->status === 'failed' ? 'bg-red-100 text-red-800' : '' }}">
+                                    {{ $tournamentNotification->status_formatted }}
+                                </span>
+                            </div>
 
-                                    <p class="text-sm">Inviati</p>
-                                </div>
-                                <div>
-                                    <h3 class="text-2xl font-bold">{{ $stats['total_failed'] }}</h3>
-                                    <p class="text-sm">Falliti</p>
-                                </div>
+                            <!-- Data Invio -->
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-600">Ultimo invio:</span>
+                                <span class="text-sm">
+                                    {{ $tournamentNotification->sent_at ? $tournamentNotification->sent_at->format('d/m/Y H:i') : 'Mai inviato' }}
+                                </span>
                             </div>
-                            <hr class="border-blue-400 mb-4">
-                            <div class="text-center">
-                                <h4 class="text-xl font-bold">{{ $stats['success_rate'] }}%</h4>
-                                <p class="text-sm">Tasso di Successo</p>
-                            </div>
-                        @else
-                            <div <h3 class="text-2xl font-bold">{{ $stats['total_sent'] }}</h3>
-                                <p class="text-sm">Da Inviare</p>
-                            </div>
-                        @endif
 
+                            <!-- Errori se presenti -->
+                            @if($tournamentNotification->status === 'failed' && !empty($tournamentNotification->metadata['last_error']))
+                                <div class="mt-4 p-3 bg-red-50 rounded-lg">
+                                    <p class="text-sm text-red-600">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i>
+                                        {{ $tournamentNotification->metadata['last_error'] }}
+                                    </p>
+                                </div>
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>
@@ -155,216 +161,83 @@
             </div>
         </div>
 
-        <!-- 📄 Template Utilizzati -->
+        <!-- 📋 Destinatari e Documenti -->
         <div class="bg-white rounded-lg shadow-md mb-6">
             <div class="px-6 py-4 border-b border-gray-200">
-                <h5 class="text-lg font-semibold mb-0">📄 Template Utilizzati</h5>
+                <h5 class="text-lg font-semibold mb-0">📋 Destinatari e Documenti</h5>
             </div>
-            <div class="p-6">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    @if (isset($tournamentNotification->templates_used['club']))
-                        <div>
-                            <h6 class="font-semibold mb-2">🏌️ Template Circolo</h6>
-                            <span
-                                class="inline-flex px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">{{ $tournamentNotification->templates_used['club'] }}</span>
-                        </div>
-                    @endif
+            @php
+                $t = $tournamentNotification->tournament;
+                $zoneId = $t->club->zone_id ?? $t->zone_id;
+                $zoneFolder = ($t->tournamentType && $t->tournamentType->is_national) ? 'CRC' : ('SZR' . ($zoneId ?? ''));
+                $docs = is_array($tournamentNotification->documents) ? $tournamentNotification->documents : (json_decode($tournamentNotification->documents ?? '[]', true) ?? []);
+            @endphp
+            <div class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 🏌️ Circolo -->
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <h6 class="font-semibold mb-3 flex items-center">
+                        <span class="text-blue-600">🏌️</span>
+                        <span class="ml-2">Circolo</span>
+                    </h6>
+                    <div class="space-y-2">
+                        <p class="text-sm">{{ $t->club->email }}</p>
+                        @if(!empty($docs['club_letter']))
+                            <a href="{{ Storage::url('convocazioni/' . $zoneFolder . '/generated/' . $docs['club_letter']) }}" 
+                               class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
+                                <i class="fas fa-file-word mr-1"></i>
+                                Lettera Circolo
+                            </a>
+                        @endif
+                    </div>
+                </div>
 
-                    @if (isset($tournamentNotification->templates_used['referee']))
-                        <div>
-                            <h6 class="font-semibold mb-2">⚖️ Template Arbitri</h6>
-                            <span
-                                class="inline-flex px-2 py-1 text-xs font-semibold bg-green-100 text-green-800 rounded-full">{{ $tournamentNotification->templates_used['referee'] }}</span>
-                        </div>
-                    @endif
+                <!-- ⚖️ Arbitri -->
+                <div class="bg-green-50 rounded-lg p-4">
+                    <h6 class="font-semibold mb-3 flex items-center">
+                        <span class="text-green-600">⚖️</span>
+                        <span class="ml-2">Arbitri</span>
+                    </h6>
+                    <div class="space-y-2">
+                        @foreach($t->assignments->groupBy('role') as $role => $assignments)
+                            <div class="mb-2">
+                                <p class="text-sm font-medium">{{ $role }}:</p>
+                                @foreach($assignments as $assignment)
+                                    <p class="text-sm pl-3">- {{ $assignment->user->name }}</p>
+                                @endforeach
+                            </div>
+                        @endforeach
+                        @if(!empty($docs['convocation']))
+                            <a href="{{ Storage::url('convocazioni/' . $zoneFolder . '/generated/' . $docs['convocation']) }}" 
+                               class="text-sm text-green-600 hover:text-green-800 flex items-center">
+                                <i class="fas fa-file-word mr-1"></i>
+                                Convocazione
+                            </a>
+                        @endif
+                    </div>
+                </div>
 
-                    @if (isset($tournamentNotification->templates_used['institutional']))
-                        <div>
-                            <h6 class="font-semibold mb-2">🏛️ Template Istituzionali</h6>
-                            <span
-                                class="inline-flex px-2 py-1 text-xs font-semibold bg-yellow-100 text-yellow-800 rounded-full">{{ $tournamentNotification->templates_used['institutional'] }}</span>
-                        </div>
-                    @endif
+                <!-- 🏛️ Istituzionali -->
+                <div class="bg-yellow-50 rounded-lg p-4">
+                    <h6 class="font-semibold mb-3 flex items-center">
+                        <span class="text-yellow-600">🏛️</span>
+                        <span class="ml-2">Istituzionali</span>
+                    </h6>
+                    <div class="space-y-2">
+                        <p class="text-sm">SZR {{ $t->zone->name ?? '' }}</p>
+                        <p class="text-sm">Ufficio Campionati</p>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- 📧 Lista Dettagliata Notifiche Individuali -->
-        <div class="bg-white rounded-lg shadow-md">
-            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h5 class="text-lg font-semibold mb-0">📧 Dettaglio Notifiche Inviate
-                    ({{ $individualNotifications->count() }})</h5>
-
-                @if ($tournamentNotification->canBeResent())
-                    <button type="button"
-                        class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors duration-200"
-                        onclick="resendTournament()">
-                        <i class="fas fa-redo mr-2"></i> Reinvia Tutte
-                    </button>
-                @endif
-            </div>
-
-            <div class="overflow-hidden">
-                @if ($individualNotifications->count() > 0)
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        👤 Destinatario</th>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        📧 Email</th>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        🏷️ Tipo</th>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        📄 Oggetto</th>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        📊 Stato</th>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        ⏰ Inviato</th>
-                                    <th
-                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        ⚡ Azioni</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                @foreach ($individualNotifications as $notification)
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm font-medium text-gray-900">
-                                                {{ $notification->recipient_name ?: 'N/A' }}</div>
-                                            @if ($notification->assignment)
-                                                <div class="text-sm text-gray-500">
-                                                    {{ $notification->assignment->user->name }}
-                                                    ({{ $notification->assignment->role }})
-                                                </div>
-                                            @endif
-                                        </td>
-
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <code
-                                                class="text-sm bg-gray-100 px-2 py-1 rounded">{{ $notification->recipient_email }}</code>
-                                        </td>
-
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            @php
-                                                $typeIcons = [
-                                                    'club' => '🏌️',
-                                                    'referee' => '⚖️',
-                                                    'institutional' => '🏛️',
-                                                ];
-                                                $typeNames = [
-                                                    'club' => 'Circolo',
-                                                    'referee' => 'Arbitro',
-                                                    'institutional' => 'Istituzionale',
-                                                ];
-                                                $typeClasses = [
-                                                    'club' => 'bg-blue-100 text-blue-800',
-                                                    'referee' => 'bg-green-100 text-green-800',
-                                                    'institutional' => 'bg-yellow-100 text-yellow-800',
-                                                ];
-                                            @endphp
-
-                                            <span
-                                                class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $typeClasses[$notification->recipient_type] ?? 'bg-gray-100 text-gray-800' }}">
-                                                {{ $typeIcons[$notification->recipient_type] ?? '📧' }}
-                                                {{ $typeNames[$notification->recipient_type] ?? $notification->recipient_type }}
-                                            </span>
-                                        </td>
-
-                                        <td class="px-6 py-4">
-                                            <div class="text-sm text-gray-900 truncate max-w-xs"
-                                                title="{{ $notification->subject }}">
-                                                {{ $notification->subject }}
-                                            </div>
-                                        </td>
-
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span
-                                                class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $notification->status === 'sent' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                                {{ $tournamentNotification->status === 'sent' ? '✅ Inviato' : '❌ In attesa' }}
-                                            </span>
-
-                                            @if ($notification->status === 'failed' && $notification->error_message)
-                                                <div class="text-xs text-red-600 mt-1"
-                                                    title="{{ $notification->error_message }}">
-                                                    <i class="fas fa-exclamation-triangle"></i>
-                                                    Errore
-                                                </div>
-                                            @endif
-                                        </td>
-
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ $tournamentNotification->sent_at ? $tournamentNotification->sent_at->format('d/m/Y H:i') : 'Non ancora inviate' }}
-                                            @if ($notification->sent_at)
-                                                <div class="text-xs text-gray-500">
-                                                    {{ $notification->sent_at->diffForHumans() }}</div>
-                                            @endif
-                                        </td>
-
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <div class="flex space-x-2">
-                                                <!-- 👁️ Visualizza contenuto -->
-                                                <button type="button"
-                                                    class="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors duration-200"
-                                                    onclick="showNotificationContent({{ $notification->id }})"
-                                                    title="Visualizza contenuto">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-
-                                                <!-- 📎 Allegati (se presenti) -->
-                                                @php
-                                                    $documents = is_string($notification->documents) ? json_decode($notification->documents, true) : $notification->documents;
-                                                    $documents = $documents ?? [];
-                                                    $documentCount = count($documents);
-                                                @endphp
-                                                @if ($documentCount > 0)
-                                                    <button type="button"
-                                                        class="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-50 transition-colors duration-200 relative"
-                                                        onclick="showDocuments({{ $notification->id }})"
-                                                        title="{{ $documentCount }} documenti">
-                                                        <i class="fas fa-file-alt"></i>
-                                                        <span
-                                                            class="absolute -top-2 -right-2 bg-gray-200 text-gray-800 text-xs rounded-full px-1 min-w-4 h-4 flex items-center justify-center">{{ $documentCount }}</span>
-                                                    </button>
-                                                @endif
-
-                                                <!-- 🔄 Reinvia singolo (se fallito) -->
-                                                @if ($notification->status === 'failed')
-                                                    <button type="button"
-                                                        class="text-yellow-600 hover:text-yellow-900 p-1 rounded hover:bg-yellow-50 transition-colors duration-200"
-                                                        onclick="resendSingle({{ $notification->id }})" title="Reinvia">
-                                                        <i class="fas fa-redo"></i>
-                                                    </button>
-                                                @endif
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @else
-                    <div class="text-center py-12">
-                        <i class="fas fa-inbox text-4xl text-gray-400 mb-4"></i>
-                        <h5 class="text-lg font-medium text-gray-900 mb-2">Nessuna notifica individuale trovata</h5>
-                        <p class="text-gray-500">Non sono presenti dettagli delle notifiche inviate.</p>
-                    </div>
-                @endif
-            </div>
-        </div>
-
-        <!-- ⚡ Azioni Principali -->
+        <!-- ⚡ Azioni -->
         <div class="bg-white rounded-lg shadow-md mt-6">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h5 class="text-lg font-semibold mb-0">⚡ Azioni</h5>
+            </div>
             <div class="p-6">
-                <div class="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
-                    <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="flex flex-col sm:flex-row gap-4">
                         <a href="{{ route('admin.tournament-notifications.index') }}"
                             class="inline-flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors duration-200">
                             <i class="fas fa-arrow-left mr-2"></i> Torna alla Lista
@@ -376,12 +249,13 @@
                         </a>
                     </div>
 
-                    <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                    <div class="flex flex-col sm:flex-row gap-4">
                         @if ($tournamentNotification->canBeResent())
                             <button type="button"
                                 class="inline-flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg transition-colors duration-200"
                                 onclick="resendTournament()">
-                                <i class="fas fa-redo mr-2"></i> Reinvia Notifiche
+                                <i class="fas fa-redo mr-2"></i>
+                                {{ $tournamentNotification->sent_at ? 'Reinvia Notifiche' : 'Invia Notifiche' }}
                             </button>
                         @endif
 
@@ -460,7 +334,7 @@
     <div id="resendModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
         <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-md shadow-lg rounded-md bg-white">
             <div class="flex justify-between items-center pb-3">
-                <h5 class="text-lg font-bold">🔄 Reinvia Notifiche</h5>
+                <h5 class="text-lg font-bold">{{ $tournamentNotification->sent_at ? '🔄 Reinvia Notifiche' : '✉️ Invia Notifiche' }}</h5>
                 <button type="button"
                     class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center"
                     onclick="closeModal('resendModal')">

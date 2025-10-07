@@ -16,13 +16,6 @@ Route::prefix('notifications')->name('notifications.')->group(function () {
     Route::post('/', [NotificationController::class, 'store'])->name('store');
     Route::get('/{notification}', [NotificationController::class, 'show'])->name('show');
 
-    // Status Management
-    Route::post('/{notification}/resend', [NotificationController::class, 'resend'])->name('resend');
-    Route::post('/{notification}/cancel', [NotificationController::class, 'cancel'])->name('cancel');
-
-    // Bulk Operations
-    Route::post('/bulk-notify', [NotificationController::class, 'bulkNotify'])->name('bulk-notify');
-    Route::post('/bulk-cancel', [NotificationController::class, 'bulkCancel'])->name('bulk-cancel');
 
     // Tournament-specific notifications
     Route::prefix('tournament')->name('tournament.')->group(function () {
@@ -102,19 +95,14 @@ Route::prefix('tournament-notifications')->name('tournament-notifications.')->gr
     Route::post('/{tournament}/store', [NotificationController::class, 'store'])->name('store');
     Route::post('/{tournament}/prepare', [NotificationController::class, 'prepare'])->name('prepare');
     
-    // Document Management Routes (MESSE PRIMA per evitare conflitti)
-    Route::get('/{notification}/documents-status', [NotificationController::class, 'documentsStatus'])->name('documents-status');
-    Route::get('/{notification}/download/{type}', [NotificationController::class, 'downloadDocument'])->name('download-document');
-    Route::post('/{notification}/upload/{type}', [NotificationController::class, 'uploadDocument'])->name('upload-document');
-    Route::post('/{notification}/generate/{type}', [NotificationController::class, 'generateDocument'])->name('generate-document');
-    Route::post('/{notification}/regenerate/{type}', [NotificationController::class, 'regenerateDocument'])->name('regenerate-document');
-    Route::delete('/{notification}/document/{type}', [NotificationController::class, 'deleteDocument'])->name('delete-document');
+    // Document routes
+    Route::get('/{notification}/download/{type}', [NotificationController::class, 'downloadDocument'])
+        ->name('download-document');
     
-    // Operazioni su notification
+    // Core notification operations
     Route::post('/{notification}/send', [NotificationController::class, 'send'])->name('send');
     Route::post('/{notification}/resend', [NotificationController::class, 'resend'])->name('resend');
     Route::get('/{notification}/edit', [NotificationController::class, 'edit'])->name('edit');
-    Route::put('/{notification}', [NotificationController::class, 'update'])->name('update');
     Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
-    Route::get('/{notification}', [NotificationController::class, 'show'])->name('show'); // MESSA PER ULTIMA
+    Route::get('/{notification}', [NotificationController::class, 'show'])->name('show');
 });

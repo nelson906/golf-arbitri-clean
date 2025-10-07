@@ -5,34 +5,19 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
-use App\Models\InstitutionalEmail;
-use App\Models\NotificationClause;
-use App\Models\NotificationClauseSelection;
-use App\Services\FileStorageService;
-use App\Services\DocumentGenerationService;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Carbon\Carbon;
 
 /**
  * Gestione convocazioni collettive e lettere circoli (solo DOCX)
  */
 class NotificationController extends Controller
 {
-    protected $fileStorage;
-    protected $documentService;
     protected $notificationService;
 
-    public function __construct(
-        FileStorageService $fileStorage,
-        DocumentGenerationService $documentService,
-        NotificationService $notificationService
-    ) {
-        $this->fileStorage = $fileStorage;
-        $this->documentService = $documentService;
+    public function __construct(NotificationService $notificationService) {
         $this->notificationService = $notificationService;
     }
 
@@ -441,9 +426,7 @@ class NotificationController extends Controller
     public function show(TournamentNotification $notification)
     {
         $tournamentNotification = $notification->load(['tournament.club', 'tournament.zone', 'tournament.assignments.user']);
-        // Alcune view si aspettano questa variabile: forniamo un valore di default
-        $individualNotifications = collect();
-        return view('admin.tournament-notifications.show', compact('tournamentNotification', 'individualNotifications'));
+        return view('admin.tournament-notifications.show', ['tournamentNotification' => $tournamentNotification]);
     }
 
     /**
@@ -550,9 +533,25 @@ class NotificationController extends Controller
                 'recipients' => []
             ];
 
+            Log::info('Current tournament assignments', [
+                'tournament_id' => $tournament->id,
+                'assignments' => $tournament->assignments()->with('user')->get()->map(function($a) {
+                    return ['id' => $a->user_id, 'name' => $a->user->name, 'role' => $a->role];
+                })->toArray()
+            ]);
+
             // Gestisci arbitri
+            Log::info('Processing referee recipients', [
+                'has_recipients' => $request->has('recipients'),
+                'recipients_input' => $request->input('recipients'),
+                'all_input' => $request->all()
+            ]);
+
             if ($request->has('recipients')) {
                 $metadata['recipients']['referees'] = $request->input('recipients');
+                Log::info('Set referee recipients', ['referees' => $metadata['recipients']['referees']]);
+            } else {
+                Log::warning('No referee recipients in request');
             }
 
             // Gestisci club

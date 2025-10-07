@@ -1,0 +1,26 @@
+sequenceDiagram
+    participant A as Admin
+    participant T as TournamentController
+    participant DG as DocumentGenerationService
+    participant FS as FileStorageService
+    participant S as Storage
+
+    A->>T: Seleziona Torneo
+    T->>DG: generateConvocationForTournament(tournament)
+    DG->>DG: getZoneTemplatePath
+    DG->>DG: processTemplateWithReferees
+    DG->>S: Salva file temporaneo in app/temp
+    DG->>FS: saveGeneratedFile(tempPath, tournament)
+    FS->>S: storage->put in /convocazioni/SZR{n}/generated/
+
+    T->>DG: generateClubDocument(tournament)
+    DG->>DG: getZoneTemplatePath
+    DG->>DG: processTemplateWithReferees
+    DG->>S: Salva file temporaneo in app/temp
+    DG->>FS: saveGeneratedFile(tempPath, tournament)
+    FS->>S: storage->put in /convocazioni/SZR{n}/generated/
+
+    A->>T: Conferma invio email
+    T->>DG: generateConvocationPDF(tournament)
+    DG->>DG: Genera PDF da DOCX
+    DG->>S: Salva PDF in storage

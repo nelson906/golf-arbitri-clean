@@ -340,7 +340,7 @@ Cordiali saluti'
                                         </svg>
                                     </button>
 
-                                    <div id="arbitri-content" class="p-6" style="display: none;">
+<div id="arbitri-content" class="p-6 hidden">
                                         @if ($assignedReferees->count() > 0)
                                             <div class="space-y-3 max-h-64 overflow-y-auto">
                                                 @foreach ($assignedReferees as $referee)
@@ -580,12 +580,12 @@ function toggleSection(sectionId) {
     const icon = document.getElementById(`${sectionId}-icon`);
 
     // Toggle content
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
+    if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
         icon.style.transform = 'rotate(180deg)';
         localStorage.setItem(`section_${sectionId}`, 'open');
     } else {
-        content.style.display = 'none';
+        content.classList.add('hidden');
         icon.style.transform = 'rotate(0)';
         localStorage.setItem(`section_${sectionId}`, 'closed');
     }
