@@ -579,12 +579,20 @@ function toggleSection(sectionId) {
     const content = document.getElementById(`${sectionId}-content`);
     const icon = document.getElementById(`${sectionId}-icon`);
 
-    // Toggle content
-    if (content.classList.contains('hidden')) {
+    // Se la sezione non esiste (render condizionale), non fare nulla
+    if (!content || !icon) return;
+
+    // Se l'elemento usa display:none inline, mantieni compatibilita'
+    const isHiddenByClass = content.classList.contains('hidden');
+    const isHiddenByStyle = content.style && content.style.display === 'none';
+
+    if (isHiddenByClass || isHiddenByStyle) {
         content.classList.remove('hidden');
+        if (content.style) content.style.display = '';
         icon.style.transform = 'rotate(180deg)';
         localStorage.setItem(`section_${sectionId}`, 'open');
     } else {
+        // Se non usa la classe hidden, applicala per uniformita'
         content.classList.add('hidden');
         icon.style.transform = 'rotate(0)';
         localStorage.setItem(`section_${sectionId}`, 'closed');
@@ -594,9 +602,18 @@ function toggleSection(sectionId) {
 // On page load, restore accordion states
 document.addEventListener('DOMContentLoaded', function() {
     ['clausole', 'arbitri', 'preimpostati', 'istituzionali'].forEach(sectionId => {
+        const content = document.getElementById(`${sectionId}-content`);
+        const icon = document.getElementById(`${sectionId}-icon`);
+        if (!content || !icon) return; // sezione opzionale non presente
+
         const savedState = localStorage.getItem(`section_${sectionId}`);
         if (savedState === 'open') {
-            toggleSection(sectionId);
+            // Apri solo se chiusa
+            const isHiddenByClass = content.classList.contains('hidden');
+            const isHiddenByStyle = content.style && content.style.display === 'none';
+            if (isHiddenByClass || isHiddenByStyle) {
+                toggleSection(sectionId);
+            }
         }
     });
 });

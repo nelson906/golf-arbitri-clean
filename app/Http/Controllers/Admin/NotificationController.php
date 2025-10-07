@@ -5,7 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
+use App\Models\InstitutionalEmail;
+use App\Models\NotificationClause;
+use App\Models\NotificationClauseSelection;
+use Carbon\Carbon;
+use App\Services\DocumentGenerationService;
+use Illuminate\Support\Facades\Storage;
 use App\Services\NotificationService;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,9 +23,14 @@ use Illuminate\Support\Facades\Log;
 class NotificationController extends Controller
 {
     protected $notificationService;
+    protected $documentService;
 
-    public function __construct(NotificationService $notificationService) {
+public function __construct(
+        NotificationService $notificationService,
+        DocumentGenerationService $documentService
+    ) {
         $this->notificationService = $notificationService;
+        $this->documentService = $documentService;
     }
 
     /**
@@ -30,7 +42,7 @@ class NotificationController extends Controller
         $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
 
         $query = TournamentNotification::with([
-            'tournament.club', 
+            'tournament.club',
             'tournament.zone',
             'tournament.assignments.user'
         ]);
@@ -100,13 +112,29 @@ class NotificationController extends Controller
                 $documents = [];
                 // Genera DOCX convocazione
                 $convocationData = $this->documentService->generateConvocationForTournament($tournament);
-                $docxPath = $this->fileStorage->storeInZone($convocationData, $tournament, 'docx');
-                $documents['convocation'] = basename($docxPath);
+                $zone = $this->getZoneFolder($tournament);
+                $convFileName = basename($convocationData['path']);
+                $convDestPath = "convocazioni/{$zone}/generated/{$convFileName}";
+                
+                // Assicurati che la directory esista
+                Storage::disk('public')->makeDirectory(dirname($convDestPath));
+                
+                // Copia il file
+                $content = file_get_contents($convocationData['path']);
+                Storage::disk('public')->put($convDestPath, $content);
+                unlink($convocationData['path']); // Elimina il file temporaneo
+                $documents['convocation'] = $convFileName;
 
                 // Genera DOCX lettera circolo
                 $clubDocData = $this->documentService->generateClubDocument($tournament);
-                $clubDocxPath = $this->fileStorage->storeInZone($clubDocData, $tournament, 'docx');
-                $documents['club_letter'] = basename($clubDocxPath);
+                $clubFileName = basename($clubDocData['path']);
+                $clubDestPath = "convocazioni/{$zone}/generated/{$clubFileName}";
+                
+                // Copia il file
+                $content = file_get_contents($clubDocData['path']);
+                Storage::disk('public')->put($clubDestPath, $content);
+                unlink($clubDocData['path']); // Elimina il file temporaneo
+                $documents['club_letter'] = $clubFileName;
 
                 $notification->update(['documents' => $documents]);
             } catch (\Exception $e) {
@@ -223,7 +251,7 @@ class NotificationController extends Controller
     public function generateDocument(Request $request, TournamentNotification $notification, $type)
     {
         $tournament = $notification->tournament;
-        
+
         try {
             $documents = is_string($notification->documents) ?
                 json_decode($notification->documents, true) : $notification->documents;
@@ -236,16 +264,28 @@ class NotificationController extends Controller
                 'current_documents' => $documents
             ]);
 
+            $zone = $this->getZoneFolder($tournament);
+
             if ($type === 'convocation') {
                 $convocationData = $this->documentService->generateConvocationForTournament($tournament, $notification);
-                $docxPath = $this->fileStorage->storeInZone($convocationData, $tournament, 'docx');
-                $documents['convocation'] = basename($docxPath);
+                $convFileName = basename($convocationData['path']);
+                $destPath = "convocazioni/{$zone}/generated/{$convFileName}";
+                Storage::disk('public')->makeDirectory(dirname($destPath));
+                $content = file_get_contents($convocationData['path']);
+                Storage::disk('public')->put($destPath, $content);
+                if (file_exists($convocationData['path'])) { unlink($convocationData['path']); }
+                $documents['convocation'] = $convFileName;
             }
 
             if ($type === 'club_letter') {
                 $docData = $this->documentService->generateClubDocument($tournament, $notification);
-                $path = $this->fileStorage->storeInZone($docData, $tournament, 'docx');
-                $documents['club_letter'] = basename($path);
+                $clubFileName = basename($docData['path']);
+                $destPath = "convocazioni/{$zone}/generated/{$clubFileName}";
+                Storage::disk('public')->makeDirectory(dirname($destPath));
+                $content = file_get_contents($docData['path']);
+                Storage::disk('public')->put($destPath, $content);
+                if (file_exists($docData['path'])) { unlink($docData['path']); }
+                $documents['club_letter'] = $clubFileName;
             }
 
             Log::info('Generated document', [
@@ -258,7 +298,7 @@ class NotificationController extends Controller
 
             // Get updated document status for UI refresh
             $status = $this->documentsStatus($notification)->getData();
-            
+
             return response()->json([
                 'success' => true,
                 'message' => 'Documento generato con successo',
@@ -376,7 +416,7 @@ class NotificationController extends Controller
 
         try {
             DB::beginTransaction();
-            
+
             Log::info('Sending notification', [
                 'notification_id' => $notification->id,
                 'metadata' => $notification->metadata
@@ -384,11 +424,11 @@ class NotificationController extends Controller
 
             // Invia la notifica tramite il servizio
             $this->notificationService->send($notification);
-            
+
             DB::commit();
             return redirect()->route('admin.tournament-notifications.index')
                 ->with('success', 'Notifiche inviate con successo');
-                
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Errore invio notifiche: ' . $e->getMessage());
@@ -404,14 +444,14 @@ class NotificationController extends Controller
     {
         try {
             DB::beginTransaction();
-            
+
             // Forza il reinvio
             $this->notificationService->send($notification, true);
-            
+
             DB::commit();
             return redirect()->route('admin.tournament-notifications.index')
                 ->with('success', 'Notifiche reinviate con successo');
-                
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Errore reinvio notifiche: ' . $e->getMessage());
@@ -577,10 +617,10 @@ class NotificationController extends Controller
                     'notification_id' => $notification->id,
                     'clauses' => $request->input('clauses')
                 ]);
-                
+
                 // Rimuovi le selezioni precedenti
                 NotificationClauseSelection::where('tournament_notification_id', $notification->id)->delete();
-                
+
                 foreach ($request->input('clauses') as $placeholder => $clauseId) {
                     if (!empty($clauseId)) {
                         try {
@@ -589,7 +629,7 @@ class NotificationController extends Controller
                                 'clause_id' => $clauseId,
                                 'placeholder_code' => $placeholder
                             ]);
-                            
+
                             Log::info('Clause selection created', [
                                 'notification_id' => $notification->id,
                                 'placeholder' => $placeholder,
@@ -617,15 +657,30 @@ class NotificationController extends Controller
             // Rigenera i documenti con le clausole selezionate prima dell'invio
             try {
                 $documents = is_string($notification->documents) ? json_decode($notification->documents, true) : ($notification->documents ?? []);
-                $convocationData = $this->documentService->generateConvocationForTournament($tournament, $notification);
-                $convPath = $this->fileStorage->storeInZone($convocationData, $tournament, 'docx');
-                $documents['convocation'] = basename($convPath);
 
+                $zone = $this->getZoneFolder($tournament);
+
+                // Convocazione
+                $convocationData = $this->documentService->generateConvocationForTournament($tournament, $notification);
+                $convFileName = basename($convocationData['path']);
+                $convDest = "convocazioni/{$zone}/generated/{$convFileName}";
+                Storage::disk('public')->makeDirectory(dirname($convDest));
+                $content = file_get_contents($convocationData['path']);
+                Storage::disk('public')->put($convDest, $content);
+                if (file_exists($convocationData['path'])) { unlink($convocationData['path']); }
+                $documents['convocation'] = $convFileName;
+
+                // Lettera circolo
                 $clubDocData = $this->documentService->generateClubDocument($tournament, $notification);
-                $clubPath = $this->fileStorage->storeInZone($clubDocData, $tournament, 'docx');
-                $documents['club_letter'] = basename($clubPath);
+                $clubFileName = basename($clubDocData['path']);
+                $clubDest = "convocazioni/{$zone}/generated/{$clubFileName}";
+                $content = file_get_contents($clubDocData['path']);
+                Storage::disk('public')->put($clubDest, $content);
+                if (file_exists($clubDocData['path'])) { unlink($clubDocData['path']); }
+                $documents['club_letter'] = $clubFileName;
+
                 $notification->update(['documents' => $documents]);
-            } catch (\Throwable $e) {
+} catch (\Throwable $e) {
                 Log::warning('Could not regenerate documents with clauses before send', [
                     'notification_id' => $notification->id,
                     'error' => $e->getMessage()
@@ -652,7 +707,25 @@ class NotificationController extends Controller
      */
     private function getZoneFolder($tournament): string
     {
-        return $this->fileStorage->getZoneFolder($tournament);
+        // Se è nazionale, va in CRC
+        if ($tournament->is_national ||
+            ($tournament->tournamentType && $tournament->tournamentType->is_national)) {
+            return 'CRC';
+        }
+
+        // Altrimenti usa la zona del circolo
+        $zoneId = $tournament->club->zone_id ?? $tournament->zone_id;
+
+        return match($zoneId) {
+            1 => 'SZR1',
+            2 => 'SZR2',
+            3 => 'SZR3',
+            4 => 'SZR4',
+            5 => 'SZR5',
+            6 => 'SZR6',
+            7 => 'SZR7',
+            default => 'SZR' . $zoneId
+        };
     }
 
     /**

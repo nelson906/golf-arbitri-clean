@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Services\DocumentGenerationService;
-use App\Services\FileStorageService;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Models\InstitutionalEmail;
@@ -19,14 +18,9 @@ use App\Mail\InstitutionalNotificationMail;
 class NotificationService
 {
     protected $documentService;
-    protected $fileStorage;
 
-    public function __construct(
-        DocumentGenerationService $documentService,
-        FileStorageService $fileStorage
-    ) {
+    public function __construct(DocumentGenerationService $documentService) {
         $this->documentService = $documentService;
-        $this->fileStorage = $fileStorage;
     }
 
     public function prepareNotification(Tournament $tournament): TournamentNotification
@@ -347,7 +341,7 @@ class NotificationService
         }
 
         $attachments = [];
-        $zone = $this->fileStorage->getZoneFolder($notification->tournament);
+        $zone = $this->getZoneFolder($notification->tournament);
         $basePath = storage_path("app/public/convocazioni/{$zone}/generated/");
 
         // Aggiungi lettera circolo
@@ -371,7 +365,7 @@ class NotificationService
         }
 
         $attachments = [];
-        $zone = $this->fileStorage->getZoneFolder($notification->tournament);
+        $zone = $this->getZoneFolder($notification->tournament);
         $basePath = storage_path("app/public/convocazioni/{$zone}/generated/");
 
         // Aggiungi convocazione
@@ -386,5 +380,24 @@ class NotificationService
         }
 
         return $attachments;
+    }
+
+    // Helper locale per determinare la cartella della zona (senza FileStorageService)
+    private function getZoneFolder(Tournament $tournament): string
+    {
+        if ($tournament->is_national || ($tournament->tournamentType && $tournament->tournamentType->is_national)) {
+            return 'CRC';
+        }
+        $zoneId = $tournament->club->zone_id ?? $tournament->zone_id;
+        return match($zoneId) {
+            1 => 'SZR1',
+            2 => 'SZR2',
+            3 => 'SZR3',
+            4 => 'SZR4',
+            5 => 'SZR5',
+            6 => 'SZR6',
+            7 => 'SZR7',
+            default => 'SZR' . $zoneId,
+        };
     }
 }

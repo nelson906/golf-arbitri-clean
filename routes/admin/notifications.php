@@ -96,6 +96,14 @@ Route::prefix('tournament-notifications')->name('tournament-notifications.')->gr
     Route::post('/{tournament}/prepare', [NotificationController::class, 'prepare'])->name('prepare');
     
     // Document routes
+    Route::get('/{notification}/documents-status', [NotificationController::class, 'documentsStatus'])
+        ->name('documents-status');
+    Route::post('/{notification}/generate/{type}', [NotificationController::class, 'generateDocument'])
+        ->name('generate-document');
+    Route::delete('/{notification}/document/{type}', [NotificationController::class, 'deleteDocument'])
+        ->name('delete-document');
+    Route::post('/{notification}/upload/{type}', [NotificationController::class, 'uploadDocument'])
+        ->name('upload-document');
     Route::get('/{notification}/download/{type}', [NotificationController::class, 'downloadDocument'])
         ->name('download-document');
     
