@@ -7,15 +7,19 @@
     <div class="mb-6">
         <h4 class="font-medium text-gray-700 mb-2">Circolo</h4>
         <div class="space-y-2">
-            @if($notification->attachments['club']['facsimile'] ?? false)
+            @php
+                $documents = is_string($notification->documents) ? json_decode($notification->documents, true) : $notification->documents;
+                $documents = $documents ?? [];
+            @endphp
+            @if(isset($documents['club_letter']))
                 <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
                     <div class="flex items-center">
                         <svg class="w-6 h-6 text-blue-600 mr-2"><!-- Word icon --></svg>
-                        <span>Facsimile Convocazione</span>
+                        <span>Lettera Circolo</span>
                     </div>
                     <div class="flex space-x-2">
                         <a href="{{ route('admin.tournament-documents.download', [
-                            $notification, 'club', $notification->attachments['club']['facsimile']
+                            $notification, 'club_letter', $documents['club_letter']
                         ]) }}" class="text-blue-600 hover:underline">
                             Download
                         </a>
@@ -33,19 +37,19 @@
     <div>
         <h4 class="font-medium text-gray-700 mb-2">Convocazioni Arbitri</h4>
         <div class="space-y-2">
-            @foreach($notification->attachments['referees'] ?? [] as $name => $file)
+            @if(isset($documents['convocation']))
                 <div class="flex items-center justify-between p-3 bg-gray-50 rounded">
                     <div class="flex items-center">
-                        <svg class="w-6 h-6 text-red-600 mr-2"><!-- PDF icon --></svg>
-                        <span>{{ str_replace('_', ' ', $name) }}</span>
+                        <svg class="w-6 h-6 text-blue-600 mr-2"><!-- Word icon --></svg>
+                        <span>Convocazione</span>
                     </div>
                     <a href="{{ route('admin.tournament-documents.download', [
-                        $notification, 'referee', $file
+                        $notification, 'convocation', $documents['convocation']
                     ]) }}" class="text-blue-600 hover:underline">
                         Download
                     </a>
                 </div>
-            @endforeach
+            @endif
         </div>
     </div>
 </div>

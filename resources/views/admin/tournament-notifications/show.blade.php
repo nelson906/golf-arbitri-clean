@@ -319,14 +319,19 @@
                                                 </button>
 
                                                 <!-- 📎 Allegati (se presenti) -->
-                                                @if ($notification->attachments && count($notification->attachments) > 0)
+                                                @php
+                                                    $documents = is_string($notification->documents) ? json_decode($notification->documents, true) : $notification->documents;
+                                                    $documents = $documents ?? [];
+                                                    $documentCount = count($documents);
+                                                @endphp
+                                                @if ($documentCount > 0)
                                                     <button type="button"
                                                         class="text-gray-600 hover:text-gray-900 p-1 rounded hover:bg-gray-50 transition-colors duration-200 relative"
-                                                        onclick="showAttachments({{ $notification->id }})"
-                                                        title="{{ count($notification->attachments) }} allegati">
-                                                        <i class="fas fa-paperclip"></i>
+                                                        onclick="showDocuments({{ $notification->id }})"
+                                                        title="{{ $documentCount }} documenti">
+                                                        <i class="fas fa-file-alt"></i>
                                                         <span
-                                                            class="absolute -top-2 -right-2 bg-gray-200 text-gray-800 text-xs rounded-full px-1 min-w-4 h-4 flex items-center justify-center">{{ count($notification->attachments) }}</span>
+                                                            class="absolute -top-2 -right-2 bg-gray-200 text-gray-800 text-xs rounded-full px-1 min-w-4 h-4 flex items-center justify-center">{{ $documentCount }}</span>
                                                     </button>
                                                 @endif
 

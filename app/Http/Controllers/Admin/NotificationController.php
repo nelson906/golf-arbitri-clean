@@ -41,12 +41,23 @@ class NotificationController extends Controller
      */
     public function index(Request $request)
     {
+        $user = auth()->user();
+        $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
+
         $query = TournamentNotification::with([
             'tournament.club', 
             'tournament.zone',
             'tournament.assignments.user'
-        ])->orderBy('sent_at', 'desc');
+        ]);
 
+        // Filtra per zona se non è admin nazionale
+        if (!$isNationalAdmin) {
+            $query->whereHas('tournament', function ($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
+        }
+
+        $query->orderBy('sent_at', 'desc');
         $tournamentNotifications = $query->paginate(20);
 
         // Calcola il numero di destinatari e lista arbitri per ogni notifica

@@ -4,7 +4,34 @@
 
 @section('content')
     <div class="container mx-auto px-4 py-6">
-        <h1 class="text-2xl font-bold mb-6">📧 Notifiche Tornei</h1>
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold">📧 Notifiche Tornei</h1>
+            @if(!auth()->user()->is_admin && auth()->user()->zone)
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                    <svg class="-ml-1 mr-1.5 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                    </svg>
+                    SZR {{ auth()->user()->zone->number }}
+                </span>
+            @endif
+        </div>
+
+        @if(!auth()->user()->is_admin && auth()->user()->zone)
+            <div class="mb-6 rounded-md bg-blue-50 p-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-blue-700">
+                            Stai visualizzando le notifiche dei tornei della SZR {{ auth()->user()->zone->number }} - {{ auth()->user()->zone->name }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        @endif
 
         <div class="bg-white shadow overflow-hidden sm:rounded-lg">
             <table class="min-w-full">
@@ -103,17 +130,6 @@
                             </td>
 
                             <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                @php
-                                    $attachments = is_string($notification->attachments)
-                                        ? json_decode($notification->attachments, true)
-                                        : $notification->attachments;
-                                    $attachments = $attachments ?? [];
-
-                                    $documentCount = 0;
-                                    if (isset($attachments['convocation'])) $documentCount++;
-                                    if (isset($attachments['club_letter']) || isset($attachments['club'])) $documentCount++;
-                                @endphp
-
                                 <div class="flex space-x-2">
                                     <button onclick="openDocumentManager({{ $notification->id }})" 
                                             class="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50">
@@ -121,9 +137,15 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                         Gestisci
-                                        <span class="ml-1 bg-green-100 text-green-800 rounded-full px-2 py-0.5 text-xs">
-                                            {{ $documentCount }}
-                                        </span>
+                                        @if($notification->document_count > 0)
+                                            <span class="ml-1 bg-green-100 text-green-800 rounded-full px-2 py-0.5 text-xs" title="Documenti presenti">
+                                                {{ $notification->document_count }}
+                                            </span>
+                                        @else
+                                            <span class="ml-1 bg-gray-100 text-gray-500 rounded-full px-2 py-0.5 text-xs">
+                                                0
+                                            </span>
+                                        @endif
                                     </button>
                                 </div>
                             </td>

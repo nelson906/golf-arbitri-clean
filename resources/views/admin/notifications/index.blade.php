@@ -310,9 +310,14 @@
                                                                         • {{ Str::limit($notification->error_message, 30) }}
                                                                     @endif
                                                                 </div>
-                                                                @if($notification->attachments && count($notification->attachments) > 0)
+                                                                @php
+                                                                    $documents = is_string($notification->documents) ? json_decode($notification->documents, true) : $notification->documents;
+                                                                    $documents = $documents ?? [];
+                                                                    $documentCount = count($documents);
+                                                                @endphp
+                                                                @if($documentCount > 0)
                                                                     <div class="text-xs text-blue-600">
-                                                                        📎 {{ count($notification->attachments) }} allegati
+                                                                        📄 {{ $documentCount }} documenti
                                                                     </div>
                                                                 @endif
                                                             </div>
