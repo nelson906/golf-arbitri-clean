@@ -1,5 +1,4 @@
 <?php
-// File: app/Http/Controllers/Admin/ClubController.php
 
 namespace App\Http\Controllers\Admin;
 

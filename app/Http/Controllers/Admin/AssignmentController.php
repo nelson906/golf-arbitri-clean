@@ -15,10 +15,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
+use App\Services\AssignmentValidationService;
 
 class AssignmentController extends Controller
 {
-    // ===== METODI STANDARD CRUD =====
+    protected AssignmentValidationService $validationService;
+
+    public function __construct(AssignmentValidationService $validationService)
+    {
+        $this->validationService = $validationService;
+    }
 
     /**
      * Display lista assegnazioni
@@ -586,4 +592,222 @@ class AssignmentController extends Controller
             return back()->with('error', 'Errore durante la rimozione: ' . $e->getMessage());
         }
     }
+
+        /**
+     * Dashboard principale della validazione
+     * GET /admin/assignment-validation
+     */
+    public function validation(Request $request): View
+    {
+        $user = auth()->user();
+        $zoneId = $this->getZoneIdForUser($user);
+
+        // Ottieni riepilogo di tutti i problemi
+        $summary = $this->validationService->getValidationSummary($zoneId);
+
+        // Ottieni statistiche aggiuntive
+        $stats = [
+            'total_assignments' => \App\Models\Assignment::when($zoneId, function($q) use ($zoneId) {
+                $q->whereHas('tournament', fn($tq) => $tq->where('zone_id', $zoneId));
+            })->count(),
+
+            'active_tournaments' => \App\Models\Tournament::whereIn('status', ['open', 'closed'])
+                ->when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
+                ->count(),
+
+            'active_referees' => \App\Models\User::where('user_type', 'referee')
+                ->where('is_active', true)
+                ->when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
+                ->count(),
+        ];
+
+        // Calcola percentuale di problemi
+        $issuePercentage = $stats['total_assignments'] > 0
+            ? round(($summary['total_issues'] / $stats['total_assignments']) * 100, 1)
+            : 0;
+
+        return view('admin.assignments.validation.index', compact(
+            'summary',
+            'stats',
+            'issuePercentage'
+        ));
+    }
+
+    /**
+     * Mostra tutti i conflitti di date
+     * GET /admin/assignment-validation/conflicts
+     */
+    public function validationConflicts(Request $request): View
+    {
+        $user = auth()->user();
+        $zoneId = $this->getZoneIdForUser($user);
+
+        $conflicts = $this->validationService->detectDateConflicts($zoneId);
+
+        // Ordina per severità
+        $conflicts = $conflicts->sortByDesc('severity');
+
+        // Aggiungi suggerimenti per risolvere i conflitti
+        $conflictsWithSuggestions = $this->validationService->suggestConflictResolutions($conflicts);
+
+        // Statistiche sui conflitti
+        $conflictStats = [
+            'total' => $conflicts->count(),
+            'high_severity' => $conflicts->where('severity', 'high')->count(),
+            'medium_severity' => $conflicts->where('severity', 'medium')->count(),
+            'low_severity' => $conflicts->where('severity', 'low')->count(),
+        ];
+
+        return view('admin.assignments.validation.conflicts', compact(
+            'conflictsWithSuggestions',
+            'conflictStats'
+        ));
+    }
+
+    /**
+     * Mostra tornei con requisiti mancanti
+     * GET /admin/assignment-validation/missing-requirements
+     */
+    public function missingRequirements(Request $request): View
+    {
+        $user = auth()->user();
+        $zoneId = $this->getZoneIdForUser($user);
+
+        $tournaments = $this->validationService->findMissingRequirements($zoneId);
+
+        // Statistiche sui problemi
+        $issueTypes = $tournaments->flatMap(function($item) {
+            return collect($item['issues'])->pluck('type');
+        })->countBy()->toArray();
+
+        $stats = [
+            'total_tournaments' => $tournaments->count(),
+            'issue_types' => $issueTypes,
+            'high_severity' => $tournaments->filter(function($item) {
+                return collect($item['issues'])->contains('severity', 'high');
+            })->count(),
+        ];
+
+        return view('admin.assignments.validation.missing-requirements', compact(
+            'tournaments',
+            'stats'
+        ));
+    }
+
+    /**
+     * Mostra arbitri sovrassegnati
+     * GET /admin/assignment-validation/overassigned-referees
+     */
+    public function overassignedReferees(Request $request): View
+    {
+        $user = auth()->user();
+        $zoneId = $this->getZoneIdForUser($user);
+
+        // Threshold configurabile
+        $threshold = $request->input('threshold', 5);
+
+        $referees = $this->validationService->findOverassignedReferees($zoneId, $threshold);
+
+        // Statistiche
+        $stats = [
+            'total_overassigned' => $referees->count(),
+            'avg_assignments' => round($referees->avg('assignments_count'), 1),
+            'max_assignments' => $referees->max('assignments_count'),
+            'total_over_threshold' => $referees->sum('over_threshold'),
+        ];
+
+        return view('admin.assignments.validation.overassigned-referees', compact(
+            'referees',
+            'stats',
+            'threshold'
+        ));
+    }
+
+    /**
+     * Mostra arbitri sottoutilizzati
+     * GET /admin/assignment-validation/underassigned-referees
+     */
+    public function underassignedReferees(Request $request): View
+    {
+        $user = auth()->user();
+        $zoneId = $this->getZoneIdForUser($user);
+
+        // Threshold configurabile
+        $threshold = $request->input('threshold', 2);
+
+        $referees = $this->validationService->findUnderassignedReferees($zoneId, $threshold);
+
+        // Filtra per stato disponibilità se richiesto
+        if ($request->has('only_available')) {
+            $referees = $referees->filter(function($item) {
+                return $item['availability_status'] === 'available';
+            });
+        }
+
+        // Statistiche
+        $stats = [
+            'total_underassigned' => $referees->count(),
+            'available' => $referees->where('availability_status', 'available')->count(),
+            'unavailable' => $referees->where('availability_status', 'unavailable')->count(),
+            'unknown' => $referees->where('availability_status', 'unknown')->count(),
+        ];
+
+        return view('admin.assignments.validation.underassigned-referees', compact(
+            'referees',
+            'stats',
+            'threshold'
+        ));
+    }
+
+    /**
+     * Applica correzioni automatiche ai conflitti
+     * POST /admin/assignment-validation/fix-conflicts
+     */
+    public function fixConflicts(Request $request): RedirectResponse
+    {
+        $user = auth()->user();
+        $zoneId = $this->getZoneIdForUser($user);
+
+        try {
+            $result = $this->validationService->applyAutomaticFixes($zoneId);
+
+            if ($result['summary']['total_fixed'] > 0) {
+                $message = "Risolti automaticamente {$result['summary']['total_fixed']} conflitti.";
+
+                if ($result['summary']['total_failed'] > 0) {
+                    $message .= " {$result['summary']['total_failed']} correzioni non sono riuscite.";
+                }
+
+                return redirect()
+                    ->route('admin.assignment-validation.conflicts')
+                    ->with('success', $message)
+                    ->with('fix_details', $result);
+            } else {
+                return redirect()
+                    ->route('admin.assignment-validation.conflicts')
+                    ->with('info', 'Nessun conflitto può essere risolto automaticamente.');
+            }
+
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('admin.assignment-validation.conflicts')
+                ->with('error', 'Errore durante la risoluzione automatica: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Helper per ottenere zone_id in base al tipo di utente
+     */
+    private function getZoneIdForUser($user): ?int
+    {
+        // Super admin e national admin vedono tutto
+        if (in_array($user->user_type, ['super_admin', 'national_admin'])) {
+            return null;
+        }
+
+        // Zone admin vede solo la sua zona
+        return $user->zone_id;
+    }
+
+
 }

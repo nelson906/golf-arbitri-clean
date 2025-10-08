@@ -91,10 +91,10 @@ class AssignmentRequest extends FormRequest
                         $fail('Questo arbitro è già stato assegnato a questo torneo.');
                     }
 
-                    // Check referee level
+                    // Check referee level - FIX: Use User::LEVELS instead of TournamentType::REFEREE_LEVELS
                     if ($tournament) {
                         $requiredLevel = $tournament->tournamentType->required_referee_level;
-                        $levels = array_keys(\App\Models\TournamentType::REFEREE_LEVELS);
+                        $levels = array_keys(\App\Models\User::LEVELS);
                         $requiredIndex = array_search($requiredLevel, $levels);
                         $userIndex = array_search($user->level, $levels);
 
