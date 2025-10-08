@@ -66,7 +66,8 @@ class TournamentNotification extends Model
         'metadata',      // JSON: { error, retry_count, etc }
         'status',        // pending, sent, failed
         'sent_by',
-        'sent_at'
+        'sent_at',
+        'is_prepared'
     ];
 
     protected $casts = [

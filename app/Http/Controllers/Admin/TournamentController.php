@@ -25,8 +25,8 @@ class TournamentController extends Controller
         $user = auth()->user();
         $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
-        // Base query with eager loading
-        $query = Tournament::with(['club.zone', 'tournamentType']);
+// Base query with eager loading
+        $query = Tournament::with(['club.zone', 'tournamentType', 'notification']);
 
         // Filter by zone for zone admins
         if (!$isNationalAdmin) {

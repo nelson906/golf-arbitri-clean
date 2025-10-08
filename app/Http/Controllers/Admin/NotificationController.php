@@ -179,7 +179,7 @@ public function __construct(
             ->groupBy('applies_to')
             ->toArray();
 
-        return view('admin.notifications.assignment_form', [
+return view('admin.notifications.prepare_notification', [
             'tournament' => $tournament,
             'notification' => $notification,
             'assignedReferees' => $assignedReferees,
@@ -687,13 +687,13 @@ public function __construct(
                 ]);
             }
 
-            // Invia la notifica
-            $this->notificationService->send($notification);
+            // Marca come PREPARATA (non inviare qui)
+            $notification->update(['is_prepared' => true]);
 
             DB::commit();
 
-            return redirect()->route('admin.tournament-notifications.index')
-                ->with('success', 'Notifiche inviate con successo');
+            return redirect()->route('admin.tournaments.index')
+->with('success', 'Notifica salvata con successo. Ora puoi inviarla dalla lista tornei.');
 
         } catch (\Exception $e) {
             DB::rollBack();

@@ -7,11 +7,11 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                📧 Invia Notifica Assegnazione - {{ $tournament->name }}
+                📝 Prepara Notifica Assegnazione - {{ $tournament->name }}
             </h2>
-            <a href="{{ route('tournaments.show', $tournament) }}"
+            <a href="{{ route('admin.tournaments.index') }}"
                 class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
-                ← Torna al Torneo
+                ← Torna ai Tornei
             </a>
         </div>
     </x-slot>
@@ -36,6 +36,24 @@
                     </div>
                 </div>
             @endif
+
+            {{-- Info flow banner --}}
+            <div class="mb-4 p-4 bg-blue-50 border-l-4 border-blue-400 rounded">
+                <div class="flex items-start">
+                    <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM9 7a1 1 0 112 0v4a1 1 0 01-2 0V7zm1 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                    </svg>
+                    <div class="text-sm text-blue-800">
+                        <p class="font-medium">Questa pagina prepara la notifica.</p>
+                        <ul class="list-disc ml-5 mt-1 space-y-1">
+                            <li>Seleziona eventuali clausole e genera i documenti.</li>
+                            <li>Puoi modificare i documenti manualmente nella Gestione Documenti.</li>
+                            <li>Al salvataggio la notifica viene marcata come "preparata" e tornerai alla lista tornei.</li>
+                            <li>L'invio effettivo avverrà solo dalla lista tornei con il pulsante "Invia Notifica".</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
@@ -220,7 +238,6 @@ Cordiali saluti'
                                 </div>
 
                                 {{-- ACCORDION: Clausole Aggiuntive --}}
-                                @if(isset($availableClauses) && !empty($availableClauses))
                                 <div class="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
                                     <button type="button" class="w-full px-6 py-4 text-left flex justify-between items-center bg-blue-50 hover:bg-blue-100"
                                             onclick="toggleSection('clausole')">
@@ -323,9 +340,22 @@ Cordiali saluti'
                                             @endforeach
                                         </div>
                                         @endif
+
+                                        @if($refereeClauses->isNotEmpty() || $clubClauses->isNotEmpty())
+                                            {{-- Bottone Rigenera Documenti --}}
+                                            <div class="mt-6 pt-6 border-t border-gray-200">
+                                                <button type="button" onclick="regenerateDocuments()" 
+                                                    class="inline-flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" 
+                                                    id="regenerateButton">
+                                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                    </svg>
+                                                    <span>Rigenera documenti con clausole selezionate</span>
+                                                </button>
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
-                                @endif
 
                                 {{-- ACCORDION: Destinatari Arbitri --}}
                                 <div class="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
@@ -554,7 +584,7 @@ Cordiali saluti'
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
                                         </svg>
-                                        Invia Notifiche
+                                        Salva Notifica
                                     </button>
                                 </div>
                             </form>
@@ -562,9 +592,7 @@ Cordiali saluti'
                     </div>
                 </div>
             </div>
-        </div>
-                                </div>
-                            </form>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -575,6 +603,67 @@ Cordiali saluti'
     @include('admin.tournament-notifications._document_manager_modal')
 
     <script>
+// Toast semplice per feedback
+function showToast(message, isError = false) {
+    const toast = document.createElement('div');
+    toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg ${isError ? 'bg-red-500' : 'bg-green-500'} text-white`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+// Gestione rigenerazione documenti
+async function regenerateDocuments() {
+    const button = document.getElementById('regenerateButton');
+    const originalText = button.innerHTML;
+    try {
+        // Disabilita il bottone e mostra loading
+        button.disabled = true;
+        button.innerHTML = `
+            <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Rigenerazione in corso...
+        `;
+
+        // Genera convocazione
+        await fetch(`{{ route('admin.tournament-notifications.generate-document', ['notification' => $notification->id, 'type' => 'convocation']) }}`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+
+        // Genera lettera circolo
+        await fetch(`{{ route('admin.tournament-notifications.generate-document', ['notification' => $notification->id, 'type' => 'club_letter']) }}`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+
+        // Aggiorna stato documenti nel modal
+        if (typeof openDocumentManager === 'function') {
+            openDocumentManager({{ $notification->id }});
+        }
+
+        showToast('Documenti rigenerati con successo');
+
+    } catch (error) {
+        console.error('Errore durante la rigenerazione:', error);
+        showToast('Errore durante la rigenerazione dei documenti', true);
+    } finally {
+        // Ripristina il bottone
+        button.disabled = false;
+        button.innerHTML = originalText;
+    }
+}
+
 function toggleSection(sectionId) {
     const content = document.getElementById(`${sectionId}-content`);
     const icon = document.getElementById(`${sectionId}-icon`);

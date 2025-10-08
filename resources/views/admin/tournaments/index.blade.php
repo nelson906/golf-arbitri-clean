@@ -37,14 +37,16 @@
                 <p class="font-bold">Attenzione</p>
                 <p class="mb-3">{{ session('warning') }}</p>
                 @if (session('tournament_id'))
-                    <form action="{{ route('admin.tournaments.destroy', session('tournament_id')) }}" method="POST" class="inline-flex items-center gap-2">
+                    <form action="{{ route('admin.tournaments.destroy', session('tournament_id')) }}" method="POST"
+                        class="inline-flex items-center gap-2">
                         @csrf
                         @method('DELETE')
                         <input type="hidden" name="confirm" value="1">
                         <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
                             Conferma eliminazione di "{{ session('tournament_name') }}"
                         </button>
-                        <a href="{{ route('admin.tournaments.index') }}" class="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50 text-gray-700">
+                        <a href="{{ route('admin.tournaments.index') }}"
+                            class="px-4 py-2 rounded border border-gray-300 hover:bg-gray-50 text-gray-700">
                             Annulla
                         </a>
                     </form>
@@ -86,7 +88,8 @@
                             class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                             <option value="">Tutte le zone</option>
                             @foreach ($zones as $zone)
-                            <option value="{{ $zone->id }}" {{ request('zone_id') == $zone->id ? 'selected' : '' }}>
+                                <option value="{{ $zone->id }}"
+                                    {{ request('zone_id') == $zone->id ? 'selected' : '' }}>
                                     {{ $zone->name }}
                                 </option>
                             @endforeach
@@ -155,10 +158,10 @@
                             class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Arbitri
                         </th>
-                        <th scope="col"
+                        {{-- <th scope="col"
                             class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Stato
-                        </th>
+                        </th> --}}
                         <th scope="col" class="relative px-6 py-3">
                             <span class="sr-only">Azioni</span>
                         </th>
@@ -172,7 +175,8 @@
                                     {{ $tournament->name }}
                                 </div>
                                 <div class="text-sm text-gray-500">
-                                    Scadenza: {{ Carbon\Carbon::parse($tournament->availability_deadline)->format('d/m/Y') }}
+                                    Scadenza:
+                                    {{ Carbon\Carbon::parse($tournament->availability_deadline)->format('d/m/Y') }}
                                     @if ($tournament->days_until_deadline >= 0)
                                         <span
                                             class="text-xs {{ $tournament->days_until_deadline <= 3 ? 'text-red-600 font-semibold' : 'text-gray-500' }}">
@@ -212,38 +216,56 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 <div class="text-sm text-gray-900">
-                                    {{ $tournament->assignments()->count() }} / {{ $tournament->tournamentType->min_referees }}
+                                    @if ($tournament->assignments()->count() > 0)
+                                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
+                                            {{ $tournament->assignments()->count() }} /
+                                            {{ $tournament->tournamentType->min_referees }}
+                                        </span>
+                                    @endif
+
                                 </div>
                                 <div class="text-xs text-gray-500">
                                     Disp: {{ $tournament->availabilities()->count() }}
                                 </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                            {{-- <td class="px-6 py-4 whitespace-nowrap text-center">
                                 <span
                                     class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
                             bg-{{ $tournament->status_color }}-100 text-{{ $tournament->status_color }}-800">
                                     {{ $tournament->status_label }}
                                 </span>
-                            </td>
+                            </td> --}}
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div class="flex space-x-2">
                                     <a href="{{ route('admin.tournaments.show', $tournament) }}"
-                                        class="text-indigo-600 hover:text-indigo-900">Visualizza</a>
+                                        class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">Gestione Torneo</a>
 
-                                    <a href="{{ route('admin.assignments.assign-referees', $tournament) }}"
+                                    {{-- <a href="{{ route('admin.assignments.assign-referees', $tournament) }}"
                                         class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
                                         👥 Assegna Comitato
-                                    </a>
+                                    </a> --}}
 
-                                    @if ($tournament->assignments()->count() > 0)
+                                    {{-- @if ($tournament->assignments()->count() > 0)
                                         <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
                                             {{ $tournament->assignments()->count() }} assegnati
                                         </span>
-                                        
-                                        {{-- Pulsante Invia Notifica --}}
+                                    @endif --}}
+
+                                    {{-- Pulsante Invia/Prepara Notifica --}}
+                                    @if ($tournament->notification && $tournament->notification->is_prepared)
+                                        <form
+                                            action="{{ route('admin.tournament-notifications.send', $tournament->notification) }}"
+                                            method="POST" class="inline">
+                                            @csrf
+                                            <button type="submit"
+                                                class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
+                                                ✉️ Invia Notifica
+                                            </button>
+                                        </form>
+                                    @else
                                         <a href="{{ route('admin.tournaments.show-assignment-form', $tournament) }}"
                                             class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700">
-                                            📧 Notifica
+                                            📝 Prepara Notifica
                                         </a>
                                     @endif
                                 </div>
@@ -303,44 +325,44 @@
 @endsection
 
 @push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const form = document.getElementById('filterForm');
-        if (form) {
-            // Gestisci l'invio del form
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                // Crea un nuovo FormData dal form
-                const formData = new FormData(form);
-                const params = new URLSearchParams();
-                
-                // Aggiungi solo i parametri non vuoti
-                for (let [key, value] of formData.entries()) {
-                    if (value && value.trim() !== '') {
-                        params.append(key, value);
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('filterForm');
+            if (form) {
+                // Gestisci l'invio del form
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+
+                    // Crea un nuovo FormData dal form
+                    const formData = new FormData(form);
+                    const params = new URLSearchParams();
+
+                    // Aggiungi solo i parametri non vuoti
+                    for (let [key, value] of formData.entries()) {
+                        if (value && value.trim() !== '') {
+                            params.append(key, value);
+                        }
                     }
-                }
-                
-                // Costruisci l'URL
-                const baseUrl = form.action;
-                const queryString = params.toString();
-                const finalUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
-                
-                // Naviga all'URL
-                window.location.href = finalUrl;
-            });
-            
-            // Auto-submit quando cambia un filtro
-            const inputs = form.querySelectorAll('select, input[type="text"], input[type="month"]');
-            inputs.forEach(input => {
-                if (input.type !== 'text') { // Non auto-submit per il campo di ricerca
-                    input.addEventListener('change', function() {
-                        form.dispatchEvent(new Event('submit'));
-                    });
-                }
-            });
-        }
-    });
-</script>
+
+                    // Costruisci l'URL
+                    const baseUrl = form.action;
+                    const queryString = params.toString();
+                    const finalUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
+
+                    // Naviga all'URL
+                    window.location.href = finalUrl;
+                });
+
+                // Auto-submit quando cambia un filtro
+                const inputs = form.querySelectorAll('select, input[type="text"], input[type="month"]');
+                inputs.forEach(input => {
+                    if (input.type !== 'text') { // Non auto-submit per il campo di ricerca
+                        input.addEventListener('change', function() {
+                            form.dispatchEvent(new Event('submit'));
+                        });
+                    }
+                });
+            }
+        });
+    </script>
 @endpush

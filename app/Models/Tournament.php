@@ -121,6 +121,12 @@ public function referees()
         return $this->hasMany(TournamentNotification::class);
     }
 
+    // Ultima notifica (relazione comoda)
+    public function notification()
+    {
+        return $this->hasOne(TournamentNotification::class)->latestOfMany();
+    }
+
     /**
      * SCOPES
      */
