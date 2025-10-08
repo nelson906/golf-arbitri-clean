@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController;
-use App\Http\Controllers\FedergolfController;
+use App\Http\Controllers\User\FedergolfController;
 
 Route::get('/test-doc-gen', function () {
     try {

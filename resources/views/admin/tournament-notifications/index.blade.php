@@ -137,9 +137,13 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                         Gestisci
-                                        @if($notification->document_count > 0)
+                                        @php
+                                            $documents = $notification->documents ?? [];
+                                            $documentCount = count($documents);
+                                        @endphp
+                                        @if($documentCount > 0)
                                             <span class="ml-1 bg-green-100 text-green-800 rounded-full px-2 py-0.5 text-xs" title="Documenti presenti">
-                                                {{ $notification->document_count }}
+                                                {{ $documentCount }}
                                             </span>
                                         @else
                                             <span class="ml-1 bg-gray-100 text-gray-500 rounded-full px-2 py-0.5 text-xs">

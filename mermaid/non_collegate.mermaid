@@ -1,0 +1,42 @@
+graph TD
+    %% Layout & Partials
+    LP(("Layout & Partials")) --> PH["page-header.blade"]
+    LP --> PL["placeholder.blade"]
+
+    %% Dashboard
+    DB(("Dashboard")) --> DBV["dashboard.blade"]
+    DB --> DBC["DashboardController"]
+    DBC --> |"GET /admin/dashboard"| DBV
+    DBC --> |"GET /admin/quick-stats"| DBV
+
+    %% Monitoring System
+    MON(("Monitoring")) --> MC["MonitoringController"]
+    MC --> |"GET /monitoring"| MD["dashboard.blade"]
+    MC --> |"GET /health"| MH["health.blade"]
+    MC --> |"GET /logs"| ML["logs.blade"]
+    MC --> |"GET /metrics"| MM["metrics.blade"]
+    MC --> |"GET /performance"| MP["performance.blade"]
+
+    %% Communications
+    COM(("Communications")) --> CC["CommunicationController"]
+    CC --> |"GET /communications"| CI["index.blade"]
+    CC --> |"GET /communications/create"| CCR["create.blade"]
+    CC --> |"GET /communications/{id}"| CS["show.blade"]
+
+    %% Tournament Types
+    TT(("Tournament Types")) --> TTC["TournamentTypeController"]
+    TTC --> |"GET /tournament-types"| TTI["index.blade"]
+    TTC --> |"GET /tournament-types/create"| TTC2["create.blade"]
+    TTC --> |"GET /tournament-types/edit"| TTE["edit.blade"]
+
+    %% Document Management
+    DOC(("Documents")) --> NC["NotificationController"]
+    NC --> |"GET /{notification}/documents-status"| DM["_document_manager_modal"]
+    NC --> |"GET /{notification}/download/{type}"| DD["documents.blade"]
+
+    style LP fill:#f9f,stroke:#333
+    style DB fill:#bbf,stroke:#333
+    style MON fill:#bfb,stroke:#333
+    style COM fill:#fbf,stroke:#333
+    style TT fill:#ff9,stroke:#333
+    style DOC fill:#9ff,stroke:#333

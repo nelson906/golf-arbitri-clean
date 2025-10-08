@@ -252,23 +252,35 @@
                                     @endif --}}
 
                                     {{-- Pulsante Invia/Prepara Notifica --}}
-                                    @if ($tournament->notification && $tournament->notification->is_prepared)
-                                        <form
-                                            action="{{ route('admin.tournament-notifications.send', $tournament->notification) }}"
-                                            method="POST" class="inline">
-                                            @csrf
-                                            <button type="submit"
-                                                class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
-                                                ✉️ Invia Notifica
-                                            </button>
-                                        </form>
-                                    @else
-                                        <a href="{{ route('admin.tournaments.show-assignment-form', $tournament) }}"
-                                            class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700">
-                                            📝 Prepara Notifica
-                                        </a>
-                                    @endif
-                                </div>
+@if($tournament->notification)
+    @if($tournament->notification->is_prepared && !$tournament->notification->sent_at)
+        {{-- Notifica preparata ma non ancora inviata --}}
+        <form action="{{ route('admin.tournament-notifications.send', $tournament->notification) }}" method="POST" class="inline">
+            @csrf
+            <button type="submit" class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
+                ✉️ Invia Notifica
+            </button>
+        </form>
+    @elseif($tournament->notification->sent_at)
+        {{-- Notifica già inviata - mostra opzione reinvio --}}
+        <form action="{{ route('admin.tournament-notifications.resend', $tournament->notification) }}" method="POST" class="inline">
+            @csrf
+            <button type="submit" class="bg-yellow-600 text-white px-3 py-1 rounded text-sm hover:bg-yellow-700">
+                🔄 Reinvia Notifica
+            </button>
+        </form>
+    @else
+        {{-- Notifica esistente ma non preparata --}}
+        <a href="{{ route('admin.tournaments.show-assignment-form', $tournament) }}" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700">
+            📝 Prepara Notifica
+        </a>
+    @endif
+@else
+    {{-- Nessuna notifica esistente --}}
+    <a href="{{ route('admin.tournaments.show-assignment-form', $tournament) }}" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm hover:bg-indigo-700">
+        📝 Prepara Notifica
+    </a>
+@endif                                </div>
                             </td>
                         </tr>
                     @empty

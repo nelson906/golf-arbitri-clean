@@ -1,0 +1,8 @@
+graph TD
+    A("Menu Notifiche") --> B("NotificationController")
+    B --> C("tournament-notifications/index.blade")
+    C --> D("Prepara") & E("Invia") & F("Show") & G("Documents")
+    D --> H("notifications/prepare.blade")
+    E --> I("NotificationController-send")
+    F --> J("notifications/show.blade")
+    G --> K("notifications/documents.blade")
