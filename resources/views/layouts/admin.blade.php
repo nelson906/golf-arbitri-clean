@@ -92,6 +92,13 @@
                         Calendario
                     </a>
                 </li>
+                <li>
+                    <a href="{{ route('admin.clubs.index') ?? '#' }}"
+                       class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.clubs.*') ? 'bg-blue-900' : '' }}">
+                        <span class="mr-3">🏌️</span>
+                        Circoli
+                    </a>
+                </li>
 
                 <li>
                     <a href="{{ route('admin.users.index') ?? '#' }}"
@@ -116,27 +123,20 @@
                         Assegnazioni
                     </a>
                 </li>
-
                 <li>
-                    <a href="{{ route('admin.clubs.index') ?? '#' }}"
-                       class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.clubs.*') ? 'bg-blue-900' : '' }}">
-                        <span class="mr-3">🏌️</span>
-                        Circoli
+                    <a href="{{ route('admin.assignment-validation.index') }}"
+                       class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.statistics.*') ? 'bg-blue-900' : '' }}">
+                        <span class="mr-3">📊</span>
+                        Validazione Assegnazioni
                     </a>
                 </li>
+
 
                 <li>
                     <a href="{{ route('admin.statistics.dashboard') }}"
                        class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.statistics.*') ? 'bg-blue-900' : '' }}">
                         <span class="mr-3">📊</span>
                         Statistiche
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ route('admin.assignment-validation.index') }}"
-                       class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.statistics.*') ? 'bg-blue-900' : '' }}">
-                        <span class="mr-3">📊</span>
-                        Validazione Assegnazioni
                     </a>
                 </li>
                 {{-- Documenti Section --}}
