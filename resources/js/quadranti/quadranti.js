@@ -160,33 +160,33 @@ $('#federgolf-gare-select').on('change', () => this.handleFedergolfGaraSelected(
   /**
    * Handles form input changes
    */
-  handleFormChange() {
-    // Update configuration from form values
-    this.config.players = $('#players').val();
-    this.config.proette = $('#proette').val();
-    this.config.playersPerFlight = $('#players_x_flight').val();
-    this.config.giornata = $('#giornata').val();
-    this.config.garaNT = $('#gara_NT').val();
-    this.config.round = $('#round').val();
-    this.config.startTime = $('#start_time').val();
-    this.config.gap = $('#gap').val();
-    this.config.compatto = $('#compatto').val();
-    this.config.doppiePartenze = $('#doppie_partenze').val();
+ handleFormChange() {
+  // Update configuration from form values
+  this.config.players = $('#players').val();
+  this.config.proette = $('#proette').val();
+  this.config.playersPerFlight = $('#players_x_flight').val();
+  this.config.giornata = $('#giornata').val();
+  this.config.garaNT = $('#gara_NT').val();
+  this.config.round = $('#round').val();
+  this.config.startTime = $('#start_time').val();
+  this.config.gap = $('#gap').val();
+  this.config.compatto = $('#compatto').val();
+  this.config.doppiePartenze = $('#doppie_partenze').val();
 
-    // Save configuration
-    this.saveConfiguration();
+  // Save configuration
+  this.saveConfiguration();
 
-    // Update UI elements
-    this.toggleCompactOption();
-    this.updateCrossTime();
-    this.updateTableTitle();
+  // Update UI elements (IMPORTANTE: toggleCompactOption usa doppiePartenze!)
+  this.toggleCompactOption();
+  this.updateCrossTime();
+  this.updateTableTitle();
 
-    // Update logic configuration
-    this.logic.updateConfig(this.config);
+  // Update logic configuration
+  this.logic.updateConfig(this.config);
 
-    // Regenerate table
-    this.generateTable();
-  }
+  // Regenerate table
+  this.generateTable();
+}
 
   /**
    * Handles reset button click
@@ -315,19 +315,25 @@ $('#federgolf-gare-select').on('change', () => this.handleFedergolfGaraSelected(
     $('#sunset').html(data.sunset);
   }
 
-  /**
-   * Toggles compact option visibility based on player count
-   */
-  toggleCompactOption() {
-    const totalPlayers = parseInt(this.config.players) + parseInt(this.config.proette);
-    const mod = parseInt(this.config.playersPerFlight);
+/**
+ * Toggles compact option visibility based on player count and tee configuration
+ */
+toggleCompactOption() {
+  const totalPlayers = parseInt(this.config.players) + parseInt(this.config.proette);
+  const mod = parseInt(this.config.playersPerFlight);
+  const doppiePartenze = this.config.doppiePartenze;
 
-    if (totalPlayers <= mod * 32) {
-      $('.compatto').show();
-    } else {
-      $('.compatto').hide();
-    }
+  // Calcola quanti voli ci sono
+  const totalFlights = Math.ceil(totalPlayers / mod);
+
+  // Il selettore è visibile solo con Doppie Partenze
+  // E solo se ci sono meno di 24 voli totali (12 buche occupate per lato)
+  if (doppiePartenze === TEE_TYPES.DOUBLE && totalFlights <= 24) {
+    $('.compatto').show();
+  } else {
+    $('.compatto').hide();
   }
+}
 
   /**
    * Updates cross time display
