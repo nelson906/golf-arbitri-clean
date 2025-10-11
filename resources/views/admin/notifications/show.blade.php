@@ -4,7 +4,6 @@
 @section('title', ' ' )
 
 @section('content')
-
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -83,7 +82,7 @@
                                 <div class="grid grid-cols-2 gap-4 text-sm text-gray-600">
                                     <div>
                                         <span class="font-medium">Creato:</span>
-                                        {{ $notification->created_at->format('d/m/Y H:i') }}
+                                        {{ Carbon\Carbon::parse($notification->created_at)->format('d/m/Y H:i') }}
                                     </div>
                                     @if($notification->sent_at)
                                         <div>
@@ -262,7 +261,7 @@
                                     <div class="flex-shrink-0 h-3 w-3 bg-blue-400 rounded-full"></div>
                                     <div class="ml-3 text-sm">
                                         <div class="font-medium text-gray-900">Notifica Creata</div>
-                                        <div class="text-gray-500">{{ $notification->created_at->format('d/m/Y H:i') }}</div>
+                                        <div class="text-gray-500">{{ Carbon\Carbon::parse($notification->created_at)->format('d/m/Y H:i') }}</div>
                                     </div>
                                 </div>
 

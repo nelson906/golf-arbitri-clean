@@ -1,0 +1,656 @@
+ANALISI VIEWS LARAVEL - Thu Oct  9 15:24:30 CEST 2025
+=====================================
+
+METODOLOGIA:
+1. Cerca tutte le view in resources/views
+2. Cerca referenze nei controller (view(), return view())
+3. Cerca referenze nelle route (direttamente)
+4. Cerca @include, @extends nei file blade
+5. Identifica view mai referenziate
+
+
+TOTALE VIEW TROVATE:      132
+==================================
+
+✅ USATA: resources/views/welcome.blade.php
+   View name: welcome
+   → Route: routes/web.php
+
+✅ USATA: resources/views/referee/availabilities/index.blade.php
+   View name: referee.availabilities.index
+   → Controller: app/Http/Controllers/User/AvailabilityController.php
+   → View call: app/Http/Controllers/User/AvailabilityController.php
+
+✅ USATA: resources/views/referee/availabilities/calendar.blade.php
+   View name: referee.availabilities.calendar
+   → Controller: app/Http/Controllers/User/AvailabilityController.php
+   → View call: app/Http/Controllers/User/AvailabilityController.php
+
+✅ USATA: resources/views/referee/availabilities/tournaments.blade.php
+   View name: referee.availabilities.tournaments
+   → Controller: app/Http/Controllers/User/AvailabilityController.php
+   → View call: app/Http/Controllers/User/AvailabilityController.php
+
+✅ USATA: resources/views/referee/dashboard.blade.php
+   View name: referee.dashboard
+   → Controller: app/Http/Controllers/User/DashboardController.php
+   → View call: app/Http/Controllers/User/DashboardController.php
+   → Route: routes/referee/dashboard.php
+
+✅ USATA: resources/views/auth/reset-password.blade.php
+   View name: auth.reset-password
+   → Controller: app/Http/Controllers/Auth/NewPasswordController.php
+   → View call: app/Http/Controllers/Auth/NewPasswordController.php
+
+✅ USATA: resources/views/auth/register.blade.php
+   View name: auth.register
+   → Controller: app/Http/Controllers/Auth/RegisteredUserController.php
+   → View call: app/Http/Controllers/Auth/RegisteredUserController.php
+
+✅ USATA: resources/views/auth/confirm-password.blade.php
+   View name: auth.confirm-password
+   → Controller: app/Http/Controllers/Auth/ConfirmablePasswordController.php
+   → View call: app/Http/Controllers/Auth/ConfirmablePasswordController.php
+
+✅ USATA: resources/views/auth/forgot-password.blade.php
+   View name: auth.forgot-password
+   → Controller: app/Http/Controllers/Auth/PasswordResetLinkController.php
+   → View call: app/Http/Controllers/Auth/PasswordResetLinkController.php
+
+✅ USATA: resources/views/auth/verify-email.blade.php
+   View name: auth.verify-email
+   → Controller: app/Http/Controllers/Auth/EmailVerificationPromptController.php
+   → View call: app/Http/Controllers/Auth/EmailVerificationPromptController.php
+
+✅ USATA: resources/views/auth/login.blade.php
+   View name: auth.login
+   → Controller: app/Http/Controllers/Auth/AuthenticatedSessionController.php
+   → View call: app/Http/Controllers/Auth/AuthenticatedSessionController.php
+
+✅ USATA: resources/views/emails/tournament-notifications/layout.blade.php
+   View name: emails.tournament-notifications.layout
+   → View call: app/Mail/TournamentNotificationMail.php
+
+✅ USATA: resources/views/emails/admin-availability-notification.blade.php
+   View name: emails.admin-availability-notification
+   → Mailable: app/Mail/BatchAvailabilityAdminNotification.php
+
+❌ NON USATA: resources/views/emails/club-notification.blade.php
+   View name: emails.club-notification
+   Nessuna referenza trovata
+
+❌ NON USATA: resources/views/emails/unified-assignment-notification.blade.php
+   View name: emails.unified-assignment-notification
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/emails/referee-availability-confirmation.blade.php
+   View name: emails.referee-availability-confirmation
+   → Mailable: app/Mail/BatchAvailabilityNotification.php
+
+✅ USATA: resources/views/emails/tournament_assignment_generic.blade.php
+   View name: emails.tournament_assignment_generic
+   → Mailable: app/Mail/ClubNotificationMail.php
+
+❌ NON USATA: resources/views/emails/unified-club-assignment-notification.blade.php
+   View name: emails.unified-club-assignment-notification
+   Nessuna referenza trovata
+
+❌ NON USATA: resources/views/emails/referee-assignment.blade.php
+   View name: emails.referee-assignment
+   Nessuna referenza trovata
+
+❌ NON USATA: resources/views/admin/statistics/export.blade.php
+   View name: admin.statistics.export
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/admin/statistics/assegnazioni.blade.php
+   View name: admin.statistics.assegnazioni
+   → Controller: app/Http/Controllers/Admin/StatisticsDashboardController.php
+   → View call: app/Http/Controllers/Admin/StatisticsDashboardController.php
+
+✅ USATA: resources/views/admin/statistics/arbitri.blade.php
+   View name: admin.statistics.arbitri
+   → Controller: app/Http/Controllers/Admin/StatisticsDashboardController.php
+   → View call: app/Http/Controllers/Admin/StatisticsDashboardController.php
+
+✅ USATA: resources/views/admin/statistics/zone.blade.php
+   View name: admin.statistics.zone
+   → Controller: app/Http/Controllers/Admin/StatisticsDashboardController.php
+   → View call: app/Http/Controllers/Admin/StatisticsDashboardController.php
+
+✅ USATA: resources/views/admin/statistics/tornei.blade.php
+   View name: admin.statistics.tornei
+   → Controller: app/Http/Controllers/Admin/StatisticsDashboardController.php
+   → View call: app/Http/Controllers/Admin/StatisticsDashboardController.php
+
+✅ USATA: resources/views/admin/statistics/performance.blade.php
+   View name: admin.statistics.performance
+   → Controller: app/Http/Controllers/Admin/StatisticsDashboardController.php
+   → View call: app/Http/Controllers/Admin/StatisticsDashboardController.php
+
+✅ USATA: resources/views/admin/statistics/dashboard.blade.php
+   View name: admin.statistics.dashboard
+   → Controller: app/Http/Controllers/Admin/StatisticsDashboardController.php
+   → View call: app/Http/Controllers/Admin/StatisticsDashboardController.php
+
+✅ USATA: resources/views/admin/statistics/disponibilita.blade.php
+   View name: admin.statistics.disponibilita
+   → Controller: app/Http/Controllers/Admin/StatisticsDashboardController.php
+   → View call: app/Http/Controllers/Admin/StatisticsDashboardController.php
+
+✅ USATA: resources/views/admin/referees/curriculum.blade.php
+   View name: admin.referees.curriculum
+   → Controller: app/Http/Controllers/Admin/RefereeCareerController.php
+   → View call: app/Http/Controllers/Admin/RefereeCareerController.php
+
+✅ USATA: resources/views/admin/referees/curricula.blade.php
+   View name: admin.referees.curricula
+   → Controller: app/Http/Controllers/Admin/RefereeCareerController.php
+   → View call: app/Http/Controllers/Admin/RefereeCareerController.php
+
+✅ USATA: resources/views/admin/assignments/index.blade.php
+   View name: admin.assignments.index
+   → Controller: app/Http/Controllers/Admin/AssignmentController.php
+   → View call: app/Http/Controllers/Admin/AssignmentController.php
+
+✅ USATA: resources/views/admin/assignments/create.blade.php
+   View name: admin.assignments.create
+   → Controller: app/Http/Controllers/Admin/AssignmentController.php
+   → View call: app/Http/Controllers/Admin/AssignmentController.php
+
+✅ USATA: resources/views/admin/assignments/show.blade.php
+   View name: admin.assignments.show
+   → Controller: app/Http/Controllers/Admin/AssignmentController.php
+   → View call: app/Http/Controllers/Admin/AssignmentController.php
+
+✅ USATA: resources/views/admin/assignments/validation/missing-requirements.blade.php
+   View name: admin.assignments.validation.missing-requirements
+   → Controller: app/Http/Controllers/Admin/AssignmentController.php
+   → View call: app/Http/Controllers/Admin/AssignmentController.php
+
+✅ USATA: resources/views/admin/assignments/validation/index.blade.php
+   View name: admin.assignments.validation.index
+   → Controller: app/Http/Controllers/Admin/AssignmentController.php
+   → View call: app/Http/Controllers/Admin/AssignmentController.php
+
+✅ USATA: resources/views/admin/assignments/validation/overassigned-referees.blade.php
+   View name: admin.assignments.validation.overassigned-referees
+   → Controller: app/Http/Controllers/Admin/AssignmentController.php
+   → View call: app/Http/Controllers/Admin/AssignmentController.php
+
+✅ USATA: resources/views/admin/assignments/validation/conflicts.blade.php
+   View name: admin.assignments.validation.conflicts
+   → Controller: app/Http/Controllers/Admin/AssignmentController.php
+   → View call: app/Http/Controllers/Admin/AssignmentController.php
+
+✅ USATA: resources/views/admin/assignments/validation/underassigned-referees.blade.php
+   View name: admin.assignments.validation.underassigned-referees
+   → Controller: app/Http/Controllers/Admin/AssignmentController.php
+   → View call: app/Http/Controllers/Admin/AssignmentController.php
+
+✅ USATA: resources/views/admin/assignments/assign-referees.blade.php
+   View name: admin.assignments.assign-referees
+   → Controller: app/Http/Controllers/Admin/AssignmentController.php
+   → View call: app/Http/Controllers/Admin/AssignmentController.php
+
+✅ USATA: resources/views/admin/clubs/index.blade.php
+   View name: admin.clubs.index
+   → Controller: app/Http/Controllers/Admin/ClubController.php
+   → View call: app/Http/Controllers/Admin/ClubController.php
+
+✅ USATA: resources/views/admin/clubs/_form.blade.php
+   View name: admin.clubs._form
+   → Blade: resources/views/admin/clubs/create.blade.php
+
+✅ USATA: resources/views/admin/clubs/edit.blade.php
+   View name: admin.clubs.edit
+   → Controller: app/Http/Controllers/Admin/ClubController.php
+   → View call: app/Http/Controllers/Admin/ClubController.php
+
+✅ USATA: resources/views/admin/clubs/create.blade.php
+   View name: admin.clubs.create
+   → Controller: app/Http/Controllers/Admin/ClubController.php
+   → View call: app/Http/Controllers/Admin/ClubController.php
+
+✅ USATA: resources/views/admin/clubs/show.blade.php
+   View name: admin.clubs.show
+   → Controller: app/Http/Controllers/Admin/ClubController.php
+   → View call: app/Http/Controllers/Admin/ClubController.php
+
+✅ USATA: resources/views/admin/tournament-types/index.blade.php
+   View name: admin.tournament-types.index
+   → Controller: app/Http/Controllers/Admin/TournamentTypeController.php
+   → View call: app/Http/Controllers/Admin/TournamentTypeController.php
+
+✅ USATA: resources/views/admin/tournament-types/edit.blade.php
+   View name: admin.tournament-types.edit
+   → Controller: app/Http/Controllers/Admin/TournamentTypeController.php
+   → View call: app/Http/Controllers/Admin/TournamentTypeController.php
+
+✅ USATA: resources/views/admin/tournament-types/create.blade.php
+   View name: admin.tournament-types.create
+   → Controller: app/Http/Controllers/Admin/TournamentTypeController.php
+   → View call: app/Http/Controllers/Admin/TournamentTypeController.php
+
+✅ USATA: resources/views/admin/tournament-notifications/index.blade.php
+   View name: admin.tournament-notifications.index
+   → Controller: app/Http/Controllers/Admin/NotificationController.php
+   → View call: app/Http/Controllers/Admin/NotificationController.php
+
+❌ NON USATA: resources/views/admin/tournament-notifications/documents.blade.php
+   View name: admin.tournament-notifications.documents
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/admin/tournament-notifications/_document_manager_modal.blade.php
+   View name: admin.tournament-notifications._document_manager_modal
+   → Blade: resources/views/admin/tournament-notifications/index.blade.php
+
+✅ USATA: resources/views/admin/tournament-notifications/edit.blade.php
+   View name: admin.tournament-notifications.edit
+   → Controller: app/Http/Controllers/Admin/NotificationController.php
+   → View call: app/Http/Controllers/Admin/NotificationController.php
+
+❌ NON USATA: resources/views/admin/tournament-notifications/create.blade.php
+   View name: admin.tournament-notifications.create
+   Nessuna referenza trovata
+
+❌ NON USATA: resources/views/admin/tournament-notifications/prepare.blade.php
+   View name: admin.tournament-notifications.prepare
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/admin/tournament-notifications/show.blade.php
+   View name: admin.tournament-notifications.show
+   → Controller: app/Http/Controllers/Admin/NotificationController.php
+   → View call: app/Http/Controllers/Admin/NotificationController.php
+
+❌ NON USATA: resources/views/admin/_partials/page-header.blade.php
+   View name: admin._partials.page-header
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/admin/dashboard.blade.php
+   View name: admin.dashboard
+   → Controller: app/Http/Controllers/Admin/DashboardController.php
+   → View call: app/Http/Controllers/Admin/DashboardController.php
+   → Route: routes/web.php
+
+✅ USATA: resources/views/admin/users/index.blade.php
+   View name: admin.users.index
+   → Controller: app/Http/Controllers/Admin/UserController.php
+   → View call: app/Http/Controllers/Admin/UserController.php
+   → Route: routes/admin/users.php
+
+✅ USATA: resources/views/admin/users/edit.blade.php
+   View name: admin.users.edit
+   → Controller: app/Http/Controllers/Admin/UserController.php
+   → View call: app/Http/Controllers/Admin/UserController.php
+
+❌ NON USATA: resources/views/admin/users/curricula.blade.php
+   View name: admin.users.curricula
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/admin/users/create.blade.php
+   View name: admin.users.create
+   → Controller: app/Http/Controllers/Admin/UserController.php
+   → View call: app/Http/Controllers/Admin/UserController.php
+
+✅ USATA: resources/views/admin/users/show.blade.php
+   View name: admin.users.show
+   → Controller: app/Http/Controllers/Admin/UserController.php
+   → View call: app/Http/Controllers/Admin/UserController.php
+
+❌ NON USATA: resources/views/admin/generic-notifications/index.blade.php
+   View name: admin.generic-notifications.index
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/admin/placeholder.blade.php
+   View name: admin.placeholder
+   → Route: routes/super-admin.php
+
+✅ USATA: resources/views/admin/monitoring/performance.blade.php
+   View name: admin.monitoring.performance
+   → Controller: app/Http/Controllers/Admin/MonitoringController.php
+   → View call: app/Http/Controllers/Admin/MonitoringController.php
+
+✅ USATA: resources/views/admin/monitoring/health.blade.php
+   View name: admin.monitoring.health
+   → Controller: app/Http/Controllers/Admin/MonitoringController.php
+   → View call: app/Http/Controllers/Admin/MonitoringController.php
+
+✅ USATA: resources/views/admin/monitoring/logs.blade.php
+   View name: admin.monitoring.logs
+   → Controller: app/Http/Controllers/Admin/MonitoringController.php
+   → View call: app/Http/Controllers/Admin/MonitoringController.php
+
+✅ USATA: resources/views/admin/monitoring/dashboard.blade.php
+   View name: admin.monitoring.dashboard
+   → Controller: app/Http/Controllers/Admin/MonitoringController.php
+   → View call: app/Http/Controllers/Admin/MonitoringController.php
+
+✅ USATA: resources/views/admin/monitoring/metrics.blade.php
+   View name: admin.monitoring.metrics
+   → Controller: app/Http/Controllers/Admin/MonitoringController.php
+   → View call: app/Http/Controllers/Admin/MonitoringController.php
+
+✅ USATA: resources/views/admin/tournaments/index.blade.php
+   View name: admin.tournaments.index
+   → Controller: app/Http/Controllers/Admin/TournamentController.php
+   → View call: app/Http/Controllers/Admin/TournamentController.php
+
+✅ USATA: resources/views/admin/tournaments/edit.blade.php
+   View name: admin.tournaments.edit
+   → Controller: app/Http/Controllers/Admin/TournamentController.php
+   → View call: app/Http/Controllers/Admin/TournamentController.php
+
+✅ USATA: resources/views/admin/tournaments/create.blade.php
+   View name: admin.tournaments.create
+   → Controller: app/Http/Controllers/Admin/TournamentController.php
+   → View call: app/Http/Controllers/Admin/TournamentController.php
+
+✅ USATA: resources/views/admin/tournaments/show.blade.php
+   View name: admin.tournaments.show
+   → Controller: app/Http/Controllers/Admin/TournamentController.php
+   → View call: app/Http/Controllers/Admin/TournamentController.php
+
+❌ NON USATA: resources/views/admin/notifications/index.blade.php
+   View name: admin.notifications.index
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/admin/notifications/prepare_notification.blade.php
+   View name: admin.notifications.prepare_notification
+   → Controller: app/Http/Controllers/Admin/NotificationController.php
+   → View call: app/Http/Controllers/Admin/NotificationController.php
+
+❌ NON USATA: resources/views/admin/notifications/stats.blade.php
+   View name: admin.notifications.stats
+   Nessuna referenza trovata
+
+❌ NON USATA: resources/views/admin/notifications/show.blade.php
+   View name: admin.notifications.show
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/admin/communications/index.blade.php
+   View name: admin.communications.index
+   → Controller: app/Http/Controllers/Admin/CommunicationController.php
+   → View call: app/Http/Controllers/Admin/CommunicationController.php
+
+✅ USATA: resources/views/admin/communications/create.blade.php
+   View name: admin.communications.create
+   → Controller: app/Http/Controllers/Admin/CommunicationController.php
+   → View call: app/Http/Controllers/Admin/CommunicationController.php
+
+✅ USATA: resources/views/admin/communications/show.blade.php
+   View name: admin.communications.show
+   → Controller: app/Http/Controllers/Admin/CommunicationController.php
+   → View call: app/Http/Controllers/Admin/CommunicationController.php
+
+✅ USATA: resources/views/user/curriculum/index.blade.php
+   View name: user.curriculum.index
+   → Controller: app/Http/Controllers/User/CurriculumController.php
+   → View call: app/Http/Controllers/User/CurriculumController.php
+
+✅ USATA: resources/views/user/quadranti/index.blade.php
+   View name: user.quadranti.index
+   → Controller: app/Http/Controllers/User/QuadrantiController.php
+   → View call: app/Http/Controllers/User/QuadrantiController.php
+
+❌ NON USATA: resources/views/user/quadranti/index-old.blade.php
+   View name: user.quadranti.index-old
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/user/documents/index.blade.php
+   View name: user.documents.index
+   → Controller: app/Http/Controllers/User/DocumentController.php
+   → View call: app/Http/Controllers/User/DocumentController.php
+
+✅ USATA: resources/views/shared/curriculum/detail.blade.php
+   View name: shared.curriculum.detail
+   → Blade: resources/views/admin/referees/curriculum.blade.php
+
+✅ USATA: resources/views/components/dropdown-link.blade.php
+   View name: components.dropdown-link
+   → Component usage: resources/views/layouts/navigation.blade.php
+
+✅ USATA: resources/views/components/primary-button.blade.php
+   View name: components.primary-button
+   → Component usage: resources/views/auth/reset-password.blade.php
+
+✅ USATA: resources/views/components/table-actions-club.blade.php
+   View name: components.table-actions-club
+   → Component usage: resources/views/admin/clubs/index.blade.php
+
+❌ NON USATA: resources/views/components/status-badge.blade.php
+   View name: components.status-badge
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/components/secondary-button.blade.php
+   View name: components.secondary-button
+   → Component usage: resources/views/profile/partials/delete-user-form.blade.php
+
+✅ USATA: resources/views/components/text-input.blade.php
+   View name: components.text-input
+   → Component usage: resources/views/auth/reset-password.blade.php
+
+❌ NON USATA: resources/views/components/action-buttons.blade.php
+   View name: components.action-buttons
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/components/application-logo.blade.php
+   View name: components.application-logo
+   → Component usage: resources/views/layouts/navigation.blade.php
+
+✅ USATA: resources/views/components/button.blade.php
+   View name: components.button
+   → Component usage: resources/views/components/action-buttons.blade.php
+
+✅ USATA: resources/views/components/nav-link.blade.php
+   View name: components.nav-link
+   → Component usage: resources/views/layouts/navigation.blade.php
+
+✅ USATA: resources/views/components/input-label.blade.php
+   View name: components.input-label
+   → Component usage: resources/views/auth/reset-password.blade.php
+
+✅ USATA: resources/views/components/input-error.blade.php
+   View name: components.input-error
+   → Component usage: resources/views/auth/reset-password.blade.php
+
+✅ USATA: resources/views/components/dropdown.blade.php
+   View name: components.dropdown
+   → Component usage: resources/views/layouts/navigation.blade.php
+
+❌ NON USATA: resources/views/components/filter.blade.php
+   View name: components.filter
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/components/table-actions.blade.php
+   View name: components.table-actions
+   → Component usage: resources/views/admin/clubs/index.blade.php
+
+✅ USATA: resources/views/components/responsive-nav-link.blade.php
+   View name: components.responsive-nav-link
+   → Component usage: resources/views/layouts/navigation.blade.php
+
+✅ USATA: resources/views/components/table-header.blade.php
+   View name: components.table-header
+   → Component usage: resources/views/admin/assignments/index.blade.php
+
+✅ USATA: resources/views/components/danger-button.blade.php
+   View name: components.danger-button
+   → Component usage: resources/views/profile/partials/delete-user-form.blade.php
+
+✅ USATA: resources/views/components/auth-session-status.blade.php
+   View name: components.auth-session-status
+   → Component usage: resources/views/auth/forgot-password.blade.php
+
+❌ NON USATA: resources/views/components/filter-field.blade.php
+   View name: components.filter-field
+   Nessuna referenza trovata
+
+❌ NON USATA: resources/views/components/referee-list.blade.php
+   View name: components.referee-list
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/components/modal.blade.php
+   View name: components.modal
+   → Component usage: resources/views/profile/partials/delete-user-form.blade.php
+
+❌ NON USATA: resources/views/components/table-actions-referee.blade.php
+   View name: components.table-actions-referee
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/dashboard.blade.php
+   View name: dashboard
+   → Controller: app/Http/Controllers/DashboardController.php
+   → View call: app/Http/Controllers/DashboardController.php
+   → Route: routes/referee/dashboard.php
+
+✅ USATA: resources/views/super-admin/institutional-emails/index.blade.php
+   View name: super-admin.institutional-emails.index
+   → Controller: app/Http/Controllers/SuperAdmin/InstitutionalEmailController.php
+   → View call: app/Http/Controllers/SuperAdmin/InstitutionalEmailController.php
+
+✅ USATA: resources/views/super-admin/institutional-emails/edit.blade.php
+   View name: super-admin.institutional-emails.edit
+   → Controller: app/Http/Controllers/SuperAdmin/InstitutionalEmailController.php
+   → View call: app/Http/Controllers/SuperAdmin/InstitutionalEmailController.php
+
+✅ USATA: resources/views/super-admin/institutional-emails/create.blade.php
+   View name: super-admin.institutional-emails.create
+   → Controller: app/Http/Controllers/SuperAdmin/InstitutionalEmailController.php
+   → View call: app/Http/Controllers/SuperAdmin/InstitutionalEmailController.php
+
+✅ USATA: resources/views/super-admin/clauses/index.blade.php
+   View name: super-admin.clauses.index
+   → Controller: app/Http/Controllers/SuperAdmin/NotificationClauseController.php
+   → View call: app/Http/Controllers/SuperAdmin/NotificationClauseController.php
+
+✅ USATA: resources/views/super-admin/clauses/edit.blade.php
+   View name: super-admin.clauses.edit
+   → Controller: app/Http/Controllers/SuperAdmin/NotificationClauseController.php
+   → View call: app/Http/Controllers/SuperAdmin/NotificationClauseController.php
+
+✅ USATA: resources/views/super-admin/clauses/create.blade.php
+   View name: super-admin.clauses.create
+   → Controller: app/Http/Controllers/SuperAdmin/NotificationClauseController.php
+   → View call: app/Http/Controllers/SuperAdmin/NotificationClauseController.php
+
+✅ USATA: resources/views/profile/edit.blade.php
+   View name: profile.edit
+   → Controller: app/Http/Controllers/ProfileController.php
+   → View call: app/Http/Controllers/ProfileController.php
+   → Route: routes/admin/reports.php
+
+✅ USATA: resources/views/profile/partials/delete-user-form.blade.php
+   View name: profile.partials.delete-user-form
+   → Blade: resources/views/profile/edit.blade.php
+
+✅ USATA: resources/views/profile/partials/update-password-form.blade.php
+   View name: profile.partials.update-password-form
+   → Blade: resources/views/profile/edit.blade.php
+
+✅ USATA: resources/views/profile/partials/update-profile-information-form.blade.php
+   View name: profile.partials.update-profile-information-form
+   → Blade: resources/views/profile/edit.blade.php
+
+✅ USATA: resources/views/layouts/navigation.blade.php
+   View name: layouts.navigation
+   → Blade: resources/views/layouts/app.blade.php
+
+✅ USATA: resources/views/layouts/guest.blade.php
+   View name: layouts.guest
+   → View call: app/View/Components/GuestLayout.php
+
+❌ NON USATA: resources/views/layouts/navigation-new-failed.blade.php
+   View name: layouts.navigation-new-failed
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/layouts/app.blade.php
+   View name: layouts.app
+   → View call: app/View/Components/AppLayout.php
+   → Blade: resources/views/referee/availabilities/index.blade.php
+
+✅ USATA: resources/views/layouts/admin.blade.php
+   View name: layouts.admin
+   → Blade: resources/views/admin/statistics/assegnazioni.blade.php
+
+❌ NON USATA: resources/views/layouts/pdf.blade.php
+   View name: layouts.pdf
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/documents/index.blade.php
+   View name: documents.index
+   → Controller: app/Http/Controllers/Admin/DocumentController.php
+   → View call: app/Http/Controllers/Admin/DocumentController.php
+
+✅ USATA: resources/views/documents/create.blade.php
+   View name: documents.create
+   → Controller: app/Http/Controllers/Admin/DocumentController.php
+   → View call: app/Http/Controllers/Admin/DocumentController.php
+
+❌ NON USATA: resources/views/errors/404.blade.php
+   View name: errors.404
+   Nessuna referenza trovata
+
+❌ NON USATA: resources/views/errors/500.blade.php
+   View name: errors.500
+   Nessuna referenza trovata
+
+❌ NON USATA: resources/views/errors/403.blade.php
+   View name: errors.403
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/tournaments/index.blade.php
+   View name: tournaments.index
+   → Controller: app/Http/Controllers/TournamentController.php
+   → View call: app/Http/Controllers/TournamentController.php
+
+✅ USATA: resources/views/tournaments/calendar.blade.php
+   View name: tournaments.calendar
+   → Controller: app/Http/Controllers/TournamentController.php
+   → View call: app/Http/Controllers/TournamentController.php
+
+❌ NON USATA: resources/views/tournaments/index_admin.blade.php
+   View name: tournaments.index_admin
+   Nessuna referenza trovata
+
+✅ USATA: resources/views/tournaments/show.blade.php
+   View name: tournaments.show
+   → Controller: app/Http/Controllers/TournamentController.php
+   → View call: app/Http/Controllers/TournamentController.php
+
+
+SUMMARY FINALE
+==============
+Totale view analizzate:      132
+View USATE: 105
+View NON USATE: 27
+
+LISTA VIEW NON USATE:
+=====================
+resources/views/emails/club-notification.blade.php
+resources/views/emails/unified-assignment-notification.blade.php
+resources/views/emails/unified-club-assignment-notification.blade.php
+resources/views/emails/referee-assignment.blade.php
+resources/views/admin/statistics/export.blade.php
+resources/views/admin/tournament-notifications/documents.blade.php
+resources/views/admin/tournament-notifications/create.blade.php
+resources/views/admin/tournament-notifications/prepare.blade.php
+resources/views/admin/_partials/page-header.blade.php
+resources/views/admin/users/curricula.blade.php
+resources/views/admin/generic-notifications/index.blade.php
+resources/views/admin/notifications/index.blade.php
+resources/views/admin/notifications/stats.blade.php
+resources/views/admin/notifications/show.blade.php
+resources/views/user/quadranti/index-old.blade.php
+resources/views/components/status-badge.blade.php
+resources/views/components/action-buttons.blade.php
+resources/views/components/filter.blade.php
+resources/views/components/filter-field.blade.php
+resources/views/components/referee-list.blade.php
+resources/views/components/table-actions-referee.blade.php
+resources/views/layouts/navigation-new-failed.blade.php
+resources/views/layouts/pdf.blade.php
+resources/views/errors/404.blade.php
+resources/views/errors/500.blade.php
+resources/views/errors/403.blade.php
+resources/views/tournaments/index_admin.blade.php
