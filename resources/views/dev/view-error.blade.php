@@ -77,15 +77,53 @@
             </div>
         </div>
 
-        {{-- File Info --}}
-        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-3">📄 Dettagli File</h2>
-            <div class="space-y-2 text-sm">
-                <p><strong>File:</strong> <code class="bg-gray-100 px-2 py-1 rounded text-xs">{{ $file }}</code>
-                </p>
-                <p><strong>Linea:</strong> <code class="bg-gray-100 px-2 py-1 rounded">{{ $line }}</code></p>
-            </div>
-        </div>
+{{-- File Info --}}
+<div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+    <h2 class="text-lg font-semibold text-gray-900 mb-3">📄 Dettagli File</h2>
+    <div class="space-y-2 text-sm">
+        @php
+            $originalFile = $file;
+            // Se è un file compilato, cerca la view originale
+            if (str_contains($file, 'storage/framework/views')) {
+                try {
+                    $compiled = file_get_contents($file);
+                    if (preg_match('/\/\* (.+\.blade\.php) \*\//', $compiled, $matches)) {
+                        $originalFile = $matches[1];
+                    }
+                } catch (\Throwable $e) {}
+            }
+        @endphp
+
+        @if($originalFile !== $file)
+            <p><strong>View Originale:</strong> <code class="bg-gray-100 px-2 py-1 rounded text-xs">{{ $originalFile }}</code></p>
+        @endif
+
+        <p><strong>File Compilato:</strong> <code class="bg-gray-100 px-2 py-1 rounded text-xs">{{ $file }}</code></p>
+        <p><strong>Linea:</strong> <code class="bg-gray-100 px-2 py-1 rounded">{{ $line }}</code></p>
+
+        {{-- Mostra il codice intorno alla linea --}}
+        @if(file_exists($file))
+            @php
+                $lines = file($file);
+                $start = max(0, $line - 3);
+                $end = min(count($lines), $line + 2);
+                $codeSnippet = '';
+                for ($i = $start; $i < $end; $i++) {
+                    $lineNum = $i + 1;
+                    $prefix = ($lineNum == $line) ? '>>> ' : '    ';
+                    $codeSnippet .= $prefix . str_pad($lineNum, 4) . ': ' . htmlspecialchars($lines[$i]);
+                }
+            @endphp
+
+            @if(!empty($codeSnippet))
+                <div class="mt-3">
+                    <strong>Codice:</strong>
+                    <pre class="bg-gray-900 text-green-400 p-3 rounded text-xs overflow-x-auto mt-2">{{ $codeSnippet }}</pre>
+                </div>
+            @endif
+        @endif
+    </div>
+</div>
 
         {{-- Back Button --}}
         <div class="text-center">
