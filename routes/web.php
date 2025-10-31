@@ -174,4 +174,4 @@ if (app()->environment(['local', 'staging'])) {
     require __DIR__ . '/dev/view-preview.php';
     require __DIR__ . '/dev/view-test-all.php'; // ⚠️ AGGIUNGI
 }
-
+require __DIR__.'/maintenance.php';

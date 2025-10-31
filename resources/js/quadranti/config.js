@@ -70,7 +70,7 @@ export const ROUND_TYPES = {
 
 export const COMPACT_TYPES = {
   EARLY_LATE: 'Early/Late',
-  CONTINUOUS: 'Early(<12)'
+  CONTINUOUS: 'Early(<14)'
 };
 
 // Colors for table display

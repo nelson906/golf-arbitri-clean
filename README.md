@@ -1,66 +1,79 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# ArbitriGolf
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Golf referee management system - Sistema di gestione per arbitri di golf.
 
-## About Laravel
+## Overview / Panoramica
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+ArbitriGolf is a comprehensive management system for golf referees, designed to streamline tournament assignments, referee scheduling, and administrative tasks. This project represents an incremental migration from a legacy system to a more structured and maintainable Laravel-based solution.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+ArbitriGolf è un sistema completo di gestione per arbitri di golf, progettato per semplificare le assegnazioni ai tornei, la pianificazione degli arbitri e le attività amministrative. Questo progetto rappresenta una migrazione incrementale da un sistema legacy verso una soluzione basata su Laravel più strutturata e manutenibile.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Key Features / Funzionalità Principali
 
-## Learning Laravel
+- 📅 Tournament management / Gestione tornei
+- 👥 Referee database and profiles / Database arbitri e profili
+- 📋 Assignment system / Sistema di assegnazioni
+- 🏌️ Golf club management / Gestione circoli golf
+- 📊 Reporting and statistics / Report e statistiche
+- 🔐 Secure authentication / Autenticazione sicura
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## Installation / Installazione
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+# Clone the repository / Clonare il repository
+git clone https://github.com/nelson906/arbitrigolf.git
+cd arbitrigolf
 
-## Laravel Sponsors
+# Install dependencies / Installare le dipendenze
+composer install
+npm install
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+# Configure .env file / Configurare il file .env
+cp .env.example .env
+php artisan key:generate
 
-### Premium Partners
+# Run migrations / Eseguire le migrazioni
+php artisan migrate
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+# Build assets / Compilare gli asset
+npm run build
+```
 
-## Contributing
+## Project Structure / Struttura del Progetto
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+The project follows the standard Laravel structure with some customizations:
+Il progetto segue la struttura standard di Laravel con alcune personalizzazioni:
 
-## Code of Conduct
+```
+├── app/
+│   ├── Models/          # Eloquent models / Modelli Eloquent
+│   ├── Http/
+│   │   └── Controllers/ # Application logic / Logica applicativa
+├── resources/
+│   └── views/           # Blade views / Viste Blade
+├── routes/              # Route definitions / Definizione delle route
+├── database/
+│   └── migrations/      # Database migrations / Migrazioni database
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Important Notes / Note Importanti
 
-## Security Vulnerabilities
+- Cannot run `php artisan tinker` in this environment / Non è possibile eseguire `php artisan tinker` in questo ambiente
+- For document generation, use the gestione-arbitri system / Per la generazione di documenti, utilizzare il sistema gestione-arbitri
+- Report issues or unclear situations with suggestions on how to address them / Segnalare problemi o situazioni poco chiare con suggerimenti su come affrontarli
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Contributing / Contribuire
 
-## License
+Contributions are welcome! Please feel free to submit a Pull Request.
+I contributi sono benvenuti! Sentiti libero di inviare una Pull Request.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## License / Licenza
+
+This project is open-sourced software licensed under the [MIT license](LICENSE).
+Questo progetto è un software open source rilasciato sotto [licenza MIT](LICENSE).
+
+## Contact / Contatti
+
+For questions or support, please open an issue in the GitHub repository.
+Per domande o supporto, apri una issue nel repository GitHub.

@@ -166,17 +166,37 @@ class QuadrantiController extends Controller
             $dateTime->setTime(12, 0, 0);
             
             // Calcola il numero di giorni dall'inizio dell'anno
-            $dayOfYear = $dateTime->format('z');
+            $dayOfYear = intval($dateTime->format('z')) + 1; // +1 perché format('z') parte da 0
             
-            // Latitudine e longitudine in radianti
-            $lat = deg2rad($coord['lat']);
-            $lon = deg2rad($coord['lon']);
+            // Latitudine e longitudine
+            $lat = $coord['lat'];
+            $lon = $coord['lon'];
             
-            // Calcola la declinazione solare
-            $declinazione = 0.4093 * sin(2 * pi() * ($dayOfYear - 81) / 365);
+            // Numero di giorni dal 1 gennaio 2000
+            $n = $dateTime->diff(new \DateTime('2000-01-01'))->days;
             
-            // Calcola l'angolo orario del sole all'alba/tramonto
-            $cosH = -tan($lat) * tan($declinazione);
+            // Media longitudine del sole (in gradi)
+            $L = fmod(280.460 + 0.9856474 * $n, 360);
+            
+            // Media anomalia del sole (in gradi)
+            $g = fmod(357.528 + 0.9856003 * $n, 360);
+            
+            // Longitudine eclittica del sole
+            $lambda = $L + 1.915 * sin(deg2rad($g)) + 0.020 * sin(deg2rad(2 * $g));
+            
+            // Obliquità dell'eclittica
+            $epsilon = 23.439 - 0.0000004 * $n;
+            
+            // Declinazione del sole (in gradi)
+            $delta = rad2deg(asin(sin(deg2rad($epsilon)) * sin(deg2rad($lambda))));
+            
+            // Equazione del tempo (in ore)
+            $E = -1.915 * sin(deg2rad($g)) - 0.020 * sin(deg2rad(2 * $g)) + 2.466 * sin(deg2rad(2 * $lambda)) - 0.053 * sin(deg2rad(4 * $lambda));
+            $E = $E * 4 / 60; // converti da gradi a ore
+            
+            // Calcola l'angolo orario del sole all'alba/tramonto (in gradi)
+            // Usa -0.833° per considerare rifrazione + diametro solare
+            $cosH = (sin(deg2rad(-0.833)) - sin(deg2rad($lat)) * sin(deg2rad($delta))) / (cos(deg2rad($lat)) * cos(deg2rad($delta)));
             
             // Gestisci i casi estremi (sole sempre sopra o sotto l'orizzonte)
             if ($cosH < -1) {
@@ -193,30 +213,29 @@ class QuadrantiController extends Controller
                 ]);
             }
             
-            // Calcola l'angolo orario
-            $H = acos($cosH);
+            // Calcola l'angolo orario (in gradi, poi converti in ore)
+            $H = rad2deg(acos($cosH));
             
-            // Equazione del tempo (correzione per l'orbita ellittica)
-            $E = 0.0172 * sin(2 * pi() * ($dayOfYear - 4) / 365) - 0.1340 * sin(4 * pi() * $dayOfYear / 365);
+            // Calcola ora locale del mezzogiorno solare
+            $transit = 12 - $E - ($lon / 15);
             
-            // Tempo solare medio
-            $sunrise_solar = 12 - $H * 12 / pi() - $E;
-            $sunset_solar = 12 + $H * 12 / pi() - $E;
+            // Calcola alba e tramonto
+            $sunrise_local = $transit - ($H / 15);
+            $sunset_local = $transit + ($H / 15);
             
-            // Correzione per la longitudine (differenza dal meridiano di riferimento)
-            // Il meridiano di riferimento per l'Europa Centrale è 15°E
-            $longitude_correction = ($coord['lon'] - 15) * 4 / 60; // 4 minuti per grado
+            // Determina se è in vigore l'ora legale (ultima domenica marzo - ultima domenica ottobre)
+            $timezone_offset = 1; // CET (ora solare)
             
-            // Applica le correzioni
-            $sunrise_local = $sunrise_solar + $longitude_correction;
-            $sunset_local = $sunset_solar + $longitude_correction;
+            // Calcola l'inizio e la fine dell'ora legale per l'anno corrente
+            // Ora legale: ultima domenica di marzo alle 2:00 -> ultima domenica di ottobre alle 3:00
+            $lastSundayMarch = new \DateTime("last sunday of march $anno");
+            $lastSundayOctober = new \DateTime("last sunday of october $anno");
             
-            // Aggiungi 1 ora per l'ora solare europea (CET) e un'altra per l'ora legale se applicabile
-            $timezone_offset = 1; // CET
-            if ($dateTime->format('I') == 1) {
+            if ($dateTime >= $lastSundayMarch && $dateTime < $lastSundayOctober) {
                 $timezone_offset = 2; // CEST (ora legale)
             }
             
+            // Applica il fuso orario (rifrazione già inclusa nel calcolo con -0.833°)
             $sunrise_final = $sunrise_local + $timezone_offset;
             $sunset_final = $sunset_local + $timezone_offset;
             
@@ -241,11 +260,12 @@ class QuadrantiController extends Controller
             
             Log::info('Risultati calcolo alba/tramonto', [
                 'dayOfYear' => $dayOfYear,
-                'declinazione' => $declinazione,
-                'H' => rad2deg($H),
-                'sunrise_solar' => $sunrise_solar,
-                'sunset_solar' => $sunset_solar,
-                'longitude_correction' => $longitude_correction,
+                'declinazione' => $delta,
+                'H' => $H,
+                'equation_of_time' => $E,
+                'transit' => $transit,
+                'sunrise_local' => $sunrise_local,
+                'sunset_local' => $sunset_local,
                 'timezone_offset' => $timezone_offset,
                 'sunrise' => $sunrise,
                 'sunset' => $sunset

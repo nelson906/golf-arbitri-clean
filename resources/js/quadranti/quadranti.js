@@ -160,18 +160,21 @@ $('#federgolf-gare-select').on('change', () => this.handleFedergolfGaraSelected(
   /**
    * Handles form input changes
    */
- handleFormChange() {
-  // Update configuration from form values
-  this.config.players = $('#players').val();
-  this.config.proette = $('#proette').val();
-  this.config.playersPerFlight = $('#players_x_flight').val();
-  this.config.giornata = $('#giornata').val();
-  this.config.garaNT = $('#gara_NT').val();
-  this.config.round = $('#round').val();
-  this.config.startTime = $('#start_time').val();
-  this.config.gap = $('#gap').val();
-  this.config.compatto = $('#compatto').val();
-  this.config.doppiePartenze = $('#doppie_partenze').val();
+  handleFormChange() {
+    // Update configuration from form values - handle empty fields
+    const playersVal = $('#players').val();
+    const proetteVal = $('#proette').val();
+    
+    this.config.players = playersVal === '' ? 0 : playersVal;
+    this.config.proette = proetteVal === '' ? 0 : proetteVal;
+    this.config.playersPerFlight = $('#players_x_flight').val();
+    this.config.giornata = $('#giornata').val();
+    this.config.garaNT = $('#gara_NT').val();
+    this.config.round = $('#round').val();
+    this.config.startTime = $('#start_time').val();
+    this.config.gap = $('#gap').val();
+    this.config.compatto = $('#compatto').val();
+    this.config.doppiePartenze = $('#doppie_partenze').val();
 
   // Save configuration
   this.saveConfiguration();
@@ -315,25 +318,21 @@ $('#federgolf-gare-select').on('change', () => this.handleFedergolfGaraSelected(
     $('#sunset').html(data.sunset);
   }
 
-/**
- * Toggles compact option visibility based on player count and tee configuration
- */
-toggleCompactOption() {
-  const totalPlayers = parseInt(this.config.players) + parseInt(this.config.proette);
-  const mod = parseInt(this.config.playersPerFlight);
-  const doppiePartenze = this.config.doppiePartenze;
-
-  // Calcola quanti voli ci sono
-  const totalFlights = Math.ceil(totalPlayers / mod);
-
-  // Il selettore è visibile solo con Doppie Partenze
-  // E solo se ci sono meno di 24 voli totali (12 buche occupate per lato)
-  if (doppiePartenze === TEE_TYPES.DOUBLE && totalFlights <= 24) {
-    $('.compatto').show();
-  } else {
-    $('.compatto').hide();
+  /**
+   * Toggles compact option visibility based on player count
+   */
+  toggleCompactOption() {
+    const players = parseInt(this.config.players) || 0;
+    const proette = parseInt(this.config.proette) || 0;
+    const totalPlayers = players + proette;
+    const mod = parseInt(this.config.playersPerFlight);
+    
+    if (totalPlayers <= mod * 32) {
+      $('.compatto').show();
+    } else {
+      $('.compatto').hide();
+    }
   }
-}
 
   /**
    * Updates cross time display

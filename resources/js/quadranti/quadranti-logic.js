@@ -380,21 +380,21 @@ export class QuadrantiLogic {
         return groups;
     }
 
-    /**
-     * Generates double tee configuration with new logic
-     * @param {string} round - 'prima' or 'seconda'
-     * @returns {string} HTML table content
-     */
-    generateDoubleTee(round) {
-        const { atleti, atlete } = this.getPlayerArrays();
-        const mod = parseInt(this.config.playersPerFlight);
-        const players = parseInt(this.config.players);
-        const proette = parseInt(this.config.proette);
-        const dayNumber = round === ROUND_TYPES.SECOND ? 2 : 1;
+  /**
+   * Generates double tee configuration with new logic
+   * @param {string} round - 'prima' or 'seconda'
+   * @returns {string} HTML table content
+   */
+  generateDoubleTee(round) {
+    const { atleti, atlete } = this.getPlayerArrays();
+    const mod = parseInt(this.config.playersPerFlight) || 3;
+    const players = parseInt(this.config.players) || 0;
+    const proette = parseInt(this.config.proette) || 0;
+    const dayNumber = round === ROUND_TYPES.SECOND ? 2 : 1;
 
-        // Generate player groups with new logic
-        const maleGroups = this.generatePlayerGroups(players, mod, atleti, 'M');
-        const femaleGroups = proette > 0 ? this.generatePlayerGroups(proette, mod, atlete, 'F') : [];
+    // Generate player groups with new logic
+    const maleGroups = (players > 0) ? this.generatePlayerGroups(players, mod, atleti, 'M') : [];
+    const femaleGroups = (proette > 0) ? this.generatePlayerGroups(proette, mod, atlete, 'F') : [];
 
         // Filter groups by type
         const maleEarlyGroups = maleGroups.filter(g => g.type === 'Early');
@@ -467,17 +467,15 @@ export class QuadrantiLogic {
         }
         const lastEarlyTime = currentTime;
 
-        // CORREZIONE: Logica diversa per Early/Late vs Early(<12)
-        let firstLateTime;
-        if (compatto === COMPACT_TYPES.EARLY_LATE) {
-            // Early/Late: attesa completa metà tempo gara per evitare incroci
-            firstLateTime = addTime(lastEarlyTime, halfTime(roundTime));
-            console.log('DEBUG: Using EARLY_LATE mode, adding', halfTime(roundTime)); // DEBUG
-        } else {
-            // Early(<12): partenza immediata o con gap minimo (solo 10 minuti extra)
-            firstLateTime = addTime(lastEarlyTime, '00:10');
-            console.log('DEBUG: Using CONTINUOUS mode, adding 00:10'); // DEBUG
-        }
+    // Calculate first late time
+    let firstLateTime = lastEarlyTime;
+    if (compatto === COMPACT_TYPES.EARLY_LATE) {
+      firstLateTime = addTime(firstLateTime, halfTime(roundTime));
+    } else {
+    // Early(<12): partenza immediata o con gap minimo (solo 10 minuti extra)
+    firstLateTime = addTime(lastEarlyTime, '00:10');
+    console.log('DEBUG: Using CONTINUOUS mode, adding 00:10'); // DEBUG
+    }
 
         // Calcola fine gara
         const totalGroups = maleGroups.length + femaleGroups.length;
@@ -567,14 +565,13 @@ export class QuadrantiLogic {
             // Add spacing and wait for crossing
             html += '<tr><td colspan="20" class="py-2">&nbsp;</td></tr>';
 
-            // CORREZIONE: Wait for early players to pass through
-            if (compatto === COMPACT_TYPES.EARLY_LATE) {
-                // Early/Late: attesa completa metà tempo gara
-                currentTime = addTime(lastEarlyTime, halfTime(roundTime));
-            } else {
-                // Early(<12): partenza immediata con gap minimo (nessun crossing)
-                currentTime = addTime(lastEarlyTime, '00:10');
-            }
+      // Wait for early players to pass through
+      if (compatto === COMPACT_TYPES.EARLY_LATE) {
+        currentTime = addTime(currentTime, halfTime(roundTime));
+      } else {
+  // Early(<12): partenza immediata con gap minimo (nessun crossing)
+  currentTime = addTime(lastEarlyTime, '00:10');
+      }
 
             firstLateTime = currentTime;
 
@@ -673,14 +670,12 @@ export class QuadrantiLogic {
             // Add spacing and wait
             html += '<tr><td colspan="20" class="py-2">&nbsp;</td></tr>';
 
-            // CORREZIONE: Wait for early players to pass through
-            if (compatto === COMPACT_TYPES.EARLY_LATE) {
-                // Early/Late: attesa completa metà tempo gara
-                currentTime = addTime(lastEarlyTime, halfTime(roundTime));
-            } else {
-                // Early(<12): partenza immediata con gap minimo (nessun crossing)
-                currentTime = addTime(lastEarlyTime, '00:10');
-            }
+  if (compatto === COMPACT_TYPES.EARLY_LATE) {
+    currentTime = addTime(currentTime, halfTime(roundTime));
+  } else {
+  // Early(<12): partenza immediata con gap minimo (nessun crossing)
+  currentTime = addTime(lastEarlyTime, '00:10');
+  }
 
             firstLateTime = currentTime;
 
@@ -807,14 +802,13 @@ export class QuadrantiLogic {
             // Add spacing and wait for crossing
             html += '<tr><td colspan="20" class="py-2">&nbsp;</td></tr>';
 
-            // CORREZIONE: Wait for early players to pass through
-            if (compatto === COMPACT_TYPES.EARLY_LATE) {
-                // Early/Late: attesa completa metà tempo gara
-                currentTime = addTime(lastEarlyTime, halfTime(roundTime));
-            } else {
-                // Early(<12): partenza immediata con gap minimo (nessun crossing)
-                currentTime = addTime(lastEarlyTime, '00:10');
-            }
+      // Wait for early players to pass through
+      if (compatto === COMPACT_TYPES.EARLY_LATE) {
+        currentTime = addTime(currentTime, halfTime(roundTime));
+      } else {
+  // Early(<12): partenza immediata con gap minimo (nessun crossing)
+  currentTime = addTime(lastEarlyTime, '00:10');
+      }
 
             firstLateTime = currentTime;
 
@@ -913,14 +907,12 @@ export class QuadrantiLogic {
             // Add spacing and wait
             html += '<tr><td colspan="20" class="py-2">&nbsp;</td></tr>';
 
-            // CORREZIONE: Wait for early players to pass through
-            if (compatto === COMPACT_TYPES.EARLY_LATE) {
-                // Early/Late: attesa completa metà tempo gara
-                currentTime = addTime(lastEarlyTime, halfTime(roundTime));
-            } else {
-                // Early(<12): partenza immediata con gap minimo (nessun crossing)
-                currentTime = addTime(lastEarlyTime, '00:10');
-            }
+  if (compatto === COMPACT_TYPES.EARLY_LATE) {
+    currentTime = addTime(currentTime, halfTime(roundTime));
+  } else {
+  // Early(<12): partenza immediata con gap minimo (nessun crossing)
+  currentTime = addTime(lastEarlyTime, '00:10');
+  }
 
             firstLateTime = currentTime;
 
