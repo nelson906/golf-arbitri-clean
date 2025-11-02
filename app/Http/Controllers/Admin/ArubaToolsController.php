@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use App\Helpers\SystemInfo;
+use App\Helpers\SystemOperations;
 
 class ArubaToolsController extends Controller
 {
@@ -77,7 +78,6 @@ class ArubaToolsController extends Controller
             }
 
             return back()->with('success', implode('<br>', $output));
-
         } catch (\Exception $e) {
             return back()->with('error', 'Errore: ' . $e->getMessage());
         }
@@ -131,7 +131,6 @@ class ArubaToolsController extends Controller
             }
 
             return back()->with('error', 'File log non trovato');
-
         } catch (\Exception $e) {
             return back()->with('error', 'Errore: ' . $e->getMessage());
         }
@@ -178,5 +177,176 @@ class ArubaToolsController extends Controller
         }
 
         return back()->with('info', implode('<br>', $results));
+    }
+
+    // ================================
+    // COMPOSER OPERATIONS
+    // ================================
+
+    public function composerIndex()
+    {
+        $composerVersion = SystemOperations::getComposerVersion();
+        $outdated = SystemOperations::composerOutdated();
+
+        return view('aruba-admin.composer', compact('composerVersion', 'outdated'));
+    }
+
+    public function composerDumpAutoload()
+    {
+        $result = SystemOperations::composerDumpAutoload();
+
+        $message = $result['success']
+            ? '✅ Autoload rigenerato'
+            : '❌ Errore: ' . $result['output'];
+
+        return back()->with($result['success'] ? 'success' : 'error', $message);
+    }
+
+    // ================================
+    // GIT OPERATIONS
+    // ================================
+
+    public function gitIndex()
+    {
+        $isAvailable = SystemOperations::isGitAvailable();
+        $branch = SystemOperations::getCurrentBranch();
+        $commit = SystemOperations::getLatestCommit();
+        $status = SystemOperations::gitStatus();
+
+        return view('aruba-admin.git', compact('isAvailable', 'branch', 'commit', 'status'));
+    }
+
+    public function gitPull()
+    {
+        $result = SystemOperations::gitPull();
+
+        return back()->with(
+            $result['success'] ? 'success' : 'error',
+            $result['output']
+        );
+    }
+
+    /**
+     * Diagnostica Composer
+     */
+    public function composerDiagnostic()
+    {
+        $possiblePaths = [
+            'composer',
+            '/usr/local/bin/composer',
+            '/usr/bin/composer',
+            base_path('composer.phar'),
+            '/opt/alt/php81/usr/bin/composer',
+            '/opt/alt/php82/usr/bin/composer',
+            '/opt/alt/php83/usr/bin/composer',
+            getenv('HOME') . '/composer',
+            getenv('HOME') . '/bin/composer',
+        ];
+
+        $output = "🔍 RICERCA COMPOSER SUL SERVER\n";
+        $output .= str_repeat("=", 50) . "\n\n";
+
+        $found = false;
+        $foundPath = null;
+
+        foreach ($possiblePaths as $path) {
+            $output .= "Tentativo: {$path}\n";
+
+            try {
+                exec("{$path} --version 2>&1", $result, $returnCode);
+
+                if ($returnCode === 0 && !empty($result)) {
+                    $output .= "  ✅ TROVATO!\n";
+                    $output .= "  Versione: " . implode("\n", $result) . "\n";
+                    $found = true;
+                    $foundPath = $path;
+                    break;
+                } else {
+                    $output .= "  ❌ Non trovato (exit code: {$returnCode})\n";
+                }
+            } catch (\Exception $e) {
+                $output .= "  ❌ Errore: " . $e->getMessage() . "\n";
+            }
+
+            $output .= "\n";
+        }
+
+        $output .= str_repeat("=", 50) . "\n";
+
+        if ($found) {
+            $output .= "\n✅ COMPOSER TROVATO IN: {$foundPath}\n";
+            $output .= "\nPer usarlo, aggiorna il percorso nel codice.\n";
+        } else {
+            $output .= "\n❌ COMPOSER NON TROVATO\n";
+            $output .= "\nPossibili soluzioni:\n";
+            $output .= "1. Installa Composer locale: wget https://getcomposer.org/composer.phar\n";
+            $output .= "2. Contatta supporto Aruba per verificare disponibilità\n";
+            $output .= "3. Usa Composer in locale e carica vendor/ via FTP\n";
+        }
+
+        return response()->json([
+            'found' => $found,
+            'path' => $foundPath,
+            'output' => $output,
+        ]);
+    }
+
+
+    // ================================
+    // DATABASE BACKUP
+    // ================================
+
+    public function databaseIndex()
+    {
+        $backups = SystemOperations::listDatabaseBackups();
+
+        return view('aruba-admin.database', compact('backups'));
+    }
+
+    public function databaseBackup()
+    {
+        $result = SystemOperations::backupDatabase();
+
+        if ($result['success']) {
+            return back()->with('success', "✅ Backup creato: {$result['filename']} (" . number_format($result['size'] / 1024 / 1024, 2) . " MB)");
+        }
+
+        return back()->with('error', '❌ ' . $result['output']);
+    }
+
+    public function databaseRestore(Request $request)
+    {
+        $filename = $request->input('filename');
+        $result = SystemOperations::restoreDatabase($filename);
+
+        return back()->with(
+            $result['success'] ? 'success' : 'error',
+            $result['success'] ? "✅ Database ripristinato da: {$filename}" : '❌ ' . $result['output']
+        );
+    }
+
+    // ================================
+    // SERVER MONITORING
+    // ================================
+
+    public function serverMonitoring()
+    {
+        $serverLoad = SystemOperations::getServerLoad();
+        $phpProcesses = SystemOperations::listPhpProcesses();
+        $storageSize = SystemOperations::getDirectorySize(storage_path());
+
+        return view('aruba-admin.monitoring', compact('serverLoad', 'phpProcesses', 'storageSize'));
+    }
+
+    // ================================
+    // SECURITY
+    // ================================
+
+    public function securityIndex()
+    {
+        $sensitiveFiles = SystemOperations::checkSensitiveFiles();
+        $suspiciousFiles = SystemOperations::scanForSuspiciousFiles();
+
+        return view('aruba-admin.security', compact('sensitiveFiles', 'suspiciousFiles'));
     }
 }

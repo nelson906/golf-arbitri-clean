@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['auth'])->group(function () {
 
     // Verifica funzioni disabilitate (TEMPORANEO - per debugging)
-    Route::get('/admin/check-disabled-functions', function() {
+    Route::get('/admin/check-disabled-functions', function () {
         if (auth()->id() !== 14) {
             abort(403);
         }
@@ -33,7 +33,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Migration (solo utente ID 1)
-    Route::get('/admin/run-migration', function() {
+    Route::get('/admin/run-migration', function () {
         if (auth()->id() !== 14) {
             abort(403, 'Solo il primo utente registrato');
         }
@@ -47,7 +47,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Imposta Super Admin (solo utente ID 1)
-    Route::get('/admin/set-super-admin', function() {
+    Route::get('/admin/set-super-admin', function () {
         $user = auth()->user();
 
         if ($user->id !== 14) {
@@ -95,5 +95,30 @@ Route::prefix('aruba-admin')
             ->name('permissions');
         Route::post('/permissions/fix', [ArubaToolsController::class, 'fixPermissions'])
             ->name('permissions.fix');
-    });
 
+        // Composer
+        Route::get('/composer', [ArubaToolsController::class, 'composerIndex'])
+            ->name('composer.index');
+        Route::post('/composer/dump-autoload', [ArubaToolsController::class, 'composerDumpAutoload'])
+            ->name('composer.dump');
+
+        // Database Backup
+        Route::get('/database', [ArubaToolsController::class, 'databaseIndex'])
+            ->name('database.index');
+        Route::post('/database/backup', [ArubaToolsController::class, 'databaseBackup'])
+            ->name('database.backup');
+        Route::post('/database/restore', [ArubaToolsController::class, 'databaseRestore'])
+            ->name('database.restore');
+
+        // Server Monitoring
+        Route::get('/monitoring', [ArubaToolsController::class, 'serverMonitoring'])
+            ->name('monitoring');
+
+        // Security
+        Route::get('/security', [ArubaToolsController::class, 'securityIndex'])
+            ->name('security');
+
+        // Composer Diagnostic
+        Route::post('/composer/diagnostic', [ArubaToolsController::class, 'composerDiagnostic'])
+            ->name('composer.diagnostic');
+    });
