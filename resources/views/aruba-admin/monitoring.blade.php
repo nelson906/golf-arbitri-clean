@@ -149,8 +149,8 @@
         </h2>
 
         @if($phpProcesses['count'] > 0)
-            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <pre class="text-xs font-mono text-gray-700 overflow-x-auto">@foreach($phpProcesses['processes'] as $process){{ $process }}
+            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 overflow-x-auto">
+                <pre class="text-xs font-mono text-gray-700 whitespace-pre-wrap break-words">@foreach($phpProcesses['processes'] as $process){{ $process }}
 @endforeach</pre>
             </div>
         @else
