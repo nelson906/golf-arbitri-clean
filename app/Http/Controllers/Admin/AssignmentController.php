@@ -9,6 +9,7 @@ use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Models\User;
 use App\Models\Availability;
+use App\Traits\HasZoneVisibility;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,6 +20,7 @@ use App\Services\AssignmentValidationService;
 
 class AssignmentController extends Controller
 {
+    use HasZoneVisibility;
     protected AssignmentValidationService $validationService;
 
     public function __construct(AssignmentValidationService $validationService)
@@ -32,7 +34,6 @@ class AssignmentController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
 
         $query = Assignment::with(['tournament.club.zone', 'user', 'tournament.tournamentType']);
 
@@ -52,47 +53,41 @@ class AssignmentController extends Controller
                     $query->join('users', 'assignments.user_id', '=', 'users.id')
                         ->orderBy('users.last_name')
                         ->orderBy('users.first_name')
-                        ->select('assignments.*'); // ← FIX AMBIGUITÀ
+                        ->select('assignments.*');
                     break;
                 case 'surname_desc':
                     $query->join('users', 'assignments.user_id', '=', 'users.id')
                         ->orderByDesc('users.last_name')
                         ->orderByDesc('users.first_name')
-                        ->select('assignments.*'); // ← FIX AMBIGUITÀ
+                        ->select('assignments.*');
                     break;
                 default:
-                    $query->orderBy('assignments.id', 'desc'); // ← SPECIFICA TABELLA
+                    $query->orderBy('assignments.id', 'desc');
             }
         } else {
-            $query->orderBy('assignments.id', 'desc'); // ← SPECIFICA TABELLA
+            $query->orderBy('assignments.id', 'desc');
         }
 
-        // Restrizioni per zona
-        if (!$isNationalAdmin && $user->zone_id) {
-            $query->whereHas('tournament.club', function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            });
-        }
+        // Filtro visibilità per zona/ruolo (centralizzato nel trait)
+        $this->applyTournamentRelationVisibility($query, $user, 'tournament');
 
-        $assignments = $query->paginate(20); // ← RIMUOVI orderBy DUPLICATO
+        $assignments = $query->paginate(20);
 
-        $tournaments = Tournament::with('club')->orderBy('name')->get();
+        // Tornei con filtro visibilità
+        $tournamentsQuery = Tournament::with('club');
+        $this->applyTournamentVisibility($tournamentsQuery, $user);
+        $tournaments = $tournamentsQuery->orderBy('name')->get();
 
-        // Referee filtrati per zona (solo per zone_admin)
+        // Referee con filtro visibilità
         $refereesQuery = User::where('user_type', 'referee')->orderBy('last_name');
-
-        if (!$isNationalAdmin && $user->zone_id) {
-            $refereesQuery->where('zone_id', $user->zone_id);
-        }
-
+        $this->applyUserVisibility($refereesQuery, $user);
         $referees = $refereesQuery->get();
 
         return view('admin.assignments.index', compact(
             'assignments',
             'tournaments',
-            'referees',
-            'isNationalAdmin'
-        ));
+            'referees'
+        ))->with('isNationalAdmin', $this->isNationalAdmin($user));
     }
 
     /**
@@ -237,7 +232,6 @@ class AssignmentController extends Controller
     public function assignReferees(Tournament $tournament)
     {
         $user = auth()->user();
-        $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
 
         // Carica relazioni base del torneo
         $tournament->load(['club']);
@@ -273,9 +267,8 @@ class AssignmentController extends Controller
             'availableReferees',
             'possibleReferees',
             'nationalReferees',
-            'assignedReferees',
-            'isNationalAdmin'
-        ));
+            'assignedReferees'
+        ))->with('isNationalAdmin', $this->isNationalAdmin());
     }
 
     /**
@@ -534,15 +527,11 @@ class AssignmentController extends Controller
     }
 
     /**
-     * Helper: verifica accesso al torneo
+     * Helper: verifica accesso al torneo (usa il trait HasZoneVisibility)
      */
     private function checkTournamentAccess($tournament)
     {
-        $user = auth()->user();
-        $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
-
-        // Se non è admin nazionale, verifica che il torneo sia della sua zona
-        if (!$isNationalAdmin && $tournament->club && $tournament->club->zone_id != $user->zone_id) {
+        if (!$this->canAccessTournament($tournament)) {
             abort(403, 'Non autorizzato a gestire questo torneo');
         }
     }
@@ -571,13 +560,9 @@ class AssignmentController extends Controller
     public function destroy(Assignment $assignment)
     {
         try {
-            // Verifica permessi (opzionale)
-            $user = auth()->user();
-            if (!in_array($user->user_type, ['super_admin', 'national_admin'])) {
-                // Verifica che l'assignment sia della zona dell'utente
-                if ($assignment->tournament && $assignment->tournament->zone_id !== $user->zone_id) {
-                    return back()->with('error', 'Non hai i permessi per rimuovere questa assegnazione');
-                }
+            // Verifica permessi usando il trait
+            if ($assignment->tournament && !$this->canAccessTournament($assignment->tournament)) {
+                return back()->with('error', 'Non hai i permessi per rimuovere questa assegnazione');
             }
 
             // Salva info per il messaggio
@@ -796,12 +781,12 @@ class AssignmentController extends Controller
     }
 
     /**
-     * Helper per ottenere zone_id in base al tipo di utente
+     * Helper per ottenere zone_id in base al tipo di utente (usa il trait HasZoneVisibility)
      */
     private function getZoneIdForUser($user): ?int
     {
         // Super admin e national admin vedono tutto
-        if (in_array($user->user_type, ['super_admin', 'national_admin'])) {
+        if ($this->isNationalAdmin($user)) {
             return null;
         }
 
