@@ -7,6 +7,7 @@ use App\Models\Tournament;
 use App\Models\Zone;
 use App\Models\TournamentType;
 use App\Models\Club;
+use App\Traits\HasZoneVisibility;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Carbon\Carbon;
@@ -14,55 +15,47 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 /**
- * 🎯 TournamentController Unificato con Codifica Colori Recuperata
+ * TournamentController Unificato
+ * Usa HasZoneVisibility per logica di filtraggio centralizzata
  */
 class TournamentController extends Controller
 {
+    use HasZoneVisibility;
     /**
-     * ✅ Lista tornei unificata
+     * Lista tornei unificata
      */
     public function index(Request $request): View
     {
         $user = auth()->user();
-        $isAdmin = $this->isAdmin($user);
-        $isNationalReferee = $this->isNationalReferee($user);
 
         $query = Tournament::with(['tournamentType', 'zone', 'club']);
 
-        // 🔐 FILTRO ACCESSO
-        if ($isAdmin) {
-            if (!$this->isNationalAdmin($user)) {
-                $query->where('zone_id', $user->zone_id);
-            }
-        } else {
-            $query->whereIn('status', ['open', 'closed', 'assigned', 'completed']);
+        // Filtro visibilità per zona/ruolo (centralizzato nel trait)
+        $this->applyTournamentVisibility($query, $user);
 
-            if (!$isNationalReferee && $user->zone_id) {
-                $query->where('zone_id', $user->zone_id);
-            }
+        // Per i non-admin, mostra solo tornei con status visibili
+        if (!$this->isAdmin($user)) {
+            $query->whereIn('status', ['open', 'closed', 'assigned', 'completed']);
         }
 
-        // 🔍 FILTRI
+        // Filtri aggiuntivi da request
         $this->applyFilters($query, $request);
 
         $tournaments = $query->orderBy('start_date', 'desc')->paginate(20);
 
-        // 📊 STATISTICHE per admin
-        $stats = [];
-        if ($isAdmin) {
-            $stats = $this->calculateStats($tournaments);
-        }
+        // Statistiche per admin
+        $stats = $this->isAdmin($user) ? $this->calculateStats($tournaments) : [];
 
         return view('tournaments.index', [
             'tournaments' => $tournaments,
-            'isAdmin' => $isAdmin,
+            'isAdmin' => $this->isAdmin($user),
             'stats' => $stats,
-            'isNationalAdmin' => auth()->user()->user_type === 'national_admin' // ← AGGIUNGI QUESTA
+            'isNationalAdmin' => $this->isNationalAdmin($user),
         ]);
     }
 
     /**
-     * ✅ Calendario unificato con CODIFICA COLORI RECUPERATA
+     * Calendario unificato
      */
     public function calendar(Request $request): View
     {
@@ -70,7 +63,6 @@ class TournamentController extends Controller
         // Allow forcing user mode with ?view_as=user parameter
         $forceUserMode = $request->get('view_as') === 'user';
         $isAdmin = $forceUserMode ? false : $this->isAdmin($user);
-        $isNationalReferee = $this->isNationalReferee($user);
 
         // Query base con relazioni necessarie ottimizzate
         $query = Tournament::with([
@@ -84,16 +76,12 @@ class TournamentController extends Controller
             $query->withCount(['assignments', 'availabilities']);
         }
 
-        // 🔐 STESSO FILTRO ACCESSO di index()
-        if ($isAdmin) {
-            if (!$this->isNationalAdmin($user)) {
-                $query->where('zone_id', $user->zone_id);
-            }
-        } else {
+        // Filtro visibilità per zona/ruolo (centralizzato nel trait)
+        $this->applyTournamentVisibility($query, $user);
+
+        // Per i non-admin, mostra solo tornei con status visibili
+        if (!$isAdmin) {
             $query->whereIn('status', ['open', 'closed', 'assigned', 'completed']);
-            if (!$isNationalReferee && $user->zone_id) {
-                $query->where('zone_id', $user->zone_id);
-            }
         }
 
         // Filtri opzionali per ottimizzare il caricamento
@@ -221,23 +209,9 @@ class TournamentController extends Controller
     }
 
     // ===============================================
-    // 🛠️ HELPER METHODS
+    // HELPER METHODS
     // ===============================================
-
-    private function isAdmin($user): bool
-    {
-        return in_array($user->user_type, ['admin', 'national_admin', 'super_admin']);
-    }
-
-    private function isNationalAdmin($user): bool
-    {
-        return in_array($user->user_type, ['national_admin', 'super_admin']);
-    }
-
-    private function isNationalReferee($user): bool
-    {
-        return in_array($user->level ?? '', ['nazionale', 'internazionale']);
-    }
+    // Nota: isAdmin, isNationalAdmin, isNationalReferee sono nel trait HasZoneVisibility
 
     private function applyFilters($query, Request $request): void
     {
@@ -332,18 +306,14 @@ class TournamentController extends Controller
 
     private function checkTournamentAccess($tournament, $user, $isAdmin): void
     {
-        if (!$isAdmin) {
-            if ($tournament->status === 'draft') {
-                abort(404);
-            }
+        // Non-admin non possono vedere tornei in draft
+        if (!$isAdmin && $tournament->status === 'draft') {
+            abort(404);
+        }
 
-            if (!$this->isNationalReferee($user) && $user->zone_id && $tournament->zone_id !== $user->zone_id) {
-                abort(403, 'Non hai accesso a questo torneo.');
-            }
-        } else {
-            if (!$this->isNationalAdmin($user) && $tournament->zone_id !== $user->zone_id) {
-                abort(403, 'Non hai accesso a questo torneo.');
-            }
+        // Usa il metodo centralizzato del trait per verificare l'accesso
+        if (!$this->canAccessTournament($tournament, $user)) {
+            abort(403, 'Non hai accesso a questo torneo.');
         }
     }
 
