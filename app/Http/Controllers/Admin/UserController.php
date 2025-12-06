@@ -6,13 +6,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Zone;
+use App\Traits\HasZoneVisibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
-use App\Http\Helpers\RefereeLevelsHelper;
 
 class UserController extends Controller
 {
+    use HasZoneVisibility;
     /**
      * Display lista utenti (arbitri + admin)
      */
@@ -20,10 +21,10 @@ class UserController extends Controller
     {
         $user = auth()->user();
 
-        // IMPORTANTE: Definisci tutte le variabili necessarie per la vista
-        $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
-        $isSuperAdmin = $user->user_type === 'super_admin';
-        $isZoneAdmin = $user->user_type === 'admin';
+        // Usa metodi del trait per determinare i ruoli
+        $isNationalAdmin = $this->isNationalAdmin($user);
+        $isSuperAdmin = $this->isSuperAdmin($user);
+        $isZoneAdmin = $this->isZoneAdmin($user);
 
         // Query base
         $query = User::with(['zone']);
@@ -69,10 +70,8 @@ class UserController extends Controller
             });
         }
 
-        // Restrizioni per zona (solo per admin di zona)
-        if ($isZoneAdmin && !$isNationalAdmin) {
-            $query->where('zone_id', $user->zone_id);
-        }
+        // Applica filtro visibilità utenti tramite trait
+        $this->applyUserVisibility($query, $user);
 
         // Filtro per stato attivo (di default mostra solo attivi se non specificato)
         if ($request->has('status')) {
@@ -128,11 +127,11 @@ class UserController extends Controller
     public function show(User $user)
     {
         $currentUser = auth()->user();
-        $isNationalAdmin = in_array($currentUser->user_type, ['national_admin', 'super_admin']);
-        $isSuperAdmin = $currentUser->user_type === 'super_admin';
+        $isNationalAdmin = $this->isNationalAdmin($currentUser);
+        $isSuperAdmin = $this->isSuperAdmin($currentUser);
 
-        // Verifica permessi visualizzazione
-        if (!$isNationalAdmin && $currentUser->zone_id != $user->zone_id) {
+        // Verifica permessi visualizzazione tramite trait
+        if (!$isNationalAdmin && $this->getUserZoneId($currentUser) != $user->zone_id) {
             abort(403, 'Non autorizzato a visualizzare questo utente');
         }
 
@@ -158,15 +157,15 @@ class UserController extends Controller
     public function create()
     {
         $currentUser = auth()->user();
-        $isNationalAdmin = in_array($currentUser->user_type, ['national_admin', 'super_admin']);
-        $isSuperAdmin = $currentUser->user_type === 'super_admin';
+        $isNationalAdmin = $this->isNationalAdmin($currentUser);
+        $isSuperAdmin = $this->isSuperAdmin($currentUser);
 
-        // Zone disponibili
-        if ($isNationalAdmin) {
-            $zones = Zone::orderBy('name')->get();
-        } else {
-            $zones = Zone::where('id', $currentUser->zone_id)->get();
+        // Zone disponibili (filtrate per ruolo)
+        $zones = Zone::orderBy('name');
+        if (!$isNationalAdmin && $currentUser->zone_id) {
+            $zones = $zones->where('id', $currentUser->zone_id);
         }
+        $zones = $zones->get();
 
         // Tipi utente che può creare
         $userTypes = ['referee' => 'Arbitro'];
@@ -187,7 +186,7 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $currentUser = auth()->user();
-        $isNationalAdmin = in_array($currentUser->user_type, ['national_admin', 'super_admin']);
+        $isNationalAdmin = $this->isNationalAdmin($currentUser);
 
         // Validazione base
         $rules = [
@@ -246,20 +245,20 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $currentUser = auth()->user();
-        $isNationalAdmin = in_array($currentUser->user_type, ['national_admin', 'super_admin']);
-        $isSuperAdmin = $currentUser->user_type === 'super_admin';
+        $isNationalAdmin = $this->isNationalAdmin($currentUser);
+        $isSuperAdmin = $this->isSuperAdmin($currentUser);
 
-        // Verifica permessi
-        if (!$isNationalAdmin && $currentUser->zone_id != $user->zone_id) {
+        // Verifica permessi tramite trait
+        if (!$isNationalAdmin && $this->getUserZoneId($currentUser) != $user->zone_id) {
             abort(403, 'Non autorizzato a modificare questo utente');
         }
 
-        // Zone disponibili
-        if ($isNationalAdmin) {
-            $zones = Zone::orderBy('name')->get();
-        } else {
-            $zones = Zone::where('id', $currentUser->zone_id)->get();
+        // Zone disponibili (filtrate per ruolo)
+        $zones = Zone::orderBy('name');
+        if (!$isNationalAdmin && $currentUser->zone_id) {
+            $zones = $zones->where('id', $currentUser->zone_id);
         }
+        $zones = $zones->get();
 
         // Tipi utente modificabili
         $userTypes = ['referee' => 'Arbitro'];
@@ -280,10 +279,10 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         $currentUser = auth()->user();
-        $isNationalAdmin = in_array($currentUser->user_type, ['national_admin', 'super_admin']);
+        $isNationalAdmin = $this->isNationalAdmin($currentUser);
 
-        // Verifica permessi
-        if (!$isNationalAdmin && $currentUser->zone_id != $user->zone_id) {
+        // Verifica permessi tramite trait
+        if (!$isNationalAdmin && $this->getUserZoneId($currentUser) != $user->zone_id) {
             abort(403, 'Non autorizzato a modificare questo utente');
         }
 
@@ -352,10 +351,9 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         $currentUser = auth()->user();
-        $isNationalAdmin = in_array($currentUser->user_type, ['national_admin', 'super_admin']);
 
-        // Verifica permessi
-        if (!$isNationalAdmin) {
+        // Verifica permessi tramite trait
+        if (!$this->isNationalAdmin($currentUser)) {
             abort(403, 'Solo gli admin nazionali possono eliminare utenti');
         }
 
@@ -382,10 +380,9 @@ class UserController extends Controller
     public function toggleActive(User $user)
     {
         $currentUser = auth()->user();
-        $isNationalAdmin = in_array($currentUser->user_type, ['national_admin', 'super_admin']);
 
-        // Verifica permessi
-        if (!$isNationalAdmin && $currentUser->zone_id != $user->zone_id) {
+        // Verifica permessi tramite trait
+        if (!$this->isNationalAdmin($currentUser) && $this->getUserZoneId($currentUser) != $user->zone_id) {
             abort(403, 'Non autorizzato');
         }
 
