@@ -72,7 +72,7 @@ class RefereeAssignmentMail extends Mailable
                 'zone_email' => "szr{$this->tournament->zone_id}@federgolf.it",
                 'club_email' => $this->tournament->club->email,
                 'attachments_info' => count($this->attachmentPaths) > 0 ?
-                    ['Convocazione ufficiale in formato PDF'] : null
+                    ['Convocazione ufficiale in allegato'] : null
             ]
         );
     }

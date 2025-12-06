@@ -555,8 +555,12 @@ return view('admin.notifications.prepare_notification', [
             'send_to_club' => 'boolean',
             'attach_convocation' => 'boolean',
             'clauses' => 'nullable|array',
-            'clauses.*' => 'nullable|exists:notification_clauses,id'
+            'clauses.*' => 'nullable|exists:notification_clauses,id',
+            'action' => 'nullable|string|in:save,send,preview'  // Nuova azione
         ]);
+
+        // Determina l'azione: 'save' = salva bozza, 'send' = invia subito, 'preview' = anteprima
+        $action = $request->input('action', 'save');
 
         try {
             DB::beginTransaction();
@@ -685,18 +689,63 @@ return view('admin.notifications.prepare_notification', [
                 ]);
             }
 
-            // Marca come PREPARATA (non inviare qui)
+            // Marca come PREPARATA
             $notification->update(['is_prepared' => true]);
 
             DB::commit();
 
+            // ═══════════════════════════════════════════════════════════════════════
+            // GESTIONE AZIONE: save, send, o preview
+            // ═══════════════════════════════════════════════════════════════════════
+
+            // PREVIEW: restituisce JSON con anteprima email
+            if ($action === 'preview') {
+                return response()->json([
+                    'success' => true,
+                    'preview' => [
+                        'subject' => $metadata['subject'],
+                        'message' => $metadata['message'],
+                        'recipients' => [
+                            'club' => $metadata['recipients']['club'] ? $tournament->club->email : null,
+                            'referees' => $tournament->assignments()
+                                ->whereIn('user_id', $metadata['recipients']['referees'] ?? [])
+                                ->with('user')
+                                ->get()
+                                ->map(fn($a) => ['name' => $a->user->name, 'email' => $a->user->email, 'role' => $a->role]),
+                            'institutional' => \App\Models\InstitutionalEmail::whereIn('id', $metadata['recipients']['institutional'] ?? [])
+                                ->pluck('email')
+                        ],
+                        'documents' => $notification->documents
+                    ]
+                ]);
+            }
+
+            // SEND: invia subito la notifica
+            if ($action === 'send') {
+                try {
+                    $this->notificationService->send($notification);
+
+                    return redirect()->route('admin.tournament-notifications.index')
+                        ->with('success', 'Notifica inviata con successo a tutti i destinatari!');
+                } catch (\Exception $sendError) {
+                    Log::error('Errore invio notifica', [
+                        'notification_id' => $notification->id,
+                        'error' => $sendError->getMessage()
+                    ]);
+                    return redirect()->back()
+                        ->with('error', 'Errore nell\'invio: ' . $sendError->getMessage())
+                        ->with('warning', 'La notifica è stata salvata come bozza.');
+                }
+            }
+
+            // SAVE (default): salva solo come bozza
             return redirect()->route('admin.tournaments.index')
-->with('success', 'Notifica salvata con successo. Ora puoi inviarla dalla lista tornei.');
+                ->with('success', 'Notifica salvata come bozza. Puoi inviarla dalla lista tornei.');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Errore invio notifiche con allegati: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Errore nell\'invio delle notifiche: ' . $e->getMessage());
+            Log::error('Errore preparazione notifica: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Errore nella preparazione: ' . $e->getMessage());
         }
     }
 
