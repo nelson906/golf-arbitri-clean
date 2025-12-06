@@ -8,6 +8,7 @@ use App\Models\TournamentNotification;
 use App\Models\InstitutionalEmail;
 use App\Models\NotificationClause;
 use App\Models\NotificationClauseSelection;
+use App\Traits\HasZoneVisibility;
 use Carbon\Carbon;
 use App\Services\DocumentGenerationService;
 use Illuminate\Support\Facades\Storage;
@@ -22,6 +23,8 @@ use Illuminate\Support\Facades\Log;
  */
 class NotificationController extends Controller
 {
+    use HasZoneVisibility;
+
     protected $notificationService;
     protected $documentService;
 
@@ -39,7 +42,6 @@ public function __construct(
     public function index(Request $request)
     {
         $user = auth()->user();
-        $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
 
         $query = TournamentNotification::with([
             'tournament.club',
@@ -47,12 +49,8 @@ public function __construct(
             'tournament.assignments.user'
         ]);
 
-        // Filtra per zona se non è admin nazionale
-        if (!$isNationalAdmin) {
-            $query->whereHas('tournament', function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            });
-        }
+        // Filtro visibilità per zona/ruolo (centralizzato nel trait)
+        $this->applyTournamentRelationVisibility($query, $user, 'tournament');
 
         $query->orderBy('sent_at', 'desc');
         $tournamentNotifications = $query->paginate(20);
