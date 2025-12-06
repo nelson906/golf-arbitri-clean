@@ -5,21 +5,27 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Models\Zone;
+use App\Traits\HasZoneVisibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
 class ClubController extends Controller
 {
+    use HasZoneVisibility;
+
     /**
      * Display lista circoli
      */
     public function index(Request $request)
     {
         $user = auth()->user();
-        $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
+        $isNationalAdmin = $this->isNationalAdmin($user);
 
         $query = Club::with(['zone']);
+
+        // Applica filtro visibilità zona
+        $this->applyClubVisibility($query, $user);
 
         // Conta tornei per ogni club (senza filtro active)
         $query->withCount('tournaments');
@@ -27,9 +33,9 @@ class ClubController extends Controller
         // Filtro ricerca
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('city', 'like', "%{$search}%");
+                    ->orWhere('city', 'like', "%{$search}%");
 
                 // Se esiste la colonna code
                 if (Schema::hasColumn('clubs', 'code')) {
@@ -47,10 +53,8 @@ class ClubController extends Controller
             $query->where('is_active', $request->status === 'active');
         }
 
-        // Se non è admin nazionale, mostra solo i circoli della sua zona
-        if (!$isNationalAdmin && $user->zone_id) {
-            $query->where('zone_id', $user->zone_id);
-        }
+        // Filtro zona già applicato da applyClubVisibility()
+
 
         // Ordinamento
         $clubs = $query
@@ -92,7 +96,7 @@ class ClubController extends Controller
             'active_tournaments' => $club->tournaments()->active()->count(),
         ];
 
-        $isNationalAdmin = in_array(auth()->user()->user_type, ['national_admin', 'super_admin']);
+        $isNationalAdmin = $this->isNationalAdmin();
 
         return view('admin.clubs.show', compact('club', 'tournaments', 'stats', 'isNationalAdmin'));
     }
@@ -103,14 +107,16 @@ class ClubController extends Controller
     public function create()
     {
         $user = auth()->user();
-        $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
+        $isNationalAdmin = $this->isNationalAdmin($user);
 
-        // Zone disponibili
-        if ($isNationalAdmin) {
-            $zones = Zone::orderBy('name')->get();
-        } else {
-            $zones = Zone::where('id', $user->zone_id)->get();
+        // Zone disponibili (filtrate per ruolo)
+        $zones = Zone::orderBy('name');
+        if (!$isNationalAdmin && $user->zone_id) {
+            $zones = $zones->where('id', $user->zone_id);
         }
+
+        $zones = $zones->get();
+
 
         return view('admin.clubs.create', compact('zones', 'isNationalAdmin'));
     }
@@ -160,19 +166,20 @@ class ClubController extends Controller
     public function edit(Club $club)
     {
         $user = auth()->user();
-        $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
+        $isNationalAdmin = $this->isNationalAdmin($user);
 
-        // Verifica permessi
-        if (!$isNationalAdmin && $club->zone_id != $user->zone_id) {
+        // Verifica permessi tramite trait
+        if (!$isNationalAdmin && $club->zone_id != $this->getUserZoneId($user)) {
             abort(403, 'Non autorizzato a modificare questo circolo');
         }
 
-        // Zone disponibili
-        if ($isNationalAdmin) {
-            $zones = Zone::orderBy('name')->get();
-        } else {
-            $zones = Zone::where('id', $user->zone_id)->get();
+        // Zone disponibili (filtrate per ruolo)
+        $zones = Zone::orderBy('name');
+        if (!$isNationalAdmin && $user->zone_id) {
+            $zones = $zones->where('id', $user->zone_id);
         }
+        $zones = $zones->get();
+
 
         return view('admin.clubs.edit', compact('club', 'zones', 'isNationalAdmin'));
     }
@@ -183,10 +190,10 @@ class ClubController extends Controller
     public function update(Request $request, Club $club)
     {
         $user = auth()->user();
-        $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
+        $isNationalAdmin = $this->isNationalAdmin($user);
 
-        // Verifica permessi
-        if (!$isNationalAdmin && $club->zone_id != $user->zone_id) {
+        // Verifica permessi tramite trait
+        if (!$isNationalAdmin && $club->zone_id != $this->getUserZoneId($user)) {
             abort(403, 'Non autorizzato a modificare questo circolo');
         }
 
@@ -224,9 +231,7 @@ class ClubController extends Controller
      */
     public function destroy(Club $club)
     {
-        $isNationalAdmin = in_array(auth()->user()->user_type, ['national_admin', 'super_admin']);
-
-        if (!$isNationalAdmin) {
+        if (!$this->isNationalAdmin()) {
             abort(403, 'Solo gli admin nazionali possono eliminare circoli');
         }
 
@@ -252,10 +257,9 @@ class ClubController extends Controller
         }
 
         $user = auth()->user();
-        $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
 
-        // Verifica permessi
-        if (!$isNationalAdmin && $club->zone_id != $user->zone_id) {
+        // Verifica permessi tramite trait
+        if (!$this->isNationalAdmin($user) && $club->zone_id != $this->getUserZoneId($user)) {
             abort(403, 'Non autorizzato');
         }
 
@@ -272,25 +276,23 @@ class ClubController extends Controller
     public function export(Request $request)
     {
         $user = auth()->user();
-        $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
 
         $query = Club::with(['zone']);
+
+        // Applica filtro visibilità zona tramite trait
+        $this->applyClubVisibility($query, $user);
 
         // Applica gli stessi filtri della index
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('city', 'like', "%{$search}%");
+                    ->orWhere('city', 'like', "%{$search}%");
             });
         }
 
         if ($request->filled('zone_id')) {
             $query->where('zone_id', $request->zone_id);
-        }
-
-        if (!$isNationalAdmin && $user->zone_id) {
-            $query->where('zone_id', $user->zone_id);
         }
 
         $clubs = $query->orderBy('name')->get();
@@ -301,7 +303,7 @@ class ClubController extends Controller
             'Content-Disposition' => 'attachment; filename="circoli_' . date('Y-m-d') . '.csv"',
         ];
 
-        $callback = function() use ($clubs) {
+        $callback = function () use ($clubs) {
             $file = fopen('php://output', 'w');
 
             // Headers CSV

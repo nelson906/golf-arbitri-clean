@@ -8,6 +8,7 @@ use App\Models\TournamentNotification;
 use App\Models\InstitutionalEmail;
 use App\Models\NotificationClause;
 use App\Models\NotificationClauseSelection;
+use App\Traits\HasZoneVisibility;
 use Carbon\Carbon;
 use App\Services\DocumentGenerationService;
 use Illuminate\Support\Facades\Storage;
@@ -22,10 +23,12 @@ use Illuminate\Support\Facades\Log;
  */
 class NotificationController extends Controller
 {
+    use HasZoneVisibility;
+
     protected $notificationService;
     protected $documentService;
 
-public function __construct(
+    public function __construct(
         NotificationService $notificationService,
         DocumentGenerationService $documentService
     ) {
@@ -39,7 +42,6 @@ public function __construct(
     public function index(Request $request)
     {
         $user = auth()->user();
-        $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
 
         $query = TournamentNotification::with([
             'tournament.club',
@@ -47,12 +49,8 @@ public function __construct(
             'tournament.assignments.user'
         ]);
 
-        // Filtra per zona se non è admin nazionale
-        if (!$isNationalAdmin) {
-            $query->whereHas('tournament', function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            });
-        }
+        // Filtro visibilità per zona/ruolo (centralizzato nel trait)
+        $this->applyTournamentRelationVisibility($query, $user, 'tournament');
 
         $query->orderBy('sent_at', 'desc');
         $tournamentNotifications = $query->paginate(20);
@@ -115,10 +113,10 @@ public function __construct(
                 $zone = $this->getZoneFolder($tournament);
                 $convFileName = basename($convocationData['path']);
                 $convDestPath = "convocazioni/{$zone}/generated/{$convFileName}";
-                
+
                 // Assicurati che la directory esista
                 Storage::disk('public')->makeDirectory(dirname($convDestPath));
-                
+
                 // Copia il file
                 $content = file_get_contents($convocationData['path']);
                 Storage::disk('public')->put($convDestPath, $content);
@@ -129,7 +127,7 @@ public function __construct(
                 $clubDocData = $this->documentService->generateClubDocument($tournament);
                 $clubFileName = basename($clubDocData['path']);
                 $clubDestPath = "convocazioni/{$zone}/generated/{$clubFileName}";
-                
+
                 // Copia il file
                 $content = file_get_contents($clubDocData['path']);
                 Storage::disk('public')->put($clubDestPath, $content);
@@ -179,7 +177,7 @@ public function __construct(
             ->groupBy('applies_to')
             ->toArray();
 
-return view('admin.notifications.prepare_notification', [
+        return view('admin.notifications.prepare_notification', [
             'tournament' => $tournament,
             'notification' => $notification,
             'assignedReferees' => $assignedReferees,
@@ -235,7 +233,6 @@ return view('admin.notifications.prepare_notification', [
             }
 
             return response()->json($response);
-
         } catch (\Exception $e) {
             Log::error('Error checking documents status', [
                 'notification_id' => $notification->id,
@@ -273,7 +270,9 @@ return view('admin.notifications.prepare_notification', [
                 Storage::disk('public')->makeDirectory(dirname($destPath));
                 $content = file_get_contents($convocationData['path']);
                 Storage::disk('public')->put($destPath, $content);
-                if (file_exists($convocationData['path'])) { unlink($convocationData['path']); }
+                if (file_exists($convocationData['path'])) {
+                    unlink($convocationData['path']);
+                }
                 $documents['convocation'] = $convFileName;
             }
 
@@ -284,7 +283,9 @@ return view('admin.notifications.prepare_notification', [
                 Storage::disk('public')->makeDirectory(dirname($destPath));
                 $content = file_get_contents($docData['path']);
                 Storage::disk('public')->put($destPath, $content);
-                if (file_exists($docData['path'])) { unlink($docData['path']); }
+                if (file_exists($docData['path'])) {
+                    unlink($docData['path']);
+                }
                 $documents['club_letter'] = $clubFileName;
             }
 
@@ -304,7 +305,6 @@ return view('admin.notifications.prepare_notification', [
                 'message' => 'Documento generato con successo',
                 'status' => $status
             ]);
-
         } catch (\Exception $e) {
             Log::error('Errore generazione documento', [
                 'type' => $type,
@@ -428,7 +428,6 @@ return view('admin.notifications.prepare_notification', [
             DB::commit();
             return redirect()->route('admin.tournament-notifications.index')
                 ->with('success', 'Notifiche inviate con successo');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Errore invio notifiche: ' . $e->getMessage());
@@ -451,7 +450,6 @@ return view('admin.notifications.prepare_notification', [
             DB::commit();
             return redirect()->route('admin.tournament-notifications.index')
                 ->with('success', 'Notifiche reinviate con successo');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Errore reinvio notifiche: ' . $e->getMessage());
@@ -575,7 +573,7 @@ return view('admin.notifications.prepare_notification', [
 
             Log::info('Current tournament assignments', [
                 'tournament_id' => $tournament->id,
-                'assignments' => $tournament->assignments()->with('user')->get()->map(function($a) {
+                'assignments' => $tournament->assignments()->with('user')->get()->map(function ($a) {
                     return ['id' => $a->user_id, 'name' => $a->user->name, 'role' => $a->role];
                 })->toArray()
             ]);
@@ -667,7 +665,9 @@ return view('admin.notifications.prepare_notification', [
                 Storage::disk('public')->makeDirectory(dirname($convDest));
                 $content = file_get_contents($convocationData['path']);
                 Storage::disk('public')->put($convDest, $content);
-                if (file_exists($convocationData['path'])) { unlink($convocationData['path']); }
+                if (file_exists($convocationData['path'])) {
+                    unlink($convocationData['path']);
+                }
                 $documents['convocation'] = $convFileName;
 
                 // Lettera circolo
@@ -676,11 +676,13 @@ return view('admin.notifications.prepare_notification', [
                 $clubDest = "convocazioni/{$zone}/generated/{$clubFileName}";
                 $content = file_get_contents($clubDocData['path']);
                 Storage::disk('public')->put($clubDest, $content);
-                if (file_exists($clubDocData['path'])) { unlink($clubDocData['path']); }
+                if (file_exists($clubDocData['path'])) {
+                    unlink($clubDocData['path']);
+                }
                 $documents['club_letter'] = $clubFileName;
 
                 $notification->update(['documents' => $documents]);
-} catch (\Throwable $e) {
+            } catch (\Throwable $e) {
                 Log::warning('Could not regenerate documents with clauses before send', [
                     'notification_id' => $notification->id,
                     'error' => $e->getMessage()
@@ -693,8 +695,7 @@ return view('admin.notifications.prepare_notification', [
             DB::commit();
 
             return redirect()->route('admin.tournaments.index')
-->with('success', 'Notifica salvata con successo. Ora puoi inviarla dalla lista tornei.');
-
+                ->with('success', 'Notifica salvata con successo. Ora puoi inviarla dalla lista tornei.');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Errore invio notifiche con allegati: ' . $e->getMessage());
@@ -708,15 +709,17 @@ return view('admin.notifications.prepare_notification', [
     private function getZoneFolder($tournament): string
     {
         // Se è nazionale, va in CRC
-        if ($tournament->is_national ||
-            ($tournament->tournamentType && $tournament->tournamentType->is_national)) {
+        if (
+            $tournament->is_national ||
+            ($tournament->tournamentType && $tournament->tournamentType->is_national)
+        ) {
             return 'CRC';
         }
 
         // Altrimenti usa la zona del circolo
         $zoneId = $tournament->club->zone_id ?? $tournament->zone_id;
 
-        return match($zoneId) {
+        return match ($zoneId) {
             1 => 'SZR1',
             2 => 'SZR2',
             3 => 'SZR3',
@@ -801,7 +804,6 @@ return view('admin.notifications.prepare_notification', [
                 'message' => 'Documento caricato con successo',
                 'status' => $status
             ]);
-
         } catch (\Exception $e) {
             Log::error('Errore caricamento documento', [
                 'notification_id' => $notification->id,

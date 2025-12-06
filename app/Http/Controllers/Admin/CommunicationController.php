@@ -4,16 +4,19 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Communication;
+use App\Traits\HasZoneVisibility;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * 📢 CommunicationController - Gestione comunicazioni di sistema
+ * CommunicationController - Gestione comunicazioni di sistema
  */
 class CommunicationController extends Controller
 {
+    use HasZoneVisibility;
+
     /**
      * Display a listing of communications
      */
@@ -24,11 +27,11 @@ class CommunicationController extends Controller
         $query = Communication::with(['author', 'zone'])
             ->orderBy('created_at', 'desc');
 
-        // Filtro per zona se non è national admin
-        if ($user->user_type !== 'national_admin' && $user->user_type !== 'super_admin') {
-            $query->where(function($q) use ($user) {
-                $q->where('zone_id', $user->zone_id)
-                  ->orWhereNull('zone_id'); // Comunicazioni globali
+        // Filtro per zona se non è national admin (usa trait)
+        if (!$this->isNationalAdmin($user)) {
+            $query->where(function ($q) use ($user) {
+                $q->where('zone_id', $this->getUserZoneId($user))
+                    ->orWhereNull('zone_id'); // Comunicazioni globali
             });
         }
 
@@ -42,9 +45,9 @@ class CommunicationController extends Controller
         }
 
         if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
+            $query->where(function ($q) use ($request) {
                 $q->where('title', 'like', '%' . $request->search . '%')
-                  ->orWhere('content', 'like', '%' . $request->search . '%');
+                    ->orWhere('content', 'like', '%' . $request->search . '%');
             });
         }
 
@@ -91,10 +94,11 @@ class CommunicationController extends Controller
 
         $validated['author_id'] = Auth::id();
 
-        // Se non è admin nazionale, forza la zona dell'utente
+        // Se non è admin nazionale, forza la zona dell'utente (usa trait)
+
         $user = Auth::user();
-        if ($user->user_type !== 'national_admin' && $user->user_type !== 'super_admin') {
-            $validated['zone_id'] = $user->zone_id;
+        if (!$this->isNationalAdmin($user)) {
+            $validated['zone_id'] = $this->getUserZoneId($user);
         }
 
         $communication = Communication::create($validated);
@@ -131,31 +135,32 @@ class CommunicationController extends Controller
     }
 
     /**
-     * Get available zones for user
+     * Get available zones for user (usa trait)
      */
     private function getAvailableZones($user)
     {
-        if ($user->user_type === 'national_admin' || $user->user_type === 'super_admin') {
+        if ($this->isNationalAdmin($user)) {
             return \App\Models\Zone::orderBy('name')->get();
         }
 
-        return \App\Models\Zone::where('id', $user->zone_id)->get();
+        return \App\Models\Zone::where('id', $this->getUserZoneId($user))->get();
+
     }
 
     /**
-     * Check if user can access communication
+     * Check if user can access communication (usa trait)
      */
     private function authorizeAccess(Communication $communication): void
     {
         $user = Auth::user();
 
         // Super admin e national admin possono accedere a tutto
-        if ($user->user_type === 'super_admin' || $user->user_type === 'national_admin') {
+        if ($this->isNationalAdmin($user)) {
             return;
         }
 
         // Zone admin può accedere solo a comunicazioni della sua zona o globali
-        if ($communication->zone_id && $communication->zone_id !== $user->zone_id) {
+        if ($communication->zone_id && $communication->zone_id !== $this->getUserZoneId($user)) {
             abort(403, 'Accesso negato a questa comunicazione.');
         }
     }

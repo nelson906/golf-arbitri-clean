@@ -7,7 +7,7 @@ use App\Models\Tournament;
 use App\Models\Availability;
 use App\Models\Zone;
 use App\Models\TournamentType;
-use App\Http\Helpers\RefereeLevelsHelper;
+use App\Traits\HasZoneVisibility;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\View\View;
@@ -20,7 +20,9 @@ use Illuminate\Support\Facades\Log;
 
 class AvailabilityController extends Controller
 {
-    /**
+    use HasZoneVisibility;
+
+   /**
      * Show user's availabilities
      */
     public function index()
@@ -44,30 +46,13 @@ class AvailabilityController extends Controller
     public function tournaments(Request $request)
     {
         $user = auth()->user();
-        $isNationalUser = RefereeLevelsHelper::canAccessNationalTournaments($user->level);
 
-        // Query base per i tornei
+        // Query base per i tornei futuri
         $query = Tournament::with(['club', 'zone', 'tournamentType'])
             ->where('start_date', '>=', now());
 
-        // Logica di filtraggio:
-        // - Utenti zonali: solo tornei della propria zona
-        // - Utenti nazionali/internazionali: tornei della propria zona + tornei nazionali
-        if ($isNationalUser) {
-            // Tornei della propria zona O tornei nazionali
-            $query->where(function ($q) use ($user) {
-                $q->whereHas('club', function ($clubQuery) use ($user) {
-                    $clubQuery->where('zone_id', $user->zone_id);
-                })->orWhereHas('tournamentType', function ($typeQuery) {
-                    $typeQuery->where('is_national', true);
-                });
-            });
-        } else {
-            // Solo tornei della propria zona
-            $query->whereHas('club', function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            });
-        }
+        // Filtro visibilità per zona/ruolo (centralizzato nel trait)
+        $this->applyTournamentVisibility($query, $user);
 
         // Filtri opzionali
         if ($request->filled('zone_id')) {
@@ -92,7 +77,9 @@ class AvailabilityController extends Controller
             ->toArray();
 
         // Zone accessibili per i filtri
-        $zones = $this->getAccessibleZones($user, $isNationalUser);
+        $zones = $this->isNationalReferee($user)
+            ? Zone::orderBy('name')->get()
+            : Zone::where('id', $user->zone_id)->get();
 
         // Tipi di torneo
         $tournamentTypes = TournamentType::where('is_active', true)
@@ -191,25 +178,12 @@ class AvailabilityController extends Controller
         $user = auth()->user();
         $selectedTournaments = $request->input('availabilities', []);
 
-        // Recupera i tornei nella pagina corrente (quelli mostrati nel form)
+        // Recupera i tornei nella pagina corrente con filtro visibilità centralizzato
         $pageQuery = Tournament::with(['club', 'zone', 'tournamentType'])
             ->where('start_date', '>=', now());
 
-        $isNationalUser = RefereeLevelsHelper::canAccessNationalTournaments($user->level);
-
-        if ($isNationalUser) {
-            $pageQuery->where(function ($q) use ($user) {
-                $q->whereHas('club', function ($clubQuery) use ($user) {
-                    $clubQuery->where('zone_id', $user->zone_id);
-                })->orWhereHas('tournamentType', function ($typeQuery) {
-                    $typeQuery->where('is_national', true);
-                });
-            });
-        } else {
-            $pageQuery->whereHas('club', function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            });
-        }
+        // Usa il trait per il filtro visibilità
+        $this->applyTournamentVisibility($pageQuery, $user);
 
         // Applica gli stessi filtri della vista
         if ($request->filled('zone_id')) {
@@ -281,9 +255,10 @@ class AvailabilityController extends Controller
 
         try {
             // Tornei rilevanti per l'utente
-            $tournaments = $this->getAccessibleTournaments($user)
-                ->with(['tournamentType', 'club.zone', 'assignments'])
-                ->get();
+            // Tornei rilevanti per l'utente con filtro visibilità centralizzato
+            $query = Tournament::with(['tournamentType', 'club.zone', 'assignments']);
+            $this->applyTournamentVisibility($query, $user);
+            $tournaments = $query->get();
 
             // Disponibilità e assegnazioni dell'utente
             $userAvailabilities = $user->availabilities()->pluck('tournament_id')->toArray();
@@ -349,40 +324,9 @@ class AvailabilityController extends Controller
 
     /**
      * Private methods
-     */
-    private function getAccessibleZones($user, $isNationalUser)
-    {
-        if ($isNationalUser) {
-            return Zone::orderBy('name')->get();
-        }
+      * Nota: getAccessibleZones e getAccessibleTournaments sono ora nel trait HasZoneVisibility
+    */
 
-        return Zone::where('id', $user->zone_id)->get();
-    }
-
-    private function getAccessibleTournaments($user)
-    {
-        $isNationalUser = RefereeLevelsHelper::canAccessNationalTournaments($user->level);
-
-        $query = Tournament::query();
-
-        if ($isNationalUser) {
-            // Utente nazionale: tornei della sua zona + tornei nazionali
-            $query->where(function ($q) use ($user) {
-                $q->whereHas('club', function ($subQ) use ($user) {
-                    $subQ->where('zone_id', $user->zone_id);
-                })->orWhereHas('tournamentType', function ($subQ) {
-                    $subQ->where('is_national', true);
-                });
-            });
-        } else {
-            // Utente zonale: solo tornei della sua zona
-            $query->whereHas('club', function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            });
-        }
-
-        return $query;
-    }
 
     private function canDeclareAvailability($user, $tournament): bool
     {
@@ -396,15 +340,10 @@ class AvailabilityController extends Controller
             return false;
         }
 
-        // Verifica accesso per zona
-        $isNationalUser = RefereeLevelsHelper::canAccessNationalTournaments($user->level);
-
-        if (!$isNationalUser && $tournament->club && $tournament->club->zone_id != $user->zone_id) {
-            return false;
-        }
-
-        return true;
+        // Verifica accesso per zona usando il trait
+        return $this->canAccessTournament($tournament, $user);
     }
+
 
     private function handleNotifications($user, $newAvailabilities, $oldAvailabilities)
     {

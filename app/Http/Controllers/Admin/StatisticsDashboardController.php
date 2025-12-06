@@ -11,19 +11,22 @@ use App\Models\Club;
 use App\Models\Assignment;
 use App\Models\Availability;
 use App\Models\Notification;
+use App\Traits\HasZoneVisibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class StatisticsDashboardController extends Controller
 {
+    use HasZoneVisibility;
+
     /**
      * Display the statistics dashboard.
      */
     public function index(Request $request)
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+        $isNationalAdmin = $this->isNationalAdmin($user);
 
         // Filtri temporali
         $period = $request->get('period', '30'); // giorni
@@ -69,7 +72,7 @@ class StatisticsDashboardController extends Controller
     public function disponibilita(Request $request)
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+        $isNationalAdmin = $this->isNationalAdmin($user);
 
         $month = $request->get('month');
         $dateFrom = $request->get('date_from');
@@ -163,7 +166,7 @@ class StatisticsDashboardController extends Controller
     public function assegnazioni(Request $request)
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+        $isNationalAdmin = $this->isNationalAdmin($user);
 
         $status = $request->get('status');
         $dateFrom = $request->get('date_from');
@@ -236,7 +239,7 @@ class StatisticsDashboardController extends Controller
     public function tornei(Request $request)
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+        $isNationalAdmin = $this->isNationalAdmin($user);
 
         $status = $request->get('status');
         $category = $request->get('category');
@@ -302,7 +305,7 @@ class StatisticsDashboardController extends Controller
     public function arbitri(Request $request)
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+        $isNationalAdmin = $this->isNationalAdmin($user);
 
         $level = $request->get('level');
         $zone = $request->get('zone');
@@ -375,7 +378,7 @@ class StatisticsDashboardController extends Controller
     public function zone(Request $request)
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+        $isNationalAdmin = $this->isNationalAdmin($user);
 
         // Solo admin nazionali possono vedere tutte le zone
         if (!$isNationalAdmin) {
@@ -435,7 +438,7 @@ class StatisticsDashboardController extends Controller
     public function performance(Request $request)
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+        $isNationalAdmin = $this->isNationalAdmin($user);
 
         $period = $request->get('period', 30);
         $startDate = Carbon::now()->subDays($period);
@@ -462,7 +465,7 @@ class StatisticsDashboardController extends Controller
     {
         $type = $request->get('type', 'general');
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+        $isNationalAdmin = $this->isNationalAdmin($user);
 
         $filename = "statistiche_{$type}_" . Carbon::now()->format('Y-m-d') . ".csv";
 
@@ -498,7 +501,7 @@ class StatisticsDashboardController extends Controller
     public function apiStats(Request $request, $type)
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+        $isNationalAdmin = $this->isNationalAdmin($user);
 
         switch ($type) {
             case 'dashboard':

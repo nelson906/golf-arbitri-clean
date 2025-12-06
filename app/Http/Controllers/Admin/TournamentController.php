@@ -7,33 +7,29 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TournamentRequest;
 use App\Models\Tournament;
-use App\Models\TournamentType; // ✅ FIXED: Changed from TournamentCategory
+use App\Models\TournamentType;
 use App\Models\Club;
 use App\Models\Zone;
+use App\Traits\HasZoneVisibility;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Traits\CrudActions;
 
 class TournamentController extends Controller
 {
-    // use CrudActions;
+    use HasZoneVisibility;
+
     /**
      * Display a listing of tournaments.
      */
     public function index(Request $request)
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
-// Base query with eager loading
+        // Base query with eager loading
         $query = Tournament::with(['club.zone', 'tournamentType', 'notification']);
 
-        // Filter by zone for zone admins
-        if (!$isNationalAdmin) {
-            $query->whereHas('club', function($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            });
-        }
+        // Filtro visibilità per zona/ruolo (centralizzato nel trait)
+        $this->applyTournamentVisibility($query, $user);
 
         // Apply filters
         if ($request->has('status') && $request->status !== '') {
@@ -41,7 +37,7 @@ class TournamentController extends Controller
         }
 
         if ($request->has('zone_id') && $request->zone_id !== '') {
-            $query->whereHas('club', function($q) use ($request) {
+            $query->whereHas('club', function ($q) use ($request) {
                 $q->where('zone_id', $request->zone_id);
             });
         }
@@ -63,11 +59,11 @@ class TournamentController extends Controller
         // Search in tournament name or club name
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', '%' . $search . '%')
-                  ->orWhereHas('club', function($clubQuery) use ($search) {
-                      $clubQuery->where('name', 'like', '%' . $search . '%');
-                  });
+                    ->orWhereHas('club', function ($clubQuery) use ($search) {
+                        $clubQuery->where('name', 'like', '%' . $search . '%');
+                    });
             });
         }
 
@@ -75,18 +71,16 @@ class TournamentController extends Controller
         $tournaments = $query->orderBy('start_date', 'desc')->paginate(20);
 
         // Get data for filters
-        $zones = $isNationalAdmin ? Zone::orderBy('name')->get() : collect();
+        $zones = $this->isNationalAdmin($user) ? Zone::orderBy('name')->get() : collect();
         $tournamentTypes = TournamentType::active()->ordered()->get();
         $statuses = Tournament::STATUSES;
 
-        // ✅ FIXED: compact() uses tournamentTypes instead of categories
         return view('admin.tournaments.index', compact(
             'tournaments',
             'zones',
-            'tournamentTypes', // ← FIXED: was 'categories'
-            'statuses',
-            'isNationalAdmin'
-        ));
+            'tournamentTypes',
+            'statuses'
+        ))->with('isNationalAdmin', $this->isNationalAdmin($user));
     }
 
     /**
@@ -95,27 +89,20 @@ class TournamentController extends Controller
     public function calendar(Request $request)
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin' || $user->user_type === 'admin';
+        // Query con filtro visibilità centralizzato
+        $query = Tournament::with(['tournamentType', 'zone', 'club', 'assignments.user']);
+        $this->applyTournamentVisibility($query, $user);
+        $tournaments = $query->get();
 
-        // ✅ FIXED: tournamentType relationship
-        $tournaments = Tournament::with(['tournamentType', 'zone', 'club', 'assignments.user'])
-            ->when(!$isNationalAdmin && !in_array($user->user_type, ['super_admin']), function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            })
-            ->get();
-
-        // Get zones for filter
-        $zones = $isNationalAdmin
+        // Get zones for filter (tutti se admin nazionale, solo propria zona altrimenti)
+        $zones = $this->isNationalAdmin($user)
             ? Zone::orderBy('name')->get()
             : Zone::where('id', $user->zone_id)->get();
 
-        // Get clubs for filter
-        $clubs = \App\Models\Club::active()
-            ->when(!$isNationalAdmin && !in_array($user->user_type, ['super_admin']), function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            })
-            ->orderBy('name')
-            ->get();
+        // Get clubs for filter con visibilità
+        $clubsQuery = Club::active();
+        $this->applyClubVisibility($clubsQuery, $user);
+        $clubs = $clubsQuery->orderBy('name')->get();
 
         // ✅ FIXED: Variable name from $types to $tournamentTypes
         $tournamentTypes = TournamentType::active()->ordered()->get();
@@ -197,32 +184,18 @@ class TournamentController extends Controller
         $user = auth()->user();
         $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
-        // Get tournament types based on user role
-        if ($isNationalAdmin) {
-            // National admin sees all active types
-            $tournamentTypes = TournamentType::active()->ordered()->get();
-        } else {
-            // Zone admin sees both national types AND zone-specific types
-            $tournamentTypes = TournamentType::active()
-                ->where(function ($query) {
-                    $query->where('is_national', true)  // National types
-                          ->orWhere('is_national', false); // Zone types
-                })
-                ->ordered()
-                ->get();
-        }
-        // Get zones
-        $zones = $isNationalAdmin
+        // Tutti gli admin vedono tutti i tipi di torneo attivi
+        $tournamentTypes = TournamentType::active()->ordered()->get();
+
+        // Get zones con visibilità
+        $zones = $this->isNationalAdmin($user)
             ? Zone::orderBy('name')->get()
             : Zone::where('id', $user->zone_id)->get();
 
-        // Get clubs
-        $clubs = Club::active()
-            ->when(!$isNationalAdmin, function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            })
-            ->ordered()
-            ->get();
+        // Get clubs con visibilità
+        $clubsQuery = Club::active();
+        $this->applyClubVisibility($clubsQuery, $user);
+        $clubs = $clubsQuery->ordered()->get();
 
         return view('admin.tournaments.create', compact('tournamentTypes', 'zones', 'clubs'));
     }
@@ -232,7 +205,7 @@ class TournamentController extends Controller
      */
     public function edit(Tournament $tournament)
     {
-        // Check access
+        // Check access usando il trait
         $this->checkTournamentAccess($tournament);
 
         // Check if editable
@@ -243,29 +216,15 @@ class TournamentController extends Controller
         }
 
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+        // Tutti gli admin vedono tutti i tipi di torneo attivi
+        $tournamentTypes = TournamentType::active()->ordered()->get();
 
-        // Get tournament types based on user role - same logic as create
-        if ($isNationalAdmin) {
-            // National admin sees all active types
-            $tournamentTypes = TournamentType::active()->ordered()->get();
-        } else {
-            // Zone admin sees both national types AND zone-specific types
-            $tournamentTypes = TournamentType::active()
-                ->where(function ($query) {
-                    $query->where('is_national', true)  // National types
-                          ->orWhere('is_national', false); // Zone types
-                })
-                ->ordered()
-                ->get();
-        }
-
-        // Get zones
-        $zones = $isNationalAdmin
+        // Get zones con visibilità
+        $zones = $this->isNationalAdmin($user)
             ? Zone::orderBy('name')->get()
             : Zone::where('id', $user->zone_id)->get();
 
-        // Get clubs
+        // Get clubs della zona del torneo
         $clubs = Club::active()
             ->where('zone_id', $tournament->zone_id)
             ->ordered()
@@ -282,12 +241,12 @@ class TournamentController extends Controller
     {
         $data = $request->validated();
 
-        // Set zone_id from club if not national admin
-        if (auth()->user()->user_type !== 'national_admin') {
-            $club = club::findOrFail($data['club_id']);
+        // Set zone_id from club se admin zonale
+        if ($this->isZoneAdmin()) {
+            $club = Club::findOrFail($data['club_id']);
             $data['zone_id'] = $club->zone_id;
         }
-    $data['created_by'] = auth()->id();
+        $data['created_by'] = auth()->id();
 
         // Create tournament
         $tournament = Tournament::create($data);
@@ -492,17 +451,11 @@ class TournamentController extends Controller
     }
 
     /**
-     * Check if user can access tournament.
+     * Check if user can access tournament (usa il trait HasZoneVisibility).
      */
     private function checkTournamentAccess(Tournament $tournament)
     {
-        $user = auth()->user();
-
-        if ($user->user_type === 'super_admin' || $user->user_type === 'national_admin') {
-            return;
-        }
-
-        if ($user->user_type === 'admin' && $tournament->zone_id !== $user->zone_id) {
+        if (!$this->canAccessTournament($tournament)) {
             abort(403, 'Non sei autorizzato ad accedere a questo torneo.');
         }
     }
