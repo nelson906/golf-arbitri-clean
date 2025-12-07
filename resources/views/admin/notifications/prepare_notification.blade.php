@@ -41,15 +41,17 @@
             <div class="mb-4 p-4 bg-blue-50 border-l-4 border-blue-400 rounded">
                 <div class="flex items-start">
                     <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM9 7a1 1 0 112 0v4a1 1 0 01-2 0V7zm1 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                        <path fill-rule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM9 7a1 1 0 112 0v4a1 1 0 01-2 0V7zm1 8a1 1 0 100-2 1 1 0 000 2z"
+                            clip-rule="evenodd" />
                     </svg>
                     <div class="text-sm text-blue-800">
-                        <p class="font-medium">Questa pagina prepara la notifica.</p>
+                        <p class="font-medium">Prepara e invia la notifica di assegnazione.</p>
                         <ul class="list-disc ml-5 mt-1 space-y-1">
-                            <li>Seleziona eventuali clausole e genera i documenti.</li>
-                            <li>Puoi modificare i documenti manualmente nella Gestione Documenti.</li>
-                            <li>Al salvataggio la notifica viene marcata come "preparata" e tornerai alla lista tornei.</li>
-                            <li>L'invio effettivo avverrà solo dalla lista tornei con il pulsante "Invia Notifica".</li>
+                            <li><strong>Gestisci Documenti:</strong> Scarica, modifica e ricarica i DOCX allegati.</li>
+                            <li><strong>Anteprima:</strong> Visualizza l'email prima dell'invio.</li>
+                            <li><strong>Salva Bozza:</strong> Salva senza inviare (potrai inviare dopo).</li>
+                            <li><strong>Invia Ora:</strong> Salva e invia immediatamente a tutti i destinatari.</li>
                         </ul>
                     </div>
                 </div>
@@ -208,7 +210,9 @@
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="p-6">
 
-                            <form method="POST" action="{{ route('admin.tournaments.send-assignment-with-convocation', $tournament) }}" class="space-y-6">
+                            <form method="POST"
+                                action="{{ route('admin.tournaments.send-assignment-with-convocation', $tournament) }}"
+                                class="space-y-6">
                                 @csrf
 
                                 {{-- Subject --}}
@@ -228,25 +232,38 @@
                                         📝 Messaggio <span class="text-red-500">*</span>
                                     </label>
                                     <textarea name="message" id="message" rows="8" required
-                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200">{{ old('message',
-'Si comunica l\'assegnazione degli arbitri per il torneo ' . $tournament->name . ' che si terrà ' . $tournament->start_date->format('d/m/Y') . ($tournament->start_date->format('d/m/Y') != $tournament->end_date->format('d/m/Y') ? ' - ' . $tournament->end_date->format('d/m/Y') : '') . ' presso ' . $tournament->club->name . '.
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200">{{ old(
+                                            'message',
+                                            'Si comunica l\'assegnazione degli arbitri per il torneo ' .
+                                                $tournament->name .
+                                                ' che si terrà ' .
+                                                $tournament->start_date->format('d/m/Y') .
+                                                ($tournament->start_date->format('d/m/Y') != $tournament->end_date->format('d/m/Y')
+                                                    ? ' - ' . $tournament->end_date->format('d/m/Y')
+                                                    : '') .
+                                                ' presso ' .
+                                                $tournament->club->name .
+                                                '.
 
-Si prega di prendere nota degli arbitri assegnati e di procedere con le comunicazioni necessarie.
+                                                                                                                                                                Si prega di prendere nota degli arbitri assegnati e di procedere con le comunicazioni necessarie.
 
-Cordiali saluti'
-                                    ) }}</textarea>
+                                                                                                                                                                Cordiali saluti',
+                                        ) }}</textarea>
                                 </div>
 
                                 {{-- ACCORDION: Clausole Aggiuntive --}}
                                 <div class="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
-                                    <button type="button" class="w-full px-6 py-4 text-left flex justify-between items-center bg-blue-50 hover:bg-blue-100"
-                                            onclick="toggleSection('clausole')">
+                                    <button type="button"
+                                        class="w-full px-6 py-4 text-left flex justify-between items-center bg-blue-50 hover:bg-blue-100"
+                                        onclick="toggleSection('clausole')">
                                         <div>
                                             <h5 class="text-lg font-semibold text-gray-800">📝 Clausole Aggiuntive</h5>
                                             <small class="text-gray-600">Seleziona le clausole da includere</small>
                                         </div>
-                                        <svg id="clausole-icon" class="w-6 h-6 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        <svg id="clausole-icon" class="w-6 h-6 transition-transform duration-200"
+                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7"></path>
                                         </svg>
                                     </button>
 
@@ -262,93 +279,124 @@ Cordiali saluti'
                                             $clubClausesByCategory = $clubClauses->groupBy('category');
                                         @endphp
 
-                                        @if($clubClauses->isNotEmpty())
-                                        <div class="mb-6 pb-6 border-b border-gray-200">
-                                            <h6 class="text-base font-semibold text-blue-700 mb-4">Clausole Lettera Circolo</h6>
+                                        @if ($clubClauses->isNotEmpty())
+                                            <div class="mb-6 pb-6 border-b border-gray-200">
+                                                <h6 class="text-base font-semibold text-blue-700 mb-4">Clausole Lettera
+                                                    Circolo</h6>
 
-                                            @foreach(['spese', 'logistica', 'responsabilita'] as $category)
-                                                @php $categoryClauses = $clubClausesByCategory->get($category, collect()); @endphp
-                                                @if($categoryClauses->isNotEmpty())
-                                                <div class="mb-5">
-                                                    <label class="block text-sm font-semibold text-gray-700 mb-3">
-                                                        {{ \App\Models\NotificationClause::CATEGORIES[$category] ?? ucfirst($category) }}
-                                                    </label>
-                                                    @foreach($categoryClauses as $clause)
-                                                        <div class="flex items-start mb-3 p-3 bg-gray-50 rounded-lg">
-                                                            <input type="radio" name="clauses[CLAUSOLA_{{ strtoupper($category) }}]" value="{{ $clause['id'] }}"
-                                                                   id="clause_club_{{ $clause['id'] }}" class="mt-1 w-4 h-4 text-blue-600">
-                                                            <label for="clause_club_{{ $clause['id'] }}" class="ml-3 flex-1 cursor-pointer">
-                                                                <span class="block font-medium text-gray-900">{{ $clause['title'] }}</span>
-                                                                <span class="block text-sm text-gray-600 mt-1">{{ Str::limit($clause['content'], 150) }}</span>
+                                                @foreach (['spese', 'logistica', 'responsabilita'] as $category)
+                                                    @php $categoryClauses = $clubClausesByCategory->get($category, collect()); @endphp
+                                                    @if ($categoryClauses->isNotEmpty())
+                                                        <div class="mb-5">
+                                                            <label class="block text-sm font-semibold text-gray-700 mb-3">
+                                                                {{ \App\Models\NotificationClause::CATEGORIES[$category] ?? ucfirst($category) }}
                                                             </label>
+                                                            @foreach ($categoryClauses as $clause)
+                                                                <div
+                                                                    class="flex items-start mb-3 p-3 bg-gray-50 rounded-lg">
+                                                                    <input type="radio"
+                                                                        name="clauses[CLAUSOLA_{{ strtoupper($category) }}]"
+                                                                        value="{{ $clause['id'] }}"
+                                                                        id="clause_club_{{ $clause['id'] }}"
+                                                                        class="mt-1 w-4 h-4 text-blue-600">
+                                                                    <label for="clause_club_{{ $clause['id'] }}"
+                                                                        class="ml-3 flex-1 cursor-pointer">
+                                                                        <span
+                                                                            class="block font-medium text-gray-900">{{ $clause['title'] }}</span>
+                                                                        <span
+                                                                            class="block text-sm text-gray-600 mt-1">{{ Str::limit($clause['content'], 150) }}</span>
+                                                                    </label>
+                                                                </div>
+                                                            @endforeach
+                                                            <div class="flex items-start p-3">
+                                                                <input type="radio"
+                                                                    name="clauses[CLAUSOLA_{{ strtoupper($category) }}]"
+                                                                    value=""
+                                                                    id="clause_club_none_{{ $category }}" checked
+                                                                    class="mt-1 w-4 h-4">
+                                                                <label for="clause_club_none_{{ $category }}"
+                                                                    class="ml-3 text-sm text-gray-500 italic cursor-pointer">
+                                                                    Nessuna clausola
+                                                                </label>
+                                                            </div>
                                                         </div>
-                                                    @endforeach
-                                                    <div class="flex items-start p-3">
-                                                        <input type="radio" name="clauses[CLAUSOLA_{{ strtoupper($category) }}]" value=""
-                                                               id="clause_club_none_{{ $category }}" checked class="mt-1 w-4 h-4">
-                                                        <label for="clause_club_none_{{ $category }}" class="ml-3 text-sm text-gray-500 italic cursor-pointer">
-                                                            Nessuna clausola
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                                @endif
-                                            @endforeach
-                                        </div>
+                                                    @endif
+                                                @endforeach
+                                            </div>
                                         @endif
 
                                         @php
                                             $refereeClauses = collect();
                                             if (isset($availableClauses['referee'])) {
-                                                $refereeClauses = $refereeClauses->merge(collect($availableClauses['referee']));
+                                                $refereeClauses = $refereeClauses->merge(
+                                                    collect($availableClauses['referee']),
+                                                );
                                             }
                                             if (isset($availableClauses['all'])) {
-                                                $refereeClauses = $refereeClauses->merge(collect($availableClauses['all']));
+                                                $refereeClauses = $refereeClauses->merge(
+                                                    collect($availableClauses['all']),
+                                                );
                                             }
                                             $refereeClausesByCategory = $refereeClauses->groupBy('category');
                                         @endphp
 
-                                        @if($refereeClauses->isNotEmpty())
-                                        <div>
-                                            <h6 class="text-base font-semibold text-green-700 mb-4">Clausole Convocazione Arbitri</h6>
+                                        @if ($refereeClauses->isNotEmpty())
+                                            <div>
+                                                <h6 class="text-base font-semibold text-green-700 mb-4">Clausole
+                                                    Convocazione Arbitri</h6>
 
-                                            @foreach(['responsabilita', 'comunicazioni', 'altro'] as $category)
-                                                @php $categoryClauses = $refereeClausesByCategory->get($category, collect()); @endphp
-                                                @if($categoryClauses->isNotEmpty())
-                                                <div class="mb-5">
-                                                    <label class="block text-sm font-semibold text-gray-700 mb-3">
-                                                        {{ \App\Models\NotificationClause::CATEGORIES[$category] ?? ucfirst($category) }}
-                                                    </label>
-                                                    @foreach($categoryClauses as $clause)
-                                                        <div class="flex items-start mb-3 p-3 bg-gray-50 rounded-lg">
-                                                            <input type="radio" name="clauses[CLAUSOLA_{{ strtoupper($category) }}]" value="{{ $clause['id'] }}"
-                                                                   id="clause_ref_{{ $clause['id'] }}" class="mt-1 w-4 h-4 text-green-600">
-                                                            <label for="clause_ref_{{ $clause['id'] }}" class="ml-3 flex-1 cursor-pointer">
-                                                                <span class="block font-medium text-gray-900">{{ $clause['title'] }}</span>
-                                                                <span class="block text-sm text-gray-600 mt-1">{{ Str::limit($clause['content'], 150) }}</span>
+                                                @foreach (['responsabilita', 'comunicazioni', 'altro'] as $category)
+                                                    @php $categoryClauses = $refereeClausesByCategory->get($category, collect()); @endphp
+                                                    @if ($categoryClauses->isNotEmpty())
+                                                        <div class="mb-5">
+                                                            <label class="block text-sm font-semibold text-gray-700 mb-3">
+                                                                {{ \App\Models\NotificationClause::CATEGORIES[$category] ?? ucfirst($category) }}
                                                             </label>
+                                                            @foreach ($categoryClauses as $clause)
+                                                                <div
+                                                                    class="flex items-start mb-3 p-3 bg-gray-50 rounded-lg">
+                                                                    <input type="radio"
+                                                                        name="clauses[CLAUSOLA_{{ strtoupper($category) }}]"
+                                                                        value="{{ $clause['id'] }}"
+                                                                        id="clause_ref_{{ $clause['id'] }}"
+                                                                        class="mt-1 w-4 h-4 text-green-600">
+                                                                    <label for="clause_ref_{{ $clause['id'] }}"
+                                                                        class="ml-3 flex-1 cursor-pointer">
+                                                                        <span
+                                                                            class="block font-medium text-gray-900">{{ $clause['title'] }}</span>
+                                                                        <span
+                                                                            class="block text-sm text-gray-600 mt-1">{{ Str::limit($clause['content'], 150) }}</span>
+                                                                    </label>
+                                                                </div>
+                                                            @endforeach
+                                                            <div class="flex items-start p-3">
+                                                                <input type="radio"
+                                                                    name="clauses[CLAUSOLA_{{ strtoupper($category) }}]"
+                                                                    value=""
+                                                                    id="clause_ref_none_{{ $category }}" checked
+                                                                    class="mt-1 w-4 h-4">
+                                                                <label for="clause_ref_none_{{ $category }}"
+                                                                    class="ml-3 text-sm text-gray-500 italic cursor-pointer">
+                                                                    Nessuna clausola
+                                                                </label>
+                                                            </div>
                                                         </div>
-                                                    @endforeach
-                                                    <div class="flex items-start p-3">
-                                                        <input type="radio" name="clauses[CLAUSOLA_{{ strtoupper($category) }}]" value=""
-                                                               id="clause_ref_none_{{ $category }}" checked class="mt-1 w-4 h-4">
-                                                        <label for="clause_ref_none_{{ $category }}" class="ml-3 text-sm text-gray-500 italic cursor-pointer">
-                                                            Nessuna clausola
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                                @endif
-                                            @endforeach
-                                        </div>
+                                                    @endif
+                                                @endforeach
+                                            </div>
                                         @endif
 
-                                        @if($refereeClauses->isNotEmpty() || $clubClauses->isNotEmpty())
+                                        @if ($refereeClauses->isNotEmpty() || $clubClauses->isNotEmpty())
                                             {{-- Bottone Rigenera Documenti --}}
                                             <div class="mt-6 pt-6 border-t border-gray-200">
-                                                <button type="button" onclick="regenerateDocuments()" 
-                                                    class="inline-flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" 
+                                                <button type="button" onclick="regenerateDocuments()"
+                                                    class="inline-flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                                                     id="regenerateButton">
-                                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                                     </svg>
                                                     <span>Rigenera documenti con clausole selezionate</span>
                                                 </button>
@@ -359,26 +407,31 @@ Cordiali saluti'
 
                                 {{-- ACCORDION: Destinatari Arbitri --}}
                                 <div class="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
-                                    <button type="button" class="w-full px-6 py-4 text-left flex justify-between items-center bg-green-50 hover:bg-green-100"
-                                            onclick="toggleSection('arbitri')">
+                                    <button type="button"
+                                        class="w-full px-6 py-4 text-left flex justify-between items-center bg-green-50 hover:bg-green-100"
+                                        onclick="toggleSection('arbitri')">
                                         <div>
                                             <h5 class="text-lg font-semibold text-gray-800">👥 Destinatari Arbitri</h5>
                                             <small class="text-gray-600">{{ $assignedReferees->count() }} arbitri</small>
                                         </div>
-                                        <svg id="arbitri-icon" class="w-6 h-6 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        <svg id="arbitri-icon" class="w-6 h-6 transition-transform duration-200"
+                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 9l-7 7-7-7"></path>
                                         </svg>
                                     </button>
 
-<div id="arbitri-content" class="p-6 hidden">
+                                    <div id="arbitri-content" class="p-6 hidden">
                                         @if ($assignedReferees->count() > 0)
                                             <div class="space-y-3 max-h-64 overflow-y-auto">
                                                 @foreach ($assignedReferees as $referee)
                                                     <div class="flex items-center">
-                                                        <input type="checkbox" name="recipients[]" value="{{ $referee->id }}"
-                                                               id="referee_{{ $referee->id }}" checked
-                                                               class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                                                        <label for="referee_{{ $referee->id }}" class="ml-3 text-sm flex-1">
+                                                        <input type="checkbox" name="recipients[]"
+                                                            value="{{ $referee->id }}" id="referee_{{ $referee->id }}"
+                                                            checked
+                                                            class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                                                        <label for="referee_{{ $referee->id }}"
+                                                            class="ml-3 text-sm flex-1">
                                                             <span class="font-medium">{{ $referee->name }}</span>
                                                             <span class="text-gray-600">({{ $referee->role }})</span>
                                                             <div class="text-xs text-gray-500">{{ $referee->email }}</div>
@@ -395,14 +448,18 @@ Cordiali saluti'
                                 {{-- ACCORDION: Indirizzi Preimpostati --}}
                                 @if (isset($groupedEmails) && $groupedEmails->count() > 0)
                                     <div class="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
-                                        <button type="button" class="w-full px-6 py-4 text-left flex justify-between items-center bg-purple-50 hover:bg-purple-100"
-                                                onclick="toggleSection('preimpostati')">
+                                        <button type="button"
+                                            class="w-full px-6 py-4 text-left flex justify-between items-center bg-purple-50 hover:bg-purple-100"
+                                            onclick="toggleSection('preimpostati')">
                                             <div>
-                                                <h5 class="text-lg font-semibold text-gray-800">📋 Indirizzi Preimpostati</h5>
+                                                <h5 class="text-lg font-semibold text-gray-800">📋 Indirizzi Preimpostati
+                                                </h5>
                                                 <small class="text-gray-600">Indirizzi standard per le notifiche</small>
                                             </div>
-                                            <svg id="preimpostati-icon" class="w-6 h-6 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                            <svg id="preimpostati-icon" class="w-6 h-6 transition-transform duration-200"
+                                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 9l-7 7-7-7"></path>
                                             </svg>
                                         </button>
 
@@ -410,18 +467,22 @@ Cordiali saluti'
                                             <div class="bg-gray-50 p-4 rounded-lg">
                                                 @foreach ($groupedEmails as $category => $emails)
                                                     <div class="mb-4 last:mb-0">
-                                                        <h4 class="font-medium text-gray-900 mb-2">{{ $category }}</h4>
+                                                        <h4 class="font-medium text-gray-900 mb-2">{{ $category }}
+                                                        </h4>
                                                         <div class="space-y-2">
                                                             @foreach ($emails as $email)
                                                                 <div class="flex items-center">
                                                                     <input type="checkbox" id="fixed_{{ $email->id }}"
-                                                                        name="fixed_addresses[]" value="{{ $email->id }}"
+                                                                        name="fixed_addresses[]"
+                                                                        value="{{ $email->id }}"
                                                                         {{ $email->is_default ? 'checked' : '' }}
                                                                         class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
                                                                     <label for="fixed_{{ $email->id }}"
                                                                         class="ml-2 text-sm text-gray-700">
-                                                                        <span class="font-medium">{{ $email->name }}</span>
-                                                                        <span class="text-gray-500">({{ $email->email }})</span>
+                                                                        <span
+                                                                            class="font-medium">{{ $email->name }}</span>
+                                                                        <span
+                                                                            class="text-gray-500">({{ $email->email }})</span>
                                                                     </label>
                                                                 </div>
                                                             @endforeach
@@ -436,14 +497,17 @@ Cordiali saluti'
                                 {{-- ACCORDION: Email Istituzionali --}}
                                 @if ($groupedEmails && $groupedEmails->count() > 0)
                                     <div class="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
-                                        <button type="button" class="w-full px-6 py-4 text-left flex justify-between items-center bg-blue-50 hover:bg-blue-100"
-                                                onclick="toggleSection('istituzionali')">
+                                        <button type="button"
+                                            class="w-full px-6 py-4 text-left flex justify-between items-center bg-blue-50 hover:bg-blue-100"
+                                            onclick="toggleSection('istituzionali')">
                                             <div>
                                                 <h5 class="text-lg font-semibold text-gray-800">📮 Email Istituzionali</h5>
                                                 <small class="text-gray-600">Email degli organi federali</small>
                                             </div>
-                                            <svg id="istituzionali-icon" class="w-6 h-6 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                            <svg id="istituzionali-icon" class="w-6 h-6 transition-transform duration-200"
+                                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M19 9l-7 7-7-7"></path>
                                             </svg>
                                         </button>
 
@@ -468,10 +532,13 @@ Cordiali saluti'
 
                                                                         <label for="institutional_{{ $email->id }}"
                                                                             class="ml-2 text-sm text-gray-700">
-                                                                            <span class="font-medium">{{ $email->name }}</span>
-                                                                            <span class="text-gray-500">({{ $email->email }})</span>
+                                                                            <span
+                                                                                class="font-medium">{{ $email->name }}</span>
+                                                                            <span
+                                                                                class="text-gray-500">({{ $email->email }})</span>
                                                                             @if ($email->receive_all_notifications)
-                                                                                <span class="text-xs text-blue-600">• Tutte le notifiche</span>
+                                                                                <span class="text-xs text-blue-600">• Tutte
+                                                                                    le notifiche</span>
                                                                             @endif
                                                                         </label>
                                                                     </div>
@@ -492,7 +559,8 @@ Cordiali saluti'
                                     </label>
                                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
                                         <div class="flex items-center">
-                                            <input type="checkbox" name="send_to_club" id="send_to_club" value="1" checked
+                                            <input type="checkbox" name="send_to_club" id="send_to_club" value="1"
+                                                checked
                                                 class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
                                             <label for="send_to_club" class="ml-2 text-sm text-gray-700">
                                                 <span class="font-medium">Invia notifica al circolo</span>
@@ -571,55 +639,210 @@ Cordiali saluti'
                                     </div>
                                 </div>
 
-                                {{-- Submit --}}
-                                <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+                                {{-- Hidden action field --}}
+                                <input type="hidden" name="action" id="form-action" value="save">
+
+                                {{-- Submit Buttons --}}
+                                <div
+                                    class="flex flex-col sm:flex-row justify-between items-center gap-4 pt-6 border-t border-gray-200">
+                                    {{-- Left: Cancel --}}
                                     <a href="{{ route('admin.tournaments.show', $tournament) }}"
-                                        class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
+                                        class="w-full sm:w-auto px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 text-center">
                                         Annulla
                                     </a>
-                                    <button type="submit"
-                                        class="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex items-center">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                                        </svg>
-                                        Salva Notifica
-                                    </button>
+
+                                    {{-- Right: Actions --}}
+                                    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                                        {{-- Preview Button --}}
+                                        <button type="button" onclick="showPreview()"
+                                            class="w-full sm:w-auto px-5 py-2 bg-gray-100 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 flex items-center justify-center">
+                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
+                                                </path>
+                                            </svg>
+                                            Anteprima
+                                        </button>
+
+                                        {{-- Save Draft Button --}}
+                                        <button type="submit"
+                                            onclick="document.getElementById('form-action').value='save'"
+                                            class="w-full sm:w-auto px-5 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 flex items-center justify-center">
+                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4">
+                                                </path>
+                                            </svg>
+                                            Salva Bozza
+                                        </button>
+
+                                        {{-- Send Now Button --}}
+                                        <button type="submit" onclick="return confirmSend()"
+                                            class="w-full sm:w-auto px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 flex items-center justify-center">
+                                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                            </svg>
+                                            Invia Ora
+                                        </button>
+                                    </div>
                                 </div>
                             </form>
                         </div>
                     </div>
                 </div>
             </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        </div>
+    </div>
+    </div>
+    </div>
+    </div>
+    </div>
+    </div>
+
+    @include('admin.tournament-notifications._document_manager_modal')
+    {{-- Preview Modal --}}
+    <div id="preview-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-10 mx-auto p-5 border w-11/12 max-w-3xl shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="text-lg font-medium text-gray-900">Anteprima Email</h3>
+                <button onclick="closePreview()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+            <div id="preview-content" class="mt-4 max-h-96 overflow-y-auto">
+                <!-- Content will be loaded here -->
+            </div>
+            <div class="mt-4 pt-4 border-t flex justify-end">
+                <button onclick="closePreview()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
+                    Chiudi
+                </button>
             </div>
         </div>
     </div>
 
-    @include('admin.tournament-notifications._document_manager_modal')
 
     <script>
-// Toast semplice per feedback
-function showToast(message, isError = false) {
-    const toast = document.createElement('div');
-    toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg ${isError ? 'bg-red-500' : 'bg-green-500'} text-white`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-}
+        // Toast semplice per feedback
+        function showToast(message, isError = false) {
+            const toast = document.createElement('div');
+            toast.className =
+                `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${isError ? 'bg-red-500' : 'bg-green-500'} text-white`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        // Conferma invio
+        function confirmSend() {
+            const recipientCount = document.querySelectorAll('input[name="recipients[]"]:checked').length;
+            const sendToClub = document.getElementById('send_to_club')?.checked;
+            const totalRecipients = recipientCount + (sendToClub ? 1 : 0);
 
-// Gestione rigenerazione documenti
-async function regenerateDocuments() {
-    const button = document.getElementById('regenerateButton');
-    const originalText = button.innerHTML;
-    try {
-        // Disabilita il bottone e mostra loading
-        button.disabled = true;
-        button.innerHTML = `
+            if (totalRecipients === 0) {
+                alert('Seleziona almeno un destinatario.');
+                return false;
+            }
+
+            const confirmed = confirm(
+                `Stai per inviare la notifica a ${totalRecipients} destinatari.\n\nVuoi procedere con l'invio?`);
+            if (confirmed) {
+                document.getElementById('form-action').value = 'send';
+                return true;
+            }
+            return false;
+        }
+
+        // Mostra anteprima
+        function showPreview() {
+            const subject = document.getElementById('subject').value || 'Nessun oggetto';
+            const message = document.getElementById('message').value || 'Nessun messaggio';
+
+            // Raccogli destinatari selezionati
+            const referees = [];
+            document.querySelectorAll('input[name="recipients[]"]:checked').forEach(cb => {
+                const label = cb.closest('.flex')?.querySelector('label');
+                if (label) {
+                    referees.push(label.textContent.trim());
+                }
+            });
+
+            const sendToClub = document.getElementById('send_to_club')?.checked;
+            const clubName = '{{ $tournament->club->name ?? 'N/A' }}';
+            const clubEmail = '{{ $tournament->club->email ?? 'N/A' }}';
+
+            // Costruisci HTML preview
+            let html = `
+        <div class="space-y-4">
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h4 class="font-medium text-gray-700 mb-2">Oggetto:</h4>
+                <p class="text-gray-900">${escapeHtml(subject)}</p>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h4 class="font-medium text-gray-700 mb-2">Messaggio:</h4>
+                <p class="text-gray-900 whitespace-pre-wrap">${escapeHtml(message)}</p>
+            </div>
+
+            <div class="bg-blue-50 p-4 rounded-lg">
+                <h4 class="font-medium text-blue-700 mb-2">Destinatari (${referees.length + (sendToClub ? 1 : 0)}):</h4>
+                <ul class="text-sm text-gray-700 space-y-1">
+    `;
+
+            if (sendToClub) {
+                html +=
+                    `<li class="flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>Circolo: ${escapeHtml(clubName)} (${escapeHtml(clubEmail)})</li>`;
+            }
+
+            referees.forEach(ref => {
+                html +=
+                    `<li class="flex items-center"><span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>${escapeHtml(ref)}</li>`;
+            });
+
+            html += `
+                </ul>
+            </div>
+
+            <div class="bg-yellow-50 p-4 rounded-lg">
+                <h4 class="font-medium text-yellow-700 mb-2">Allegati DOCX:</h4>
+                <ul class="text-sm text-gray-700">
+                    <li>• Convocazione.docx (per arbitri)</li>
+                    <li>• Lettera_Circolo.docx (per circolo)</li>
+                </ul>
+            </div>
+        </div>
+    `;
+
+            document.getElementById('preview-content').innerHTML = html;
+            document.getElementById('preview-modal').classList.remove('hidden');
+        }
+
+        function closePreview() {
+            document.getElementById('preview-modal').classList.add('hidden');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+
+        // Gestione rigenerazione documenti
+        async function regenerateDocuments() {
+            const button = document.getElementById('regenerateButton');
+            const originalText = button.innerHTML;
+            try {
+                // Disabilita il bottone e mostra loading
+                button.disabled = true;
+                button.innerHTML = `
             <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -627,84 +850,86 @@ async function regenerateDocuments() {
             Rigenerazione in corso...
         `;
 
-        // Genera convocazione
-        await fetch(`{{ route('admin.tournament-notifications.generate-document', ['notification' => $notification->id, 'type' => 'convocation']) }}`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        });
+                // Genera convocazione
+                await fetch(
+                    `{{ route('admin.tournament-notifications.generate-document', ['notification' => $notification->id, 'type' => 'convocation']) }}`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
+                    });
 
-        // Genera lettera circolo
-        await fetch(`{{ route('admin.tournament-notifications.generate-document', ['notification' => $notification->id, 'type' => 'club_letter']) }}`, {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        });
+                // Genera lettera circolo
+                await fetch(
+                    `{{ route('admin.tournament-notifications.generate-document', ['notification' => $notification->id, 'type' => 'club_letter']) }}`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        }
+                    });
 
-        // Aggiorna stato documenti nel modal
-        if (typeof openDocumentManager === 'function') {
-            openDocumentManager({{ $notification->id }});
+                // Aggiorna stato documenti nel modal
+                if (typeof openDocumentManager === 'function') {
+                    openDocumentManager({{ $notification->id }});
+                }
+
+                showToast('Documenti rigenerati con successo');
+
+            } catch (error) {
+                console.error('Errore durante la rigenerazione:', error);
+                showToast('Errore durante la rigenerazione dei documenti', true);
+            } finally {
+                // Ripristina il bottone
+                button.disabled = false;
+                button.innerHTML = originalText;
+            }
         }
 
-        showToast('Documenti rigenerati con successo');
+        function toggleSection(sectionId) {
+            const content = document.getElementById(`${sectionId}-content`);
+            const icon = document.getElementById(`${sectionId}-icon`);
 
-    } catch (error) {
-        console.error('Errore durante la rigenerazione:', error);
-        showToast('Errore durante la rigenerazione dei documenti', true);
-    } finally {
-        // Ripristina il bottone
-        button.disabled = false;
-        button.innerHTML = originalText;
-    }
-}
+            // Se la sezione non esiste (render condizionale), non fare nulla
+            if (!content || !icon) return;
 
-function toggleSection(sectionId) {
-    const content = document.getElementById(`${sectionId}-content`);
-    const icon = document.getElementById(`${sectionId}-icon`);
-
-    // Se la sezione non esiste (render condizionale), non fare nulla
-    if (!content || !icon) return;
-
-    // Se l'elemento usa display:none inline, mantieni compatibilita'
-    const isHiddenByClass = content.classList.contains('hidden');
-    const isHiddenByStyle = content.style && content.style.display === 'none';
-
-    if (isHiddenByClass || isHiddenByStyle) {
-        content.classList.remove('hidden');
-        if (content.style) content.style.display = '';
-        icon.style.transform = 'rotate(180deg)';
-        localStorage.setItem(`section_${sectionId}`, 'open');
-    } else {
-        // Se non usa la classe hidden, applicala per uniformita'
-        content.classList.add('hidden');
-        icon.style.transform = 'rotate(0)';
-        localStorage.setItem(`section_${sectionId}`, 'closed');
-    }
-}
-
-// On page load, restore accordion states
-document.addEventListener('DOMContentLoaded', function() {
-    ['clausole', 'arbitri', 'preimpostati', 'istituzionali'].forEach(sectionId => {
-        const content = document.getElementById(`${sectionId}-content`);
-        const icon = document.getElementById(`${sectionId}-icon`);
-        if (!content || !icon) return; // sezione opzionale non presente
-
-        const savedState = localStorage.getItem(`section_${sectionId}`);
-        if (savedState === 'open') {
-            // Apri solo se chiusa
+            // Se l'elemento usa display:none inline, mantieni compatibilita'
             const isHiddenByClass = content.classList.contains('hidden');
             const isHiddenByStyle = content.style && content.style.display === 'none';
+
             if (isHiddenByClass || isHiddenByStyle) {
-                toggleSection(sectionId);
+                content.classList.remove('hidden');
+                if (content.style) content.style.display = '';
+                icon.style.transform = 'rotate(180deg)';
+                localStorage.setItem(`section_${sectionId}`, 'open');
+            } else {
+                // Se non usa la classe hidden, applicala per uniformita'
+                content.classList.add('hidden');
+                icon.style.transform = 'rotate(0)';
+                localStorage.setItem(`section_${sectionId}`, 'closed');
             }
         }
-    });
-});
-</script>
+
+        // On page load, restore accordion states
+        document.addEventListener('DOMContentLoaded', function() {
+            ['clausole', 'arbitri', 'preimpostati', 'istituzionali'].forEach(sectionId => {
+                const content = document.getElementById(`${sectionId}-content`);
+                const icon = document.getElementById(`${sectionId}-icon`);
+                if (!content || !icon) return; // sezione opzionale non presente
+
+                const savedState = localStorage.getItem(`section_${sectionId}`);
+                if (savedState === 'open') {
+                    // Apri solo se chiusa
+                    const isHiddenByClass = content.classList.contains('hidden');
+                    const isHiddenByStyle = content.style && content.style.display === 'none';
+                    if (isHiddenByClass || isHiddenByStyle) {
+                        toggleSection(sectionId);
+                    }
+                }
+            });
+        });
+    </script>
 @endsection

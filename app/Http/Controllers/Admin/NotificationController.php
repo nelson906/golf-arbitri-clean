@@ -115,11 +115,14 @@ class NotificationController extends Controller
                 $convDestPath = "convocazioni/{$zone}/generated/{$convFileName}";
 
                 // Assicurati che la directory esista
-                Storage::disk('public')->makeDirectory(dirname($convDestPath));
+                $fullDestDir = Storage::disk('public')->path(dirname($convDestPath));
+                if (!is_dir($fullDestDir)) {
+                    mkdir($fullDestDir, 0755, true);
+                }
 
-                // Copia il file
-                $content = file_get_contents($convocationData['path']);
-                Storage::disk('public')->put($convDestPath, $content);
+                // Copia il file binario direttamente (preserva integrità DOCX)
+                $fullDestPath = Storage::disk('public')->path($convDestPath);
+                copy($convocationData['path'], $fullDestPath);
                 unlink($convocationData['path']); // Elimina il file temporaneo
                 $documents['convocation'] = $convFileName;
 
@@ -128,9 +131,9 @@ class NotificationController extends Controller
                 $clubFileName = basename($clubDocData['path']);
                 $clubDestPath = "convocazioni/{$zone}/generated/{$clubFileName}";
 
-                // Copia il file
-                $content = file_get_contents($clubDocData['path']);
-                Storage::disk('public')->put($clubDestPath, $content);
+                // Copia il file binario direttamente (preserva integrità DOCX)
+                $fullClubDestPath = Storage::disk('public')->path($clubDestPath);
+                copy($clubDocData['path'], $fullClubDestPath);
                 unlink($clubDocData['path']); // Elimina il file temporaneo
                 $documents['club_letter'] = $clubFileName;
 
@@ -267,9 +270,11 @@ class NotificationController extends Controller
                 $convocationData = $this->documentService->generateConvocationForTournament($tournament, $notification);
                 $convFileName = basename($convocationData['path']);
                 $destPath = "convocazioni/{$zone}/generated/{$convFileName}";
-                Storage::disk('public')->makeDirectory(dirname($destPath));
-                $content = file_get_contents($convocationData['path']);
-                Storage::disk('public')->put($destPath, $content);
+                $fullDestDir = Storage::disk('public')->path(dirname($destPath));
+                if (!is_dir($fullDestDir)) {
+                    mkdir($fullDestDir, 0755, true);
+                }
+                copy($convocationData['path'], Storage::disk('public')->path($destPath));
                 if (file_exists($convocationData['path'])) {
                     unlink($convocationData['path']);
                 }
@@ -280,9 +285,11 @@ class NotificationController extends Controller
                 $docData = $this->documentService->generateClubDocument($tournament, $notification);
                 $clubFileName = basename($docData['path']);
                 $destPath = "convocazioni/{$zone}/generated/{$clubFileName}";
-                Storage::disk('public')->makeDirectory(dirname($destPath));
-                $content = file_get_contents($docData['path']);
-                Storage::disk('public')->put($destPath, $content);
+                $fullDestDir = Storage::disk('public')->path(dirname($destPath));
+                if (!is_dir($fullDestDir)) {
+                    mkdir($fullDestDir, 0755, true);
+                }
+                copy($docData['path'], Storage::disk('public')->path($destPath));
                 if (file_exists($docData['path'])) {
                     unlink($docData['path']);
                 }
@@ -392,7 +399,14 @@ class NotificationController extends Controller
                 'path' => $path
             ]);
 
-            return response()->download($fullPath, $type === 'convocation' ? 'Convocazione.docx' : 'Lettera_Circolo.docx');
+            $filename = $type === 'convocation' ? 'Convocazione.docx' : 'Lettera_Circolo.docx';
+
+            // Usa BinaryFileResponse per garantire integrità binaria
+            return response()->file($fullPath, [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+
+            ]);
         } catch (\Exception $e) {
             Log::error('Error downloading document', [
                 'notification_id' => $notification->id,
@@ -555,8 +569,12 @@ class NotificationController extends Controller
             'send_to_club' => 'boolean',
             'attach_convocation' => 'boolean',
             'clauses' => 'nullable|array',
-            'clauses.*' => 'nullable|exists:notification_clauses,id'
+            'clauses.*' => 'nullable|exists:notification_clauses,id',
+            'action' => 'nullable|string|in:save,send,preview'  // Nuova azione
         ]);
+
+        // Determina l'azione: 'save' = salva bozza, 'send' = invia subito, 'preview' = anteprima
+        $action = $request->input('action', 'save');
 
         try {
             DB::beginTransaction();
@@ -662,8 +680,11 @@ class NotificationController extends Controller
                 $convocationData = $this->documentService->generateConvocationForTournament($tournament, $notification);
                 $convFileName = basename($convocationData['path']);
                 $convDest = "convocazioni/{$zone}/generated/{$convFileName}";
-                Storage::disk('public')->makeDirectory(dirname($convDest));
-                $content = file_get_contents($convocationData['path']);
+                $fullDestDir = Storage::disk('public')->path(dirname($convDest));
+                if (!is_dir($fullDestDir)) {
+                    mkdir($fullDestDir, 0755, true);
+                }
+                copy($convocationData['path'], Storage::disk('public')->path($convDest));
                 Storage::disk('public')->put($convDest, $content);
                 if (file_exists($convocationData['path'])) {
                     unlink($convocationData['path']);
@@ -674,8 +695,7 @@ class NotificationController extends Controller
                 $clubDocData = $this->documentService->generateClubDocument($tournament, $notification);
                 $clubFileName = basename($clubDocData['path']);
                 $clubDest = "convocazioni/{$zone}/generated/{$clubFileName}";
-                $content = file_get_contents($clubDocData['path']);
-                Storage::disk('public')->put($clubDest, $content);
+                copy($clubDocData['path'], Storage::disk('public')->path($clubDest));
                 if (file_exists($clubDocData['path'])) {
                     unlink($clubDocData['path']);
                 }
@@ -689,17 +709,62 @@ class NotificationController extends Controller
                 ]);
             }
 
-            // Marca come PREPARATA (non inviare qui)
+            // Marca come PREPARATA
             $notification->update(['is_prepared' => true]);
 
             DB::commit();
 
+            // ═══════════════════════════════════════════════════════════════════════
+            // GESTIONE AZIONE: save, send, o preview
+            // ═══════════════════════════════════════════════════════════════════════
+
+            // PREVIEW: restituisce JSON con anteprima email
+            if ($action === 'preview') {
+                return response()->json([
+                    'success' => true,
+                    'preview' => [
+                        'subject' => $metadata['subject'],
+                        'message' => $metadata['message'],
+                        'recipients' => [
+                            'club' => $metadata['recipients']['club'] ? $tournament->club->email : null,
+                            'referees' => $tournament->assignments()
+                                ->whereIn('user_id', $metadata['recipients']['referees'] ?? [])
+                                ->with('user')
+                                ->get()
+                                ->map(fn($a) => ['name' => $a->user->name, 'email' => $a->user->email, 'role' => $a->role]),
+                            'institutional' => \App\Models\InstitutionalEmail::whereIn('id', $metadata['recipients']['institutional'] ?? [])
+                                ->pluck('email')
+                        ],
+                        'documents' => $notification->documents
+                    ]
+                ]);
+            }
+
+            // SEND: invia subito la notifica
+            if ($action === 'send') {
+                try {
+                    $this->notificationService->send($notification);
+
+                    return redirect()->route('admin.tournament-notifications.index')
+                        ->with('success', 'Notifica inviata con successo a tutti i destinatari!');
+                } catch (\Exception $sendError) {
+                    Log::error('Errore invio notifica', [
+                        'notification_id' => $notification->id,
+                        'error' => $sendError->getMessage()
+                    ]);
+                    return redirect()->back()
+                        ->with('error', 'Errore nell\'invio: ' . $sendError->getMessage())
+                        ->with('warning', 'La notifica è stata salvata come bozza.');
+                }
+            }
+
+            // SAVE (default): salva solo come bozza
             return redirect()->route('admin.tournaments.index')
-                ->with('success', 'Notifica salvata con successo. Ora puoi inviarla dalla lista tornei.');
+                ->with('success', 'Notifica salvata come bozza. Puoi inviarla dalla lista tornei.');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Errore invio notifiche con allegati: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Errore nell\'invio delle notifiche: ' . $e->getMessage());
+            Log::error('Errore preparazione notifica: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Errore nella preparazione: ' . $e->getMessage());
         }
     }
 

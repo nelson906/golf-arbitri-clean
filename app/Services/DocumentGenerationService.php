@@ -24,15 +24,17 @@ class DocumentGenerationService
     public function getZoneFolder(Tournament $tournament): string
     {
         // Se è nazionale, va in CRC
-        if ($tournament->is_national ||
-            ($tournament->tournamentType && $tournament->tournamentType->is_national)) {
+        if (
+            $tournament->is_national ||
+            ($tournament->tournamentType && $tournament->tournamentType->is_national)
+        ) {
             return 'CRC';
         }
 
         // Altrimenti usa la zona del circolo
         $zoneId = $tournament->club->zone_id ?? $tournament->zone_id;
 
-        return match($zoneId) {
+        return match ($zoneId) {
             1 => 'SZR1',
             2 => 'SZR2',
             3 => 'SZR3',
@@ -81,7 +83,7 @@ class DocumentGenerationService
         $filename = $fileData['filename'];
         $relativePath = "convocazioni/{$zone}/generated/{$filename}";
 
-        // PRIMA leggi il contenuto
+        // Verifica che il file sorgente esista
         if (!file_exists($fileData['path'])) {
             Log::error('Source file does not exist', [
                 'path' => $fileData['path'],
@@ -89,40 +91,32 @@ class DocumentGenerationService
             ]);
             throw new \Exception("File sorgente non trovato: {$fileData['path']}");
         }
-        
-        $content = file_get_contents($fileData['path']);
-        
-        if (!$content) {
-            Log::error('Could not read file content', [
-                'path' => $fileData['path'],
-                'tournament_id' => $tournament->id
-            ]);
-            throw new \Exception("Impossibile leggere il contenuto del file: {$fileData['path']}");
-        }
 
         // Assicurati che la directory esista
         $fullPath = Storage::disk('public')->path(dirname($relativePath));
         if (!is_dir($fullPath)) {
-            mkdir($fullPath, 0777, true);
+            mkdir($fullPath, 0755, true);
         }
 
-        // POI salva
+        // Copia il file binario direttamente (preserva integrità DOCX)
+        $destFullPath = Storage::disk('public')->path($relativePath);
+
         try {
-            Log::info('Attempting to store file', [
-                'full_path' => $fullPath,
-                'relative_path' => $relativePath,
-                'exists' => is_dir($fullPath)
+            Log::info('Attempting to copy file', [
+                'source' => $fileData['path'],
+                'destination' => $destFullPath
             ]);
-            
-            $saved = Storage::disk('public')->put($relativePath, $content);
+
+            $saved = copy($fileData['path'], $destFullPath);
+
             if (!$saved) {
-                Log::error('Failed to store file', [
+                Log::error('Failed to copy file', [
                     'relative_path' => $relativePath,
                     'tournament_id' => $tournament->id
                 ]);
                 throw new \Exception("Impossibile salvare il file in: {$relativePath}");
             }
-            
+
             Log::info('File stored successfully', [
                 'relative_path' => $relativePath,
                 'tournament_id' => $tournament->id
@@ -178,7 +172,7 @@ class DocumentGenerationService
         }
     }
 
-/**
+    /**
      * Generate convocation for entire tournament
      */
     public function generateConvocationForTournament(Tournament $tournament, ?TournamentNotification $notification = null): array
@@ -190,9 +184,9 @@ class DocumentGenerationService
         ]);
         try {
             $tournament->load([
-                'club', 
-                'zone', 
-                'tournamentType', 
+                'club',
+                'zone',
+                'tournamentType',
                 'assignments.user'
             ]);
 
@@ -209,7 +203,7 @@ class DocumentGenerationService
 
             // Carica template dalla zona
             $templatePath = $this->getZoneTemplatePath($tournament->zone_id);
-            
+
             Log::info('Selected template path', [
                 'template_path' => $templatePath
             ]);
@@ -217,7 +211,7 @@ class DocumentGenerationService
             // Prepara variabili per sostituzione
             // Prepara le clausole dal database (usando la notifica specifica se presente)
             $selectedClauses = [];
-            
+
             if ($notification) {
                 $selectedClauses = $notification->clauseSelections
                     ->mapWithKeys(function ($selection) {
@@ -231,9 +225,9 @@ class DocumentGenerationService
                     })
                     ->toArray();
             }
-            
+
             Log::info('Selected clauses', ['clauses' => $selectedClauses]);
-            
+
             $variables = [
                 'tournament_name' => ucwords(strtolower($tournament->name)), // ✅ Prima lettera maiuscola
                 'tournament_dates' => $this->formatTournamentDates($tournament), // ✅ Date formattate
@@ -869,7 +863,7 @@ class DocumentGenerationService
         }
 
         $templateProcessor = new TemplateProcessor($templatePath);
-        
+
         // Log variabili disponibili nel template
         try {
             $templateVars = $templateProcessor->getVariables();
@@ -891,19 +885,19 @@ class DocumentGenerationService
                 'template' => basename($templatePath),
                 'docType' => $docType
             ]);
-            
+
             // Ottieni i placeholder disponibili per questo tipo
             $availablePlaceholders = $this->getPlaceholdersForDocumentType($docType);
             Log::info('Available placeholders for type:', [
                 'docType' => $docType,
                 'placeholders' => $availablePlaceholders
             ]);
-            
+
             // Log delle clausole ricevute
             Log::info('Clauses received:', [
                 'clauses' => array_keys($variables['clauses'])
             ]);
-            
+
             // Sostituisci le clausole
             foreach ($variables['clauses'] as $placeholderCode => $clause) {
                 Log::info('Processing clause:', [
@@ -912,12 +906,12 @@ class DocumentGenerationService
                     'isAvailable' => in_array($placeholderCode, $availablePlaceholders),
                     'content' => $clause['content'] ?? null
                 ]);
-                
+
                 if (in_array($placeholderCode, $availablePlaceholders) && isset($clause['content'])) {
                     $this->replacePlaceholdersWithClauses($templateProcessor, [$placeholderCode => $clause['content']], $docType);
                 }
             }
-            
+
             // Verifica le variabili dopo la sostituzione
             try {
                 $remainingVars = $templateProcessor->getVariables();
@@ -925,22 +919,11 @@ class DocumentGenerationService
             } catch (\Throwable $e) {
                 Log::warning('Could not read remaining variables: ' . $e->getMessage());
             }
-            
+
             // Pulisci i placeholder non utilizzati
             $this->clearUnusedPlaceholders($templateProcessor);
         }
-        
-        // Crea directory se non esiste
-        if (!is_dir(dirname($outputPath))) {
-            mkdir(dirname($outputPath), 0777, true);
-        }
 
-        $templateProcessor->saveAs($outputPath);
-
-        // Crea directory se non esiste
-        if (!is_dir(dirname($outputPath))) {
-            mkdir(dirname($outputPath), 0777, true);
-        }
 
         $templateProcessor->saveAs($outputPath);
     }
@@ -977,14 +960,14 @@ class DocumentGenerationService
         if (isset($variables['clauses']) && is_array($variables['clauses'])) {
             // Ottieni i placeholder disponibili per questo tipo
             $availablePlaceholders = $this->getPlaceholdersForDocumentType($docType);
-            
+
             // Sostituisci le clausole
             foreach ($variables['clauses'] as $placeholderCode => $clause) {
                 if (in_array($placeholderCode, $availablePlaceholders) && isset($clause['content'])) {
                     $this->replacePlaceholdersWithClauses($templateProcessor, [$placeholderCode => $clause['content']], $docType);
                 }
             }
-            
+
             // Pulisci i placeholder non utilizzati
             $this->clearUnusedPlaceholders($templateProcessor);
         }
@@ -1073,41 +1056,41 @@ class DocumentGenerationService
         try {
             // First generate the DOCX
             $convocationData = $this->generateConvocationForTournament($tournament);
-            
+
             // Convert DOCX to HTML using PhpWord
             $phpWord = IOFactory::load($convocationData['path']);
-            
-        // Create temp directory if it doesn't exist
-        $tempDir = storage_path('app/temp');
-        if (!is_dir($tempDir)) {
-            mkdir($tempDir, 0777, true);
-        }
 
-        // Create temp HTML file
-        $htmlPath = "{$tempDir}/convocation.html";
-        $htmlWriter = IOFactory::createWriter($phpWord, 'HTML');
+            // Create temp directory if it doesn't exist
+            $tempDir = storage_path('app/temp');
+            if (!is_dir($tempDir)) {
+                mkdir($tempDir, 0777, true);
+            }
+
+            // Create temp HTML file
+            $htmlPath = "{$tempDir}/convocation.html";
+            $htmlWriter = IOFactory::createWriter($phpWord, 'HTML');
             $htmlWriter->save($htmlPath);
-            
+
             // Read HTML content
             $htmlContent = file_get_contents($htmlPath);
-            
+
             // Generate PDF using Barryvdh\DomPDF
             $pdf = PDF::loadHTML($htmlContent);
-            
+
             // Generate filename
             $tournamentName = preg_replace('/[^A-Za-z0-9\-]/', '_', $tournament->name);
             $tournamentName = substr($tournamentName, 0, 50);
             $filename = "convocazione_{$tournament->id}_{$tournamentName}.pdf";
-            
+
             // Save PDF
             $tempPath = storage_path('app/temp/' . $filename);
             $pdf->save($tempPath);
-            
+
             // Clean up HTML file
             if (file_exists($htmlPath)) {
                 unlink($htmlPath);
             }
-            
+
             return $tempPath;
         } catch (\Exception $e) {
             Log::error('Error generating PDF convocation', [
@@ -1150,7 +1133,7 @@ class DocumentGenerationService
         foreach ($clauses as $placeholderCode => $clauseContent) {
             try {
                 $templateProcessor->setValue($placeholderCode, $clauseContent);
-                
+
                 Log::debug("Replaced placeholder in {$documentType}", [
                     'placeholder' => $placeholderCode,
                     'content_length' => strlen($clauseContent)
@@ -1168,12 +1151,12 @@ class DocumentGenerationService
     {
         try {
             $variables = $templateProcessor->getVariables();
-            
+
             foreach ($variables as $variable) {
                 // Rimuovi solo i placeholder delle clausole non compilati
                 if (str_starts_with($variable, 'CLAUSOLA_')) {
                     $templateProcessor->setValue($variable, '');
-                    
+
                     Log::debug('Cleared unused placeholder', ['placeholder' => $variable]);
                 }
             }
@@ -1190,7 +1173,7 @@ class DocumentGenerationService
         $placeholders = [
             'club' => [
                 'CLAUSOLA_SPESE',
-                'CLAUSOLA_LOGISTICA', 
+                'CLAUSOLA_LOGISTICA',
                 'CLAUSOLA_RESPONSABILITA'
             ],
             'referee' => [

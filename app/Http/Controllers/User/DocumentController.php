@@ -30,11 +30,11 @@ class DocumentController extends Controller
 
         // Filtro accesso per zona
         if ($user->user_type !== 'national_admin' && $user->user_type !== 'super_admin') {
-            $query->where(function($q) use ($user) {
+            $query->where(function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id)
-                  ->orWhereNull('zone_id')
-                  ->orWhere('uploader_id', $user->id) // I propri documenti
-                  ->orWhere('is_public', true); // Documenti pubblici
+                    ->orWhereNull('zone_id')
+                    ->orWhere('uploader_id', $user->id) // I propri documenti
+                    ->orWhere('is_public', true); // Documenti pubblici
             });
         }
 
@@ -48,10 +48,10 @@ class DocumentController extends Controller
         }
 
         if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
+            $query->where(function ($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('description', 'like', '%' . $request->search . '%')
-                  ->orWhere('original_name', 'like', '%' . $request->search . '%');
+                    ->orWhere('description', 'like', '%' . $request->search . '%')
+                    ->orWhere('original_name', 'like', '%' . $request->search . '%');
             });
         }
 
@@ -62,9 +62,9 @@ class DocumentController extends Controller
             'size_total' => Document::sum('file_size'),
             'this_month' => Document::whereMonth('created_at', now()->month)->count(),
             'by_type' => Document::selectRaw('type, COUNT(*) as count')
-                                ->groupBy('type')
-                                ->pluck('count', 'type')
-                                ->toArray(),
+                ->groupBy('type')
+                ->pluck('count', 'type')
+                ->toArray(),
         ];
 
         return view('user.documents.index', compact('documents', 'stats'));
@@ -91,7 +91,7 @@ class DocumentController extends Controller
             $originalName = $file->getClientOriginalName();
             $extension = $file->getClientOriginalExtension();
             $fileName = Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) . '_' .
-                       time() . '.' . $extension;
+                time() . '.' . $extension;
 
             // Determina il path di storage
             $category = $request->category;
@@ -127,7 +127,6 @@ class DocumentController extends Controller
             }
 
             return back()->with('success', 'Documento caricato con successo!');
-
         } catch (\Exception $e) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -156,15 +155,52 @@ class DocumentController extends Controller
         // Incrementa download counter
         $document->increment('download_count');
 
-        return Storage::disk('public')->download(
-            $document->file_path,
-            $document->original_name
+        $filePath = Storage::disk('public')->path($document->file_path);
+
+        // Determina il MIME type corretto basandosi sull'estensione
+        $mimeType = $this->getCorrectMimeType($document->original_name, $document->mime_type);
+
+        return response()->download(
+            $filePath,
+            $document->original_name,
+            [
+                'Content-Type' => $mimeType,
+            ]
         );
+    }
+
+    /**
+     * Ottiene il MIME type corretto per il download.
+     * Risolve problemi con DOCX/XLSX che vengono rilevati come application/zip
+     */
+    private function getCorrectMimeType(string $filename, ?string $storedMimeType): string
+    {
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+
+        // Mappa estensioni -> MIME types corretti per Office
+        $officeMimeTypes = [
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'doc'  => 'application/msword',
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'xls'  => 'application/vnd.ms-excel',
+            'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'ppt'  => 'application/vnd.ms-powerpoint',
+            'pdf'  => 'application/pdf',
+        ];
+
+        // Se è un file Office, usa il MIME type corretto
+        if (isset($officeMimeTypes[$extension])) {
+            return $officeMimeTypes[$extension];
+        }
+
+        // Altrimenti usa quello salvato nel database
+        return $storedMimeType ?? 'application/octet-stream';
     }
 
     /**
      * Remove a document
      */
+
     public function destroy(Document $document): RedirectResponse
     {
         $this->authorizeDocumentAccess($document, true);
@@ -179,7 +215,6 @@ class DocumentController extends Controller
             $document->delete();
 
             return back()->with('success', 'Documento eliminato con successo!');
-
         } catch (\Exception $e) {
             return back()->with('error', 'Errore durante l\'eliminazione: ' . $e->getMessage());
         }
@@ -190,7 +225,7 @@ class DocumentController extends Controller
      */
     private function determineDocumentType(string $mimeType): string
     {
-        return match(true) {
+        return match (true) {
             str_contains($mimeType, 'pdf') => 'pdf',
             str_contains($mimeType, 'word') || str_contains($mimeType, 'document') => 'document',
             str_contains($mimeType, 'spreadsheet') || str_contains($mimeType, 'excel') => 'spreadsheet',

@@ -72,7 +72,7 @@ class RefereeAssignmentMail extends Mailable
                 'zone_email' => "szr{$this->tournament->zone_id}@federgolf.it",
                 'club_email' => $this->tournament->club->email,
                 'attachments_info' => count($this->attachmentPaths) > 0 ?
-                    ['Convocazione ufficiale in formato PDF'] : null
+                    ['Convocazione ufficiale in allegato'] : null
             ]
         );
     }
@@ -92,10 +92,10 @@ class RefereeAssignmentMail extends Mailable
             if (!is_array($attachment) || !isset($attachment['path'])) {
                 continue;
             }
-            
+
             $path = $attachment['path'];
             $name = $attachment['name'] ?? basename($path);
-            
+
             if (file_exists($path)) {
                 $mailAttachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path)
                     ->as($name);

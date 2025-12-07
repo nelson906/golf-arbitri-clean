@@ -25,13 +25,31 @@ class Tournament extends Model
         'status',
         'notes',
         'created_by',
-];
+    ];
 
     protected $casts = [
         'start_date' => 'datetime',
         'date' => 'date',
         'end_date' => 'datetime',
     ];
+
+
+    /**
+
+     * Default attribute values.
+
+     * I nuovi tornei sono visibili (open) di default.
+
+     * Solo se specificato esplicitamente saranno in bozza (draft).
+
+     */
+
+    protected $attributes = [
+
+        'status' => self::STATUS_OPEN,
+
+    ];
+
     /**
      * Tournament statuses
      */
@@ -48,7 +66,6 @@ class Tournament extends Model
         self::STATUS_ASSIGNED => 'Assegnato',
         self::STATUS_COMPLETED => 'Completato',
     ];
-
 
     /**
      * RELAZIONI
@@ -98,14 +115,14 @@ class Tournament extends Model
     }
 
     // Arbitri assegnati
-public function referees()
-{
-    $userField = \Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
+    public function referees()
+    {
+        $userField = \Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
 
-    return $this->belongsToMany(User::class, 'assignments', 'tournament_id', $userField)
-        ->withPivot('role', 'notes')  // <-- SENZA 'status'
-        ->withTimestamps();
-}
+        return $this->belongsToMany(User::class, 'assignments', 'tournament_id', $userField)
+            ->withPivot('role', 'notes')  // <-- SENZA 'status'
+            ->withTimestamps();
+    }
     // Disponibilità dichiarate
     public function availabilities()
     {
