@@ -156,10 +156,46 @@ class DocumentController extends Controller
         // Incrementa download counter
         $document->increment('download_count');
 
-        return Storage::disk('public')->download(
-            $document->file_path,
-            $document->original_name
+        $filePath = Storage::disk('public')->path($document->file_path);
+
+        // Determina il MIME type corretto basandosi sull'estensione
+        $mimeType = $this->getCorrectMimeType($document->original_name, $document->mime_type);
+
+        return response()->download(
+            $filePath,
+            $document->original_name,
+            [
+                'Content-Type' => $mimeType,
+            ]
         );
+    }
+
+    /**
+     * Ottiene il MIME type corretto per il download.
+     * Risolve problemi con DOCX/XLSX che vengono rilevati come application/zip
+     */
+    private function getCorrectMimeType(string $filename, ?string $storedMimeType): string
+    {
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+
+        // Mappa estensioni -> MIME types corretti per Office
+        $officeMimeTypes = [
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'doc'  => 'application/msword',
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'xls'  => 'application/vnd.ms-excel',
+            'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'ppt'  => 'application/vnd.ms-powerpoint',
+            'pdf'  => 'application/pdf',
+        ];
+
+        // Se è un file Office, usa il MIME type corretto
+        if (isset($officeMimeTypes[$extension])) {
+            return $officeMimeTypes[$extension];
+        }
+
+        // Altrimenti usa quello salvato nel database
+        return $storedMimeType ?? 'application/octet-stream';
     }
 
     /**
