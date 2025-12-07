@@ -613,15 +613,15 @@ class AssignmentController extends Controller
 
         // Ottieni statistiche aggiuntive
         $stats = [
-            'total_assignments' => \App\Models\Assignment::when($zoneId, function ($q) use ($zoneId) {
+            'total_assignments' => Assignment::when($zoneId, function ($q) use ($zoneId) {
                 $q->whereHas('tournament', fn($tq) => $tq->where('zone_id', $zoneId));
             })->count(),
 
-            'active_tournaments' => \App\Models\Tournament::whereIn('status', ['open', 'closed'])
+            'active_tournaments' => Tournament::whereIn('status', ['open', 'closed'])
                 ->when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
                 ->count(),
 
-            'active_referees' => \App\Models\User::where('user_type', 'referee')
+            'active_referees' => User::where('user_type', 'referee')
                 ->where('is_active', true)
                 ->when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
                 ->count(),

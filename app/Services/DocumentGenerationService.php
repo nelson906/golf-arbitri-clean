@@ -153,7 +153,7 @@ class DocumentGenerationService
             $outputPath = storage_path('app/temp/' . $filename);
 
             // Carica template e sostituisci variabili
-            $this->processTemplate($templatePath, $variables, $outputPath);
+            $this->processTemplate($templatePath, $variables, $outputPath, 'referee');
 
             $path = $this->saveGeneratedFile($outputPath, $assignment->tournament, $filename);
 
@@ -322,7 +322,7 @@ class DocumentGenerationService
     /**
      * Generate facsimile for club
      */
-    public function generateClubDocument(Tournament $tournament): array
+    public function generateClubDocument(Tournament $tournament, ?TournamentNotification $notification = null): array
     {
         try {
             // Crea documento PHPWord
@@ -556,7 +556,7 @@ class DocumentGenerationService
             'type' => 'generated'
         ];
 
-        $relativePath = $this->fileStorage->storeInZone($fileData, $tournament, 'docx');
+        $relativePath = $this->storeInZone($fileData, $tournament, 'docx');
 
         // Elimina file temporaneo
         if (file_exists($tempPath)) {

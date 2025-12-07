@@ -685,7 +685,6 @@ class NotificationController extends Controller
                     mkdir($fullDestDir, 0755, true);
                 }
                 copy($convocationData['path'], Storage::disk('public')->path($convDest));
-                Storage::disk('public')->put($convDest, $content);
                 if (file_exists($convocationData['path'])) {
                     unlink($convocationData['path']);
                 }
@@ -732,7 +731,7 @@ class NotificationController extends Controller
                                 ->with('user')
                                 ->get()
                                 ->map(fn($a) => ['name' => $a->user->name, 'email' => $a->user->email, 'role' => $a->role]),
-                            'institutional' => \App\Models\InstitutionalEmail::whereIn('id', $metadata['recipients']['institutional'] ?? [])
+                            'institutional' => InstitutionalEmail::whereIn('id', $metadata['recipients']['institutional'] ?? [])
                                 ->pluck('email')
                         ],
                         'documents' => $notification->documents
