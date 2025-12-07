@@ -399,8 +399,10 @@ return view('admin.notifications.prepare_notification', [
 
             $filename = $type === 'convocation' ? 'Convocazione.docx' : 'Lettera_Circolo.docx';
 
-            return response()->download($fullPath, $filename, [
+            // Usa BinaryFileResponse per garantire integrità binaria
+            return response()->file($fullPath, [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
             ]);
         } catch (\Exception $e) {
             Log::error('Error downloading document', [
