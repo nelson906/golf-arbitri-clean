@@ -56,7 +56,7 @@ class Club extends Model
         return $query;
     }
 
-        /**
+    /**
      * Order by name
      */
     public function scopeOrdered($query)
@@ -64,4 +64,35 @@ class Club extends Model
         return $query->orderBy('name');
     }
 
+    /**
+     * Scope per filtrare circoli visibili all'utente.
+     *
+     * Regole:
+     * - super_admin/national_admin: vedono tutto
+     * - admin zonale: solo circoli della propria zona
+     *
+     * @param Builder $query
+     * @param User|null $user
+     * @return Builder
+     */
+    public function scopeVisible($query, ?User $user = null)
+    {
+        $user = $user ?? auth()->user();
+
+        if (!$user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        // Super admin e national admin vedono tutto
+        if (in_array($user->user_type, ['super_admin', 'national_admin'])) {
+            return $query;
+        }
+
+        // Admin zonale vede solo circoli della propria zona
+        if ($user->zone_id) {
+            return $query->where('zone_id', $user->zone_id);
+        }
+
+        return $query;
+    }
 }

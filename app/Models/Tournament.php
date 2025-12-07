@@ -152,6 +152,68 @@ class Tournament extends Model
     {
         return $query->where('start_date', '>=', Carbon::today());
     }
+
+    /**
+     * Scope per filtrare tornei visibili all'utente.
+     *
+     * Regole:
+     * - super_admin: vede tutto
+     * - national_admin: solo tornei nazionali (is_national = true)
+     * - admin zonale: solo tornei della propria zona
+     * - referee nazionale/internazionale: propria zona + tornei nazionali
+     * - referee 1_livello/regionale: solo propria zona
+     *
+     * @param Builder $query
+     * @param User|null $user
+     * @return Builder
+     */
+    public function scopeVisible($query, ?User $user = null)
+    {
+        $user = $user ?? auth()->user();
+
+        if (!$user) {
+            return $query->whereRaw('1 = 0'); // Nessun utente = nessun risultato
+        }
+
+        // Super admin vede tutto
+        if ($user->user_type === 'super_admin') {
+            return $query;
+        }
+
+        // National admin vede solo tornei nazionali
+        if ($user->user_type === 'national_admin') {
+            return $query->whereHas('tournamentType', fn($q) => $q->where('is_national', true));
+        }
+
+        // Admin zonale vede solo la propria zona
+        if ($user->user_type === 'admin') {
+            return $query->whereHas('club', fn($q) => $q->where('zone_id', $user->zone_id));
+        }
+
+        // Referee
+        if ($user->user_type === 'referee') {
+            $isNational = in_array($user->level ?? '', ['Nazionale', 'Internazionale']);
+
+            if ($isNational) {
+                // Nazionale/Internazionale: propria zona + tornei nazionali
+                return $query->where(function ($q) use ($user) {
+                    $q->whereHas('club', fn($sub) => $sub->where('zone_id', $user->zone_id))
+                      ->orWhereHas('tournamentType', fn($sub) => $sub->where('is_national', true));
+                });
+            } else {
+                // 1_livello/Regionale: solo propria zona
+                return $query->whereHas('club', fn($q) => $q->where('zone_id', $user->zone_id));
+            }
+        }
+
+        // Fallback: filtra per zona se presente
+        if ($user->zone_id) {
+            return $query->whereHas('club', fn($q) => $q->where('zone_id', $user->zone_id));
+        }
+
+        return $query;
+    }
+
     /**
      * Verifica se il torneo è modificabile
      */

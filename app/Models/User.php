@@ -132,6 +132,44 @@ class User extends Authenticatable
     }
 
     /**
+     * Scope per filtrare utenti/arbitri visibili all'utente.
+     *
+     * Regole:
+     * - super_admin: vede tutto
+     * - national_admin: solo arbitri nazionali/internazionali
+     * - admin zonale: solo arbitri della propria zona
+     *
+     * @param Builder $query
+     * @param User|null $user
+     * @return Builder
+     */
+    public function scopeVisible($query, ?self $user = null)
+    {
+        $user = $user ?? auth()->user();
+
+        if (!$user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        // Super admin vede tutto
+        if ($user->user_type === 'super_admin') {
+            return $query;
+        }
+
+        // National admin vede solo arbitri nazionali/internazionali
+        if ($user->user_type === 'national_admin') {
+            return $query->whereIn('level', ['Nazionale', 'Internazionale']);
+        }
+
+        // Admin zonale vede solo arbitri della propria zona
+        if ($user->user_type === 'admin' && $user->zone_id) {
+            return $query->where('zone_id', $user->zone_id);
+        }
+
+        return $query;
+    }
+
+    /**
      * ACCESSORS
      */
 
