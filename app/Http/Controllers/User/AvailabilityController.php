@@ -8,6 +8,7 @@ use App\Models\Availability;
 use App\Models\Zone;
 use App\Models\TournamentType;
 use App\Traits\HasZoneVisibility;
+use App\Services\TournamentColorService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\View\View;
@@ -22,6 +23,14 @@ use Illuminate\Support\Facades\Log;
 class AvailabilityController extends Controller
 {
     use HasZoneVisibility;
+
+    protected TournamentColorService $colorService;
+
+    public function __construct(TournamentColorService $colorService)
+    {
+        $this->colorService = $colorService;
+    }
+
     /**
      * Show user's availabilities
      */
@@ -286,8 +295,8 @@ class AvailabilityController extends Controller
                         'title' => $tournament->name ?? 'Torneo #' . $tournament->id,
                         'start' => $tournament->start_date ? $tournament->start_date->format('Y-m-d') : now()->format('Y-m-d'),
                         'end' => $tournament->end_date ? $tournament->end_date->addDay()->format('Y-m-d') : now()->addDay()->format('Y-m-d'),
-                        'color' => $this->getEventColor($tournament, $isAvailable, $isAssigned),
-                        'borderColor' => $this->getBorderColor($isAvailable, $isAssigned),
+                        'color' => $this->colorService->getRefereeEventColor($tournament, $isAssigned, $isAvailable),
+                        'borderColor' => $this->colorService->getRefereeBorderColor($isAssigned, $isAvailable),
                         'extendedProps' => [
                             'club' => $tournament->club->name ?? 'N/A',
                             'zone' => $tournament->club->zone->name ?? 'N/A',
@@ -295,7 +304,7 @@ class AvailabilityController extends Controller
                             'status' => $tournament->status ?? 'active',
                             'is_available' => $isAvailable,
                             'is_assigned' => $isAssigned,
-                            'personal_status' => $this->getPersonalStatus($isAvailable, $isAssigned),
+                            'personal_status' => $this->colorService->getPersonalStatus($isAssigned, $isAvailable),
                             'can_declare' => $this->canDeclareAvailability($user, $tournament),
                         ],
                     ];
@@ -518,41 +527,7 @@ class AvailabilityController extends Controller
         return $uniqueEmails;
     }
 
-    private function getEventColor($tournament, $isAvailable, $isAssigned): string
-    {
-        // Se assegnato o disponibile, usa colori specifici
-        if ($isAssigned) return '#10B981'; // Verde per assegnato
-        if ($isAvailable) return '#F59E0B'; // Arancione per disponibile
-
-        // Altrimenti usa il colore del tournament type se disponibile
-        if ($tournament->tournamentType && $tournament->tournamentType->calendar_color) {
-            // Rendi il colore più tenue aggiungendo trasparenza
-            $color = $tournament->tournamentType->calendar_color;
-            // Se è un colore hex, aggiungi trasparenza
-            if (str_starts_with($color, '#')) {
-                return $color . '80'; // Aggiunge 50% di trasparenza
-            }
-            return $color;
-        }
-
-        // Colori di fallback per tipo torneo
-        $colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
-        return $colors[($tournament->tournament_type_id ?? 1) % count($colors)];
-    }
-
-    private function getBorderColor($isAvailable, $isAssigned): string
-    {
-        if ($isAssigned) return '#059669';
-        if ($isAvailable) return '#D97706';
-        return '#6B7280';
-    }
-
-    private function getPersonalStatus($isAvailable, $isAssigned): string
-    {
-        if ($isAssigned) return 'assigned';
-        if ($isAvailable) return 'available';
-        return 'can_apply';
-    }
+    // Metodi colore centralizzati in TournamentColorService
 
     /**
      * Gestisce l'invio delle notifiche per una singola dichiarazione di disponibilità.

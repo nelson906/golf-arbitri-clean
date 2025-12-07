@@ -11,12 +11,21 @@ use App\Models\TournamentType;
 use App\Models\Club;
 use App\Models\Zone;
 use App\Traits\HasZoneVisibility;
+use App\Services\TournamentColorService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class TournamentController extends Controller
 {
     use HasZoneVisibility;
+
+    protected TournamentColorService $colorService;
+
+    public function __construct(TournamentColorService $colorService)
+    {
+        $this->colorService = $colorService;
+    }
+
     /**
      * Display a listing of tournaments.
      */
@@ -122,8 +131,8 @@ class TournamentController extends Controller
                 'title' => $tournament->name,
                 'start' => $tournament->start_date->format('Y-m-d'),
                 'end' => $tournament->end_date->addDay()->format('Y-m-d'),
-                'color' => $this->getAdminEventColor($tournament),
-                'borderColor' => $this->getAdminBorderColor($tournament),
+                'color' => $this->colorService->getAdminEventColor($tournament),
+                'borderColor' => $this->colorService->getAdminBorderColor($tournament),
                 'extendedProps' => [
                     'club' => $tournament->club->name ?? 'N/A',
                     'zone' => $tournament->zone->name ?? 'N/A',
@@ -506,59 +515,8 @@ class TournamentController extends Controller
     }
 
     // ===============================================
-    // 🎨 COLOR LOGIC PER ADMIN CALENDAR
+    // 🎨 HELPER METHODS (colori centralizzati in TournamentColorService)
     // ===============================================
-
-    /**
-     * 🎨 Get event color for admin calendar - NOMI REALI DAL DATABASE
-     */
-    private function getAdminEventColor($tournament): string
-    {
-        // Usa short_name per mappatura più efficiente
-        $shortName = $tournament->tournamentType->short_name ?? 'default';
-        return match ($shortName) {
-            // 🟢 GARE GIOVANILI (Verde chiaro)
-            'G12', 'G14', 'G16', 'G18' => '#96CEB4',  // Verde - Gare Giovanili
-            'S14', 'T18' => '#96CEB4',                 // Verde - Circuiti Giovanili
-            'USK' => '#96CEB4',                        // Verde - US Kids
-
-            // 🔵 GARE NORMALI (Blu)
-            'GN36', 'GN54', 'GN72' => '#45B7D1',      // Blu - Gare normali
-            'MP' => '#45B7D1',                         // Blu - Match Play
-            'EVEN' => '#45B7D1',                       // Blu - Eventi
-
-            // 🟡 TROFEI (Teal)
-            'TG', 'TGF' => '#4ECDC4',                  // Teal - Trofei Giovanili
-            'TR', 'TNZ' => '#4ECDC4',                  // Teal - Trofei Regionali/Nazionali
-
-            // 🔴 CAMPIONATI (Rosso)
-            'CR', 'CNZ', 'CI' => '#FF6B6B',           // Rosso - Campionati
-
-            // 🟠 PROFESSIONALI (Amber)
-            'PRO', 'PATR' => '#F59E0B',               // Amber - Professionistiche/Patrocinate
-            'GRS' => '#F59E0B',                        // Amber - Regolamento Speciale
-
-            // 🔵 DEFAULT
-            default => '#3B82F6'                       // Blu default
-        };
-    }
-
-    /**
-     * 🎨 Get border color for admin calendar
-     */
-    private function getAdminBorderColor($tournament): string
-    {
-        // Admin border: basato su STATUS TORNEO
-        return match ($tournament->status) {
-            'draft' => '#F59E0B',       // Amber - Draft
-            'open' => '#10B981',        // Green - Published/Open
-            'closed' => '#6B7280',      // Gray - Closed
-            'assigned' => '#059669',    // Dark Green - Assigned
-            'completed' => '#374151',   // Dark Gray - Completed
-            'cancelled' => '#EF4444',   // Red - Cancelled
-            default => '#10B981'        // Green default
-        };
-    }
 
     /**
      * 🎨 Calculate management priority

@@ -8,6 +8,7 @@ use App\Models\Zone;
 use App\Models\TournamentType;
 use App\Models\Club;
 use App\Traits\HasZoneVisibility;
+use App\Services\TournamentColorService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Carbon\Carbon;
@@ -21,6 +22,14 @@ use Illuminate\Support\Facades\DB;
 class TournamentController extends Controller
 {
     use HasZoneVisibility;
+
+    protected TournamentColorService $colorService;
+
+    public function __construct(TournamentColorService $colorService)
+    {
+        $this->colorService = $colorService;
+    }
+
     /**
      * Lista tornei unificata
      */
@@ -265,8 +274,8 @@ class TournamentController extends Controller
             'start' => $tournament->start_date->format('Y-m-d'),
             'end' => $tournament->end_date->addDay()->format('Y-m-d'),
             // 🎨 RECUPERATA LOGICA COLORI ORIGINALE
-            'color' => $this->getEventColor($tournament, $isAssigned, $isAvailable, $isAdmin),
-            'borderColor' => $this->getBorderColor($tournament, $isAssigned, $isAvailable, $isAdmin),
+            'color' => $this->colorService->getEventColor($tournament, $isAssigned, $isAvailable, $isAdmin),
+            'borderColor' => $this->colorService->getBorderColor($tournament, $isAssigned, $isAvailable, $isAdmin),
             'extendedProps' => [
                 // Basic info
                 'club' => $tournament->club->name ?? 'N/A',
@@ -340,51 +349,11 @@ class TournamentController extends Controller
     }
 
     // ===============================================
-    // 🎨 COLOR LOGIC RECUPERATA DA Admin\CalendarController
+    // 🎨 HELPER METHODS (colori centralizzati in TournamentColorService)
     // ===============================================
 
     /**
-     * 🎨 Get event color - RECUPERATA LOGICA ORIGINALE
-     */
-    private function getEventColor($tournament, $isAssigned = false, $isAvailable = false, $isAdmin = false): string
-    {
-        if ($isAdmin) {
-            // Admin: usa il colore dal database
-            return $tournament->tournamentType->calendar_color ?? '#3B82F6';
-        } else {
-            // Referee: colore basato su personal status
-            if ($isAssigned) return '#10B981';  // Green - Assigned
-            if ($isAvailable) return '#F59E0B'; // Yellow - Available
-            return '#3B82F6';                   // Blue - Can apply
-        }
-    }
-
-    /**
-     * 🎨 Get border color - RECUPERATA LOGICA ORIGINALE
-     */
-    private function getBorderColor($tournament, $isAssigned = false, $isAvailable = false, $isAdmin = false): string
-    {
-        if ($isAdmin) {
-            // Admin border: basato su STATUS TORNEO (logica originale)
-            return match ($tournament->status) {
-                'draft' => '#F59E0B',       // Amber - Draft
-                'open' => '#10B981',        // Green - Published/Open
-                'closed' => '#6B7280',      // Gray - Closed
-                'assigned' => '#059669',    // Dark Green - Assigned
-                'completed' => '#374151',   // Dark Gray - Completed
-                'cancelled' => '#EF4444',  // Red - Cancelled
-                default => '#10B981'        // Green default
-            };
-        } else {
-            // Referee border: basato su personal status
-            if ($isAssigned) return '#059669';  // Dark green
-            if ($isAvailable) return '#D97706'; // Dark yellow
-            return '#1E40AF';                   // Dark blue
-        }
-    }
-
-    /**
-     * 🎨 Calculate management priority - RECUPERATA LOGICA ORIGINALE
+     * 🎨 Calculate management priority
      */
     private function getManagementPriority($tournament): string
     {
