@@ -81,7 +81,7 @@ class DocumentGenerationService
         $filename = $fileData['filename'];
         $relativePath = "convocazioni/{$zone}/generated/{$filename}";
 
-        // PRIMA leggi il contenuto
+        // Verifica che il file sorgente esista
         if (!file_exists($fileData['path'])) {
             Log::error('Source file does not exist', [
                 'path' => $fileData['path'],
@@ -89,34 +89,25 @@ class DocumentGenerationService
             ]);
             throw new \Exception("File sorgente non trovato: {$fileData['path']}");
         }
-        
-        $content = file_get_contents($fileData['path']);
-        
-        if (!$content) {
-            Log::error('Could not read file content', [
-                'path' => $fileData['path'],
-                'tournament_id' => $tournament->id
-            ]);
-            throw new \Exception("Impossibile leggere il contenuto del file: {$fileData['path']}");
-        }
 
         // Assicurati che la directory esista
         $fullPath = Storage::disk('public')->path(dirname($relativePath));
         if (!is_dir($fullPath)) {
-            mkdir($fullPath, 0777, true);
+            mkdir($fullPath, 0755, true);
         }
 
-        // POI salva
+        // Copia il file binario direttamente (preserva integrità DOCX)
+        $destFullPath = Storage::disk('public')->path($relativePath);
+
         try {
-            Log::info('Attempting to store file', [
-                'full_path' => $fullPath,
-                'relative_path' => $relativePath,
-                'exists' => is_dir($fullPath)
+            Log::info('Attempting to copy file', [
+                'source' => $fileData['path'],
+                'destination' => $destFullPath
             ]);
-            
-            $saved = Storage::disk('public')->put($relativePath, $content);
+
+            $saved = copy($fileData['path'], $destFullPath);
             if (!$saved) {
-                Log::error('Failed to store file', [
+                Log::error('Failed to copy file', [
                     'relative_path' => $relativePath,
                     'tournament_id' => $tournament->id
                 ]);

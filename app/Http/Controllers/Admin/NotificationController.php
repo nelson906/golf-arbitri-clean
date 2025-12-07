@@ -113,13 +113,16 @@ public function __construct(
                 $zone = $this->getZoneFolder($tournament);
                 $convFileName = basename($convocationData['path']);
                 $convDestPath = "convocazioni/{$zone}/generated/{$convFileName}";
-                
+
                 // Assicurati che la directory esista
-                Storage::disk('public')->makeDirectory(dirname($convDestPath));
-                
-                // Copia il file
-                $content = file_get_contents($convocationData['path']);
-                Storage::disk('public')->put($convDestPath, $content);
+                $fullDestDir = Storage::disk('public')->path(dirname($convDestPath));
+                if (!is_dir($fullDestDir)) {
+                    mkdir($fullDestDir, 0755, true);
+                }
+
+                // Copia il file binario direttamente (preserva integrità DOCX)
+                $fullDestPath = Storage::disk('public')->path($convDestPath);
+                copy($convocationData['path'], $fullDestPath);
                 unlink($convocationData['path']); // Elimina il file temporaneo
                 $documents['convocation'] = $convFileName;
 
@@ -127,10 +130,10 @@ public function __construct(
                 $clubDocData = $this->documentService->generateClubDocument($tournament);
                 $clubFileName = basename($clubDocData['path']);
                 $clubDestPath = "convocazioni/{$zone}/generated/{$clubFileName}";
-                
-                // Copia il file
-                $content = file_get_contents($clubDocData['path']);
-                Storage::disk('public')->put($clubDestPath, $content);
+
+                // Copia il file binario direttamente (preserva integrità DOCX)
+                $fullClubDestPath = Storage::disk('public')->path($clubDestPath);
+                copy($clubDocData['path'], $fullClubDestPath);
                 unlink($clubDocData['path']); // Elimina il file temporaneo
                 $documents['club_letter'] = $clubFileName;
 
@@ -268,9 +271,11 @@ return view('admin.notifications.prepare_notification', [
                 $convocationData = $this->documentService->generateConvocationForTournament($tournament, $notification);
                 $convFileName = basename($convocationData['path']);
                 $destPath = "convocazioni/{$zone}/generated/{$convFileName}";
-                Storage::disk('public')->makeDirectory(dirname($destPath));
-                $content = file_get_contents($convocationData['path']);
-                Storage::disk('public')->put($destPath, $content);
+                $fullDestDir = Storage::disk('public')->path(dirname($destPath));
+                if (!is_dir($fullDestDir)) {
+                    mkdir($fullDestDir, 0755, true);
+                }
+                copy($convocationData['path'], Storage::disk('public')->path($destPath));
                 if (file_exists($convocationData['path'])) { unlink($convocationData['path']); }
                 $documents['convocation'] = $convFileName;
             }
@@ -279,9 +284,11 @@ return view('admin.notifications.prepare_notification', [
                 $docData = $this->documentService->generateClubDocument($tournament, $notification);
                 $clubFileName = basename($docData['path']);
                 $destPath = "convocazioni/{$zone}/generated/{$clubFileName}";
-                Storage::disk('public')->makeDirectory(dirname($destPath));
-                $content = file_get_contents($docData['path']);
-                Storage::disk('public')->put($destPath, $content);
+                $fullDestDir = Storage::disk('public')->path(dirname($destPath));
+                if (!is_dir($fullDestDir)) {
+                    mkdir($fullDestDir, 0755, true);
+                }
+                copy($docData['path'], Storage::disk('public')->path($destPath));
                 if (file_exists($docData['path'])) { unlink($docData['path']); }
                 $documents['club_letter'] = $clubFileName;
             }
@@ -666,9 +673,11 @@ return view('admin.notifications.prepare_notification', [
                 $convocationData = $this->documentService->generateConvocationForTournament($tournament, $notification);
                 $convFileName = basename($convocationData['path']);
                 $convDest = "convocazioni/{$zone}/generated/{$convFileName}";
-                Storage::disk('public')->makeDirectory(dirname($convDest));
-                $content = file_get_contents($convocationData['path']);
-                Storage::disk('public')->put($convDest, $content);
+                $fullDestDir = Storage::disk('public')->path(dirname($convDest));
+                if (!is_dir($fullDestDir)) {
+                    mkdir($fullDestDir, 0755, true);
+                }
+                copy($convocationData['path'], Storage::disk('public')->path($convDest));
                 if (file_exists($convocationData['path'])) { unlink($convocationData['path']); }
                 $documents['convocation'] = $convFileName;
 
@@ -676,8 +685,7 @@ return view('admin.notifications.prepare_notification', [
                 $clubDocData = $this->documentService->generateClubDocument($tournament, $notification);
                 $clubFileName = basename($clubDocData['path']);
                 $clubDest = "convocazioni/{$zone}/generated/{$clubFileName}";
-                $content = file_get_contents($clubDocData['path']);
-                Storage::disk('public')->put($clubDest, $content);
+                copy($clubDocData['path'], Storage::disk('public')->path($clubDest));
                 if (file_exists($clubDocData['path'])) { unlink($clubDocData['path']); }
                 $documents['club_letter'] = $clubFileName;
 
