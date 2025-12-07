@@ -925,21 +925,9 @@ class DocumentGenerationService
             } catch (\Throwable $e) {
                 Log::warning('Could not read remaining variables: ' . $e->getMessage());
             }
-            
+
             // Pulisci i placeholder non utilizzati
             $this->clearUnusedPlaceholders($templateProcessor);
-        }
-        
-        // Crea directory se non esiste
-        if (!is_dir(dirname($outputPath))) {
-            mkdir(dirname($outputPath), 0777, true);
-        }
-
-        $templateProcessor->saveAs($outputPath);
-
-        // Crea directory se non esiste
-        if (!is_dir(dirname($outputPath))) {
-            mkdir(dirname($outputPath), 0777, true);
         }
 
         $templateProcessor->saveAs($outputPath);
