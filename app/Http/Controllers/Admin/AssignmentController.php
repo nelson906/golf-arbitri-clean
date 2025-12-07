@@ -158,6 +158,11 @@ class AssignmentController extends Controller
         }
 
         // ✅ Crea assignment con campi aggiuntivi
+        // Default role è 'Arbitro' se non specificato
+        if (empty($validated['role'])) {
+            $validated['role'] = 'Arbitro';
+        }
+
         Assignment::create(array_merge($validated, [
             'assigned_by' => auth()->id(),
             'assigned_at' => now(),
@@ -439,10 +444,13 @@ class AssignmentController extends Controller
                     ->exists();
 
                 if (!$exists) {
+                    // Default role è 'Arbitro' se non specificato
+                    $role = $request->roles[$refereeId] ?? 'Arbitro';
+
                     $data = [
                         'tournament_id' => $tournament->id,
                         $userField => $refereeId,
-                        'role' => $request->roles[$refereeId] ?? null,
+                        'role' => $role,
                     ];
                     if (Schema::hasColumn('assignments', 'assigned_at')) {
                         $data['assigned_at'] = now();

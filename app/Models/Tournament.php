@@ -32,6 +32,15 @@ class Tournament extends Model
         'date' => 'date',
         'end_date' => 'datetime',
     ];
+
+    /**
+     * Default attribute values.
+     * I nuovi tornei sono visibili (open) di default.
+     * Solo se specificato esplicitamente saranno in bozza (draft).
+     */
+    protected $attributes = [
+        'status' => self::STATUS_OPEN,
+    ];
     /**
      * Tournament statuses
      */
