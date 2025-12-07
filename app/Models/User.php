@@ -87,8 +87,7 @@ class User extends Authenticatable
     // Assegnazioni
     public function assignments()
     {
-        $foreignKey = \Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
-        return $this->hasMany(Assignment::class, $foreignKey);
+        return $this->hasMany(Assignment::class, Assignment::getUserField());
     }
 
     // Disponibilità
@@ -105,11 +104,9 @@ class User extends Authenticatable
     // Tornei (attraverso assignments)
     public function tournaments()
     {
-        $userField = \Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
-
-    return $this->belongsToMany(Tournament::class, 'assignments')
-        ->withPivot('role', 'notes')  // <-- SENZA 'status'
-        ->withTimestamps();
+        return $this->belongsToMany(Tournament::class, 'assignments', Assignment::getUserField(), 'tournament_id')
+            ->withPivot('role', 'notes')
+            ->withTimestamps();
     }
 
     // NON c'è una relazione 'referee' su User stesso!
