@@ -68,9 +68,6 @@
                             Clausole Notifiche
                         </a>
                     </li>
-                    <li class="mt-4 px-4 py-2">
-                        <h3 class="text-xs font-semibold text-blue-300 uppercase tracking-wider">Amministrazione</h3>
-                    </li>
                     <li>
 
                         <a href="{{ route('admin.career-history.index') }}"
@@ -86,6 +83,9 @@
                             <span class="mr-3">🔧</span>
                             Manutenzione Aruba
                         </a>
+                    </li>
+                    <li class="mt-4 px-4 py-2">
+                        <h3 class="text-xs font-semibold text-blue-300 uppercase tracking-wider">Amministrazione</h3>
                     </li>
                 @endif
 

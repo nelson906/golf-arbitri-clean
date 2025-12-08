@@ -72,7 +72,7 @@
                     @if(in_array(auth()->user()->user_type ?? '', ['admin', 'national_admin', 'super_admin']))
                         {{-- Admin Legend - Colori basati su calendar_color del database --}}
                         @if(isset($calendarData['types']) && count($calendarData['types']) > 0)
-                            @foreach($calendarData['types']->take(8) as $type)
+                            @foreach($calendarData['types']->take(12) as $type)
                                 <div class="flex items-center space-x-2">
                                     <span class="inline-block w-4 h-4 rounded" style="background-color: {{ $type->calendar_color ?? '#3B82F6' }}"></span>
                                     <span class="text-xs">{{ $type->name }}</span>
