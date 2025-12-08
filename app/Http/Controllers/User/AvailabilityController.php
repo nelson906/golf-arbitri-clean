@@ -9,6 +9,7 @@ use App\Models\Zone;
 use App\Models\TournamentType;
 use App\Traits\HasZoneVisibility;
 use App\Services\TournamentColorService;
+use App\Services\CalendarDataService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\View\View;
@@ -25,10 +26,12 @@ class AvailabilityController extends Controller
     use HasZoneVisibility;
 
     protected TournamentColorService $colorService;
+    protected CalendarDataService $calendarService;
 
-    public function __construct(TournamentColorService $colorService)
+    public function __construct(TournamentColorService $colorService, CalendarDataService $calendarService)
     {
         $this->colorService = $colorService;
+        $this->calendarService = $calendarService;
     }
 
     /**
@@ -272,46 +275,26 @@ class AvailabilityController extends Controller
             $userAvailabilities = $user->availabilities()->pluck('tournament_id')->toArray();
             $userAssignments = $user->assignments()->pluck('tournament_id')->toArray();
 
-            // Raccogli i tipi di torneo unici presenti
-            $uniqueTournamentTypes = collect();
+            // Usa CalendarDataService per preparare i dati
+            $calendarData = $this->calendarService->prepareFullCalendarData(
+                $tournaments,
+                $user,
+                'referee',
+                [
+                    'availableTournamentIds' => $userAvailabilities,
+                    'assignedTournamentIds' => $userAssignments,
+                    'tournamentTypes' => TournamentType::active()->ordered()->get(),
+                ]
+            );
 
-            // Formatta per il calendario
-            $calendarData = [
-                'tournaments' => $tournaments->map(function ($tournament) use ($userAvailabilities, $userAssignments, $user, &$uniqueTournamentTypes) {
-                    $isAvailable = in_array($tournament->id, $userAvailabilities);
-                    $isAssigned = in_array($tournament->id, $userAssignments);
-
-                    // Raccogli i tipi di torneo unici (solo se non è assegnato o disponibile)
-                    if (!$isAssigned && !$isAvailable && $tournament->tournamentType) {
-                        $uniqueTournamentTypes->put($tournament->tournamentType->id, [
-                            'name' => $tournament->tournamentType->name,
-                            'short_name' => $tournament->tournamentType->short_name,
-                            'color' => $tournament->tournamentType->calendar_color ? $tournament->tournamentType->calendar_color . '80' : '#6B7280'
-                        ]);
-                    }
-
-                    return [
-                        'id' => $tournament->id,
-                        'title' => $tournament->name ?? 'Torneo #' . $tournament->id,
-                        'start' => $tournament->start_date ? $tournament->start_date->format('Y-m-d') : now()->format('Y-m-d'),
-                        'end' => $tournament->end_date ? $tournament->end_date->addDay()->format('Y-m-d') : now()->addDay()->format('Y-m-d'),
-                        'color' => $this->colorService->getRefereeEventColor($tournament, $isAssigned, $isAvailable),
-                        'borderColor' => $this->colorService->getRefereeBorderColor($isAssigned, $isAvailable),
-                        'extendedProps' => [
-                            'club' => $tournament->club->name ?? 'N/A',
-                            'zone' => $tournament->club->zone->name ?? 'N/A',
-                            'category' => $tournament->tournamentType->name ?? 'N/A',
-                            'status' => $tournament->status ?? 'active',
-                            'is_available' => $isAvailable,
-                            'is_assigned' => $isAssigned,
-                            'personal_status' => $this->colorService->getPersonalStatus($isAssigned, $isAvailable),
-                            'can_declare' => $this->canDeclareAvailability($user, $tournament),
-                        ],
-                    ];
-                }),
-                'userType' => 'user',
-                'tournamentTypes' => $uniqueTournamentTypes->values(), // Passa i tipi di torneo unici
-            ];
+            // Aggiungi can_declare per ogni torneo (logica specifica di questo controller)
+            $calendarData['tournaments'] = $calendarData['tournaments']->map(function ($event) use ($user, $tournaments) {
+                $tournament = $tournaments->firstWhere('id', $event['id']);
+                if ($tournament) {
+                    $event['extendedProps']['can_declare'] = $this->canDeclareAvailability($user, $tournament);
+                }
+                return $event;
+            });
 
             return view('referee.availabilities.calendar', compact('calendarData'));
         } catch (\Exception $e) {

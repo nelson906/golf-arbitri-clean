@@ -12,6 +12,7 @@ use App\Models\Club;
 use App\Models\Zone;
 use App\Traits\HasZoneVisibility;
 use App\Services\TournamentColorService;
+use App\Services\CalendarDataService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -20,10 +21,12 @@ class TournamentController extends Controller
     use HasZoneVisibility;
 
     protected TournamentColorService $colorService;
+    protected CalendarDataService $calendarService;
 
-    public function __construct(TournamentColorService $colorService)
+    public function __construct(TournamentColorService $colorService, CalendarDataService $calendarService)
     {
         $this->colorService = $colorService;
+        $this->calendarService = $calendarService;
     }
 
     /**
@@ -98,91 +101,47 @@ class TournamentController extends Controller
     {
         $user = auth()->user();
 
-        // Query con filtro visibilità centralizzato
-        $query = Tournament::with(['tournamentType', 'zone', 'club', 'assignments.user']);
-        $this->applyTournamentVisibility($query, $user);
-        $tournaments = $query->get();
+        // Query con scope di visibilità
+        $tournaments = Tournament::visible($user)
+            ->with(['tournamentType', 'zone', 'club', 'assignments.user'])
+            ->get();
 
-        // Get zones for filter (tutti se admin nazionale, solo propria zona altrimenti)
+        // Get zones for filter
         $zones = $this->isNationalAdmin($user)
             ? Zone::orderBy('name')->get()
             : Zone::where('id', $user->zone_id)->get();
 
-        // Get clubs for filter con visibilità
-        $clubsQuery = Club::active();
-        $this->applyClubVisibility($clubsQuery, $user);
-        $clubs = $clubsQuery->orderBy('name')->get();
+        // Prepara dati calendario tramite servizio
+        $calendarData = $this->calendarService->prepareFullCalendarData(
+            $tournaments,
+            $user,
+            'admin',
+            [
+                'zones' => $zones,
+                'clubs' => Club::visible($user)->active()->orderBy('name')->get(),
+                'tournamentTypes' => TournamentType::active()->ordered()->get(),
+            ]
+        );
 
-        // ✅ FIXED: Variable name from $types to $tournamentTypes
-        $tournamentTypes = TournamentType::active()->ordered()->get();
-
-        // User roles for permissions
-        $userRoles = ['Admin'];
-        if ($user->user_type === 'super_admin') {
-            $userRoles[] = 'SuperAdmin';
-        } elseif ($user->user_type === 'national_admin') {
-            $userRoles[] = 'NationalAdmin';
-        }
-
-        // Format tournaments for calendar
-        $calendarTournaments = $tournaments->map(function ($tournament) {
-            return [
-                'id' => $tournament->id,
-                'title' => $tournament->name,
-                'start' => $tournament->start_date->format('Y-m-d'),
-                'end' => $tournament->end_date->addDay()->format('Y-m-d'),
-                'color' => $this->colorService->getAdminEventColor($tournament),
-                'borderColor' => $this->colorService->getAdminBorderColor($tournament),
-                'extendedProps' => [
-                    'club' => $tournament->club->name ?? 'N/A',
-                    'zone' => $tournament->zone->name ?? 'N/A',
-                    'zone_id' => $tournament->zone_id,
-                    // ✅ FIXED: tournamentType relationship
-                    'tournament_type' => $tournament->tournamentType->name ?? 'N/A',
-                    'status' => $tournament->status,
-                    'tournament_url' => route('admin.tournaments.show', $tournament),
-                    'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
-                    'type_id' => $tournament->tournament_type_id,
-                    'availabilities_count' => $tournament->availabilities()->count(),
-                    'assignments_count' => $tournament->assignments()->count(),
-                    'required_referees' => $tournament->required_referees ?? 1,
-                    'max_referees' => $tournament->max_referees ?? 4,
-                    'management_priority' => 'open',
-                ],
-            ];
-        });
-
-        // Prepare data for React component
-        $calendarData = [
-            'tournaments' => $calendarTournaments,
-            'zones' => $zones->map(function ($zone) {
-                return [
-                    'id' => $zone->id,
-                    'name' => $zone->name,
-                ];
-            }),
-            'clubs' => $clubs->map(function ($club) {
-                return [
-                    'id' => $club->id,
-                    'name' => $club->name,
-                    'zone_id' => $club->zone_id,
-                ];
-            }),
-            // ✅ FIXED: tournamentTypes instead of types
-            'tournamentTypes' => $tournamentTypes->map(function ($type) {
-                return [
-                    'id' => $type->id,
-                    'name' => $type->name,
-                    'short_name' => $type->short_name,
-                    'is_national' => $type->is_national,
-                ];
-            }),
-            'userRoles' => $userRoles,
-            'userType' => 'admin',
-            'canModify' => true,
-        ];
+        // Aggiungi campi specifici admin
+        $calendarData['userRoles'] = $this->getAdminRoles($user);
+        $calendarData['canModify'] = true;
 
         return view('admin.tournaments.calendar', compact('calendarData'));
+    }
+
+    /**
+     * Get admin roles for permissions
+     */
+    private function getAdminRoles($user): array
+    {
+        $roles = ['Admin'];
+        if ($user->user_type === 'super_admin') {
+            $roles[] = 'SuperAdmin';
+        } elseif ($user->user_type === 'national_admin') {
+            $roles[] = 'NationalAdmin';
+        }
+        return $roles;
     }
 
     /**

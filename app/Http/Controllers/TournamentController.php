@@ -9,6 +9,7 @@ use App\Models\TournamentType;
 use App\Models\Club;
 use App\Traits\HasZoneVisibility;
 use App\Services\TournamentColorService;
+use App\Services\CalendarDataService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Carbon\Carbon;
@@ -24,10 +25,12 @@ class TournamentController extends Controller
     use HasZoneVisibility;
 
     protected TournamentColorService $colorService;
+    protected CalendarDataService $calendarService;
 
-    public function __construct(TournamentColorService $colorService)
+    public function __construct(TournamentColorService $colorService, CalendarDataService $calendarService)
     {
         $this->colorService = $colorService;
+        $this->calendarService = $calendarService;
     }
 
     /**
