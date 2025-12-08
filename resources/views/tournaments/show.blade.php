@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends(in_array(auth()->user()->user_type ?? '', ['admin', 'national_admin', 'super_admin']) ? 'layouts.admin' : 'layouts.app')
 
 @section('title', 'Torneo: ' . $tournament->name)
 

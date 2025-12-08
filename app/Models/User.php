@@ -8,7 +8,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Builder;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Facades\Schema;
 
 class User extends Authenticatable
 {
@@ -87,15 +89,15 @@ class User extends Authenticatable
     // Assegnazioni
     public function assignments()
     {
-        $foreignKey = \Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
-        return $this->hasMany(Assignment::class, $foreignKey);
+        return $this->hasMany(Assignment::class, Assignment::getUserField());
+
     }
 
     // Disponibilità
     public function availabilities()
     {
-        if (\Schema::hasTable('availabilities')) {
-            $foreignKey = \Schema::hasColumn('availabilities', 'user_id') ? 'user_id' : 'referee_id';
+        if (Schema::hasTable('availabilities')) {
+            $foreignKey = Schema::hasColumn('availabilities', 'user_id') ? 'user_id' : 'referee_id';
             return $this->hasMany(Availability::class, $foreignKey);
         }
         // Return empty collection if table doesn't exist
@@ -105,12 +107,9 @@ class User extends Authenticatable
     // Tornei (attraverso assignments)
     public function tournaments()
     {
-        $userField = \Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
-
-    return $this->belongsToMany(Tournament::class, 'assignments')
-        ->withPivot('role', 'notes')  // <-- SENZA 'status'
-        ->withTimestamps();
-    }
+        return $this->belongsToMany(Tournament::class, 'assignments', Assignment::getUserField(), 'tournament_id')
+            ->withPivot('role', 'notes')
+            ->withTimestamps();    }
 
     // NON c'è una relazione 'referee' su User stesso!
     // Se il codice cerca $user->referee, probabilmente è un errore
@@ -126,11 +125,48 @@ class User extends Authenticatable
 
     public function scopeActive($query)
     {
-        if (\Schema::hasColumn($this->getTable(), 'is_active')) {
+        if (Schema::hasColumn($this->getTable(), 'is_active')) {
             return $query->where('is_active', true);
-        } elseif (\Schema::hasColumn($this->getTable(), 'active')) {
+        } elseif (Schema::hasColumn($this->getTable(), 'active')) {
             return $query->where('active', true);
         }
+        return $query;
+    }
+    /**
+     * Scope per filtrare utenti/arbitri visibili all'utente.
+     *
+     * Regole:
+     * - super_admin: vede tutto
+     * - national_admin: solo arbitri nazionali/internazionali
+     * - admin zonale: solo arbitri della propria zona
+     *
+     * @param Builder $query
+     * @param User|null $user
+     * @return Builder
+     */
+    public function scopeVisible($query, ?self $user = null)
+    {
+        $user = $user ?? auth()->user();
+
+        if (!$user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        // Super admin vede tutto
+        if ($user->user_type === 'super_admin') {
+            return $query;
+        }
+
+        // National admin vede solo arbitri nazionali/internazionali
+        if ($user->user_type === 'national_admin') {
+            return $query->whereIn('level', ['Nazionale', 'Internazionale']);
+        }
+
+        // Admin zonale vede solo arbitri della propria zona
+        if ($user->user_type === 'admin' && $user->zone_id) {
+            return $query->where('zone_id', $user->zone_id);
+        }
+
         return $query;
     }
 

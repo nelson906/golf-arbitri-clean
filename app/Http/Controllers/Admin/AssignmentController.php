@@ -143,7 +143,7 @@ class AssignmentController extends Controller
      */
     public function store(Request $request)
     {
-        $userField = Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
+        $userField = Assignment::getUserField();
 
         $validated = $request->validate([
             'tournament_id' => 'required|exists:tournaments,id',
@@ -436,7 +436,7 @@ class AssignmentController extends Controller
             'roles.*' => 'nullable|string|max:100',
         ]);
 
-        $userField = Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
+        $userField = Assignment::getUserField();
         $created = 0;
         $skipped = 0;
 
@@ -534,7 +534,7 @@ class AssignmentController extends Controller
      */
     public function removeFromTournament(Tournament $tournament, User $referee)
     {
-        $userField = Schema::hasColumn('assignments', 'user_id') ? 'user_id' : 'referee_id';
+        $userField = Assignment::getUserField();
 
         $assignment = Assignment::where('tournament_id', $tournament->id)
             ->where($userField, $referee->id)

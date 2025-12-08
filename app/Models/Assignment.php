@@ -14,6 +14,26 @@ class Assignment extends Model
 {
     use HasFactory;
 
+    /**
+     * Cache per il nome del campo user
+     */
+    protected static ?string $userFieldCache = null;
+
+    /**
+     * Restituisce il nome del campo per l'utente/arbitro.
+     * Centralizza la logica: usa 'user_id' se esiste, altrimenti 'referee_id'.
+     */
+    public static function getUserField(): string
+    {
+        if (self::$userFieldCache === null) {
+            self::$userFieldCache = Schema::hasColumn('assignments', 'user_id')
+                ? 'user_id'
+                : 'referee_id';
+        }
+        return self::$userFieldCache;
+    }
+
+
     protected $fillable = [
         'tournament_id',
         'user_id',
@@ -45,11 +65,8 @@ class Assignment extends Model
     // Relazione principale con user
     public function user()
     {
-        if (Schema::hasColumn('assignments', 'user_id')) {
-            return $this->belongsTo(User::class, 'user_id');
-        } else {
-            return $this->belongsTo(User::class, 'referee_id');
-        }
+        return $this->belongsTo(User::class, self::getUserField());
+
     }
 
     // Alias per retrocompatibilità

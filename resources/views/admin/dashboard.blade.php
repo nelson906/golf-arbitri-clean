@@ -221,21 +221,5 @@
             </a>
         </div>
     </div>
-
-    {{-- Note Migrazione --}}
-    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mt-6">
-        <div class="flex">
-            <div class="flex-shrink-0">
-                <span class="text-2xl">⚠️</span>
-            </div>
-            <div class="ml-3">
-                <h3 class="text-sm font-medium text-yellow-800">Migrazione Database in Corso</h3>
-                <div class="mt-2 text-sm text-yellow-700">
-                    <p>Il sistema è in fase di migrazione alla nuova struttura con tabella unificata <code>referee_career_history</code>.</p>
-                    <p class="mt-1">Alcune funzionalità potrebbero essere temporaneamente limitate.</p>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 @endsection

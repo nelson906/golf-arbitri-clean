@@ -8,6 +8,8 @@ use App\Models\Availability;
 use App\Models\Zone;
 use App\Models\TournamentType;
 use App\Traits\HasZoneVisibility;
+use App\Services\TournamentColorService;
+use App\Services\CalendarDataService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\View\View;
@@ -22,6 +24,14 @@ use Illuminate\Support\Facades\Log;
 class AvailabilityController extends Controller
 {
     use HasZoneVisibility;
+
+    protected TournamentColorService $colorService;
+    protected CalendarDataService $calendarService;
+    public function __construct(TournamentColorService $colorService, CalendarDataService $calendarService)
+    {
+        $this->colorService = $colorService;
+        $this->calendarService = $calendarService;
+    }
 
     /**
      * Show user's availabilities
@@ -255,7 +265,6 @@ class AvailabilityController extends Controller
         $user = auth()->user();
 
         try {
-            // Tornei rilevanti per l'utente
             // Tornei rilevanti per l'utente con filtro visibilità centralizzato
             $query = Tournament::with(['tournamentType', 'club.zone', 'assignments']);
             $this->applyTournamentVisibility($query, $user);
@@ -265,46 +274,25 @@ class AvailabilityController extends Controller
             $userAvailabilities = $user->availabilities()->pluck('tournament_id')->toArray();
             $userAssignments = $user->assignments()->pluck('tournament_id')->toArray();
 
-            // Raccogli i tipi di torneo unici presenti
-            $uniqueTournamentTypes = collect();
-
-            // Formatta per il calendario
-            $calendarData = [
-                'tournaments' => $tournaments->map(function ($tournament) use ($userAvailabilities, $userAssignments, $user, &$uniqueTournamentTypes) {
-                    $isAvailable = in_array($tournament->id, $userAvailabilities);
-                    $isAssigned = in_array($tournament->id, $userAssignments);
-
-                    // Raccogli i tipi di torneo unici (solo se non è assegnato o disponibile)
-                    if (!$isAssigned && !$isAvailable && $tournament->tournamentType) {
-                        $uniqueTournamentTypes->put($tournament->tournamentType->id, [
-                            'name' => $tournament->tournamentType->name,
-                            'short_name' => $tournament->tournamentType->short_name,
-                            'color' => $tournament->tournamentType->calendar_color ? $tournament->tournamentType->calendar_color . '80' : '#6B7280'
-                        ]);
-                    }
-
-                    return [
-                        'id' => $tournament->id,
-                        'title' => $tournament->name ?? 'Torneo #' . $tournament->id,
-                        'start' => $tournament->start_date ? $tournament->start_date->format('Y-m-d') : now()->format('Y-m-d'),
-                        'end' => $tournament->end_date ? $tournament->end_date->addDay()->format('Y-m-d') : now()->addDay()->format('Y-m-d'),
-                        'color' => $this->getEventColor($tournament, $isAvailable, $isAssigned),
-                        'borderColor' => $this->getBorderColor($isAvailable, $isAssigned),
-                        'extendedProps' => [
-                            'club' => $tournament->club->name ?? 'N/A',
-                            'zone' => $tournament->club->zone->name ?? 'N/A',
-                            'category' => $tournament->tournamentType->name ?? 'N/A',
-                            'status' => $tournament->status ?? 'active',
-                            'is_available' => $isAvailable,
-                            'is_assigned' => $isAssigned,
-                            'personal_status' => $this->getPersonalStatus($isAvailable, $isAssigned),
-                            'can_declare' => $this->canDeclareAvailability($user, $tournament),
-                        ],
-                    ];
-                }),
-                'userType' => 'user',
-                'tournamentTypes' => $uniqueTournamentTypes->values(), // Passa i tipi di torneo unici
-            ];
+            // Usa CalendarDataService per preparare i dati
+            $calendarData = $this->calendarService->prepareFullCalendarData(
+                $tournaments,
+                $user,
+                'referee',
+                [
+                    'availableTournamentIds' => $userAvailabilities,
+                    'assignedTournamentIds' => $userAssignments,
+                    'tournamentTypes' => TournamentType::active()->ordered()->get(),
+                ]
+            );
+            // Aggiungi can_declare per ogni torneo (logica specifica di questo controller)
+            $calendarData['tournaments'] = $calendarData['tournaments']->map(function ($event) use ($user, $tournaments) {
+                $tournament = $tournaments->firstWhere('id', $event['id']);
+                if ($tournament) {
+                    $event['extendedProps']['can_declare'] = $this->canDeclareAvailability($user, $tournament);
+                }
+                return $event;
+            });
 
             return view('referee.availabilities.calendar', compact('calendarData'));
         } catch (\Exception $e) {
@@ -442,10 +430,11 @@ class AvailabilityController extends Controller
      * // - Notifica solo zone admin della zona del torneo
      * $emails = $this->getAdminEmailsForNotification($zonalTournament);
      */
-    private function getAdminEmailsForNotification(Tournament $tournament): array    {
+    private function getAdminEmailsForNotification(Tournament $tournament): array
+    {
         $emails = [];
 
-            // Determina la zona del torneo (priorità: club.zone_id > tournament.zone_id)
+        // Determina la zona del torneo (priorità: club.zone_id > tournament.zone_id)
         $tournamentZoneId = $tournament->club->zone_id ?? $tournament->zone_id;
 
         // Verifica se il torneo è nazionale
@@ -516,43 +505,10 @@ class AvailabilityController extends Controller
             'total_emails' => count($uniqueEmails)
         ]);
 
-        return $uniqueEmails;    }
-
-    private function getEventColor($tournament, $isAvailable, $isAssigned): string
-    {
-        // Se assegnato o disponibile, usa colori specifici
-        if ($isAssigned) return '#10B981'; // Verde per assegnato
-        if ($isAvailable) return '#F59E0B'; // Arancione per disponibile
-
-        // Altrimenti usa il colore del tournament type se disponibile
-        if ($tournament->tournamentType && $tournament->tournamentType->calendar_color) {
-            // Rendi il colore più tenue aggiungendo trasparenza
-            $color = $tournament->tournamentType->calendar_color;
-            // Se è un colore hex, aggiungi trasparenza
-            if (str_starts_with($color, '#')) {
-                return $color . '80'; // Aggiunge 50% di trasparenza
-            }
-            return $color;
-        }
-
-        // Colori di fallback per tipo torneo
-        $colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
-        return $colors[($tournament->tournament_type_id ?? 1) % count($colors)];
+        return $uniqueEmails;
     }
 
-    private function getBorderColor($isAvailable, $isAssigned): string
-    {
-        if ($isAssigned) return '#059669';
-        if ($isAvailable) return '#D97706';
-        return '#6B7280';
-    }
-
-    private function getPersonalStatus($isAvailable, $isAssigned): string
-    {
-        if ($isAssigned) return 'assigned';
-        if ($isAvailable) return 'available';
-        return 'can_apply';
-    }
+    // Metodi colore centralizzati in TournamentColorService
 
     /**
      * Gestisce l'invio delle notifiche per una singola dichiarazione di disponibilità.
@@ -569,10 +525,10 @@ class AvailabilityController extends Controller
     private function handleSingleNotification($user, $tournament, $action)
     {
         try {
-                // Assicurati che il torneo abbia le relazioni caricate
+            // Assicurati che il torneo abbia le relazioni caricate
             $tournament->load(['club', 'tournamentType']);
 
-        // Prepara i dati per le notifiche
+            // Prepara i dati per le notifiche
             $addedTournaments = $action === 'added' ? collect([$tournament]) : collect();
             $removedTournaments = $action === 'removed' ? collect([$tournament]) : collect();
 
