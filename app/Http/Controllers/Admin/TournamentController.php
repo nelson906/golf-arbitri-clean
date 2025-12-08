@@ -286,7 +286,7 @@ class TournamentController extends Controller
         // Check if editable
         if (!$tournament->isEditable()) {
             return redirect()
-                ->route('tournaments.show', $tournament)
+                ->route('admin.tournaments.show', $tournament)
                 ->with('error', 'Questo torneo non può essere modificato nel suo stato attuale.');
         }
 
@@ -294,14 +294,14 @@ class TournamentController extends Controller
 
         // Update zone_id from club if changed
         if (isset($data['club_id']) && $data['club_id'] != $tournament->club_id) {
-            $club = club::findOrFail($data['club_id']);
+            $club = Club::findOrFail($data['club_id']);
             $data['zone_id'] = $club->zone_id;
         }
 
         $tournament->update($data);
 
         return redirect()
-            ->route('tournaments.show', $tournament)
+            ->route('admin.tournaments.show', $tournament)
             ->with('success', 'Torneo aggiornato con successo!');
     }
 
