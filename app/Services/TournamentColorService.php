@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Tournament;
+use App\Models\TournamentType;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Servizio centralizzato per la gestione dei colori calendario tornei.
@@ -83,6 +85,9 @@ class TournamentColorService
 
     private const DEFAULT_COLOR = '#3B82F6';
     private const DEFAULT_BORDER = '#10B981';
+    
+    // Aggiunto qui per visibilità dal metodo pubblico
+    public const TYPE_COLORS_MAP = self::TYPE_COLORS;
 
     /**
      * Ottieni colore evento per vista ADMIN (basato su tipo torneo)
@@ -179,11 +184,24 @@ class TournamentColorService
     }
 
     /**
-     * Ottieni array colori per legenda admin
+     * Ottieni array colori per legenda admin (con nomi completi)
      */
     public function getAdminLegendColors(): array
     {
-        return self::TYPE_COLORS;
+        // Ottieni tutti i tipi di torneo attivi dal database
+        $types = TournamentType::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        
+        $legend = [];
+        foreach ($types as $type) {
+            $shortName = $type->short_name ?? $type->name;
+            // Usa short_name come chiave per il mapping colore, ma nome completo come label
+            $color = self::TYPE_COLORS[$shortName] ?? self::DEFAULT_COLOR;
+            $legend[$type->name] = $color;
+        }
+        
+        return $legend;
     }
 
     /**

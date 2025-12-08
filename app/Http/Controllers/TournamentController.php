@@ -68,6 +68,7 @@ class TournamentController extends Controller
 
     /**
      * Calendario unificato
+     * Ora centralizzato tramite CalendarDataService
      */
     public function calendar(Request $request): View
     {
@@ -76,7 +77,7 @@ class TournamentController extends Controller
         $forceUserMode = $request->get('view_as') === 'user';
         $isAdmin = $forceUserMode ? false : $this->isAdmin($user);
 
-        // Query base con relazioni necessarie ottimizzate
+        // Query base con relazioni ottimizzate
         $query = Tournament::with([
             'tournamentType:id,name,short_name,calendar_color',
             'club:id,name,zone_id',
@@ -88,7 +89,7 @@ class TournamentController extends Controller
             $query->withCount(['assignments', 'availabilities']);
         }
 
-        // Filtro visibilità per zona/ruolo (centralizzato nel trait)
+        // Filtro visibilità per zona/ruolo
         $this->applyTournamentVisibility($query, $user);
 
         // Per i non-admin, mostra solo tornei con status visibili
@@ -96,30 +97,26 @@ class TournamentController extends Controller
             $query->whereIn('status', ['open', 'closed', 'assigned', 'completed']);
         }
 
-        // Filtri opzionali per ottimizzare il caricamento
+        // Filtri opzionali
         $currentYear = $request->get('year', now()->year);
         $startDate = Carbon::create($currentYear, 1, 1)->startOfYear();
         $endDate = Carbon::create($currentYear, 12, 31)->endOfYear();
-
         $query->whereBetween('start_date', [$startDate, $endDate]);
 
-        // Filtro per zona
         if ($request->filled('zone_id')) {
             $query->whereHas('club', function ($q) use ($request) {
                 $q->where('zone_id', $request->zone_id);
             });
         }
 
-        // Filtro per tipo torneo
         if ($request->filled('type_id')) {
             $query->where('tournament_type_id', $request->type_id);
         }
 
         $query->orderBy('start_date');
-
         $tournaments = $query->get();
 
-        // 👤 USER-SPECIFIC DATA
+        // Get user-specific availability/assignment data
         $userAvailabilities = [];
         $userAssignments = [];
 
@@ -128,31 +125,25 @@ class TournamentController extends Controller
             $userAssignments = $user->assignments()->pluck('tournament_id')->toArray();
         }
 
-        // 📅 FORMAT FOR CALENDAR WITH COLORS
-        $calendarData = [
-            'tournaments' => $tournaments->map(function ($tournament) use ($userAvailabilities, $userAssignments, $isAdmin, $user) {
-                return $this->formatTournamentForCalendar($tournament, $userAvailabilities, $userAssignments, $isAdmin, $user);
-            }),
+        // Use CalendarDataService to prepare calendar data
+        $calendarData = $this->calendarService->prepareFullCalendarData(
+            $tournaments,
+            $user,
+            $isAdmin ? 'admin' : 'referee',
+            [
+                'zones' => Zone::orderBy('name')->get(),
+                'clubs' => Club::active()->ordered()->get(),
+                'tournamentTypes' => TournamentType::active()->ordered()->get(),
+                'availableTournamentIds' => $userAvailabilities,
+                'assignedTournamentIds' => $userAssignments,
+            ]
+        );
 
-            // 🎯 CONTEXT DATA
-            'userType' => $isAdmin ? 'admin' : 'referee',
-            'userRoles' => [$user->user_type],
-            'canModify' => true,
-            'isAdmin' => $isAdmin,
-
-            // 🔧 FILTER DATA
-            'zones' => Zone::orderBy('name')->get(),
-            'types' => TournamentType::active()->ordered()->get(),
-            'clubs' => Club::active()->ordered()->get(),
-
-            // 👤 USER DATA
-            'availabilities' => $userAvailabilities,
-            'assignments' => $userAssignments,
-
-            // 📊 METADATA
-            'totalTournaments' => $tournaments->count(),
-            'lastUpdated' => now()->toISOString(),
-        ];
+        // Add UI-specific context fields
+        $calendarData['userRoles'] = [$user->user_type];
+        $calendarData['canModify'] = true;
+        $calendarData['totalTournaments'] = $tournaments->count();
+        $calendarData['lastUpdated'] = now()->toISOString();
 
         return view('tournaments.calendar', compact('calendarData'));
     }
@@ -264,58 +255,6 @@ class TournamentController extends Controller
         }
     }
 
-    /**
-     * 🎨 Format tournament for calendar display WITH COLOR LOGIC
-     */
-    private function formatTournamentForCalendar($tournament, $userAvailabilities, $userAssignments, $isAdmin, $user): array
-    {
-        $isAvailable = in_array($tournament->id, $userAvailabilities);
-        $isAssigned = in_array($tournament->id, $userAssignments);
-
-        return [
-            'id' => $tournament->id,
-            'title' => $tournament->name,
-            'start' => $tournament->start_date->format('Y-m-d'),
-            'end' => $tournament->end_date->addDay()->format('Y-m-d'),
-            // 🎨 RECUPERATA LOGICA COLORI ORIGINALE
-            'color' => $this->colorService->getEventColor($tournament, $isAssigned, $isAvailable, $isAdmin),
-            'borderColor' => $this->colorService->getBorderColor($tournament, $isAssigned, $isAvailable, $isAdmin),
-            'extendedProps' => [
-                // Basic info
-                'club' => $tournament->club->name ?? 'N/A',
-                'zone' => $tournament->zone->name ?? 'N/A',
-                'zone_id' => $tournament->zone_id,
-                'category' => $tournament->tournamentType->name ?? 'N/A',
-                'status' => $tournament->status,
-
-                // 🎯 DIFFERENT URL BASED ON USER TYPE
-                'tournament_url' => $isAdmin
-                    ? route('admin.tournaments.edit', $tournament)
-                    : route('tournaments.show', $tournament),
-
-                'deadline' => Carbon::parse($tournament->availability_deadline)?->format('d/m/Y') ?? 'N/A',
-                'type_id' => $tournament->tournament_type_id,
-
-                // Referee-specific
-                'is_available' => $isAvailable,
-                'is_assigned' => $isAssigned,
-                'can_apply' => $this->canApply($tournament, $user),
-                'personal_status' => $isAssigned ? 'assigned' : ($isAvailable ? 'available' : 'can_apply'),
-
-                // Admin-specific - usa i count già caricati se disponibili
-                'availabilities_count' => $isAdmin ? ($tournament->availabilities_count ?? $tournament->availabilities()->count()) : 0,
-                'assignments_count' => $isAdmin ? ($tournament->assignments_count ?? $tournament->assignments()->count()) : 0,
-                'required_referees' => $tournament->required_referees ?? 1,
-                'max_referees' => $tournament->max_referees ?? 4,
-                'management_priority' => $isAdmin ? $this->getManagementPriority($tournament) : 'none',
-
-                // 🎯 UI BEHAVIOR FLAGS
-                'show_edit_button' => $isAdmin,
-                'show_delete_button' => $isAdmin && $tournament->status === 'draft',
-                'click_action' => $isAdmin ? 'edit' : 'show',
-            ],
-        ];
-    }
 
     private function checkTournamentAccess($tournament, $user, $isAdmin): void
     {
@@ -351,56 +290,6 @@ class TournamentController extends Controller
         ];
     }
 
-    // ===============================================
-    // 🎨 HELPER METHODS (colori centralizzati in TournamentColorService)    // ===============================================
-
-    /**
-     * 🎨 Calculate management priority
-     */
-    private function getManagementPriority($tournament): string
-    {
-        try {
-            $availabilities = $tournament->availabilities()->count();
-            $assignments = $tournament->assignments()->count();
-            $required = $tournament->required_referees ?? $tournament->tournamentType->min_referees ?? 1;
-
-            // Calcola giorni fino alla deadline
-            $daysUntilDeadline = 999;
-            if ($tournament->availability_deadline) {
-                $daysUntilDeadline = Carbon::parse($tournament->availability_deadline)->diffInDays(now(), false);
-            }
-
-            // Urgent: Missing referees or overdue deadline
-            if ($daysUntilDeadline < 0 || $assignments < $required) {
-                return 'urgent';
-            }
-
-            // Complete: Fully staffed
-            if ($assignments >= $required) {
-                return 'complete';
-            }
-
-            // In progress: Has some availability/assignments but not complete
-            if ($availabilities > 0 || $assignments > 0) {
-                return 'in_progress';
-            }
-
-            // Open: Ready for availability submissions
-            return 'open';
-        } catch (\Exception $e) {
-            return 'unknown';
-        }
-    }
-
-    private function canApply($tournament, $user): bool
-    {
-        if ($user->user_type !== 'referee') return false;
-        if ($tournament->status !== 'open') return false;
-        if ($tournament->start_date <= now()) return false;
-        if ($tournament->availability_deadline && $tournament->availability_deadline < now()) return false;
-
-        return true;
-    }
 }
 
 /*

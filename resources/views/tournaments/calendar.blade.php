@@ -30,21 +30,33 @@
                             <select id="zoneFilter" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 <option value="">Tutte le zone</option>
                                 @foreach($calendarData['zones'] as $zone)
-                                    <option value="{{ $zone->id }}" {{ request('zone_id') == $zone->id ? 'selected' : '' }}>
-                                        {{ $zone->name }}
-                                    </option>
+                                    @if(is_array($zone))
+                                        <option value="{{ $zone['id'] }}" {{ request('zone_id') == $zone['id'] ? 'selected' : '' }}>
+                                            {{ $zone['name'] }}
+                                        </option>
+                                    @else
+                                        <option value="{{ $zone->id }}" {{ request('zone_id') == $zone->id ? 'selected' : '' }}>
+                                            {{ $zone->name }}
+                                        </option>
+                                    @endif
                                 @endforeach
                             </select>
                         @endif
 
                         {{-- Type Filter --}}
-                        @if(isset($calendarData['types']) && count($calendarData['types']) > 0)
+                        @if(isset($calendarData['tournamentTypes']) && count($calendarData['tournamentTypes']) > 0)
                             <select id="typeFilter" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 <option value="">Tutti i tipi</option>
-                                @foreach($calendarData['types'] as $type)
-                                    <option value="{{ $type->id }}" {{ request('type_id') == $type->id ? 'selected' : '' }}>
-                                        {{ $type->name }}
-                                    </option>
+                                @foreach($calendarData['tournamentTypes'] as $type)
+                                    @if(is_array($type))
+                                        <option value="{{ $type['id'] }}" {{ request('type_id') == $type['id'] ? 'selected' : '' }}>
+                                            {{ $type['name'] }}
+                                        </option>
+                                    @else
+                                        <option value="{{ $type->id }}" {{ request('type_id') == $type->id ? 'selected' : '' }}>
+                                            {{ $type->name }}
+                                        </option>
+                                    @endif
                                 @endforeach
                             </select>
                         @endif
@@ -67,34 +79,54 @@
 
             {{-- Legend --}}
             <div class="mb-4 p-4 bg-gray-50 rounded-lg">
-                <h3 class="text-sm font-medium text-gray-700 mb-2">Legenda:</h3>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    @if(in_array(auth()->user()->user_type ?? '', ['admin', 'national_admin', 'super_admin']))
-                        {{-- Admin Legend - Colori basati su calendar_color del database --}}
-                        @if(isset($calendarData['types']) && count($calendarData['types']) > 0)
-                            @foreach($calendarData['types']->take(12) as $type)
-                                <div class="flex items-center space-x-2">
-                                    <span class="inline-block w-4 h-4 rounded" style="background-color: {{ $type->calendar_color ?? '#3B82F6' }}"></span>
-                                    <span class="text-xs">{{ $type->name }}</span>
-                                </div>
-                            @endforeach
+                <h3 class="text-sm font-medium text-gray-700 mb-3">Legenda:</h3>
+                @if(isset($calendarData['legend']) && is_array($calendarData['legend']) && count($calendarData['legend']) > 0)
+                    {{-- Legend from service --}}
+                    <div class="flex flex-wrap gap-3">
+                        @foreach($calendarData['legend'] as $label => $color)
+                            <div class="flex items-center space-x-2">
+                                <span class="inline-block w-4 h-4 rounded" style="background-color: {{ $color }}"></span>
+                                <span class="text-sm text-gray-700">{{ $label }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    {{-- Fallback legend if service legend not available --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        @if(in_array(auth()->user()->user_type ?? '', ['admin', 'national_admin', 'super_admin']))
+                            {{-- Admin Legend - Colori basati su calendar_color --}}
+                            @if(isset($calendarData['tournamentTypes']) && count($calendarData['tournamentTypes']) > 0)
+                                @foreach($calendarData['tournamentTypes'] as $type)
+                                    @if(is_array($type))
+                                        <div class="flex items-center space-x-2">
+                                            <span class="inline-block w-4 h-4 rounded" style="background-color: {{ $type['color'] ?? '#3B82F6' }}"></span>
+                                            <span class="text-sm text-gray-700">{{ $type['name'] }}</span>
+                                        </div>
+                                    @else
+                                        <div class="flex items-center space-x-2">
+                                            <span class="inline-block w-4 h-4 rounded" style="background-color: {{ $type->calendar_color ?? '#3B82F6' }}"></span>
+                                            <span class="text-sm text-gray-700">{{ $type->name }}</span>
+                                        </div>
+                                    @endif
+                                @endforeach
+                            @endif
+                        @else
+                            {{-- Referee Legend --}}
+                            <div class="flex items-center space-x-2">
+                                <span class="inline-block w-4 h-4 rounded" style="background-color: #10B981"></span>
+                                <span class="text-sm text-gray-700">Assegnato</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="inline-block w-4 h-4 rounded" style="background-color: #F59E0B"></span>
+                                <span class="text-sm text-gray-700">Disponibile</span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <span class="inline-block w-4 h-4 rounded" style="background-color: #3B82F6"></span>
+                                <span class="text-sm text-gray-700">Puoi candidarti</span>
+                            </div>
                         @endif
-                    @else
-                        {{-- Referee Legend --}}
-                        <div class="flex items-center space-x-2">
-                            <span class="inline-block w-4 h-4 rounded" style="background-color: #10B981"></span>
-                            <span class="text-xs">Assegnato</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="inline-block w-4 h-4 rounded" style="background-color: #F59E0B"></span>
-                            <span class="text-xs">Disponibile</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="inline-block w-4 h-4 rounded" style="background-color: #3B82F6"></span>
-                            <span class="text-xs">Puoi candidarti</span>
-                        </div>
-                    @endif
-                </div>
+                    </div>
+                @endif
             </div>
 
             {{-- Calendar Container --}}

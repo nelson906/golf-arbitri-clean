@@ -8,6 +8,7 @@ use App\Models\Zone;
 use App\Models\TournamentType;
 use App\Models\Club;
 use Illuminate\Support\Collection;
+use Carbon\Carbon;
 
 /**
  * Servizio centralizzato per la preparazione dati calendario.
@@ -166,7 +167,7 @@ class CalendarDataService
             'tournament_type' => $tournament->tournamentType->name ?? 'N/A',
             'status' => $tournament->status,
             'tournament_url' => route('admin.tournaments.show', $tournament),
-            'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
+            'deadline' => Carbon::parse($tournament->availability_deadline)?->format('d/m/Y') ?? 'N/A',
             'type_id' => $tournament->tournament_type_id,
             'availabilities_count' => $tournament->availabilities()->count(),
             'assignments_count' => $tournament->assignments()->count(),

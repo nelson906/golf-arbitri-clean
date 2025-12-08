@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 legendItem.className = 'flex items-center';
                 legendItem.innerHTML = `
                     <div class="w-3 h-3 rounded mr-1" style="background-color: ${type.color};"></div>
-                    <span>${type.short_name || type.name}</span>
+                    <span>${type.name}</span>
                 `;
                 legendContainer.appendChild(legendItem);
             });
