@@ -9,6 +9,7 @@ use App\Models\Tournament;
 use App\Models\RefereeCareerHistory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class CareerHistoryService
 {
@@ -117,7 +118,7 @@ class CareerHistoryService
         $availabilitiesData = $availabilities->map(fn($av) => [
             'tournament_id' => $av->tournament_id,
             'tournament_name' => $av->tournament->name ?? null,
-            'submitted_at' => $av->submitted_at?->format('Y-m-d H:i'),
+            'submitted_at' => Carbon::parse($av->submitted_at)?->format('Y-m-d H:i'),
             'notes' => $av->notes,
         ])->values()->toArray();
 

@@ -55,7 +55,7 @@ class ArchiveCareerYear extends Command
             $this->warn('ATTENZIONE: I dati sorgente verranno ELIMINATI dopo l\'archiviazione!');
             if (!$this->confirm('Sei sicuro di voler procedere?')) {
                 $this->info('Operazione annullata.');
-                return Command::SUCCESS;
+                return self::SUCCESS;
             }
         }
 
@@ -86,10 +86,10 @@ class ArchiveCareerYear extends Command
             $this->newLine();
             $this->info('Operazione completata.');
 
-            return Command::SUCCESS;
+            return self::SUCCESS;
         } catch (\Exception $e) {
             $this->error('Errore durante l\'archiviazione: ' . $e->getMessage());
-            return Command::FAILURE;
+            return self::FAILURE;
         }
     }
 

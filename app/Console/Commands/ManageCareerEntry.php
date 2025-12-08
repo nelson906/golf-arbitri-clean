@@ -56,14 +56,14 @@ class ManageCareerEntry extends Command
     {
         $user = $this->resolveUser();
         if (!$user) {
-            return Command::FAILURE;
+            return self::FAILURE;
         }
 
         $history = RefereeCareerHistory::where('user_id', $user->id)->first();
 
         if (!$history) {
             $this->warn("Nessun career history trovato per {$user->name}");
-            return Command::SUCCESS;
+            return self::SUCCESS;
         }
 
         $this->info("=== Career History: {$user->name} ===");
@@ -79,7 +79,7 @@ class ManageCareerEntry extends Command
             $this->showSummary($history);
         }
 
-        return Command::SUCCESS;
+        return self::SUCCESS;
     }
 
     private function showSummary(RefereeCareerHistory $history): void
@@ -165,7 +165,7 @@ class ManageCareerEntry extends Command
     {
         $user = $this->resolveUser();
         if (!$user) {
-            return Command::FAILURE;
+            return self::FAILURE;
         }
 
         $year = $this->option('year');
@@ -173,13 +173,13 @@ class ManageCareerEntry extends Command
 
         if (!$year || !$tournamentId) {
             $this->error('Devi specificare --year e --tournament');
-            return Command::FAILURE;
+            return self::FAILURE;
         }
 
         $tournament = Tournament::with('club')->find($tournamentId);
         if (!$tournament) {
             $this->error("Torneo ID {$tournamentId} non trovato");
-            return Command::FAILURE;
+            return self::FAILURE;
         }
 
         $tournamentData = [
@@ -217,14 +217,14 @@ class ManageCareerEntry extends Command
 
         $this->info("Torneo '{$tournament->name}' aggiunto allo storico {$year} di {$user->name}");
 
-        return Command::SUCCESS;
+        return self::SUCCESS;
     }
 
     private function removeEntry(): int
     {
         $user = $this->resolveUser();
         if (!$user) {
-            return Command::FAILURE;
+            return self::FAILURE;
         }
 
         $year = $this->option('year');
@@ -232,7 +232,7 @@ class ManageCareerEntry extends Command
 
         if (!$year || !$tournamentId) {
             $this->error('Devi specificare --year e --tournament');
-            return Command::FAILURE;
+            return self::FAILURE;
         }
 
         $removed = $this->careerService->removeTournamentEntry($user->id, (int) $year, (int) $tournamentId);
@@ -243,7 +243,7 @@ class ManageCareerEntry extends Command
             $this->warn("Torneo non trovato nello storico");
         }
 
-        return Command::SUCCESS;
+        return self::SUCCESS;
     }
 
     private function resolveUser(): ?User
@@ -272,6 +272,6 @@ class ManageCareerEntry extends Command
     private function invalidAction(string $action): int
     {
         $this->error("Azione '{$action}' non valida. Usa: show, add, remove");
-        return Command::FAILURE;
+        return self::FAILURE;
     }
 }

@@ -12,6 +12,9 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController;
 use App\Http\Controllers\User\FedergolfController;
 use Illuminate\Foundation\Application;
+use Illuminate\Http\RedirectResponse;
+
+
 
 /*
 |--------------------------------------------------------------------------
