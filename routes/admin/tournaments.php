@@ -17,7 +17,8 @@ Route::prefix('tournaments')->name('tournaments.')->group(function () {
     // Status Management
     Route::post('/{tournament}/status', [TournamentController::class, 'changeStatus'])->name('change-status');
 
-    // Calendar Views - removed, using the unified calendar in web.php
+    // Calendar View
+    Route::get('/calendar', [TournamentController::class, 'calendar'])->name('calendar');
 
     // Bulk Operations
     Route::post('/bulk-action', [TournamentController::class, 'bulkAction'])->name('bulk-action');
