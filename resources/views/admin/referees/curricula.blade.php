@@ -31,7 +31,7 @@
                                     class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                 <option value="">Tutte le zone</option>
                                 @foreach(\App\Models\Zone::orderBy('name')->get() as $z)
-                                    <option value="{{ $z->id }}" {{ request('zone') == $z->id ? 'selected' : '' }}>
+                                    <option value="{{ $z->id }}" {{ $zone == $z->id ? 'selected' : '' }}>
                                         {{ $z->name }}
                                     </option>
                                 @endforeach

@@ -25,10 +25,19 @@ class RefereeCareerController extends Controller
     {
         $year = $request->get('year', now()->year);
         $search = $request->get('search');
-        $zone = $request->get('zone');
-        $level = $request->get('level');
         $sort = $request->get('sort', 'last_name');
         $direction = $request->get('direction', 'asc');
+        
+        // Gestione zona con default per admin zonale
+        $user = auth()->user();
+        $zone = $request->get('zone');
+        
+        // Se non è specificata una zona e l'utente è admin zonale, usa la sua zona
+        if (!$request->has('zone') && $user->user_type === 'admin' && $user->zone_id) {
+            $zone = $user->zone_id;
+        }
+        
+        $level = $request->get('level');
 
         // Ottieni gli anni disponibili dalla tabella referee_career_history
         $historyYears = DB::table('referee_career_history')

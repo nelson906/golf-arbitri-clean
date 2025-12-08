@@ -185,7 +185,22 @@
                 </div>
             </div>
 
-            {{-- Status Override (separate form) --}}
+            {{-- Actions --}}
+            <div class="flex justify-end space-x-4">
+                <a href="{{ route('admin.tournaments.show', $tournament) }}"
+                    class="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Annulla
+                </a>
+                <button type="submit"
+                    class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Aggiorna Torneo
+                </button>
+            </div>
+        </form>
+
+        {{-- Status Override (separate form) --}}
+        <form action="{{ route('admin.tournaments.change-status', $tournament) }}" method="POST" class="mt-6">
+            @csrf
             <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <div class="flex items-center justify-between">
                     <div>
@@ -194,9 +209,7 @@
                             <strong>{{ \App\Models\Tournament::STATUSES[$tournament->status] ?? $tournament->status }}</strong>
                         </p>
                     </div>
-                    <form action="{{ route('admin.tournaments.change-status', $tournament) }}" method="POST"
-                        class="flex items-center gap-2">
-                        @csrf
+                    <div class="flex items-center gap-2">
                         <select name="status"
                             class="text-sm rounded-md border-amber-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
                             @foreach (\App\Models\Tournament::STATUSES as $value => $label)
@@ -210,20 +223,8 @@
                             class="px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-100 border border-amber-300 rounded-md hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500">
                             Cambia
                         </button>
-                    </form>
+                    </div>
                 </div>
-            </div>
-
-            {{-- Actions --}}
-            <div class="flex justify-end space-x-4">
-                <a href="{{ route('admin.tournaments.show', $tournament) }}"
-                    class="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Annulla
-                </a>
-                <button type="submit"
-                    class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Aggiorna Torneo
-                </button>
             </div>
         </form>
     </div>
