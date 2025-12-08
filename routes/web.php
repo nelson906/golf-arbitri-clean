@@ -109,6 +109,7 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
         require __DIR__ . '/admin/reports.php';
         require __DIR__ . '/admin/documents.php';
         require __DIR__ . '/admin/communications.php';       // SPOSTATO da inline
+        require __DIR__ . '/admin/career-history.php';       // Gestione storico carriera
     });
 });
 
