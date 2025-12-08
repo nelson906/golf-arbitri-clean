@@ -111,6 +111,13 @@ class User extends Authenticatable
             ->withPivot('role', 'notes')
             ->withTimestamps();    }
 
+
+    // Storico carriera
+    public function careerHistory()
+    {
+        return $this->hasOne(RefereeCareerHistory::class);
+    }
+
     // NON c'è una relazione 'referee' su User stesso!
     // Se il codice cerca $user->referee, probabilmente è un errore
 

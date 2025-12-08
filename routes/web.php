@@ -109,6 +109,7 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
         require __DIR__ . '/admin/reports.php';
         require __DIR__ . '/admin/documents.php';
         require __DIR__ . '/admin/communications.php';       // SPOSTATO da inline
+        require __DIR__ . '/admin/career-history.php';       // Gestione storico carriera arbitri
     });
 });
 
@@ -169,9 +170,9 @@ Route::prefix('api')->name('api.')->group(function () {
     });
 });
 
-    require __DIR__ . '/dev/view-preview.php';
+require __DIR__ . '/dev/view-preview.php';
 if (app()->environment(['local', 'staging'])) {
     require __DIR__ . '/dev/view-preview.php';
     require __DIR__ . '/dev/view-test-all.php'; // ⚠️ AGGIUNGI
 }
-require __DIR__.'/maintenance.php';
+require __DIR__ . '/maintenance.php';
