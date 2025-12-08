@@ -106,25 +106,18 @@
                     @if(\Schema::hasColumn('tournaments', 'status'))
                     <div>
                         <label class="text-sm font-medium text-gray-500">Stato</label>
-                        <p>
-                            @php
-                                $statusColors = [
-                                    'active' => 'bg-green-100 text-green-800',
-                                    'completed' => 'bg-gray-100 text-gray-800',
-                                    'cancelled' => 'bg-red-100 text-red-800',
-                                    'draft' => 'bg-yellow-100 text-yellow-800',
-                                ];
-                                $statusLabels = [
-                                    'active' => 'Attivo',
-                                    'completed' => 'Completato',
-                                    'cancelled' => 'Cancellato',
-                                    'draft' => 'Bozza',
-                                ];
-                            @endphp
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $statusColors[$tournament->status] ?? 'bg-gray-100 text-gray-800' }}">
-                                {{ $statusLabels[$tournament->status] ?? $tournament->status ?? 'N/A' }}
-                            </span>
-                        </p>
+                        <form action="{{ route('admin.tournaments.change-status', $tournament) }}" method="POST" class="mt-1 flex items-center gap-2">
+                            @csrf
+                            <select name="status" onchange="this.form.submit()"
+                                    class="text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                @foreach(\App\Models\Tournament::STATUSES as $value => $label)
+                                    <option value="{{ $value }}" {{ $tournament->status == $value ? 'selected' : '' }}>
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <span class="text-xs text-gray-400">(override)</span>
+                        </form>
                     </div>
                     @endif
                 </div>

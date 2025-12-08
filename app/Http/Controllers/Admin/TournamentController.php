@@ -380,6 +380,50 @@ class TournamentController extends Controller
     }
 
     /**
+     * Change tournament status with override (bypasses workflow validation).
+     * Use this for manual corrections or administrative overrides.
+     */
+    public function changeStatus(Request $request, Tournament $tournament)
+    {
+        // Check access
+        $this->checkTournamentAccess($tournament);
+
+        $request->validate([
+            'status' => ['required', 'in:' . implode(',', array_keys(Tournament::STATUSES))],
+        ]);
+
+        $oldStatus = $tournament->status;
+        $newStatus = $request->status;
+
+        // Update status directly (no workflow validation)
+        $tournament->update(['status' => $newStatus]);
+
+        // Log the override for audit trail
+        Log::info('Tournament status override', [
+            'tournament_id' => $tournament->id,
+            'tournament_name' => $tournament->name,
+            'old_status' => $oldStatus,
+            'new_status' => $newStatus,
+            'user_id' => auth()->id(),
+            'user_name' => auth()->user()->name,
+        ]);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Stato cambiato da '{$oldStatus}' a '{$newStatus}'.",
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus,
+                'new_status_label' => Tournament::STATUSES[$newStatus],
+            ]);
+        }
+
+        return redirect()
+            ->back()
+            ->with('success', "Stato torneo cambiato da '" . Tournament::STATUSES[$oldStatus] . "' a '" . Tournament::STATUSES[$newStatus] . "'.");
+    }
+
+    /**
      * Show availabilities for a tournament.
      */
     public function availabilities(Tournament $tournament)
