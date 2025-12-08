@@ -64,6 +64,14 @@
         Clausole Notifiche
     </a>
 </li>
+
+<li>
+    <a href="{{ route('admin.career-history.index') }}"
+       class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.career-history.*') ? 'bg-blue-900' : '' }}">
+        <span class="mr-3">📊</span>
+        Storico Carriera
+    </a>
+</li>
                    <li class="mt-4 px-4 py-2">
                         <h3 class="text-xs font-semibold text-blue-300 uppercase tracking-wider">Amministrazione</h3>
                     </li>
