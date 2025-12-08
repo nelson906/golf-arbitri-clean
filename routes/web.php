@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\RedirectResponse;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Services\DocumentGenerationService;
