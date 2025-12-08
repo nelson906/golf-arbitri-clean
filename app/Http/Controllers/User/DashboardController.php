@@ -3,12 +3,9 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
-use App\Models\Assignment;
 use App\Models\Tournament;
-use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Request;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -17,40 +14,22 @@ class DashboardController extends Controller
      */
 public function index(Request $request)
 {
-    $year = session('selected_year', date('Y'));
     $user = auth()->user();
-    $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
+    $user->load('zone'); // Eager load zone relationship
 
-    // USA I MODEL!
-    // $stats = [
-    //     'total_tournaments' => Tournament::count(),
-    //     'open_tournaments' => Tournament::where('status', 'open')->count(),
-    //     'completed_tournaments' => Tournament::where('status', 'completed')->count(),
-    //     'total_assignments' => Assignment::count(),
-    //     'pending_assignments' => Assignment::where('is_confirmed', false)->count(),
-    //     'active_referees' => User::where('user_type', 'referee')
-    //         ->where('is_active', true)
-    //         ->when(!$isNationalAdmin, fn($q) => $q->where('zone_id', $user->zone_id))
-    //         ->count(),
-    // ];
-        $isNationalReferee = in_array($user->level, ['nazionale', 'internazionale']);
+    $isNationalReferee = in_array($user->level, ['nazionale', 'internazionale']);
 
-        // Get referee statistics (usando un try-catch per evitare errori)
-        try {
-            $stats = $user->referee_statistics;
-        } catch (\Exception $e) {
-            // Se il metodo non esiste, creiamo delle statistiche base
-            $stats = (object) [
-                'total_assignments' => $user->assignments()->count(),
-                'assignments_this_year' => $user->assignments()
-                    ->whereHas('tournament', function($q) {
-                        $q->whereYear('start_date', now()->year);
-                    })
-                    ->count(),
-                'confirmed_assignments' => $user->assignments()->where('is_confirmed', true)->count(),
-                'pending_assignments' => $user->assignments()->where('is_confirmed', false)->count(),
-            ];
-        }
+    // Build statistics
+    $stats = (object) [
+        'total_assignments' => $user->assignments()->count(),
+        'assignments_this_year' => $user->assignments()
+            ->whereHas('tournament', function($q) {
+                $q->whereYear('start_date', now()->year);
+            })
+            ->count(),
+        'confirmed_assignments' => $user->assignments()->where('is_confirmed', true)->count(),
+        'pending_assignments' => $user->assignments()->where('is_confirmed', false)->count(),
+    ];
 
         // Upcoming assignments
         $upcomingAssignments = $user->assignments()
