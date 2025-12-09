@@ -12,7 +12,7 @@
         </div>
         <a href="{{ route('admin.career-history.archive-form') }}"
            class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-            Archivia Anno
+            {{ ($canArchiveAll ?? false) ? 'Archivia Anno' : 'Archivia Anno Arbitro' }}
         </a>
     </div>
 
@@ -25,6 +25,22 @@
                        placeholder="Nome o email..."
                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
             </div>
+
+            {{-- Zone filter only for super_admin --}}
+            @if(isset($zones) && $zones->count() > 0)
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Zona</label>
+                <select name="zone_id" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <option value="">Tutte le zone</option>
+                    @foreach($zones as $zone)
+                        <option value="{{ $zone->id }}" {{ request('zone_id') == $zone->id ? 'selected' : '' }}>
+                            {{ $zone->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
+
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Ha storico</label>
                 <select name="has_history" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
@@ -48,6 +64,11 @@
             {{ session('success') }}
         </div>
     @endif
+    @if(session('error'))
+        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
+            {{ session('error') }}
+        </div>
+    @endif
 
     {{-- Tabella --}}
     <div class="bg-white rounded-lg shadow overflow-hidden">
@@ -55,8 +76,9 @@
             <thead class="bg-gray-50">
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Arbitro</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Zona</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Livello</th>
-                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Assegnazioni Correnti</th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Assegnazioni</th>
                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Anni Storico</th>
                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Completezza</th>
                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Azioni</th>
@@ -73,6 +95,9 @@
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $referee->name }}</div>
                             <div class="text-sm text-gray-500">{{ $referee->email }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ $referee->zone->name ?? 'N/A' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {{ ucfirst($referee->level ?? 'N/A') }}
@@ -110,7 +135,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                        <td colspan="7" class="px-6 py-12 text-center text-gray-500">
                             Nessun arbitro trovato
                         </td>
                     </tr>

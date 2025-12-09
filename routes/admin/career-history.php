@@ -25,5 +25,6 @@ Route::prefix('career-history')->name('career-history.')->group(function () {
 
     // Gestione tornei nello storico
     Route::post('/{user}/add-tournament', [CareerHistoryController::class, 'addTournament'])->name('add-tournament');
+    Route::post('/{user}/add-multiple-tournaments', [CareerHistoryController::class, 'addMultipleTournaments'])->name('add-multiple-tournaments');
     Route::post('/{user}/remove-tournament', [CareerHistoryController::class, 'removeTournament'])->name('remove-tournament');
 });

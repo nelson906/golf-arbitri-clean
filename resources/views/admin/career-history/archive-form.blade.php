@@ -21,7 +21,12 @@
 
     {{-- Preview Stats --}}
     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-        <h3 class="text-sm font-medium text-blue-800 mb-2">Preview Anno {{ $currentYear }}</h3>
+        <h3 class="text-sm font-medium text-blue-800 mb-2">
+            Preview Anno {{ $currentYear }}
+            @if(isset($stats['zone_id']) && $stats['zone_id'])
+                <span class="text-blue-600">(solo tua zona)</span>
+            @endif
+        </h3>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
                 <span class="text-blue-600 font-semibold">{{ $stats['referees_with_assignments'] }}</span>
@@ -67,28 +72,33 @@
                     @enderror
                 </div>
 
-                {{-- Utente specifico (opzionale) --}}
+                {{-- Utente specifico --}}
                 <div>
                     <label for="user_id" class="block text-sm font-medium text-gray-700 mb-2">
-                        Arbitro Specifico (opzionale)
+                        Arbitro {{ ($canArchiveAll ?? false) ? '(opzionale)' : '' }}
                     </label>
-                    <select name="user_id" id="user_id"
+                    <select name="user_id" id="user_id" {{ ($canArchiveAll ?? false) ? '' : 'required' }}
                             class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        <option value="">Tutti gli arbitri</option>
-                        @php
-                            $referees = \App\Models\User::where('user_type', 'referee')
-                                ->orderBy('name')
-                                ->get(['id', 'name', 'email']);
-                        @endphp
+                        @if($canArchiveAll ?? false)
+                            <option value="">Tutti gli arbitri</option>
+                        @else
+                            <option value="">Seleziona un arbitro...</option>
+                        @endif
                         @foreach($referees as $referee)
                             <option value="{{ $referee->id }}" {{ request('user_id') == $referee->id ? 'selected' : '' }}>
                                 {{ $referee->name }} ({{ $referee->email }})
                             </option>
                         @endforeach
                     </select>
-                    <p class="mt-1 text-xs text-gray-500">
-                        Lascia vuoto per archiviare tutti gli arbitri con attivita nell'anno
-                    </p>
+                    @if($canArchiveAll ?? false)
+                        <p class="mt-1 text-xs text-gray-500">
+                            Lascia vuoto per archiviare tutti gli arbitri con attivita nell'anno
+                        </p>
+                    @else
+                        <p class="mt-1 text-xs text-gray-500">
+                            Seleziona l'arbitro della tua zona per cui archiviare l'anno
+                        </p>
+                    @endif
                 </div>
 
                 {{-- Warning --}}
@@ -100,7 +110,7 @@
                         <div>
                             <h4 class="text-sm font-medium text-amber-800">Nota</h4>
                             <p class="text-sm text-amber-700 mt-1">
-                                L'archiviazione aggiungerà i dati allo storico senza eliminare i dati originali.
+                                L'archiviazione aggiungera i dati allo storico senza eliminare i dati originali.
                                 I dati esistenti nello storico per lo stesso anno verranno sovrascritti.
                             </p>
                         </div>
@@ -126,8 +136,7 @@
 @push('scripts')
 <script>
 function updatePreview(year) {
-    // Potrebbe chiamare un endpoint AJAX per aggiornare le stats
-    // Per ora mostra solo l'anno selezionato
+    // Could call AJAX endpoint to update stats
     console.log('Anno selezionato:', year);
 }
 </script>

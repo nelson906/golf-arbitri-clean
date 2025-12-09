@@ -105,8 +105,9 @@
             </div>
         </div>
 
-        {{-- Aggiungi torneo --}}
+        {{-- Aggiungi tornei --}}
         <div>
+            {{-- Aggiungi singolo torneo --}}
             <div class="bg-white rounded-lg shadow">
                 <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
                     <h3 class="text-lg font-medium text-gray-900">Aggiungi Torneo</h3>
@@ -125,7 +126,7 @@
                                         <option value="">Seleziona...</option>
                                         @foreach($availableTournaments as $t)
                                             <option value="{{ $t->id }}">
-                                                {{ $t->name }} ({{ $t->club->name ?? 'N/A' }})
+                                                {{ $t->start_date->format('d/m') }} - {{ $t->name }} ({{ $t->club->name ?? 'N/A' }})
                                             </option>
                                         @endforeach
                                     </select>
@@ -157,6 +158,56 @@
                     @endif
                 </div>
             </div>
+
+            {{-- Aggiungi piu tornei --}}
+            @if($availableTournaments->count() > 1)
+            <div class="bg-white rounded-lg shadow mt-4">
+                <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Aggiungi Piu Tornei</h3>
+                    <p class="text-xs text-gray-500 mt-1">Seleziona piu tornei da aggiungere insieme</p>
+                </div>
+                <div class="p-4">
+                    <form action="{{ route('admin.career-history.add-multiple-tournaments', $user) }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="year" value="{{ $year }}">
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Tornei</label>
+                                <select name="tournament_ids[]" multiple required
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                                        size="{{ min($availableTournaments->count(), 8) }}">
+                                    @foreach($availableTournaments as $t)
+                                        <option value="{{ $t->id }}">
+                                            {{ $t->start_date->format('d/m') }} - {{ $t->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">Tieni premuto Ctrl/Cmd per selezionare piu tornei</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Ruolo per tutti (opzionale)</label>
+                                <select name="role"
+                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                    <option value="">Nessun ruolo</option>
+                                    <option value="Arbitro">Arbitro</option>
+                                    <option value="Arbitro Principale">Arbitro Principale</option>
+                                    <option value="Arbitro di Supporto">Arbitro di Supporto</option>
+                                    <option value="Starter">Starter</option>
+                                    <option value="Referee">Referee</option>
+                                </select>
+                            </div>
+
+                            <button type="submit"
+                                    class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                                Aggiungi Selezionati
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            @endif
 
             {{-- Riepilogo --}}
             <div class="bg-gray-50 rounded-lg p-4 mt-4">
