@@ -42,9 +42,6 @@
                     <li class="px-4 py-2">
                         <h3 class="text-xs font-semibold text-blue-300 uppercase tracking-wider">Sistema</h3>
                     </li>
-
-
-
                     <li>
                         <a href="{{ route('super-admin.tournament-types.index') }}"
                             class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('super-admin.tournament-types.*') ? 'bg-blue-900' : '' }}">
@@ -66,14 +63,6 @@
                             class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('super-admin.clauses.*') ? 'bg-blue-900' : '' }}">
                             <span class="mr-3">📝</span>
                             Clausole Notifiche
-                        </a>
-                    </li>
-                    <li>
-
-                        <a href="{{ route('admin.career-history.index') }}"
-                            class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.career-history.*') ? 'bg-blue-900' : '' }}">
-                            <span class="mr-3">📊</span>
-                            Storico Carriera Arbitri
                         </a>
                     </li>
 
@@ -159,6 +148,15 @@
                         Statistiche
                     </a>
                 </li>
+
+                <li>
+                    <a href="{{ route('admin.career-history.index') }}"
+                        class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.career-history.*') ? 'bg-blue-900' : '' }}">
+                        <span class="mr-3">📊</span>
+                        Storico Carriera Arbitri
+                    </a>
+                </li>
+
                 {{-- Documenti Section --}}
                 <li class="mt-4 px-4 py-2">
                     <h3 class="text-xs font-semibold text-blue-300 uppercase tracking-wider">Documenti</h3>

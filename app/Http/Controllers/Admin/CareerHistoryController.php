@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\RefereeCareerHistory;
 use App\Models\User;
 use App\Models\Tournament;
+use App\Models\Zone;
 use App\Services\CareerHistoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -18,21 +19,66 @@ class CareerHistoryController extends Controller
     {
         $this->careerService = $careerService;
     }
+    /**
+     * Check if current user is super admin.
+     */
+    private function isSuperAdmin(): bool
+    {
+        return auth()->user()->user_type === 'super_admin';
+    }
+
+    /**
+     * Get zone restriction for current admin.
+     * Returns null if super_admin (no restriction), otherwise returns zone_id.
+     */
+    private function getZoneRestriction(): ?int
+    {
+        $user = auth()->user();
+        if ($user->user_type === 'super_admin') {
+            return null; // No restriction
+        }
+        return $user->zone_id;
+    }
+
+    /**
+     * Check if admin can access a specific user.
+     */
+    private function canAccessUser(User $targetUser): bool
+    {
+        $zoneId = $this->getZoneRestriction();
+        if ($zoneId === null) {
+            return true; // Super admin can access all
+        }
+        return $targetUser->zone_id === $zoneId;
+    }
 
     /**
      * Lista arbitri con storico carriera.
      */
     public function index(Request $request)
     {
+        $currentUser = auth()->user();
+        $zoneRestriction = $this->getZoneRestriction();
+
         $query = User::where('user_type', 'referee')
-            ->with('careerHistory')
+            ->with(['careerHistory', 'zone'])
             ->withCount(['assignments', 'availabilities']);
+
+        // Zone filter for non-super_admin
+        if ($zoneRestriction !== null) {
+            $query->where('zone_id', $zoneRestriction);
+        }
+
+        // Additional zone filter from request (for super_admin)
+        if ($request->filled('zone_id') && $this->isSuperAdmin()) {
+            $query->where('zone_id', $request->zone_id);
+        }
 
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -47,7 +93,11 @@ class CareerHistoryController extends Controller
 
         $referees = $query->orderBy('name')->paginate(30);
 
-        return view('admin.career-history.index', compact('referees'));
+        // Get zones for filter (only for super_admin)
+        $zones = $this->isSuperAdmin() ? Zone::orderBy('name')->get() : collect();
+        $canArchiveAll = $this->isSuperAdmin();
+
+        return view('admin.career-history.index', compact('referees', 'zones', 'canArchiveAll'));
     }
 
     /**
@@ -55,6 +105,11 @@ class CareerHistoryController extends Controller
      */
     public function show(User $user)
     {
+        // Check zone access
+        if (!$this->canAccessUser($user)) {
+            abort(403, 'Non hai accesso a questo arbitro');
+        }
+
         $history = RefereeCareerHistory::where('user_id', $user->id)->first();
 
         return view('admin.career-history.show', compact('user', 'history'));
@@ -66,11 +121,21 @@ class CareerHistoryController extends Controller
     public function archiveForm()
     {
         $currentYear = now()->year;
+        $zoneRestriction = $this->getZoneRestriction();
 
-        // Statistiche per preview
-        $stats = $this->getYearStats($currentYear);
+        // Statistiche per preview (filtrate per zona se necessario)
+        $stats = $this->getYearStats($currentYear, $zoneRestriction);
 
-        return view('admin.career-history.archive-form', compact('currentYear', 'stats'));
+        // Get referees for dropdown (filtered by zone)
+        $refereesQuery = User::where('user_type', 'referee')->orderBy('name');
+        if ($zoneRestriction !== null) {
+            $refereesQuery->where('zone_id', $zoneRestriction);
+        }
+        $referees = $refereesQuery->get(['id', 'name', 'email']);
+
+        $canArchiveAll = $this->isSuperAdmin();
+
+        return view('admin.career-history.archive-form', compact('currentYear', 'stats', 'referees', 'canArchiveAll'));
     }
 
     /**
@@ -86,6 +151,22 @@ class CareerHistoryController extends Controller
         $year = (int) $request->year;
         $userId = $request->user_id;
 
+
+        // If not super_admin, must specify a user (can't archive all)
+        if (!$this->isSuperAdmin() && !$userId) {
+            return redirect()
+                ->back()
+                ->with('error', 'Devi selezionare un arbitro specifico');
+        }
+
+        // If user specified, check zone access
+        if ($userId) {
+            $targetUser = User::find($userId);
+            if (!$this->canAccessUser($targetUser)) {
+                abort(403, 'Non hai accesso a questo arbitro');
+            }
+        }
+
         try {
             if ($userId) {
                 // Archivia solo per un utente
@@ -96,7 +177,7 @@ class CareerHistoryController extends Controller
                     ->route('admin.career-history.show', $user)
                     ->with('success', "Anno {$year} archiviato per {$user->name}: {$result['tournaments_count']} tornei, {$result['assignments_count']} assegnazioni");
             } else {
-                // Archivia per tutti
+                // Archivia per tutti (solo super_admin)
                 $stats = $this->careerService->archiveYear($year, false);
 
                 $message = "Anno {$year} archiviato: {$stats['referees_processed']} arbitri, {$stats['assignments_archived']} assegnazioni";
@@ -127,8 +208,12 @@ class CareerHistoryController extends Controller
      */
     public function editYear(User $user, int $year)
     {
-        $history = RefereeCareerHistory::where('user_id', $user->id)->first();
+        // Check zone access
+        if (!$this->canAccessUser($user)) {
+            abort(403, 'Non hai accesso a questo arbitro');
+        }
 
+        $history = RefereeCareerHistory::where('user_id', $user->id)->first();
         if (!$history) {
             return redirect()
                 ->route('admin.career-history.show', $user)
@@ -147,7 +232,13 @@ class CareerHistoryController extends Controller
             ->get();
 
         return view('admin.career-history.edit-year', compact(
-            'user', 'history', 'year', 'tournaments', 'assignments', 'availabilities', 'availableTournaments'
+            'user',
+            'history',
+            'year',
+            'tournaments',
+            'assignments',
+            'availabilities',
+            'availableTournaments'
         ));
     }
 
@@ -156,6 +247,11 @@ class CareerHistoryController extends Controller
      */
     public function addTournament(Request $request, User $user)
     {
+        // Check zone access
+        if (!$this->canAccessUser($user)) {
+            abort(403, 'Non hai accesso a questo arbitro');
+        }
+
         $request->validate([
             'year' => 'required|integer',
             'tournament_id' => 'required|exists:tournaments,id',
@@ -203,10 +299,87 @@ class CareerHistoryController extends Controller
     }
 
     /**
+     * Aggiunge piu tornei allo storico in una volta.
+     */
+    public function addMultipleTournaments(Request $request, User $user)
+    {
+        // Check zone access
+        if (!$this->canAccessUser($user)) {
+            abort(403, 'Non hai accesso a questo arbitro');
+        }
+
+        $request->validate([
+            'year' => 'required|integer',
+            'tournament_ids' => 'required|array|min:1',
+            'tournament_ids.*' => 'exists:tournaments,id',
+            'role' => 'nullable|string|max:100',
+        ]);
+
+        $tournaments = Tournament::with('club')
+            ->whereIn('id', $request->tournament_ids)
+            ->get();
+
+        $addedCount = 0;
+        $history = null;
+
+        foreach ($tournaments as $tournament) {
+            $tournamentData = [
+                'id' => $tournament->id,
+                'name' => $tournament->name,
+                'club_id' => $tournament->club_id,
+                'club_name' => $tournament->club->name ?? null,
+                'start_date' => $tournament->start_date->format('Y-m-d'),
+                'end_date' => $tournament->end_date->format('Y-m-d'),
+            ];
+
+            $this->careerService->addTournamentEntry($user->id, $request->year, $tournamentData);
+            $addedCount++;
+
+            // Se c'e un ruolo, aggiungi anche l'assegnazione
+            if ($request->filled('role')) {
+                if (!$history) {
+                    $history = RefereeCareerHistory::where('user_id', $user->id)->first();
+                }
+
+                $assignments = $history->assignments_by_year ?? [];
+
+                if (!isset($assignments[$request->year])) {
+                    $assignments[$request->year] = [];
+                }
+
+                $assignments[$request->year][] = [
+                    'tournament_id' => $tournament->id,
+                    'tournament_name' => $tournament->name,
+                    'role' => $request->role,
+                    'assigned_at' => now()->format('Y-m-d'),
+                    'status' => 'manual_entry',
+                ];
+
+                $history->assignments_by_year = $assignments;
+            }
+        }
+
+        // Save history with all assignments
+        if ($history && $request->filled('role')) {
+            $history->career_stats = $history->generateStatsSummary();
+            $history->save();
+        }
+
+        return redirect()
+            ->route('admin.career-history.edit-year', [$user, $request->year])
+            ->with('success', "{$addedCount} tornei aggiunti allo storico");
+    }
+
+    /**
      * Rimuove un torneo dallo storico.
      */
     public function removeTournament(Request $request, User $user)
     {
+        // Check zone access
+        if (!$this->canAccessUser($user)) {
+            abort(403, 'Non hai accesso a questo arbitro');
+        }
+
         $request->validate([
             'year' => 'required|integer',
             'tournament_id' => 'required|integer',
@@ -244,8 +417,9 @@ class CareerHistoryController extends Controller
     public function previewYear(Request $request)
     {
         $year = $request->get('year', now()->year);
+        $zoneRestriction = $this->getZoneRestriction();
 
-        $stats = $this->getYearStats($year);
+        $stats = $this->getYearStats($year, $zoneRestriction);
 
         return response()->json($stats);
     }
@@ -253,23 +427,41 @@ class CareerHistoryController extends Controller
     /**
      * Calcola statistiche per un anno.
      */
-    private function getYearStats(int $year): array
+    private function getYearStats(int $year, ?int $zoneId = null): array
     {
         $userField = \App\Models\Assignment::getUserField();
 
+        $assignmentsQuery = \App\Models\Assignment::whereYear('assigned_at', $year);
+        $availabilitiesQuery = \App\Models\Availability::whereHas('tournament', function ($q) use ($year) {
+            $q->whereYear('start_date', $year);
+        });
+        $tournamentsQuery = Tournament::whereYear('start_date', $year);
+
+        // Apply zone filter if needed
+        if ($zoneId !== null) {
+            $assignmentsQuery->whereHas('user', function ($q) use ($zoneId) {
+                $q->where('zone_id', $zoneId);
+            });
+            $availabilitiesQuery->whereHas('user', function ($q) use ($zoneId) {
+                $q->where('zone_id', $zoneId);
+            });
+            $tournamentsQuery->whereHas('club', function ($q) use ($zoneId) {
+                $q->where('zone_id', $zoneId);
+            });
+        }
+
         return [
             'year' => $year,
-            'referees_with_assignments' => \App\Models\Assignment::whereYear('assigned_at', $year)
+            'zone_id' => $zoneId,
+            'referees_with_assignments' => (clone $assignmentsQuery)
                 ->distinct($userField)
                 ->count($userField),
-            'total_assignments' => \App\Models\Assignment::whereYear('assigned_at', $year)->count(),
-            'referees_with_availabilities' => \App\Models\Availability::whereHas('tournament', function ($q) use ($year) {
-                $q->whereYear('start_date', $year);
-            })->distinct('user_id')->count('user_id'),
-            'total_availabilities' => \App\Models\Availability::whereHas('tournament', function ($q) use ($year) {
-                $q->whereYear('start_date', $year);
-            })->count(),
-            'tournaments_count' => Tournament::whereYear('start_date', $year)->count(),
+            'total_assignments' => (clone $assignmentsQuery)->count(),
+            'referees_with_availabilities' => (clone $availabilitiesQuery)
+                ->distinct('user_id')
+                ->count('user_id'),
+            'total_availabilities' => (clone $availabilitiesQuery)->count(),
+            'tournaments_count' => (clone $tournamentsQuery)->count(),
         ];
     }
 }
