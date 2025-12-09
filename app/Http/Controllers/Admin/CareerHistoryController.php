@@ -147,10 +147,19 @@ class CareerHistoryController extends Controller
         $request->validate([
             'year' => 'required|integer|min:2000|max:' . now()->year,
             'user_id' => 'nullable|exists:users,id',
+            'clear_data' => 'nullable|boolean',
         ]);
 
         $year = (int) $request->year;
         $userId = $request->user_id;
+        $clearData = $request->boolean('clear_data', false);
+
+        // Only super_admin can clear data
+        if ($clearData && !$this->isSuperAdmin()) {
+            return redirect()
+                ->back()
+                ->with('error', 'Solo il super admin puo svuotare le tabelle');
+        }
 
         // If not super_admin, must specify a user (can't archive all)
         if (!$this->isSuperAdmin() && !$userId) {
@@ -183,7 +192,13 @@ class CareerHistoryController extends Controller
                 $message = "Anno {$year} archiviato: {$stats['referees_processed']} arbitri, {$stats['assignments_archived']} assegnazioni";
 
                 if (!empty($stats['errors'])) {
-                    $message .= " ({$stats['errors']} errori)";
+                    $message .= " (" . count($stats['errors']) . " errori)";
+                }
+
+                // Svuota le tabelle se richiesto
+                if ($clearData && empty($stats['errors'])) {
+                    $clearStats = $this->careerService->clearSourceData($year);
+                    $message .= ". Tabelle svuotate: {$clearStats['tournaments_deleted']} tornei, {$clearStats['assignments_deleted']} assegnazioni, {$clearStats['availabilities_deleted']} disponibilita eliminate.";
                 }
 
                 return redirect()

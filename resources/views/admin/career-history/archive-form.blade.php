@@ -101,6 +101,41 @@
                     @endif
                 </div>
 
+                {{-- Svuota tabelle (solo super_admin) --}}
+                @if($canArchiveAll ?? false)
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4" id="clear-data-section">
+                    <div class="flex items-start">
+                        <div class="flex items-center h-5">
+                            <input type="checkbox" name="clear_data" id="clear_data" value="1"
+                                   class="h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                                   onchange="toggleClearWarning()">
+                        </div>
+                        <div class="ml-3">
+                            <label for="clear_data" class="text-sm font-medium text-red-800">
+                                Svuota tabelle dopo archiviazione
+                            </label>
+                            <p class="text-sm text-red-700 mt-1">
+                                Elimina tornei, assegnazioni e disponibilita dell'anno dalle tabelle correnti.
+                                <strong>Operazione irreversibile!</strong> Usa questa opzione per iniziare il nuovo anno con tabelle pulite.
+                            </p>
+                        </div>
+                    </div>
+                    <div id="clear-warning" class="hidden mt-3 p-3 bg-red-100 rounded border border-red-300">
+                        <p class="text-sm text-red-800 font-medium">
+                            ATTENZIONE: Verranno eliminati permanentemente:
+                        </p>
+                        <ul class="text-sm text-red-700 mt-1 list-disc list-inside">
+                            <li>{{ $stats['tournaments_count'] }} tornei</li>
+                            <li>{{ $stats['total_assignments'] }} assegnazioni</li>
+                            <li>{{ $stats['total_availabilities'] }} disponibilita</li>
+                        </ul>
+                        <p class="text-sm text-red-800 mt-2">
+                            I dati saranno conservati solo nello storico carriera (JSON).
+                        </p>
+                    </div>
+                </div>
+                @endif
+
                 {{-- Warning --}}
                 <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
                     <div class="flex">
@@ -110,7 +145,8 @@
                         <div>
                             <h4 class="text-sm font-medium text-amber-800">Nota</h4>
                             <p class="text-sm text-amber-700 mt-1">
-                                L'archiviazione aggiungera i dati allo storico senza eliminare i dati originali.
+                                L'archiviazione aggiungera i dati allo storico senza eliminare i dati originali
+                                (a meno che non selezioni "Svuota tabelle").
                                 I dati esistenti nello storico per lo stesso anno verranno sovrascritti.
                             </p>
                         </div>
@@ -139,6 +175,41 @@ function updatePreview(year) {
     // Could call AJAX endpoint to update stats
     console.log('Anno selezionato:', year);
 }
+
+function toggleClearWarning() {
+    var checkbox = document.getElementById('clear_data');
+    var warning = document.getElementById('clear-warning');
+    if (checkbox && warning) {
+        if (checkbox.checked) {
+            warning.classList.remove('hidden');
+        } else {
+            warning.classList.add('hidden');
+        }
+    }
+}
+
+// Mostra/nascondi sezione svuota tabelle in base alla selezione utente
+document.addEventListener('DOMContentLoaded', function() {
+    var userSelect = document.getElementById('user_id');
+    var clearSection = document.getElementById('clear-data-section');
+
+    if (userSelect && clearSection) {
+        userSelect.addEventListener('change', function() {
+            if (this.value === '') {
+                // Tutti gli arbitri selezionato - mostra opzione svuota
+                clearSection.style.display = 'block';
+            } else {
+                // Arbitro singolo selezionato - nascondi opzione svuota e deseleziona
+                clearSection.style.display = 'none';
+                var checkbox = document.getElementById('clear_data');
+                if (checkbox) {
+                    checkbox.checked = false;
+                    toggleClearWarning();
+                }
+            }
+        });
+    }
+});
 </script>
 @endpush
 @endsection
