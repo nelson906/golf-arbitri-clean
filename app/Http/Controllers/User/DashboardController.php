@@ -100,9 +100,8 @@ class DashboardController extends Controller
             $monthlyStats[$month] = $count;
         }
 
-        // Assignments by tournament type - semplificato
-        // Assignments by tournament type - semplificato
-        $assignmentsByCategory = [];
+        // Assignments by tournament type
+        $assignmentsByType = [];
         $assignments = $user->assignments()
             ->with('tournament.tournamentType')
             ->whereHas('tournament', function ($q) {
@@ -112,11 +111,11 @@ class DashboardController extends Controller
 
         foreach ($assignments as $assignment) {
             if ($assignment->tournament && $assignment->tournament->tournamentType) {
-                $typeName = $assignment->tournament->tournamentType->short_name ?? 'Altri';
-                if (!isset($assignmentsByCategory[$typeName])) {
-                    $assignmentsByCategory[$typeName] = 0;
+                $typeName = $assignment->tournament->tournamentType->short_name ?? $assignment->tournament->tournamentType->name ?? 'Altri';
+                if (!isset($assignmentsByType[$typeName])) {
+                    $assignmentsByType[$typeName] = 0;
                 }
-                $assignmentsByCategory[$typeName]++;
+                $assignmentsByType[$typeName]++;
             }
         }
         // Calendar events for the next 3 months - semplificato
@@ -147,7 +146,7 @@ class DashboardController extends Controller
             'openTournaments',
             'pendingAvailabilities',
             'monthlyStats',
-            'assignmentsByCategory',
+            'assignmentsByType',
             'calendarEvents'
         ));
     }

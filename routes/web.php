@@ -152,6 +152,9 @@ Route::middleware(['auth', 'referee_or_admin'])->group(function () {
     });
 });
 
+// Referee dashboard route (outside prefix to avoid /referee/referee/dashboard)
+require __DIR__ . '/referee/dashboard.php';
+
 // Redirect admin referees a users con filtro
 Route::redirect('/admin/referees', '/admin/users?user_type=referee');
 

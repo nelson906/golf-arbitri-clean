@@ -109,7 +109,7 @@
                                         <p class="text-xs text-gray-600">{{ $tournament->start_date->format('d/m/Y') }}</p>
                                         <p class="text-xs text-gray-500">{{ $tournament->club->name ?? 'N/A' }}</p>
                                         <p class="text-xs text-amber-600 mt-1">Scadenza:
-                                            {{ $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A' }}</p>
+                                            {{ Carbon\Carbon::parse($tournament->availability_deadline)?->format('d/m/Y') ?? 'N/A' }}</p>
                                     </div>
                                 @endforeach
                             </div>
@@ -214,14 +214,14 @@
                         </div>
                     @endif
 
-                    {{-- Statistiche per Categoria --}}
-                    @if (!empty($assignmentsByCategory))
+                    {{-- Statistiche per Tipo Torneo --}}
+                    @if (!empty($assignmentsByType))
                         <div class="mb-8">
                             <h3 class="text-lg font-semibold mb-4">Assegnazioni {{ date('Y') }} per Tipo Torneo</h3>
                             <div class="flex flex-wrap gap-2">
-                                @foreach ($assignmentsByCategory as $category => $count)
+                                @foreach ($assignmentsByType as $type => $count)
                                     <span class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm">
-                                        {{ $category }}: {{ $count }}
+                                        {{ $type }}: {{ $count }}
                                     </span>
                                 @endforeach
                             </div>
