@@ -98,9 +98,8 @@ public function index(Request $request)
             $monthlyStats[$month] = $count;
         }
 
-        // Assignments by tournament type - semplificato
-// Assignments by tournament type - semplificato
-$assignmentsByCategory = [];
+        // Assignments by tournament type
+$assignmentsByType = [];
 $assignments = $user->assignments()
     ->with('tournament.tournamentType')
     ->whereHas('tournament', function($q) {
@@ -110,11 +109,11 @@ $assignments = $user->assignments()
 
 foreach ($assignments as $assignment) {
     if ($assignment->tournament && $assignment->tournament->tournamentType) {
-        $typeName = $assignment->tournament->tournamentType->short_name ?? 'Altri';
-        if (!isset($assignmentsByCategory[$typeName])) {
-            $assignmentsByCategory[$typeName] = 0;
+        $typeName = $assignment->tournament->tournamentType->short_name ?? $assignment->tournament->tournamentType->name ?? 'Altri';
+        if (!isset($assignmentsByType[$typeName])) {
+            $assignmentsByType[$typeName] = 0;
         }
-        $assignmentsByCategory[$typeName]++;
+        $assignmentsByType[$typeName]++;
     }
 }
         // Calendar events for the next 3 months - semplificato
@@ -145,7 +144,7 @@ foreach ($assignments as $assignment) {
             'openTournaments',
             'pendingAvailabilities',
             'monthlyStats',
-            'assignmentsByCategory',
+            'assignmentsByType',
             'calendarEvents'
         ));
 }

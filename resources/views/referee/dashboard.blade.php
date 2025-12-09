@@ -187,14 +187,14 @@
                 </div>
                 @endif
 
-                {{-- Statistiche per Categoria --}}
-                @if(!empty($assignmentsByCategory))
+                {{-- Statistiche per Tipo Torneo --}}
+                @if(!empty($assignmentsByType))
                 <div class="mb-8">
                     <h3 class="text-lg font-semibold mb-4">Assegnazioni {{ date('Y') }} per Tipo Torneo</h3>
                     <div class="flex flex-wrap gap-2">
-                        @foreach($assignmentsByCategory as $category => $count)
+                        @foreach($assignmentsByType as $type => $count)
                             <span class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm">
-                                {{ $category }}: {{ $count }}
+                                {{ $type }}: {{ $count }}
                             </span>
                         @endforeach
                     </div>
