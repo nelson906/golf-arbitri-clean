@@ -308,18 +308,32 @@ class CareerHistoryService
     /**
      * Elimina i dati sorgente dopo l'archiviazione.
      */
-    private function clearSourceData(int $year): void
+    public function clearSourceData(int $year): array
     {
         // ATTENZIONE: Questa operazione è irreversibile
-        // Elimina solo assegnazioni e disponibilità per tornei dell'anno specificato
+        // Elimina assegnazioni, disponibilità e tornei dell'anno specificato
 
         $tournamentIds = Tournament::whereYear('start_date', $year)->pluck('id');
 
+        $assignmentsDeleted = Assignment::whereIn('tournament_id', $tournamentIds)->count();
         Assignment::whereIn('tournament_id', $tournamentIds)->delete();
+
+        $availabilitiesDeleted = Availability::whereIn('tournament_id', $tournamentIds)->count();
         Availability::whereIn('tournament_id', $tournamentIds)->delete();
 
+        $tournamentsDeleted = Tournament::whereYear('start_date', $year)->count();
+        Tournament::whereYear('start_date', $year)->delete();
+
         Log::info("Dati sorgente eliminati per anno {$year}", [
-            'tournaments_count' => $tournamentIds->count()
+            'assignments_deleted' => $assignmentsDeleted,
+            'availabilities_deleted' => $availabilitiesDeleted,
+            'tournaments_deleted' => $tournamentsDeleted,
         ]);
+
+        return [
+            'assignments_deleted' => $assignmentsDeleted,
+            'availabilities_deleted' => $availabilitiesDeleted,
+            'tournaments_deleted' => $tournamentsDeleted,
+        ];
     }
 }
