@@ -5,7 +5,7 @@
         <h1>Statistiche Tornei</h1>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="md:">
+            <div class="md: px-4">
                 <div class="bg-white rounded-lg shadow-md">
                     <div class="p-6">
                         <h5>Totale Tornei</h5>
@@ -33,8 +33,8 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 pt-6">
-            <div class="md:w-4/12 px-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 pt-6 gap-6">
+            <div class="px-4">
                 <div class="bg-white rounded-lg shadow-md">
                     <div class="p-6">
                         <h4>Tornei per Zona</h4>
@@ -49,7 +49,7 @@
                     </div>
                 </div>
             </div>
-            <div class="md:w-4/12 px-4">
+            <div class="px-4">
                 <div class="bg-white rounded-lg shadow-md">
                     <div class="p-6">
                         <h5>Tornei per mese</h5>
@@ -60,7 +60,7 @@
                 </div>
             </div>
 
-            <div class="md:w-4/12 px-4">
+            <div class="px-4">
                 <div class="bg-white rounded-lg shadow-md">
                     <div class="p-6">
                         <h4>Tornei per Tipo</h4>
