@@ -13,7 +13,7 @@ class DashboardController extends Controller
     public function index()
     {
         $user = auth()->user();
-        
+
         if (!$user) {
             return redirect()->route('login');
         }
@@ -21,14 +21,15 @@ class DashboardController extends Controller
         // Check user role/type and redirect accordingly
         switch ($user->user_type) {
             case 'super_admin':
+            case 'national_admin':
             case 'admin':
                 return redirect()->route('admin.dashboard');
-                
+
             case 'referee':
             case 'user':
             default:
-                // For regular users (referee type), show user dashboard
-                return $this->userDashboard();
+                // Redirect to the complete referee dashboard
+                return redirect()->route('referee.dashboard');
         }
     }
 
