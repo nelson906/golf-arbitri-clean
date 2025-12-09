@@ -1,5 +1,5 @@
 <?php
-use App\Http\Controllers\Referee\DashboardController;
+use App\Http\Controllers\User\DashboardController;
 use App\Http\Controllers\User\QuadrantiController;
 use Illuminate\Support\Facades\Route;
 

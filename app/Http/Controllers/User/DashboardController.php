@@ -3,54 +3,35 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
-use App\Models\Assignment;
 use App\Models\Tournament;
-use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Request;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
     /**
      * Display the referee dashboard.
      */
-public function index(Request $request)
-{
-    $year = session('selected_year', date('Y'));
-    $user = auth()->user();
-    $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
+    public function index(Request $request)
+    {
+        $user = auth()->user();
 
-    // USA I MODEL!
-    // $stats = [
-    //     'total_tournaments' => Tournament::count(),
-    //     'open_tournaments' => Tournament::where('status', 'open')->count(),
-    //     'completed_tournaments' => Tournament::where('status', 'completed')->count(),
-    //     'total_assignments' => Assignment::count(),
-    //     'pending_assignments' => Assignment::where('is_confirmed', false)->count(),
-    //     'active_referees' => User::where('user_type', 'referee')
-    //         ->where('is_active', true)
-    //         ->when(!$isNationalAdmin, fn($q) => $q->where('zone_id', $user->zone_id))
-    //         ->count(),
-    // ];
+
+        $user->load('zone'); // Eager load zone relationship
+
         $isNationalReferee = in_array($user->level, ['nazionale', 'internazionale']);
 
-        // Get referee statistics (usando un try-catch per evitare errori)
-        try {
-            $stats = $user->referee_statistics;
-        } catch (\Exception $e) {
-            // Se il metodo non esiste, creiamo delle statistiche base
-            $stats = (object) [
-                'total_assignments' => $user->assignments()->count(),
-                'assignments_this_year' => $user->assignments()
-                    ->whereHas('tournament', function($q) {
-                        $q->whereYear('start_date', now()->year);
-                    })
-                    ->count(),
-                'confirmed_assignments' => $user->assignments()->where('is_confirmed', true)->count(),
-                'pending_assignments' => $user->assignments()->where('is_confirmed', false)->count(),
-            ];
-        }
+        // Build statistics
+        $stats = (object) [
+            'total_assignments' => $user->assignments()->count(),
+            'assignments_this_year' => $user->assignments()
+                ->whereHas('tournament', function ($q) {
+                    $q->whereYear('start_date', now()->year);
+                })
+                ->count(),
+            'confirmed_assignments' => $user->assignments()->where('is_confirmed', true)->count(),
+            'pending_assignments' => $user->assignments()->where('is_confirmed', false)->count(),
+        ];
 
         // Upcoming assignments
         $upcomingAssignments = $user->assignments()
@@ -66,7 +47,7 @@ public function index(Request $request)
             ->with(['tournament.club', 'tournament.zone'])
             ->whereHas('tournament', function ($q) {
                 $q->where('end_date', '>=', Carbon::now()->subMonths(3))
-                  ->where('end_date', '<', Carbon::today());
+                    ->where('end_date', '<', Carbon::today());
             })
             ->limit(5)
             ->get();
@@ -83,9 +64,9 @@ public function index(Request $request)
             // National referees see national tournaments from all zones
             $openTournamentsQuery->where(function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id)
-                  ->orWhereHas('tournamentType', function ($q2) {
-                      $q2->where('is_national', true);
-                  });
+                    ->orWhereHas('tournamentType', function ($q2) {
+                        $q2->where('is_national', true);
+                    });
             });
         }
 
@@ -102,7 +83,7 @@ public function index(Request $request)
             })
             ->whereHas('tournament', function ($q) {
                 $q->whereIn('status', ['open', 'closed'])
-                  ->where('start_date', '>=', Carbon::today());
+                    ->where('start_date', '>=', Carbon::today());
             })
             ->limit(5)
             ->get();
@@ -112,7 +93,7 @@ public function index(Request $request)
         for ($i = 11; $i >= 0; $i--) {
             $month = Carbon::now()->subMonths($i)->format('Y-m');
             $count = $user->assignments()
-                ->whereHas('tournament', function($q) use ($month) {
+                ->whereHas('tournament', function ($q) use ($month) {
                     $q->where('start_date', 'like', $month . '%');
                 })
                 ->count();
@@ -120,24 +101,24 @@ public function index(Request $request)
         }
 
         // Assignments by tournament type - semplificato
-// Assignments by tournament type - semplificato
-$assignmentsByCategory = [];
-$assignments = $user->assignments()
-    ->with('tournament.tournamentType')
-    ->whereHas('tournament', function($q) {
-        $q->whereYear('start_date', Carbon::now()->year);
-    })
-    ->get();
+        // Assignments by tournament type - semplificato
+        $assignmentsByCategory = [];
+        $assignments = $user->assignments()
+            ->with('tournament.tournamentType')
+            ->whereHas('tournament', function ($q) {
+                $q->whereYear('start_date', Carbon::now()->year);
+            })
+            ->get();
 
-foreach ($assignments as $assignment) {
-    if ($assignment->tournament && $assignment->tournament->tournamentType) {
-        $typeName = $assignment->tournament->tournamentType->short_name ?? 'Altri';
-        if (!isset($assignmentsByCategory[$typeName])) {
-            $assignmentsByCategory[$typeName] = 0;
+        foreach ($assignments as $assignment) {
+            if ($assignment->tournament && $assignment->tournament->tournamentType) {
+                $typeName = $assignment->tournament->tournamentType->short_name ?? 'Altri';
+                if (!isset($assignmentsByCategory[$typeName])) {
+                    $assignmentsByCategory[$typeName] = 0;
+                }
+                $assignmentsByCategory[$typeName]++;
+            }
         }
-        $assignmentsByCategory[$typeName]++;
-    }
-}
         // Calendar events for the next 3 months - semplificato
         $calendarEvents = [];
         $calendarAssignments = $user->assignments()
@@ -169,5 +150,5 @@ foreach ($assignments as $assignment) {
             'assignmentsByCategory',
             'calendarEvents'
         ));
-}
+    }
 }
