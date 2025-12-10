@@ -388,9 +388,10 @@ class NotificationCycleTest extends TestCase
         // Crea tornei temporanei per testare la formattazione
         $zone = Zone::first();
         $club = Club::first();
+        $tournamentType = \App\Models\TournamentType::first();
 
-        if (!$zone || !$club) {
-            $this->markTestSkipped('Zona o Club non disponibili');
+        if (!$zone || !$club || !$tournamentType) {
+            $this->markTestSkipped('Zona, Club o TournamentType non disponibili');
         }
 
         // Torneo stesso giorno
@@ -401,6 +402,7 @@ class NotificationCycleTest extends TestCase
             'availability_deadline' => '2025-06-01',
             'zone_id' => $zone->id,
             'club_id' => $club->id,
+            'tournament_type_id' => $tournamentType->id,
         ]);
 
         // Torneo stesso mese
@@ -411,6 +413,7 @@ class NotificationCycleTest extends TestCase
             'availability_deadline' => '2025-06-01',
             'zone_id' => $zone->id,
             'club_id' => $club->id,
+            'tournament_type_id' => $tournamentType->id,
         ]);
 
         // Torneo mesi diversi
@@ -421,6 +424,7 @@ class NotificationCycleTest extends TestCase
             'availability_deadline' => '2025-06-14',
             'zone_id' => $zone->id,
             'club_id' => $club->id,
+            'tournament_type_id' => $tournamentType->id,
         ]);
 
         // Test tramite reflection per accedere al metodo protected
@@ -538,9 +542,10 @@ class NotificationCycleTest extends TestCase
             // Crea un torneo temporaneo senza assegnazioni
             $zone = Zone::first();
             $club = Club::first();
+            $tournamentType = \App\Models\TournamentType::first();
 
-            if (!$zone || !$club) {
-                $this->markTestSkipped('Zone o Club non disponibili');
+            if (!$zone || !$club || !$tournamentType) {
+                $this->markTestSkipped('Zone, Club o TournamentType non disponibili');
             }
 
             $tournament = Tournament::create([
@@ -550,6 +555,7 @@ class NotificationCycleTest extends TestCase
                 'availability_deadline' => Carbon::now()->addDays(15),
                 'zone_id' => $zone->id,
                 'club_id' => $club->id,
+                'tournament_type_id' => $tournamentType->id,
             ]);
         }
 
