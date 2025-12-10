@@ -264,7 +264,8 @@ Cordiali saluti'
 
                                         @if($clubClauses->isNotEmpty())
                                         <div class="mb-6 pb-6 border-b border-gray-200">
-                                            <h6 class="text-base font-semibold text-blue-700 mb-4">Clausole Lettera Circolo</h6>
+                                            <h6 class="text-base font-semibold text-blue-700 mb-4">📄 Clausole Lettera Circolo</h6>
+                                            <p class="text-xs text-gray-500 mb-4">Queste clausole verranno inserite nella lettera inviata al circolo</p>
 
                                             @foreach(['spese', 'logistica', 'responsabilita'] as $category)
                                                 @php $categoryClauses = $clubClausesByCategory->get($category, collect()); @endphp
@@ -274,8 +275,8 @@ Cordiali saluti'
                                                         {{ \App\Models\NotificationClause::CATEGORIES[$category] ?? ucfirst($category) }}
                                                     </label>
                                                     @foreach($categoryClauses as $clause)
-                                                        <div class="flex items-start mb-3 p-3 bg-gray-50 rounded-lg">
-                                                            <input type="radio" name="clauses[CLAUSOLA_{{ strtoupper($category) }}]" value="{{ $clause['id'] }}"
+                                                        <div class="flex items-start mb-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                                            <input type="radio" name="clauses[CLAUSOLA_CLUB_{{ strtoupper($category) }}]" value="{{ $clause['id'] }}"
                                                                    id="clause_club_{{ $clause['id'] }}" class="mt-1 w-4 h-4 text-blue-600">
                                                             <label for="clause_club_{{ $clause['id'] }}" class="ml-3 flex-1 cursor-pointer">
                                                                 <span class="block font-medium text-gray-900">{{ $clause['title'] }}</span>
@@ -284,7 +285,7 @@ Cordiali saluti'
                                                         </div>
                                                     @endforeach
                                                     <div class="flex items-start p-3">
-                                                        <input type="radio" name="clauses[CLAUSOLA_{{ strtoupper($category) }}]" value=""
+                                                        <input type="radio" name="clauses[CLAUSOLA_CLUB_{{ strtoupper($category) }}]" value=""
                                                                id="clause_club_none_{{ $category }}" checked class="mt-1 w-4 h-4">
                                                         <label for="clause_club_none_{{ $category }}" class="ml-3 text-sm text-gray-500 italic cursor-pointer">
                                                             Nessuna clausola
@@ -309,7 +310,8 @@ Cordiali saluti'
 
                                         @if($refereeClauses->isNotEmpty())
                                         <div>
-                                            <h6 class="text-base font-semibold text-green-700 mb-4">Clausole Convocazione Arbitri</h6>
+                                            <h6 class="text-base font-semibold text-green-700 mb-4">📋 Clausole Convocazione Arbitri</h6>
+                                            <p class="text-xs text-gray-500 mb-4">Queste clausole verranno inserite nella convocazione inviata agli arbitri</p>
 
                                             @foreach(['responsabilita', 'comunicazioni', 'altro'] as $category)
                                                 @php $categoryClauses = $refereeClausesByCategory->get($category, collect()); @endphp
@@ -319,8 +321,8 @@ Cordiali saluti'
                                                         {{ \App\Models\NotificationClause::CATEGORIES[$category] ?? ucfirst($category) }}
                                                     </label>
                                                     @foreach($categoryClauses as $clause)
-                                                        <div class="flex items-start mb-3 p-3 bg-gray-50 rounded-lg">
-                                                            <input type="radio" name="clauses[CLAUSOLA_{{ strtoupper($category) }}]" value="{{ $clause['id'] }}"
+                                                        <div class="flex items-start mb-3 p-3 bg-green-50 rounded-lg border border-green-100">
+                                                            <input type="radio" name="clauses[CLAUSOLA_ARBITRO_{{ strtoupper($category) }}]" value="{{ $clause['id'] }}"
                                                                    id="clause_ref_{{ $clause['id'] }}" class="mt-1 w-4 h-4 text-green-600">
                                                             <label for="clause_ref_{{ $clause['id'] }}" class="ml-3 flex-1 cursor-pointer">
                                                                 <span class="block font-medium text-gray-900">{{ $clause['title'] }}</span>
@@ -329,7 +331,7 @@ Cordiali saluti'
                                                         </div>
                                                     @endforeach
                                                     <div class="flex items-start p-3">
-                                                        <input type="radio" name="clauses[CLAUSOLA_{{ strtoupper($category) }}]" value=""
+                                                        <input type="radio" name="clauses[CLAUSOLA_ARBITRO_{{ strtoupper($category) }}]" value=""
                                                                id="clause_ref_none_{{ $category }}" checked class="mt-1 w-4 h-4">
                                                         <label for="clause_ref_none_{{ $category }}" class="ml-3 text-sm text-gray-500 italic cursor-pointer">
                                                             Nessuna clausola
@@ -751,6 +753,43 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Raccoglie le clausole selezionate dal form
+function getSelectedClauses() {
+    const clauses = {};
+    // Trova tutti i radio button delle clausole che sono selezionati e hanno un valore
+    document.querySelectorAll('input[type="radio"][name^="clauses["]:checked').forEach(radio => {
+        if (radio.value) {
+            // Estrai il nome del placeholder dal name attribute (es: "clauses[CLAUSOLA_CLUB_SPESE]")
+            const match = radio.name.match(/clauses\[([^\]]+)\]/);
+            if (match) {
+                clauses[match[1]] = radio.value;
+            }
+        }
+    });
+    return clauses;
+}
+
+// Salva le clausole via AJAX
+async function saveClauses() {
+    const clauses = getSelectedClauses();
+
+    const response = await fetch(`{{ route('admin.tournament-notifications.save-clauses', ['notification' => $notification->id]) }}`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ clauses: clauses })
+    });
+
+    if (!response.ok) {
+        throw new Error('Errore nel salvataggio delle clausole');
+    }
+
+    return await response.json();
+}
+
 // Gestione rigenerazione documenti
 async function regenerateDocuments() {
     const button = document.getElementById('regenerateButton');
@@ -763,10 +802,23 @@ async function regenerateDocuments() {
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            Rigenerazione in corso...
+            Salvataggio clausole...
         `;
 
-        // Genera convocazione
+        // 1. Prima salva le clausole selezionate
+        await saveClauses();
+        showToast('Clausole salvate');
+
+        // 2. Aggiorna UI
+        button.innerHTML = `
+            <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Generazione documenti...
+        `;
+
+        // 3. Genera convocazione (con clausole per arbitri)
         await fetch(`{{ route('admin.tournament-notifications.generate-document', ['notification' => $notification->id, 'type' => 'convocation']) }}`, {
             method: 'POST',
             headers: {
@@ -776,7 +828,7 @@ async function regenerateDocuments() {
             }
         });
 
-        // Genera lettera circolo
+        // 4. Genera lettera circolo (con clausole per circolo)
         await fetch(`{{ route('admin.tournament-notifications.generate-document', ['notification' => $notification->id, 'type' => 'club_letter']) }}`, {
             method: 'POST',
             headers: {
@@ -786,12 +838,12 @@ async function regenerateDocuments() {
             }
         });
 
-        // Aggiorna stato documenti nel modal
+        // 5. Aggiorna stato documenti nel modal
         if (typeof openDocumentManager === 'function') {
             openDocumentManager({{ $notification->id }});
         }
 
-        showToast('Documenti rigenerati con successo');
+        showToast('Documenti rigenerati con clausole selezionate');
 
     } catch (error) {
         console.error('Errore durante la rigenerazione:', error);
