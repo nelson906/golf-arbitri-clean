@@ -26,6 +26,11 @@ Route::prefix('tournament-notifications')->name('tournament-notifications.')->gr
     Route::get('/{notification}/download/{type}', [NotificationController::class, 'downloadDocument'])
         ->name('download-document');
 
+    // Clause management (AJAX)
+    Route::post('/{notification}/save-clauses', [NotificationController::class, 'saveClauses'])
+        ->name('save-clauses');
+
+
     // Core notification operations
     Route::post('/{notification}/send', [NotificationController::class, 'send'])->name('send');
     Route::post('/{notification}/resend', [NotificationController::class, 'resend'])->name('resend');

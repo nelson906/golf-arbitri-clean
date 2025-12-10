@@ -245,9 +245,9 @@
                                                 $tournament->club->name .
                                                 '.
 
-                                                                                                                                                                Si prega di prendere nota degli arbitri assegnati e di procedere con le comunicazioni necessarie.
+                                                                                                                                                                                                                                                                                        Si prega di prendere nota degli arbitri assegnati e di procedere con le comunicazioni necessarie.
 
-                                                                                                                                                                Cordiali saluti',
+                                                                                                                                                                                                                                                                                        Cordiali saluti',
                                         ) }}</textarea>
                                 </div>
 
@@ -281,8 +281,10 @@
 
                                         @if ($clubClauses->isNotEmpty())
                                             <div class="mb-6 pb-6 border-b border-gray-200">
-                                                <h6 class="text-base font-semibold text-blue-700 mb-4">Clausole Lettera
+                                                <h6 class="text-base font-semibold text-blue-700 mb-4">📄 Clausole Lettera
                                                     Circolo</h6>
+                                                <p class="text-xs text-gray-500 mb-4">Queste clausole verranno inserite
+                                                    nella lettera inviata al circolo</p>
 
                                                 @foreach (['spese', 'logistica', 'responsabilita'] as $category)
                                                     @php $categoryClauses = $clubClausesByCategory->get($category, collect()); @endphp
@@ -293,9 +295,9 @@
                                                             </label>
                                                             @foreach ($categoryClauses as $clause)
                                                                 <div
-                                                                    class="flex items-start mb-3 p-3 bg-gray-50 rounded-lg">
+                                                                    class="flex items-start mb-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
                                                                     <input type="radio"
-                                                                        name="clauses[CLAUSOLA_{{ strtoupper($category) }}]"
+                                                                        name="clauses[CLAUSOLA_CLUB_{{ strtoupper($category) }}]"
                                                                         value="{{ $clause['id'] }}"
                                                                         id="clause_club_{{ $clause['id'] }}"
                                                                         class="mt-1 w-4 h-4 text-blue-600">
@@ -310,7 +312,7 @@
                                                             @endforeach
                                                             <div class="flex items-start p-3">
                                                                 <input type="radio"
-                                                                    name="clauses[CLAUSOLA_{{ strtoupper($category) }}]"
+                                                                    name="clauses[CLAUSOLA_CLUB_{{ strtoupper($category) }}]"
                                                                     value=""
                                                                     id="clause_club_none_{{ $category }}" checked
                                                                     class="mt-1 w-4 h-4">
@@ -342,8 +344,10 @@
 
                                         @if ($refereeClauses->isNotEmpty())
                                             <div>
-                                                <h6 class="text-base font-semibold text-green-700 mb-4">Clausole
+                                                <h6 class="text-base font-semibold text-green-700 mb-4">📋 Clausole
                                                     Convocazione Arbitri</h6>
+                                                <p class="text-xs text-gray-500 mb-4">Queste clausole verranno inserite
+                                                    nella convocazione inviata agli arbitri</p>
 
                                                 @foreach (['responsabilita', 'comunicazioni', 'altro'] as $category)
                                                     @php $categoryClauses = $refereeClausesByCategory->get($category, collect()); @endphp
@@ -353,10 +357,10 @@
                                                                 {{ \App\Models\NotificationClause::CATEGORIES[$category] ?? ucfirst($category) }}
                                                             </label>
                                                             @foreach ($categoryClauses as $clause)
-                                                                <div
-                                                                    class="flex items-start mb-3 p-3 bg-gray-50 rounded-lg">
+                                                                <div <div
+                                                                    class="flex items-start mb-3 p-3 bg-green-50 rounded-lg border border-green-100">
                                                                     <input type="radio"
-                                                                        name="clauses[CLAUSOLA_{{ strtoupper($category) }}]"
+                                                                        name="clauses[CLAUSOLA_ARBITRO_{{ strtoupper($category) }}]"
                                                                         value="{{ $clause['id'] }}"
                                                                         id="clause_ref_{{ $clause['id'] }}"
                                                                         class="mt-1 w-4 h-4 text-green-600">
@@ -371,7 +375,7 @@
                                                             @endforeach
                                                             <div class="flex items-start p-3">
                                                                 <input type="radio"
-                                                                    name="clauses[CLAUSOLA_{{ strtoupper($category) }}]"
+                                                                    name="clauses[CLAUSOLA_ARBITRO_{{ strtoupper($category) }}]"
                                                                     value=""
                                                                     id="clause_ref_none_{{ $category }}" checked
                                                                     class="mt-1 w-4 h-4">
@@ -835,6 +839,43 @@
         }
 
 
+// Raccoglie le clausole selezionate dal form
+function getSelectedClauses() {
+    const clauses = {};
+    // Trova tutti i radio button delle clausole che sono selezionati e hanno un valore
+    document.querySelectorAll('input[type="radio"][name^="clauses["]:checked').forEach(radio => {
+        if (radio.value) {
+            // Estrai il nome del placeholder dal name attribute (es: "clauses[CLAUSOLA_CLUB_SPESE]")
+            const match = radio.name.match(/clauses\[([^\]]+)\]/);
+            if (match) {
+                clauses[match[1]] = radio.value;
+            }
+        }
+    });
+    return clauses;
+}
+
+// Salva le clausole via AJAX
+async function saveClauses() {
+    const clauses = getSelectedClauses();
+
+    const response = await fetch(`{{ route('admin.tournament-notifications.save-clauses', ['notification' => $notification->id]) }}`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({ clauses: clauses })
+    });
+
+    if (!response.ok) {
+        throw new Error('Errore nel salvataggio delle clausole');
+    }
+
+    return await response.json();
+}
+
         // Gestione rigenerazione documenti
         async function regenerateDocuments() {
             const button = document.getElementById('regenerateButton');
@@ -850,8 +891,8 @@
             Rigenerazione in corso...
         `;
 
-                // Genera convocazione
-                await fetch(
+        // 3. Genera convocazione (con clausole per arbitri)
+                        await fetch(
                     `{{ route('admin.tournament-notifications.generate-document', ['notification' => $notification->id, 'type' => 'convocation']) }}`, {
                         method: 'POST',
                         headers: {
@@ -861,8 +902,8 @@
                         }
                     });
 
-                // Genera lettera circolo
-                await fetch(
+        // 4. Genera lettera circolo (con clausole per circolo)
+                        await fetch(
                     `{{ route('admin.tournament-notifications.generate-document', ['notification' => $notification->id, 'type' => 'club_letter']) }}`, {
                         method: 'POST',
                         headers: {
@@ -872,12 +913,12 @@
                         }
                     });
 
-                // Aggiorna stato documenti nel modal
+                // 5. Aggiorna stato documenti nel modal
                 if (typeof openDocumentManager === 'function') {
                     openDocumentManager({{ $notification->id }});
                 }
 
-                showToast('Documenti rigenerati con successo');
+                showToast('Documenti rigenerati con clausole selezionate');
 
             } catch (error) {
                 console.error('Errore durante la rigenerazione:', error);

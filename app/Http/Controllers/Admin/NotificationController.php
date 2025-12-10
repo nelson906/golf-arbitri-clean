@@ -550,6 +550,62 @@ class NotificationController extends Controller
     }
 
     /**
+     * Salva clausole via AJAX (per rigenerazione documenti)
+     */
+    public function saveClauses(Request $request, TournamentNotification $notification)
+    {
+        $validated = $request->validate([
+            'clauses' => 'nullable|array',
+            'clauses.*' => 'nullable|exists:notification_clauses,id',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Rimuovi le selezioni precedenti
+            NotificationClauseSelection::where('tournament_notification_id', $notification->id)->delete();
+
+            $savedCount = 0;
+            if (!empty($validated['clauses'])) {
+                foreach ($validated['clauses'] as $placeholder => $clauseId) {
+                    if (!empty($clauseId)) {
+                        NotificationClauseSelection::create([
+                            'tournament_notification_id' => $notification->id,
+                            'clause_id' => $clauseId,
+                            'placeholder_code' => $placeholder
+                        ]);
+                        $savedCount++;
+                    }
+                }
+            }
+
+            DB::commit();
+
+            Log::info('Clauses saved via AJAX', [
+                'notification_id' => $notification->id,
+                'saved_count' => $savedCount
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Salvate {$savedCount} clausole",
+                'saved_count' => $savedCount
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error saving clauses via AJAX', [
+                'notification_id' => $notification->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore nel salvataggio delle clausole: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Invia notifica con allegati dal form
      */
     public function sendAssignmentWithConvocation(Request $request, Tournament $tournament)

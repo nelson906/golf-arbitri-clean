@@ -879,51 +879,14 @@ class DocumentGenerationService
             }
         }
 
-        // Gestisci le clausole
-        if (!empty($variables['clauses'])) {
-            Log::info('Document type passed:', [
-                'template' => basename($templatePath),
-                'docType' => $docType
-            ]);
-
-            // Ottieni i placeholder disponibili per questo tipo
-            $availablePlaceholders = $this->getPlaceholdersForDocumentType($docType);
-            Log::info('Available placeholders for type:', [
-                'docType' => $docType,
-                'placeholders' => $availablePlaceholders
-            ]);
-
-            // Log delle clausole ricevute
-            Log::info('Clauses received:', [
-                'clauses' => array_keys($variables['clauses'])
-            ]);
-
-            // Sostituisci le clausole
-            foreach ($variables['clauses'] as $placeholderCode => $clause) {
-                Log::info('Processing clause:', [
-                    'placeholderCode' => $placeholderCode,
-                    'hasContent' => isset($clause['content']),
-                    'isAvailable' => in_array($placeholderCode, $availablePlaceholders),
-                    'content' => $clause['content'] ?? null
-                ]);
-
-                if (in_array($placeholderCode, $availablePlaceholders) && isset($clause['content'])) {
-                    $this->replacePlaceholdersWithClauses($templateProcessor, [$placeholderCode => $clause['content']], $docType);
-                }
-            }
-
-            // Verifica le variabili dopo la sostituzione
-            try {
-                $remainingVars = $templateProcessor->getVariables();
-                Log::info('Remaining variables after substitution:', ['variables' => $remainingVars]);
-            } catch (\Throwable $e) {
-                Log::warning('Could not read remaining variables: ' . $e->getMessage());
-            }
-
-            // Pulisci i placeholder non utilizzati
-            $this->clearUnusedPlaceholders($templateProcessor);
-        }
-
+        // Gestione clausole con blocchi rimovibili
+        $clauses = $variables['clauses'] ?? [];
+        Log::info('Processing clauses for document', [
+            'template' => basename($templatePath),
+            'docType' => $docType,
+            'clauseCount' => count($clauses)
+        ]);
+        $this->processClauseBlocks($templateProcessor, $clauses, $docType);
 
         $templateProcessor->saveAs($outputPath);
     }
@@ -961,15 +924,10 @@ class DocumentGenerationService
             // Ottieni i placeholder disponibili per questo tipo
             $availablePlaceholders = $this->getPlaceholdersForDocumentType($docType);
 
-            // Sostituisci le clausole
-            foreach ($variables['clauses'] as $placeholderCode => $clause) {
-                if (in_array($placeholderCode, $availablePlaceholders) && isset($clause['content'])) {
-                    $this->replacePlaceholdersWithClauses($templateProcessor, [$placeholderCode => $clause['content']], $docType);
-                }
-            }
 
-            // Pulisci i placeholder non utilizzati
-            $this->clearUnusedPlaceholders($templateProcessor);
+            // Usa cloneBlock per rimuovere interi paragrafi quando la clausola non è selezionata
+            $clauses = $variables['clauses'] ?? [];
+            $this->processClauseBlocks($templateProcessor, $clauses, $docType);
         }
 
         // Aggiungi lista arbitri se il template ha placeholder
@@ -1167,24 +1125,91 @@ class DocumentGenerationService
 
     /**
      * Get available placeholders for document type
+     * Placeholder names are now document-specific to avoid conflicts
      */
     private function getPlaceholdersForDocumentType(string $type): array
     {
         $placeholders = [
             'club' => [
-                'CLAUSOLA_SPESE',
-                'CLAUSOLA_LOGISTICA',
-                'CLAUSOLA_RESPONSABILITA'
+                'CLAUSOLA_CLUB_SPESE',
+                'CLAUSOLA_CLUB_LOGISTICA',
+                'CLAUSOLA_CLUB_RESPONSABILITA'
             ],
             'referee' => [
-                'CLAUSOLA_RESPONSABILITA',
-                'CLAUSOLA_COMUNICAZIONI'
+                'CLAUSOLA_ARBITRO_RESPONSABILITA',
+                'CLAUSOLA_ARBITRO_COMUNICAZIONI',
+                'CLAUSOLA_ARBITRO_ALTRO'
             ],
             'institutional' => [
-                'CLAUSOLA_RESPONSABILITA'
+                'CLAUSOLA_ISTITUZIONALE_RESPONSABILITA'
             ]
         ];
 
         return $placeholders[$type] ?? [];
+    }
+
+
+    /**
+     * Get block names for clause placeholders
+     * Block format in Word template: ${BLOCCO_CLAUSOLA_X}content${/BLOCCO_CLAUSOLA_X}
+     */
+    private function getClauseBlockName(string $placeholderCode): string
+    {
+        return 'BLOCCO_' . $placeholderCode;
+    }
+
+    /**
+     * Process clause blocks in document
+     * Uses cloneBlock to remove entire block when clause is not selected
+     */
+    private function processClauseBlocks($templateProcessor, array $clauses, string $docType): void
+    {
+        $availablePlaceholders = $this->getPlaceholdersForDocumentType($docType);
+
+        foreach ($availablePlaceholders as $placeholderCode) {
+            $blockName = $this->getClauseBlockName($placeholderCode);
+
+            try {
+                if (isset($clauses[$placeholderCode]) && !empty($clauses[$placeholderCode]['content'])) {
+                    // Clausola presente: clona il blocco 1 volta e sostituisci il contenuto
+                    $templateProcessor->cloneBlock($blockName, 1, true, true);
+                    $templateProcessor->setValue($placeholderCode, $clauses[$placeholderCode]['content']);
+
+                    Log::debug("Clause block filled", [
+                        'block' => $blockName,
+                        'placeholder' => $placeholderCode,
+                        'content_length' => strlen($clauses[$placeholderCode]['content'])
+                    ]);
+                } else {
+                    // Clausola non selezionata: rimuovi completamente il blocco (0 cloni)
+                    $templateProcessor->cloneBlock($blockName, 0, true, true);
+
+                    Log::debug("Clause block removed (no selection)", [
+                        'block' => $blockName,
+                        'placeholder' => $placeholderCode
+                    ]);
+                }
+            } catch (\Exception $e) {
+                // Se il blocco non esiste nel template, prova con setValue semplice
+                Log::warning("Block {$blockName} not found, trying simple setValue", [
+                    'error' => $e->getMessage()
+                ]);
+
+                if (isset($clauses[$placeholderCode]) && !empty($clauses[$placeholderCode]['content'])) {
+                    try {
+                        $templateProcessor->setValue($placeholderCode, $clauses[$placeholderCode]['content']);
+                    } catch (\Exception $e2) {
+                        Log::warning("Could not set value for {$placeholderCode}: " . $e2->getMessage());
+                    }
+                } else {
+                    // Rimuovi placeholder vuoto
+                    try {
+                        $templateProcessor->setValue($placeholderCode, '');
+                    } catch (\Exception $e2) {
+                        // Ignora se placeholder non esiste
+                    }
+                }
+            }
+        }
     }
 }
