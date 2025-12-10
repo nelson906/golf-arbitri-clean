@@ -398,6 +398,7 @@ class NotificationCycleTest extends TestCase
             'name' => 'Test Single Day',
             'start_date' => '2025-06-15',
             'end_date' => '2025-06-15',
+            'availability_deadline' => '2025-06-01',
             'zone_id' => $zone->id,
             'club_id' => $club->id,
         ]);
@@ -407,6 +408,7 @@ class NotificationCycleTest extends TestCase
             'name' => 'Test Same Month',
             'start_date' => '2025-06-15',
             'end_date' => '2025-06-17',
+            'availability_deadline' => '2025-06-01',
             'zone_id' => $zone->id,
             'club_id' => $club->id,
         ]);
@@ -416,6 +418,7 @@ class NotificationCycleTest extends TestCase
             'name' => 'Test Diff Month',
             'start_date' => '2025-06-28',
             'end_date' => '2025-07-02',
+            'availability_deadline' => '2025-06-14',
             'zone_id' => $zone->id,
             'club_id' => $club->id,
         ]);
@@ -544,6 +547,7 @@ class NotificationCycleTest extends TestCase
                 'name' => 'Test No Assignments',
                 'start_date' => Carbon::now()->addDays(30),
                 'end_date' => Carbon::now()->addDays(31),
+                'availability_deadline' => Carbon::now()->addDays(15),
                 'zone_id' => $zone->id,
                 'club_id' => $club->id,
             ]);

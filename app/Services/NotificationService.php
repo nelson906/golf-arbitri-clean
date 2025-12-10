@@ -49,17 +49,16 @@ class NotificationService
     public function generateDocuments(TournamentNotification $notification)
     {
         $tournament = $notification->tournament;
-        $clauses = $notification->selectedClauses ?? [];
 
         try {
             // Genera convocazione
             $convocationData = $this->documentService->generateConvocationForTournament(
-                $tournament, $clauses
+                $tournament, $notification
             );
 
             // Genera lettera circolo
             $clubLetterData = $this->documentService->generateClubDocument(
-                $tournament, $clauses
+                $tournament, $notification
             );
 
             // Salva riferimenti documenti
