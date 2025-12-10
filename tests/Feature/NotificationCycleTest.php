@@ -383,48 +383,27 @@ class NotificationCycleTest extends TestCase
      */
     public function test_tournament_date_formatting(): void
     {
-        $this->requireDatabase();
-
-        // Crea tornei temporanei per testare la formattazione
-        $zone = Zone::first();
-        $club = Club::first();
-        $tournamentType = \App\Models\TournamentType::first();
-
-        if (!$zone || !$club || !$tournamentType) {
-            $this->markTestSkipped('Zona, Club o TournamentType non disponibili');
-        }
+        // Non serve database - usiamo modelli non salvati per testare la formattazione
 
         // Torneo stesso giorno
-        $singleDayTournament = Tournament::create([
+        $singleDayTournament = new Tournament([
             'name' => 'Test Single Day',
             'start_date' => '2025-06-15',
             'end_date' => '2025-06-15',
-            'availability_deadline' => '2025-06-01',
-            'zone_id' => $zone->id,
-            'club_id' => $club->id,
-            'tournament_type_id' => $tournamentType->id,
         ]);
 
         // Torneo stesso mese
-        $sameMonthTournament = Tournament::create([
+        $sameMonthTournament = new Tournament([
             'name' => 'Test Same Month',
             'start_date' => '2025-06-15',
             'end_date' => '2025-06-17',
-            'availability_deadline' => '2025-06-01',
-            'zone_id' => $zone->id,
-            'club_id' => $club->id,
-            'tournament_type_id' => $tournamentType->id,
         ]);
 
         // Torneo mesi diversi
-        $diffMonthTournament = Tournament::create([
+        $diffMonthTournament = new Tournament([
             'name' => 'Test Diff Month',
             'start_date' => '2025-06-28',
             'end_date' => '2025-07-02',
-            'availability_deadline' => '2025-06-14',
-            'zone_id' => $zone->id,
-            'club_id' => $club->id,
-            'tournament_type_id' => $tournamentType->id,
         ]);
 
         // Test tramite reflection per accedere al metodo protected
