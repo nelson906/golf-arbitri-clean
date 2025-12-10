@@ -1160,20 +1160,30 @@ class DocumentGenerationService
 
     /**
      * Process clause blocks in document
-     * Uses cloneBlock to remove entire block when clause is not selected
+     * Processes ALL clause types, filling selected ones and removing non-selected
      */
     private function processClauseBlocks($templateProcessor, array $clauses, string $docType): void
     {
-        $availablePlaceholders = $this->getPlaceholdersForDocumentType($docType);
+        // Processa TUTTI i tipi di placeholder (club, referee, institutional)
+        // perché il template potrebbe contenere placeholder di più tipi
+        $allPlaceholders = array_merge(
+            $this->getPlaceholdersForDocumentType('club'),
+            $this->getPlaceholdersForDocumentType('referee'),
+            $this->getPlaceholdersForDocumentType('institutional')
+        );
 
-        foreach ($availablePlaceholders as $placeholderCode) {
+        foreach ($allPlaceholders as $placeholderCode) {
             $blockName = $this->getClauseBlockName($placeholderCode);
 
             try {
                 if (isset($clauses[$placeholderCode]) && !empty($clauses[$placeholderCode]['content'])) {
-                    // Clausola presente: clona il blocco 1 volta e sostituisci il contenuto
-                    $templateProcessor->cloneBlock($blockName, 1, true, true);
+                    // Clausola presente: sostituisci il placeholder interno con il contenuto
+                    // Prima sostituisci il placeholder, poi rimuovi i marcatori del blocco
                     $templateProcessor->setValue($placeholderCode, $clauses[$placeholderCode]['content']);
+                    
+                    // Rimuovi i marcatori di apertura e chiusura del blocco
+                    $templateProcessor->setValue($blockName, '');
+                    $templateProcessor->setValue('/' . $blockName, '');
 
                     Log::debug("Clause block filled", [
                         'block' => $blockName,
@@ -1191,7 +1201,7 @@ class DocumentGenerationService
                 }
             } catch (\Exception $e) {
                 // Se il blocco non esiste nel template, prova con setValue semplice
-                Log::warning("Block {$blockName} not found, trying simple setValue", [
+                Log::debug("Block {$blockName} not found in template, trying simple setValue", [
                     'error' => $e->getMessage()
                 ]);
 
@@ -1199,10 +1209,10 @@ class DocumentGenerationService
                     try {
                         $templateProcessor->setValue($placeholderCode, $clauses[$placeholderCode]['content']);
                     } catch (\Exception $e2) {
-                        Log::warning("Could not set value for {$placeholderCode}: " . $e2->getMessage());
+                        // Placeholder non esiste nel template - ignora silenziosamente
                     }
                 } else {
-                    // Rimuovi placeholder vuoto
+                    // Rimuovi placeholder vuoto se esiste
                     try {
                         $templateProcessor->setValue($placeholderCode, '');
                     } catch (\Exception $e2) {

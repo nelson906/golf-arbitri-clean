@@ -842,14 +842,13 @@
 // Raccoglie le clausole selezionate dal form
 function getSelectedClauses() {
     const clauses = {};
-    // Trova tutti i radio button delle clausole che sono selezionati e hanno un valore
+    // Trova tutti i radio button delle clausole che sono selezionati
     document.querySelectorAll('input[type="radio"][name^="clauses["]:checked').forEach(radio => {
-        if (radio.value) {
-            // Estrai il nome del placeholder dal name attribute (es: "clauses[CLAUSOLA_CLUB_SPESE]")
-            const match = radio.name.match(/clauses\[([^\]]+)\]/);
-            if (match) {
-                clauses[match[1]] = radio.value;
-            }
+        // Estrai il nome del placeholder dal name attribute (es: "clauses[CLAUSOLA_CLUB_SPESE]")
+        const match = radio.name.match(/clauses\[([^\]]+)\]/);
+        if (match) {
+            // Salva il valore (anche se vuoto - il backend farà il filtraggio)
+            clauses[match[1]] = radio.value;
         }
     });
     return clauses;
@@ -891,7 +890,16 @@ async function saveClauses() {
             Rigenerazione in corso...
         `;
 
-        // 3. Genera convocazione (con clausole per arbitri)
+        // 1. Salva le clausole selezionate prima di generare i documenti
+                try {
+                    await saveClauses();
+                } catch (error) {
+                    console.error('Errore nel salvataggio delle clausole:', error);
+                    showToast('Errore nel salvataggio delle clausole', true);
+                    throw error;
+                }
+
+        // 2. Genera convocazione (con clausole per arbitri)
                         await fetch(
                     `{{ route('admin.tournament-notifications.generate-document', ['notification' => $notification->id, 'type' => 'convocation']) }}`, {
                         method: 'POST',
@@ -902,7 +910,7 @@ async function saveClauses() {
                         }
                     });
 
-        // 4. Genera lettera circolo (con clausole per circolo)
+        // 3. Genera lettera circolo (con clausole per circolo)
                         await fetch(
                     `{{ route('admin.tournament-notifications.generate-document', ['notification' => $notification->id, 'type' => 'club_letter']) }}`, {
                         method: 'POST',
