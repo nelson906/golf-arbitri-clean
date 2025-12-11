@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Helpers\RefereeLevelsHelper;
 use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Models\User;
@@ -100,14 +101,15 @@ class AssignmentValidationService
                 ];
             }
 
-            // Controlla livello arbitri
-            $requiredLevel = $tournament->tournamentType->required_referee_level;
-            $levels = array_keys(\App\Models\User::LEVELS);
+            // Controlla livello arbitri (usa RefereeLevelsHelper per normalizzazione)
+            $requiredLevel = RefereeLevelsHelper::normalize($tournament->tournamentType->required_referee_level);
+            $levels = array_keys(RefereeLevelsHelper::DB_ENUM_VALUES);
             $requiredIndex = array_search($requiredLevel, $levels);
 
             $inadequateReferees = $tournament->assignments->filter(function($assignment) use ($levels, $requiredIndex) {
-                $userIndex = array_search($assignment->user->level, $levels);
-                return $userIndex < $requiredIndex;
+                $normalizedUserLevel = RefereeLevelsHelper::normalize($assignment->user->level);
+                $userIndex = array_search($normalizedUserLevel, $levels);
+                return $userIndex === false || $userIndex < $requiredIndex;
             });
 
             if ($inadequateReferees->count() > 0) {
@@ -356,8 +358,9 @@ class AssignmentValidationService
 
     private function findAlternativeReferees(Tournament $tournament, int $excludeUserId): Collection
     {
-        $requiredLevel = $tournament->tournamentType->required_referee_level;
-        $levels = array_keys(\App\Models\User::LEVELS);
+        // Usa RefereeLevelsHelper per normalizzazione livelli
+        $requiredLevel = RefereeLevelsHelper::normalize($tournament->tournamentType->required_referee_level);
+        $levels = array_keys(RefereeLevelsHelper::DB_ENUM_VALUES);
         $requiredIndex = array_search($requiredLevel, $levels);
 
         $query = User::where('user_type', 'referee')
@@ -365,14 +368,9 @@ class AssignmentValidationService
             ->where('id', '!=', $excludeUserId)
             ->whereNotIn('id', $tournament->assignments->pluck('user_id'));
 
-        // Filtra per livello
-        $query->where(function($q) use ($levels, $requiredIndex) {
-            foreach ($levels as $index => $level) {
-                if ($index >= $requiredIndex) {
-                    $q->orWhere('level', $level);
-                }
-            }
-        });
+        // Filtra per livello (usa i valori ENUM del database)
+        $acceptableLevels = array_slice($levels, $requiredIndex !== false ? $requiredIndex : 0);
+        $query->whereIn('level', $acceptableLevels);
 
         // Filtra per zona se non nazionale
         if (!$tournament->tournamentType->is_national) {
