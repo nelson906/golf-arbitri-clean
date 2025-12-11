@@ -109,7 +109,7 @@
 
     @if($conflictsWithSuggestions->count() > 0)
         <!-- Azione Risoluzione Automatica -->
-        <div class="bg-white shadow rounded-lg mb-8">
+        {{-- <div class="bg-white shadow rounded-lg mb-8">
             <div class="p-6">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center">
@@ -132,7 +132,7 @@
                     </form>
                 </div>
             </div>
-        </div>
+        </div> --}}
 
         <!-- Lista Conflitti -->
         <div class="space-y-6">
