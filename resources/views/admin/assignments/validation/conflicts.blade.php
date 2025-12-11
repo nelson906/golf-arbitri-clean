@@ -238,6 +238,7 @@
                             Suggerimenti per Risolvere
                         </h4>
                         @foreach($conflict['suggestions'] as $suggestion)
+                            {{-- Replace referee - Commentato: metodo edit() non implementato
                             @if($suggestion['action'] === 'replace_referee' && isset($suggestion['alternative_referees']))
                                 <p class="text-sm text-blue-800 mb-2">
                                     <strong>Sostituisci arbitro nel Torneo 2 con:</strong>
@@ -251,7 +252,8 @@
                                         </a>
                                     @endforeach
                                 </div>
-                            @elseif($suggestion['action'] === 'verify_timing')
+                            @else --}}
+                            @if($suggestion['action'] === 'verify_timing')
                                 <p class="text-sm text-blue-700">
                                     <svg class="inline w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>

@@ -257,11 +257,13 @@
                                 </span>
                             @endif
 
+                            {{-- Edit assignment - Commentato: metodo edit() non implementato
                             <a href="{{ route('admin.assignments.edit', $assignment) }}"
                                class="text-yellow-600 hover:text-yellow-800"
                                title="Modifica">
                                 ✏️
                             </a>
+                            --}}
 
                             <form action="{{ route('admin.assignments.destroy', $assignment) }}"
                                   method="POST"
