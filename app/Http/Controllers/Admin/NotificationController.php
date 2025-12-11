@@ -847,14 +847,6 @@ return view('admin.notifications.prepare_notification', [
     }
 
     /**
-     * Rigenera un documento esistente
-     */
-    public function regenerateDocument(Request $request, TournamentNotification $notification, $type)
-    {
-        return $this->generateDocument($request, $notification, $type);
-    }
-
-    /**
      * Formatta dimensione file
      */
     private function formatBytes($bytes, $precision = 2): string

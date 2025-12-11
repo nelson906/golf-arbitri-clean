@@ -202,30 +202,6 @@ class ArubaToolsController extends Controller
         return back()->with($result['success'] ? 'success' : 'error', $message);
     }
 
-    // ================================
-    // GIT OPERATIONS
-    // ================================
-
-    public function gitIndex()
-    {
-        $isAvailable = SystemOperations::isGitAvailable();
-        $branch = SystemOperations::getCurrentBranch();
-        $commit = SystemOperations::getLatestCommit();
-        $status = SystemOperations::gitStatus();
-
-        return view('aruba-admin.git', compact('isAvailable', 'branch', 'commit', 'status'));
-    }
-
-    public function gitPull()
-    {
-        $result = SystemOperations::gitPull();
-
-        return back()->with(
-            $result['success'] ? 'success' : 'error',
-            $result['output']
-        );
-    }
-
     /**
      * Diagnostica Composer
      */

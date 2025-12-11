@@ -51,17 +51,3 @@ Route::prefix('admins')->name('admins.')->group(function () {
     })->name('national');
 });
 
-// User validation & verification
-Route::prefix('validation')->name('validation.')->group(function () {
-    Route::get('/pending', [UserController::class, 'pendingValidation'])->name('pending');
-    Route::post('/approve/{user}', [UserController::class, 'approveUser'])->name('approve');
-    Route::post('/reject/{user}', [UserController::class, 'rejectUser'])->name('reject');
-    Route::get('/documents/{user}', [UserController::class, 'validationDocuments'])->name('documents');
-});
-
-// Mass communication to users
-Route::prefix('mass-communication')->name('mass-communication.')->group(function () {
-    Route::get('/', [UserController::class, 'massCommunication'])->name('index');
-    Route::post('/send', [UserController::class, 'sendMassCommunication'])->name('send');
-    Route::get('/templates', [UserController::class, 'communicationTemplates'])->name('templates');
-});
