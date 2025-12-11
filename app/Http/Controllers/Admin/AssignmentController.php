@@ -202,6 +202,89 @@ class AssignmentController extends Controller
     }
 
     /**
+     * Show form per modificare assegnazione
+     */
+    public function edit(Request $request, Assignment $assignment): View
+    {
+        $this->checkAssignmentAccess($assignment);
+
+        $user = auth()->user();
+        $tournament = $assignment->tournament;
+
+        // Carica relazioni
+        $assignment->load(['user', 'tournament.club.zone', 'tournament.tournamentType']);
+
+        // Arbitri disponibili per sostituzione
+        $refereesQuery = User::where('user_type', 'referee')
+            ->where('is_active', true)
+            ->orderBy('last_name');
+        $this->applyUserVisibility($refereesQuery, $user);
+        $referees = $refereesQuery->get();
+
+        // Ruoli disponibili
+        $roles = ['Arbitro', 'Direttore di Torneo', 'Osservatore', 'Starter', 'Segretario'];
+
+        // Suggested referee from conflict resolution
+        $suggestedRefereeId = $request->query('suggested_referee');
+        $suggestedReferee = $suggestedRefereeId ? User::find($suggestedRefereeId) : null;
+
+        return view('admin.assignments.edit', compact(
+            'assignment',
+            'tournament',
+            'referees',
+            'roles',
+            'suggestedReferee'
+        ));
+    }
+
+    /**
+     * Aggiorna assegnazione
+     */
+    public function update(Request $request, Assignment $assignment): RedirectResponse
+    {
+        $this->checkAssignmentAccess($assignment);
+
+        $userField = Assignment::getUserField();
+
+        $validated = $request->validate([
+            $userField => 'required|exists:users,id',
+            'role' => 'required|string|max:100',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        // Verifica che il nuovo arbitro non sia già assegnato allo stesso torneo
+        if ($validated[$userField] != $assignment->{$userField}) {
+            $exists = Assignment::where('tournament_id', $assignment->tournament_id)
+                ->where($userField, $validated[$userField])
+                ->where('id', '!=', $assignment->id)
+                ->exists();
+
+            if ($exists) {
+                return back()
+                    ->withInput()
+                    ->with('error', 'Questo arbitro è già assegnato a questo torneo');
+            }
+        }
+
+        try {
+            $assignment->update($validated);
+
+            return redirect()
+                ->route('admin.assignments.show', $assignment)
+                ->with('success', 'Assegnazione aggiornata con successo');
+        } catch (\Exception $e) {
+            Log::error('Error updating assignment', [
+                'assignment_id' => $assignment->id,
+                'error' => $e->getMessage()
+            ]);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Errore durante l\'aggiornamento: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Check if user can access the assignment.
      */
     private function checkAssignmentAccess($assignment): void
