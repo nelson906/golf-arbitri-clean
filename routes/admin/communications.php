@@ -17,6 +17,4 @@ Route::prefix('communications')->name('communications.')->group(function () {
     Route::post('/', [CommunicationController::class, 'store'])->name('store');
     Route::get('/{communication}', [CommunicationController::class, 'show'])->name('show');
     Route::delete('/{communication}', [CommunicationController::class, 'destroy'])->name('destroy');
-    Route::patch('/{communication}/publish', [CommunicationController::class, 'publish'])->name('publish');
-    Route::patch('/{communication}/expire', [CommunicationController::class, 'expire'])->name('expire');
 });
