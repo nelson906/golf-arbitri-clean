@@ -134,6 +134,7 @@ Route::middleware(['auth'])->group(function () {
         require __DIR__ . '/user/quadranti.php';
         require __DIR__ . '/user/curriculum.php';
         require __DIR__ . '/user/documents.php';
+        require __DIR__ . '/user/communications.php';
     });
 });
 

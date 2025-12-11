@@ -275,6 +275,24 @@
                                                                     d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                             </svg>
                                                         </a>
+                                                        @if($communication->status === 'draft')
+                                                            <form method="POST"
+                                                                action="{{ route('admin.communications.publish', $communication) }}"
+                                                                class="inline">
+                                                                @csrf
+                                                                @method('PATCH')
+                                                                <button type="submit"
+                                                                    class="text-green-600 hover:text-green-900 p-1 rounded"
+                                                                    title="Pubblica">
+                                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                                        viewBox="0 0 24 24">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                                            stroke-width="2"
+                                                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                    </svg>
+                                                                </button>
+                                                            </form>
+                                                        @endif
                                                         <form method="POST"
                                                             action="{{ route('admin.communications.destroy', $communication) }}"
                                                             class="inline"

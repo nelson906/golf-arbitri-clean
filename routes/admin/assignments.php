@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('assignments')->name('assignments.')->group(function () {
 
-    // CRUD standard
+    // Route statiche PRIMA delle route con parametri dinamici
     Route::get('/', [App\Http\Controllers\Admin\AssignmentController::class, 'index'])
         ->name('index');
 
@@ -24,6 +24,23 @@ Route::prefix('assignments')->name('assignments.')->group(function () {
     Route::post('/', [App\Http\Controllers\Admin\AssignmentController::class, 'store'])
         ->name('store');
 
+    Route::get('/export', [App\Http\Controllers\Admin\AssignmentController::class, 'export'])
+        ->name('export');
+
+    Route::post('/bulk-assign', [App\Http\Controllers\Admin\AssignmentController::class, 'bulkAssign'])
+        ->name('bulk-assign');
+
+    // Route con prefisso /tournament/ (statiche rispetto a /{assignment})
+    Route::get('/tournament/{tournament}/assign-referees', [App\Http\Controllers\Admin\AssignmentController::class, 'assignReferees'])
+        ->name('assign-referees');
+
+    Route::post('/tournament/{tournament}/assign-referees', [App\Http\Controllers\Admin\AssignmentController::class, 'storeMultiple'])
+        ->name('storeMultiple');
+
+    Route::delete('/tournament/{tournament}/referee/{referee}', [App\Http\Controllers\Admin\AssignmentController::class, 'removeFromTournament'])
+        ->name('removeFromTournament');
+
+    // Route CRUD con parametro dinamico {assignment} - DEVONO essere DOPO le route statiche
     Route::get('/{assignment}', [App\Http\Controllers\Admin\AssignmentController::class, 'show'])
         ->name('show');
 
@@ -36,49 +53,11 @@ Route::prefix('assignments')->name('assignments.')->group(function () {
     Route::delete('/{assignment}', [App\Http\Controllers\Admin\AssignmentController::class, 'destroy'])
         ->name('destroy');
 
-    // Route speciali per assegnazione arbitri
-    Route::get(
-        '/tournament/{tournament}/assign-referees',
-        [App\Http\Controllers\Admin\AssignmentController::class, 'assignReferees']
-    )
-        ->name('assign-referees');
-
-    Route::post(
-        '/tournament/{tournament}/assign-referees',
-        [App\Http\Controllers\Admin\AssignmentController::class, 'storeMultiple']
-    )
-        ->name('storeMultiple');
-
-    Route::delete(
-        '/tournament/{tournament}/referee/{referee}',
-        [App\Http\Controllers\Admin\AssignmentController::class, 'removeFromTournament']
-    )
-        ->name('removeFromTournament');
-
-    // Azioni aggiuntive
-    Route::post(
-        '/{assignment}/confirm',
-        [App\Http\Controllers\Admin\AssignmentController::class, 'confirm']
-    )
+    Route::post('/{assignment}/confirm', [App\Http\Controllers\Admin\AssignmentController::class, 'confirm'])
         ->name('confirm');
 
-    Route::post(
-        '/{assignment}/cancel',
-        [App\Http\Controllers\Admin\AssignmentController::class, 'cancel']
-    )
+    Route::post('/{assignment}/cancel', [App\Http\Controllers\Admin\AssignmentController::class, 'cancel'])
         ->name('cancel');
-
-    Route::post(
-        '/bulk-assign',
-        [App\Http\Controllers\Admin\AssignmentController::class, 'bulkAssign']
-    )
-        ->name('bulk-assign');
-
-    Route::get(
-        '/export',
-        [App\Http\Controllers\Admin\AssignmentController::class, 'export']
-    )
-        ->name('export');
 });
 
 

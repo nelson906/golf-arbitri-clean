@@ -193,6 +193,11 @@
         <x-nav-link :href="route('user.documents.index')" :active="request()->routeIs('user.documents.*')">
             📁 I Miei Documenti
         </x-nav-link>
+
+        {{-- Communications --}}
+        <x-nav-link :href="route('user.communications.index')" :active="request()->routeIs('user.communications.*')">
+            📢 Comunicazioni
+        </x-nav-link>
 @endif
 
             <!-- Settings Dropdown -->
@@ -386,6 +391,9 @@
                 --}}
                 <x-responsive-nav-link :href="route('user.documents.index')" :active="request()->routeIs('user.documents.*')">
                     📁 I Miei Documenti
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('user.communications.index')" :active="request()->routeIs('user.communications.*')">
+                    📢 Comunicazioni
                 </x-responsive-nav-link>
             @endif
         @endauth

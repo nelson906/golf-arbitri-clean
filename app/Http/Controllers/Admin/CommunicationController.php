@@ -121,6 +121,20 @@ class CommunicationController extends Controller
     }
 
     /**
+     * Publish a draft communication
+     */
+    public function publish(Communication $communication): RedirectResponse
+    {
+        $this->authorizeAccess($communication);
+
+        $communication->update(['status' => 'published']);
+
+        return redirect()
+            ->route('admin.communications.index')
+            ->with('success', 'Comunicazione pubblicata con successo!');
+    }
+
+    /**
      * Remove the specified communication
      */
     public function destroy(Communication $communication): RedirectResponse
