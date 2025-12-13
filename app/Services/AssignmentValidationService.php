@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Helpers\RefereeLevelsHelper;
 use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Models\User;
@@ -34,7 +35,7 @@ class AssignmentValidationService
     public function detectDateConflicts(?int $zoneId = null): Collection
     {
         $query = Assignment::with(['user', 'tournament.club', 'tournament.zone'])
-            ->whereHas('tournament', function($q) use ($zoneId) {
+            ->whereHas('tournament', function ($q) use ($zoneId) {
                 $q->whereIn('status', ['open', 'closed']);
                 if ($zoneId) {
                     $q->where('zone_id', $zoneId);
@@ -49,7 +50,7 @@ class AssignmentValidationService
 
         foreach ($byReferee as $userId => $refereeAssignments) {
             // Ordina per data
-            $sorted = $refereeAssignments->sortBy(function($a) {
+            $sorted = $refereeAssignments->sortBy(function ($a) {
                 return $a->tournament->start_date;
             });
 
@@ -100,14 +101,15 @@ class AssignmentValidationService
                 ];
             }
 
-            // Controlla livello arbitri
-            $requiredLevel = $tournament->tournamentType->required_referee_level;
-            $levels = array_keys(\App\Models\User::LEVELS);
+            // Controlla livello arbitri (usa RefereeLevelsHelper per normalizzazione)
+            $requiredLevel = RefereeLevelsHelper::normalize($tournament->tournamentType->required_referee_level);
+            $levels = array_keys(RefereeLevelsHelper::DB_ENUM_VALUES);
             $requiredIndex = array_search($requiredLevel, $levels);
 
-            $inadequateReferees = $tournament->assignments->filter(function($assignment) use ($levels, $requiredIndex) {
-                $userIndex = array_search($assignment->user->level, $levels);
-                return $userIndex < $requiredIndex;
+            $inadequateReferees = $tournament->assignments->filter(function ($assignment) use ($levels, $requiredIndex) {
+                $normalizedUserLevel = RefereeLevelsHelper::normalize($assignment->user->level);
+                $userIndex = array_search($normalizedUserLevel, $levels);
+                return $userIndex === false || $userIndex < $requiredIndex;
             });
 
             if ($inadequateReferees->count() > 0) {
@@ -121,7 +123,7 @@ class AssignmentValidationService
 
             // Controlla zona per tornei non nazionali
             if (!$tournament->tournamentType->is_national) {
-                $wrongZoneReferees = $tournament->assignments->filter(function($assignment) use ($tournament) {
+                $wrongZoneReferees = $tournament->assignments->filter(function ($assignment) use ($tournament) {
                     return $assignment->user->zone_id !== $tournament->zone_id;
                 });
 
@@ -164,10 +166,10 @@ class AssignmentValidationService
     {
         $query = User::where('user_type', 'referee')
             ->where('is_active', true)
-            ->withCount(['assignments' => function($q) {
-                $q->whereHas('tournament', function($tq) {
+            ->withCount(['assignments' => function ($q) {
+                $q->whereHas('tournament', function ($tq) {
                     $tq->whereIn('status', ['open', 'closed'])
-                      ->whereYear('start_date', date('Y'));
+                        ->whereYear('start_date', date('Y'));
                 });
             }]);
 
@@ -177,14 +179,14 @@ class AssignmentValidationService
 
         return $query->having('assignments_count', '>', $threshold)
             ->orderByDesc('assignments_count')
-            ->with(['zone', 'assignments' => function($q) {
-                $q->whereHas('tournament', function($tq) {
+            ->with(['zone', 'assignments' => function ($q) {
+                $q->whereHas('tournament', function ($tq) {
                     $tq->whereIn('status', ['open', 'closed'])
-                      ->whereYear('start_date', date('Y'));
+                        ->whereYear('start_date', date('Y'));
                 })->with('tournament');
             }])
             ->get()
-            ->map(function($referee) use ($threshold) {
+            ->map(function ($referee) use ($threshold) {
                 return [
                     'referee' => $referee,
                     'assignments_count' => $referee->assignments_count,
@@ -201,10 +203,10 @@ class AssignmentValidationService
     {
         $query = User::where('user_type', 'referee')
             ->where('is_active', true)
-            ->withCount(['assignments' => function($q) {
-                $q->whereHas('tournament', function($tq) {
+            ->withCount(['assignments' => function ($q) {
+                $q->whereHas('tournament', function ($tq) {
                     $tq->whereIn('status', ['open', 'closed'])
-                      ->whereYear('start_date', date('Y'));
+                        ->whereYear('start_date', date('Y'));
                 });
             }]);
 
@@ -216,7 +218,7 @@ class AssignmentValidationService
             ->orderBy('assignments_count')
             ->with(['zone'])
             ->get()
-            ->map(function($referee) use ($threshold) {
+            ->map(function ($referee) use ($threshold) {
                 return [
                     'referee' => $referee,
                     'assignments_count' => $referee->assignments_count,
@@ -231,7 +233,7 @@ class AssignmentValidationService
      */
     public function suggestConflictResolutions(Collection $conflicts): Collection
     {
-        return $conflicts->map(function($conflict) {
+        return $conflicts->map(function ($conflict) {
             $suggestions = [];
 
             // Suggerisci arbitri alternativi per assignment2
@@ -344,7 +346,7 @@ class AssignmentValidationService
     {
         $score = 0;
         foreach ($issues as $issue) {
-            $score += match($issue['severity']) {
+            $score += match ($issue['severity']) {
                 'high' => 3,
                 'medium' => 2,
                 'low' => 1,
@@ -356,8 +358,9 @@ class AssignmentValidationService
 
     private function findAlternativeReferees(Tournament $tournament, int $excludeUserId): Collection
     {
-        $requiredLevel = $tournament->tournamentType->required_referee_level;
-        $levels = array_keys(\App\Models\User::LEVELS);
+        // Usa RefereeLevelsHelper per normalizzazione livelli
+        $requiredLevel = RefereeLevelsHelper::normalize($tournament->tournamentType->required_referee_level);
+        $levels = array_keys(RefereeLevelsHelper::DB_ENUM_VALUES);
         $requiredIndex = array_search($requiredLevel, $levels);
 
         $query = User::where('user_type', 'referee')
@@ -365,14 +368,9 @@ class AssignmentValidationService
             ->where('id', '!=', $excludeUserId)
             ->whereNotIn('id', $tournament->assignments->pluck('user_id'));
 
-        // Filtra per livello
-        $query->where(function($q) use ($levels, $requiredIndex) {
-            foreach ($levels as $index => $level) {
-                if ($index >= $requiredIndex) {
-                    $q->orWhere('level', $level);
-                }
-            }
-        });
+        // Filtra per livello (usa i valori ENUM del database)
+        $acceptableLevels = array_slice($levels, $requiredIndex !== false ? $requiredIndex : 0);
+        $query->whereIn('level', $acceptableLevels);
 
         // Filtra per zona se non nazionale
         if (!$tournament->tournamentType->is_national) {
@@ -380,9 +378,9 @@ class AssignmentValidationService
         }
 
         // Escludi arbitri con conflitti nella stessa data
-        $query->whereDoesntHave('assignments', function($q) use ($tournament) {
-            $q->whereHas('tournament', function($tq) use ($tournament) {
-                $tq->where(function($dateQuery) use ($tournament) {
+        $query->whereDoesntHave('assignments', function ($q) use ($tournament) {
+            $q->whereHas('tournament', function ($tq) use ($tournament) {
+                $tq->where(function ($dateQuery) use ($tournament) {
                     $dateQuery->whereBetween('start_date', [
                         $tournament->start_date,
                         $tournament->end_date
@@ -402,10 +400,10 @@ class AssignmentValidationService
         // Ottieni tutti gli arbitri attivi con il loro conteggio di assegnazioni
         $allReferees = User::where('user_type', 'referee')
             ->where('is_active', true)
-            ->withCount(['assignments' => function($q) {
-                $q->whereHas('tournament', function($tq) {
+            ->withCount(['assignments' => function ($q) {
+                $q->whereHas('tournament', function ($tq) {
                     $tq->whereIn('status', ['open', 'closed'])
-                      ->whereYear('start_date', date('Y'));
+                        ->whereYear('start_date', date('Y'));
                 });
             }])
             ->get();
@@ -461,8 +459,8 @@ class AssignmentValidationService
     private function getTotalIssuesCount(?int $zoneId): int
     {
         return $this->getConflictsSummary($zoneId) +
-               $this->getMissingRequirementsSummary($zoneId) +
-               $this->getOverassignedCount($zoneId) +
-               $this->getUnderassignedCount($zoneId);
+            $this->getMissingRequirementsSummary($zoneId) +
+            $this->getOverassignedCount($zoneId) +
+            $this->getUnderassignedCount($zoneId);
     }
 }
