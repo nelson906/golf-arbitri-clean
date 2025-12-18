@@ -445,8 +445,6 @@ class CareerHistoryController extends Controller
      */
     private function getYearStats(int $year, ?int $zoneId = null): array
     {
-        $userField = \App\Models\Assignment::getUserField();
-
         $assignmentsQuery = \App\Models\Assignment::whereYear('assigned_at', $year);
         $availabilitiesQuery = \App\Models\Availability::whereHas('tournament', function ($q) use ($year) {
             $q->whereYear('start_date', $year);

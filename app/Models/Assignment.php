@@ -8,36 +8,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Schema;
 
 class Assignment extends Model
 {
     use HasFactory;
 
-    /**
-     * Cache per il nome del campo user
-     */
-    protected static ?string $userFieldCache = null;
-
-    /**
-     * Restituisce il nome del campo per l'utente/arbitro.
-     * Centralizza la logica: usa 'user_id' se esiste, altrimenti 'referee_id'.
-     */
-    public static function getUserField(): string
-    {
-        if (self::$userFieldCache === null) {
-            self::$userFieldCache = Schema::hasColumn('assignments', 'user_id')
-                ? 'user_id'
-                : 'referee_id';
-        }
-
-        return self::$userFieldCache;
-    }
-
     protected $fillable = [
         'tournament_id',
         'user_id',
-        'referee_id',
         'role',
         'assigned_at',
         'assigned_by',
@@ -61,38 +39,28 @@ class Assignment extends Model
         return $this->belongsTo(Tournament::class);
     }
 
-    // Relazione principale con user
+    /**
+     * Relazione con l'utente/arbitro assegnato
+     */
     public function user()
     {
-        return $this->belongsTo(User::class, self::getUserField());
-
+        return $this->belongsTo(User::class, 'user_id');
     }
 
-    // Alias per retrocompatibilità
+    /**
+     * Alias per retrocompatibilità con codice legacy
+     * @deprecated Usare user() invece
+     */
     public function referee()
     {
         return $this->user();
     }
 
+    /**
+     * Relazione con l'utente che ha creato l'assegnazione
+     */
     public function assignedBy()
     {
-        return $this->belongsTo(User::class, 'assigned_by_id');
-    }
-
-    /**
-     * ACCESSORS
-     */
-
-    // Ottieni user_id indipendentemente dal nome del campo
-    public function getUserIdAttribute()
-    {
-        if (isset($this->attributes['user_id'])) {
-            return $this->attributes['user_id'];
-        }
-        if (isset($this->attributes['referee_id'])) {
-            return $this->attributes['referee_id'];
-        }
-
-        return null;
+        return $this->belongsTo(User::class, 'assigned_by');
     }
 }

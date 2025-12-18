@@ -35,12 +35,8 @@ class ClubController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('city', 'like', "%{$search}%");
-
-                // Se esiste la colonna code
-                if (Schema::hasColumn('clubs', 'code')) {
-                    $q->orWhere('code', 'like', "%{$search}%");
-                }
+                    ->orWhere('city', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%");
             });
         }
 
@@ -132,22 +128,15 @@ class ClubController extends Controller
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'website' => 'nullable|url|max:255',
+            'code' => 'nullable|string|max:20|unique:clubs',
+            'is_active' => 'boolean',
         ];
-
-        // Aggiungi validazione per campi opzionali se esistono
-        if (Schema::hasColumn('clubs', 'code')) {
-            $rules['code'] = 'nullable|string|max:20|unique:clubs';
-        }
-
-        if (Schema::hasColumn('clubs', 'active')) {
-            $rules['active'] = 'boolean';
-        }
 
         $validated = $request->validate($rules);
 
-        // Imposta defaults se necessario
-        if (Schema::hasColumn('clubs', 'active') && ! isset($validated['active'])) {
-            $validated['active'] = true;
+        // Imposta default per is_active
+        if (! isset($validated['is_active'])) {
+            $validated['is_active'] = true;
         }
 
         $club = Club::create($validated);
@@ -202,16 +191,9 @@ class ClubController extends Controller
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
             'website' => 'nullable|url|max:255',
+            'code' => 'nullable|string|max:20|unique:clubs,code,'.$club->id,
+            'is_active' => 'boolean',
         ];
-
-        // Validazione campi opzionali
-        if (Schema::hasColumn('clubs', 'code')) {
-            $rules['code'] = 'nullable|string|max:20|unique:clubs,code,'.$club->id;
-        }
-
-        if (Schema::hasColumn('clubs', 'active')) {
-            $rules['active'] = 'boolean';
-        }
 
         $validated = $request->validate($rules);
 
@@ -248,9 +230,6 @@ class ClubController extends Controller
      */
     public function toggleActive(Club $club)
     {
-        if (! Schema::hasColumn('clubs', 'active')) {
-            return back()->with('error', 'Funzionalità non disponibile');
-        }
 
         $user = auth()->user();
 

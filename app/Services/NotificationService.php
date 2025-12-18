@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\ZoneHelper;
 use App\Mail\ClubNotificationMail;
 use App\Mail\InstitutionalNotificationMail;
 use App\Mail\RefereeAssignmentMail;
@@ -340,7 +341,7 @@ class NotificationService
         }
 
         $attachments = [];
-        $zone = $this->getZoneFolder($notification->tournament);
+        $zone = ZoneHelper::getFolderCodeForTournament($notification->tournament);
         $basePath = storage_path("app/public/convocazioni/{$zone}/generated/");
 
         // Aggiungi lettera circolo
@@ -364,7 +365,7 @@ class NotificationService
         }
 
         $attachments = [];
-        $zone = $this->getZoneFolder($notification->tournament);
+        $zone = ZoneHelper::getFolderCodeForTournament($notification->tournament);
         $basePath = storage_path("app/public/convocazioni/{$zone}/generated/");
 
         // Aggiungi convocazione
@@ -379,25 +380,5 @@ class NotificationService
         }
 
         return $attachments;
-    }
-
-    // Helper locale per determinare la cartella della zona (senza FileStorageService)
-    private function getZoneFolder(Tournament $tournament): string
-    {
-        if ($tournament->is_national || ($tournament->tournamentType && $tournament->tournamentType->is_national)) {
-            return 'CRC';
-        }
-        $zoneId = $tournament->club->zone_id ?? $tournament->zone_id;
-
-        return match ($zoneId) {
-            1 => 'SZR1',
-            2 => 'SZR2',
-            3 => 'SZR3',
-            4 => 'SZR4',
-            5 => 'SZR5',
-            6 => 'SZR6',
-            7 => 'SZR7',
-            default => 'SZR'.$zoneId,
-        };
     }
 }

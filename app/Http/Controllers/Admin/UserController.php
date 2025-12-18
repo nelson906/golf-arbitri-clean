@@ -36,8 +36,8 @@ class UserController extends Controller
             $query->where('user_type', $request->user_type);
         }
 
-        // Filtro per livello (se esiste la colonna)
-        if ($request->filled('level') && Schema::hasColumn('users', 'level')) {
+        // Filtro per livello
+        if ($request->filled('level')) {
             $query->where('level', $request->level);
         }
         if (request('sort')) {
@@ -63,12 +63,8 @@ class UserController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-
-                // Aggiungi referee_code solo se la colonna esiste
-                if (Schema::hasColumn('users', 'referee_code')) {
-                    $q->orWhere('referee_code', 'like', "%{$search}%");
-                }
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('referee_code', 'like', "%{$search}%");
             });
         }
 
@@ -195,28 +191,12 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'zone_id' => 'required|exists:zones,id',
+            'referee_code' => 'nullable|string|max:20|unique:users',
+            'level' => 'required|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio',
+            'phone' => 'nullable|string|max:20',
+            'city' => 'nullable|string|max:255',
+            'club_member' => 'nullable|string|max:255',
         ];
-
-        // Aggiungi validazione per campi opzionali se esistono
-        if (Schema::hasColumn('users', 'referee_code')) {
-            $rules['referee_code'] = 'nullable|string|max:20|unique:users';
-        }
-
-        if (Schema::hasColumn('users', 'level')) {
-            $rules['level'] = 'required|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio';
-        }
-
-        if (Schema::hasColumn('users', 'phone')) {
-            $rules['phone'] = 'nullable|string|max:20';
-        }
-
-        if (Schema::hasColumn('users', 'city')) {
-            $rules['city'] = 'nullable|string|max:255';
-        }
-
-        if (Schema::hasColumn('users', 'club_member')) {
-            $rules['club_member'] = 'nullable|string|max:255';
-        }
 
         $validated = $request->validate($rules);
 
@@ -226,8 +206,8 @@ class UserController extends Controller
         // Imposta tipo utente predefinito (referee)
         $validated['user_type'] = 'referee';
 
-        // Genera codice arbitro se la colonna esiste e non è fornito
-        if (Schema::hasColumn('users', 'referee_code') && empty($validated['referee_code'])) {
+        // Genera codice arbitro se non è fornito
+        if (empty($validated['referee_code'])) {
             $lastUser = User::orderBy('id', 'desc')->first();
             $nextId = $lastUser ? $lastUser->id + 1 : 1;
             $validated['referee_code'] = 'REF'.str_pad($nextId, 4, '0', STR_PAD_LEFT);
@@ -301,34 +281,14 @@ class UserController extends Controller
             $rules['password'] = 'string|min:8|confirmed';
         }
 
-        // Campi opzionali
-        if (\Schema::hasColumn('users', 'referee_code')) {
-            $rules['referee_code'] = 'nullable|string|max:20|unique:users,referee_code,'.$user->id;
-        }
-
-        if (\Schema::hasColumn('users', 'level')) {
-            $rules['level'] = 'nullable|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio';
-        }
-
-        if (\Schema::hasColumn('users', 'phone')) {
-            $rules['phone'] = 'nullable|string|max:20';
-        }
-
-        if (\Schema::hasColumn('users', 'gender')) {
-            $rules['gender'] = 'nullable|in:male,female,mixed';
-        }
-
-        if (\Schema::hasColumn('users', 'notes')) {
-            $rules['notes'] = 'nullable|string';
-        }
-
-        if (\Schema::hasColumn('users', 'city')) {
-            $rules['city'] = 'nullable|string|max:255';
-        }
-
-        if (\Schema::hasColumn('users', 'club_member')) {
-            $rules['club_member'] = 'nullable|string|max:255';
-        }
+            'referee_code' => 'nullable|string|max:20|unique:users,referee_code,'.$user->id,
+            'level' => 'nullable|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio',
+            'phone' => 'nullable|string|max:20',
+            'gender' => 'nullable|in:male,female,mixed',
+            'notes' => 'nullable|string',
+            'city' => 'nullable|string|max:255',
+            'club_member' => 'nullable|string|max:255',
+        ];
         $validated = $request->validate($rules);
 
         // Hash password se fornita

@@ -97,27 +97,19 @@ class User extends Authenticatable
     // Assegnazioni
     public function assignments()
     {
-        return $this->hasMany(Assignment::class, Assignment::getUserField());
-
+        return $this->hasMany(Assignment::class, 'user_id');
     }
 
     // Disponibilità
     public function availabilities()
     {
-        if (Schema::hasTable('availabilities')) {
-            $foreignKey = Schema::hasColumn('availabilities', 'user_id') ? 'user_id' : 'referee_id';
-
-            return $this->hasMany(Availability::class, $foreignKey);
-        }
-
-        // Return empty collection if table doesn't exist
-        return $this->newCollection();
+        return $this->hasMany(Availability::class, 'user_id');
     }
 
     // Tornei (attraverso assignments)
     public function tournaments()
     {
-        return $this->belongsToMany(Tournament::class, 'assignments', Assignment::getUserField(), 'tournament_id')
+        return $this->belongsToMany(Tournament::class, 'assignments', 'user_id', 'tournament_id')
             ->withPivot('role', 'notes')
             ->withTimestamps();
     }

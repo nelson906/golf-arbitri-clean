@@ -144,17 +144,15 @@ class AssignmentController extends Controller
      */
     public function store(Request $request)
     {
-        $userField = Assignment::getUserField();
-
         $validated = $request->validate([
             'tournament_id' => 'required|exists:tournaments,id',
-            $userField => 'required|exists:users,id',
+            'user_id' => 'required|exists:users,id',
             'role' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
         ]);
 
         $exists = Assignment::where('tournament_id', $validated['tournament_id'])
-            ->where($userField, $validated[$userField])
+            ->where('user_id', $validated['user_id'])
             ->exists();
 
         if ($exists) {
@@ -252,10 +250,8 @@ class AssignmentController extends Controller
     {
         $this->checkAssignmentAccess($assignment);
 
-        $userField = Assignment::getUserField();
-
         $validated = $request->validate([
-            $userField => 'required|exists:users,id',
+            'user_id' => 'required|exists:users,id',
             'role' => 'required|string|max:100',
             'notes' => 'nullable|string|max:1000',
         ]);
@@ -342,10 +338,8 @@ class AssignmentController extends Controller
             $tournament->zone_id = $tournament->club->zone_id;
         }
 
-        // Carica tipo torneo se esiste
-        if (Schema::hasColumn('tournaments', 'tournament_type_id')) {
-            $tournament->load('tournamentType');
-        }
+        // Carica tipo torneo
+        $tournament->load('tournamentType');
 
         // Ottieni arbitri già assegnati
         $assignedReferees = $this->getAssignedReferees($tournament);
@@ -383,13 +377,9 @@ class AssignmentController extends Controller
                     $assignment->name = $assignment->user->name;
                     $assignment->email = $assignment->user->email;
 
-                    // Campi opzionali
-                    if (Schema::hasColumn('users', 'referee_code')) {
-                        $assignment->referee_code = $assignment->user->referee_code;
-                    }
-                    if (Schema::hasColumn('users', 'level')) {
-                        $assignment->level = $assignment->user->level;
-                    }
+                    // Campi user standard
+                    $assignment->referee_code = $assignment->user->referee_code;
+                    $assignment->level = $assignment->user->level;
 
                     // Usa user_id o referee_id a seconda della struttura
                     $assignment->user_id = $assignment->user->id;
@@ -409,24 +399,13 @@ class AssignmentController extends Controller
         $query = User::with('zone')
             ->where('user_type', 'referee');
 
-        // Controlla se esiste la tabella availabilities
-        if (Schema::hasTable('availabilities')) {
-            $query->whereHas('availabilities', function ($q) use ($tournament) {
-                $q->where('tournament_id', $tournament->id);
+        // Filtra per disponibilità dichiarata
+        $query->whereHas('availabilities', function ($q) use ($tournament) {
+            $q->where('tournament_id', $tournament->id);
+        });
 
-                // Se esiste il campo is_available
-                if (Schema::hasColumn('availabilities', 'is_available')) {
-                    $q->where('is_available', true);
-                }
-            });
-        }
-
-        // Filtra attivi (gestisci diversi nomi del campo)
-        if (Schema::hasColumn('users', 'is_active')) {
-            $query->where('is_active', true);
-        } elseif (Schema::hasColumn('users', 'active')) {
-            $query->where('active', true);
-        }
+        // Filtra solo arbitri attivi
+        $query->where('is_active', true);
 
         // Escludi già assegnati
         if (! empty($excludeIds)) {
@@ -449,19 +428,13 @@ class AssignmentController extends Controller
             $query->where('zone_id', $tournament->zone_id);
         }
 
-        // Escludi quelli che hanno già dichiarato (se la tabella esiste)
-        if (Schema::hasTable('availabilities')) {
-            $query->whereDoesntHave('availabilities', function ($q) use ($tournament) {
-                $q->where('tournament_id', $tournament->id);
-            });
-        }
+        // Escludi quelli che hanno già dichiarato disponibilità
+        $query->whereDoesntHave('availabilities', function ($q) use ($tournament) {
+            $q->where('tournament_id', $tournament->id);
+        });
 
-        // Filtra attivi
-        if (Schema::hasColumn('users', 'is_active')) {
-            $query->where('is_active', true);
-        } elseif (Schema::hasColumn('users', 'active')) {
-            $query->where('active', true);
-        }
+        // Filtra solo arbitri attivi
+        $query->where('is_active', true);
 
         // Escludi già assegnati
         if (! empty($excludeIds)) {
@@ -485,16 +458,10 @@ class AssignmentController extends Controller
             ->where('user_type', 'referee');
 
         // Filtra per livello nazionale/internazionale
-        if (Schema::hasColumn('users', 'level')) {
-            $query->whereIn('level', ['N', 'I', 'nazionale', 'internazionale']);
-        }
+        $query->whereIn('level', ['Nazionale', 'Internazionale']);
 
-        // Filtra attivi
-        if (Schema::hasColumn('users', 'is_active')) {
-            $query->where('is_active', true);
-        } elseif (Schema::hasColumn('users', 'active')) {
-            $query->where('active', true);
-        }
+        // Filtra solo arbitri attivi
+        $query->where('is_active', true);
 
         // Escludi già assegnati
         if (! empty($excludeIds)) {
@@ -524,7 +491,6 @@ class AssignmentController extends Controller
             'roles.*' => 'nullable|string|max:100',
         ]);
 
-        $userField = Assignment::getUserField();
         $created = 0;
         $skipped = 0;
 
@@ -534,33 +500,21 @@ class AssignmentController extends Controller
             foreach ($request->referee_ids as $refereeId) {
                 // Verifica se esiste già
                 $exists = Assignment::where('tournament_id', $tournament->id)
-                    ->where($userField, $refereeId)
+                    ->where('user_id', $refereeId)
                     ->exists();
 
                 if (! $exists) {
                     // Default role è 'Arbitro' se non specificato
-
                     $role = $request->roles[$refereeId] ?? 'Arbitro';
 
                     $data = [
-
                         'tournament_id' => $tournament->id,
-
-                        $userField => $refereeId,
-
+                        'user_id' => $refereeId,
                         'role' => $role,
-
+                        'assigned_at' => now(),
+                        'assigned_by' => auth()->id(),
+                        'status' => 'assigned',
                     ];
-
-                    if (Schema::hasColumn('assignments', 'assigned_at')) {
-                        $data['assigned_at'] = now();
-                    }
-                    if (Schema::hasColumn('assignments', 'assigned_by')) {
-                        $data['assigned_by'] = auth()->id();
-                    }                    // Aggiungi status se il campo esiste
-                    if (Schema::hasColumn('assignments', 'status')) {
-                        $data['status'] = 'pending';
-                    }
 
                     Assignment::create($data);
                     $created++;
@@ -621,10 +575,8 @@ class AssignmentController extends Controller
      */
     public function removeFromTournament(Tournament $tournament, User $referee)
     {
-        $userField = Assignment::getUserField();
-
         $assignment = Assignment::where('tournament_id', $tournament->id)
-            ->where($userField, $referee->id)
+            ->where('user_id', $referee->id)
             ->first();
 
         if ($assignment) {
@@ -657,10 +609,8 @@ class AssignmentController extends Controller
         foreach ($referees as $referee) {
             $referee->has_conflicts = false; // Default: nessun conflitto
 
-            // Se il campo date esiste, controlla conflitti
-            if (Schema::hasColumn('tournaments', 'date') && isset($tournament->date)) {
-                // Logica per verificare conflitti...
-            }
+            // Verifica conflitti di date (usando start_date/end_date)
+            // La logica di conflitto può essere implementata se necessario
         }
     }
 

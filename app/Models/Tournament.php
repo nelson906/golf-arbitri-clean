@@ -20,7 +20,7 @@ class Tournament extends Model
         'club_id',
         'name',
         'tournament_type_id',
-        'zone_id',
+        // 'zone_id' rimosso - viene calcolato dinamicamente da club->zone_id
         'start_date',
         'end_date',
         'availability_deadline',
@@ -33,6 +33,13 @@ class Tournament extends Model
         'start_date' => 'datetime',
         'date' => 'date',
         'end_date' => 'datetime',
+    ];
+
+    /**
+     * Attributi da appendere automaticamente quando il model viene serializzato
+     */
+    protected $appends = [
+        'zone_id',
     ];
 
     /**
@@ -92,10 +99,29 @@ class Tournament extends Model
         );
     }
 
-    // Getter per zone_id (per retrocompatibilità)
+    /**
+     * Getter per zone_id - calcolato dinamicamente dal club associato
+     * 
+     * IMPORTANTE: zone_id NON è un campo del DB per tournaments, ma viene
+     * calcolato dalla relazione con club. Questo evita inconsistenze e
+     * garantisce che la zona sia sempre sincronizzata con il circolo.
+     * 
+     * @return int|null
+     */
     public function getZoneIdAttribute()
     {
-        return $this->club ? $this->club->zone_id : null;
+        // Se il club è già caricato, usa quello
+        if ($this->relationLoaded('club') && $this->club) {
+            return $this->club->zone_id;
+        }
+        
+        // Altrimenti carica il club per ottenere la zona
+        if ($this->club_id) {
+            $club = $this->club()->first();
+            return $club ? $club->zone_id : null;
+        }
+        
+        return null;
     }
 
     // Relazione con tipo torneo
@@ -119,7 +145,7 @@ class Tournament extends Model
     // Arbitri assegnati
     public function referees()
     {
-        return $this->belongsToMany(User::class, 'assignments', 'tournament_id', Assignment::getUserField())
+        return $this->belongsToMany(User::class, 'assignments', 'tournament_id', 'user_id')
             ->withPivot('role', 'notes')
             ->withTimestamps();
     }

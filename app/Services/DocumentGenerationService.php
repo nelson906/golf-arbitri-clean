@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\ZoneHelper;
 use App\Http\Helpers\RefereeRoleHelper;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
@@ -18,27 +19,7 @@ class DocumentGenerationService
      */
     public function getZoneFolder(Tournament $tournament): string
     {
-        // Se è nazionale, va in CRC
-        if (
-            $tournament->is_national ||
-            ($tournament->tournamentType && $tournament->tournamentType->is_national)
-        ) {
-            return 'CRC';
-        }
-
-        // Altrimenti usa la zona del circolo
-        $zoneId = $tournament->club->zone_id ?? $tournament->zone_id;
-
-        return match ($zoneId) {
-            1 => 'SZR1',
-            2 => 'SZR2',
-            3 => 'SZR3',
-            4 => 'SZR4',
-            5 => 'SZR5',
-            6 => 'SZR6',
-            7 => 'SZR7',
-            default => 'SZR'.$zoneId
-        };
+        return ZoneHelper::getFolderCodeForTournament($tournament);
     }
 
     /**
