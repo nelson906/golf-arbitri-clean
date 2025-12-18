@@ -8,7 +8,6 @@ use App\Models\Zone;
 use App\Traits\HasZoneVisibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 class ClubController extends Controller
 {

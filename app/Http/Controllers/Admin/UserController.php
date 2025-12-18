@@ -274,13 +274,6 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             'user_type' => 'required|in:referee,admin'.($isNationalAdmin ? ',national_admin,super_admin' : ''),
             'zone_id' => 'required|exists:zones,id',
-        ];
-
-        // Password opzionale in update
-        if ($request->filled('password')) {
-            $rules['password'] = 'string|min:8|confirmed';
-        }
-
             'referee_code' => 'nullable|string|max:20|unique:users,referee_code,'.$user->id,
             'level' => 'nullable|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio',
             'phone' => 'nullable|string|max:20',
@@ -289,6 +282,10 @@ class UserController extends Controller
             'city' => 'nullable|string|max:255',
             'club_member' => 'nullable|string|max:255',
         ];
+        // Password opzionale in update
+        if ($request->filled('password')) {
+            $rules['password'] = 'string|min:8|confirmed';
+        }
         $validated = $request->validate($rules);
 
         // Hash password se fornita

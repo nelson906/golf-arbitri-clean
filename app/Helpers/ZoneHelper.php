@@ -12,25 +12,24 @@ class ZoneHelper
     /**
      * Ottiene il codice cartella per una zona specifica
      *
-     * @param int|null $zoneId ID della zona
+     * @param  int|null  $zoneId  ID della zona
      * @return string Codice cartella (es. 'SZR1', 'SZR2', ecc.)
      */
     public static function getFolderCode(?int $zoneId): string
     {
-        if (!$zoneId) {
+        if (! $zoneId) {
             return 'SZR0';
         }
 
         $mapping = config('golf.zones.folder_mapping', []);
-        
-        return $mapping[$zoneId] ?? 'SZR' . $zoneId;
+
+        return $mapping[$zoneId] ?? 'SZR'.$zoneId;
     }
 
     /**
      * Ottiene il codice cartella per un torneo
      * Se il torneo è nazionale, restituisce il codice CRC
      *
-     * @param Tournament $tournament
      * @return string Codice cartella
      */
     public static function getFolderCodeForTournament(Tournament $tournament): string
@@ -42,72 +41,59 @@ class ZoneHelper
 
         // Altrimenti usa la zona del circolo
         $zoneId = $tournament->club->zone_id ?? $tournament->zone_id;
-        
+
         return self::getFolderCode($zoneId);
     }
 
     /**
      * Verifica se un torneo è nazionale
-     *
-     * @param Tournament $tournament
-     * @return bool
      */
     public static function isTournamentNational(Tournament $tournament): bool
     {
-        return $tournament->is_national 
+        return $tournament->is_national
             || ($tournament->tournamentType && $tournament->tournamentType->is_national);
     }
 
     /**
      * Ottiene tutti i codici cartella disponibili
-     *
-     * @return array
      */
     public static function getAllFolderCodes(): array
     {
         $mapping = config('golf.zones.folder_mapping', []);
         $nationalCode = config('golf.zones.national_folder_code', 'CRC');
-        
+
         return array_merge(array_values($mapping), [$nationalCode]);
     }
 
     /**
      * Ottiene il nome della zona dato l'ID
-     *
-     * @param int|null $zoneId
-     * @return string
      */
     public static function getZoneName(?int $zoneId): string
     {
-        if (!$zoneId) {
+        if (! $zoneId) {
             return 'Zona Non Specificata';
         }
 
         // Carica dal database se necessario
         $zone = \App\Models\Zone::find($zoneId);
-        
+
         return $zone ? $zone->name : "Zona {$zoneId}";
     }
 
     /**
      * Ottiene l'email pattern per una zona
-     *
-     * @param int $zoneId
-     * @return string
      */
     public static function getEmailPattern(int $zoneId): string
     {
         $pattern = config('golf.zones.default_email_pattern', 'szr{zone_id}@federgolf.it');
-        
+
         return str_replace('{zone_id}', $zoneId, $pattern);
     }
 
     /**
      * Verifica se un utente ha accesso a una zona specifica
      *
-     * @param \App\Models\User $user
-     * @param int $zoneId
-     * @return bool
+     * @param  \App\Models\User  $user
      */
     public static function userHasAccessToZone($user, int $zoneId): bool
     {

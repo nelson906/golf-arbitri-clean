@@ -49,6 +49,7 @@ class Assignment extends Model
 
     /**
      * Alias per retrocompatibilità con codice legacy
+     *
      * @deprecated Usare user() invece
      */
     public function referee()

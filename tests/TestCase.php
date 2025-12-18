@@ -26,11 +26,11 @@ abstract class TestCase extends BaseTestCase
     protected function assertDatabaseIsTest(): void
     {
         $connection = config('database.default');
-        
+
         // Se non è SQLite in memoria, verifica che sia un database di test
         if ($connection !== 'sqlite' || config('database.connections.sqlite.database') !== ':memory:') {
             $dbName = config("database.connections.{$connection}.database");
-            
+
             // Il database deve contenere 'test' nel nome o essere :memory:
             $this->assertTrue(
                 str_contains(strtolower($dbName), 'test') || $dbName === ':memory:',

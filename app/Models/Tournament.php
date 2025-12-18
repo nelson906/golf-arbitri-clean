@@ -101,11 +101,11 @@ class Tournament extends Model
 
     /**
      * Getter per zone_id - calcolato dinamicamente dal club associato
-     * 
+     *
      * IMPORTANTE: zone_id NON è un campo del DB per tournaments, ma viene
      * calcolato dalla relazione con club. Questo evita inconsistenze e
      * garantisce che la zona sia sempre sincronizzata con il circolo.
-     * 
+     *
      * @return int|null
      */
     public function getZoneIdAttribute()
@@ -114,13 +114,14 @@ class Tournament extends Model
         if ($this->relationLoaded('club') && $this->club) {
             return $this->club->zone_id;
         }
-        
+
         // Altrimenti carica il club per ottenere la zona
         if ($this->club_id) {
             $club = $this->club()->first();
+
             return $club ? $club->zone_id : null;
         }
-        
+
         return null;
     }
 
