@@ -110,7 +110,8 @@
     @endif
 
     {{-- Form Assegnazione --}}
-<form id="assignmentForm" action="{{ route('admin.assignments.storeMultiple', $tournament) }}" method="POST">RiprovaClaude può commettere errori. Verifica sempre le risposte con attenzione.        @csrf
+<form id="assignmentForm" action="{{ route('admin.assignments.storeMultiple', $tournament) }}" method="POST">
+           @csrf
 
         {{-- Arbitri Disponibili --}}
         @if($availableReferees && $availableReferees->count() > 0)
