@@ -19,7 +19,7 @@ return new class extends Migration
         // Questa migration è solo documentativa per MySQL
         // SQLite non supporta MODIFY, quindi skippiamo per SQLite
         $driver = Schema::getConnection()->getDriverName();
-        
+
         if ($driver === 'mysql' && Schema::hasColumn('tournaments', 'zone_id')) {
             DB::statement('ALTER TABLE tournaments MODIFY zone_id BIGINT UNSIGNED NULL COMMENT "DEPRECATO: Usare accessor zone_id che calcola da club->zone_id"');
         }
@@ -41,7 +41,7 @@ return new class extends Migration
     {
         // Rimuovi il commento (solo per MySQL)
         $driver = Schema::getConnection()->getDriverName();
-        
+
         if ($driver === 'mysql' && Schema::hasColumn('tournaments', 'zone_id')) {
             DB::statement('ALTER TABLE tournaments MODIFY zone_id BIGINT UNSIGNED NULL');
         }

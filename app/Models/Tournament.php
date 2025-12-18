@@ -20,7 +20,7 @@ class Tournament extends Model
         'club_id',
         'name',
         'tournament_type_id',
-        // 'zone_id' rimosso - viene calcolato dinamicamente da club->zone_id
+        'zone_id', // Manteniamo per compatibilità - viene popolato automaticamente da club->zone_id
         'start_date',
         'end_date',
         'availability_deadline',
@@ -100,25 +100,30 @@ class Tournament extends Model
     }
 
     /**
-     * Getter per zone_id - calcolato dinamicamente dal club associato
+     * Getter per zone_id - preferisce il valore del club se disponibile
      *
-     * IMPORTANTE: zone_id NON è un campo del DB per tournaments, ma viene
-     * calcolato dalla relazione con club. Questo evita inconsistenze e
-     * garantisce che la zona sia sempre sincronizzata con il circolo.
+     * IMPORTANTE: zone_id è salvato nel DB per performance, ma questo accessor
+     * garantisce che venga sempre letto dal club associato quando disponibile,
+     * mantenendo la sincronizzazione. Durante il salvataggio, zone_id viene
+     * popolato dal controller in base al club selezionato.
      *
      * @return int|null
      */
     public function getZoneIdAttribute()
     {
-        // Se il club è già caricato, usa quello
+        // Se il club è già caricato, usa sempre quello (source of truth)
         if ($this->relationLoaded('club') && $this->club) {
             return $this->club->zone_id;
         }
 
-        // Altrimenti carica il club per ottenere la zona
+        // Se c'è un valore nel DB, usalo (evita query extra)
+        if (isset($this->attributes['zone_id'])) {
+            return $this->attributes['zone_id'];
+        }
+
+        // Fallback: carica il club per ottenere la zona
         if ($this->club_id) {
             $club = $this->club()->first();
-
             return $club ? $club->zone_id : null;
         }
 

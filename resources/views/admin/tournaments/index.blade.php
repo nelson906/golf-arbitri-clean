@@ -240,10 +240,10 @@
                                     <a href="{{ route('admin.tournaments.show', $tournament) }}"
                                         class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700">Gestione Torneo</a>
 
-                                    {{-- <a href="{{ route('admin.assignments.assign-referees', $tournament) }}"
+                                    <a href="{{ route('admin.assignments.assign-referees', $tournament) }}"
                                         class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
-                                        👥 Assegna Comitato
-                                    </a> --}}
+                                        👥 Assegna Arbitri
+                                    </a>
 
                                     {{-- @if ($tournament->assignments()->count() > 0)
                                         <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">

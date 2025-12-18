@@ -3,19 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\InstitutionalEmail;
-use App\Models\NotificationClause;
-use App\Models\NotificationClauseSelection;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
-use App\Services\DocumentGenerationService;
+use App\Services\NotificationDocumentService;
+use App\Services\NotificationPreparationService;
 use App\Services\NotificationService;
+use App\Services\NotificationTransactionService;
 use App\Traits\HasZoneVisibility;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Gestione convocazioni collettive e lettere circoli (solo DOCX)
@@ -24,17 +20,12 @@ class NotificationController extends Controller
 {
     use HasZoneVisibility;
 
-    protected $notificationService;
-
-    protected $documentService;
-
     public function __construct(
-        NotificationService $notificationService,
-        DocumentGenerationService $documentService
-    ) {
-        $this->notificationService = $notificationService;
-        $this->documentService = $documentService;
-    }
+        private NotificationService $notificationService,
+        private NotificationPreparationService $preparationService,
+        private NotificationDocumentService $documentService,
+        private NotificationTransactionService $transactionService
+    ) {}
 
     /**
      * Lista notifiche con gestione documenti
@@ -55,28 +46,9 @@ class NotificationController extends Controller
         $query->orderBy('sent_at', 'desc');
         $tournamentNotifications = $query->paginate(20);
 
-        // Calcola il numero di destinatari e lista arbitri per ogni notifica
+        // Aggiorna info destinatari per ogni notifica
         foreach ($tournamentNotifications as $notification) {
-            // Lista nomi arbitri
-            $refereeNames = $notification->tournament->assignments
-                ->map(function ($assignment) {
-                    return $assignment->user->name;
-                })->implode(', ');
-
-            // Calcola numero destinatari
-            $total = $notification->tournament->assignments->count() + 1; // arbitri + circolo
-
-            // Aggiorna i campi nel database se necessario
-            if (empty($notification->referee_list) || $notification->total_recipients != $total) {
-                $notification->update([
-                    'referee_list' => $refereeNames,
-                    'total_recipients' => $total,
-                ]);
-
-                // Aggiorna anche l'oggetto in memoria
-                $notification->referee_list = $refereeNames;
-                $notification->total_recipients = $total;
-            }
+            $this->preparationService->updateRecipientInfo($notification);
         }
 
         return view('admin.tournament-notifications.index', compact('tournamentNotifications'));
@@ -94,49 +66,12 @@ class NotificationController extends Controller
         }
 
         // Prepara o recupera la notifica
-        $notification = TournamentNotification::firstOrCreate(
-            ['tournament_id' => $tournament->id],
-            [
-                'status' => 'pending',
-                'referee_list' => $tournament->assignments->pluck('user.name')->implode(', '),
-                'total_recipients' => $tournament->assignments->count() + 1,
-                'sent_by' => auth()->id(),
-            ]
-        );
+        $notification = $this->preparationService->prepareNotification($tournament);
 
         // Genera documenti se non esistono
         if (empty($notification->documents)) {
             try {
-                $documents = [];
-                // Genera DOCX convocazione
-                $convocationData = $this->documentService->generateConvocationForTournament($tournament);
-                $zone = $this->getZoneFolder($tournament);
-                $convFileName = basename($convocationData['path']);
-                $convDestPath = "convocazioni/{$zone}/generated/{$convFileName}";
-
-                // Assicurati che la directory esista
-                $fullDestDir = Storage::disk('public')->path(dirname($convDestPath));
-                if (! is_dir($fullDestDir)) {
-                    mkdir($fullDestDir, 0755, true);
-                }
-
-                // Copia il file binario direttamente (preserva integrità DOCX)
-                $fullDestPath = Storage::disk('public')->path($convDestPath);
-                copy($convocationData['path'], $fullDestPath);
-                unlink($convocationData['path']); // Elimina il file temporaneo
-                $documents['convocation'] = $convFileName;
-
-                // Genera DOCX lettera circolo
-                $clubDocData = $this->documentService->generateClubDocument($tournament);
-                $clubFileName = basename($clubDocData['path']);
-                $clubDestPath = "convocazioni/{$zone}/generated/{$clubFileName}";
-
-                // Copia il file binario direttamente (preserva integrità DOCX)
-                $fullClubDestPath = Storage::disk('public')->path($clubDestPath);
-                copy($clubDocData['path'], $fullClubDestPath);
-                unlink($clubDocData['path']); // Elimina il file temporaneo
-                $documents['club_letter'] = $clubFileName;
-
+                $documents = $this->documentService->generateInitialDocuments($tournament, $notification);
                 $notification->update(['documents' => $documents]);
             } catch (\Exception $e) {
                 Log::error('Error generating documents in assignment form', [
@@ -148,48 +83,19 @@ class NotificationController extends Controller
             }
         }
 
-        // Carica gli arbitri assegnati
-        $assignedReferees = $tournament->referees()->get();
-
-        // Controlla stato documenti esistenti
-        $documents = is_string($notification->documents) ?
-            json_decode($notification->documents, true) : $notification->documents;
-        $documents = $documents ?? [];
-
-        $documentStatus = [
-            'hasConvocation' => isset($documents['convocation']) &&
-                Storage::disk('public')->exists('convocazioni/'.$this->getZoneFolder($tournament)."/generated/{$documents['convocation']}"),
-            'hasClubLetter' => isset($documents['club_letter']) &&
-                Storage::disk('public')->exists('convocazioni/'.$this->getZoneFolder($tournament)."/generated/{$documents['club_letter']}"),
-        ];
-
-        // Controlla se esistono documenti
+        // Controlla stato documenti
+        $documentStatus = $this->documentService->checkDocumentsExist($notification);
         $hasExistingConvocation = $documentStatus['hasConvocation'] || $documentStatus['hasClubLetter'];
 
-        // Carica email istituzionali
-        $institutionalEmails = InstitutionalEmail::where('is_active', true)
-            ->orderBy('category')
-            ->orderBy('name')
-            ->get();
-        $groupedEmails = $institutionalEmails->groupBy('category');
+        // Carica dati per il form
+        $formData = $this->preparationService->loadFormData($tournament);
 
-        // Carica clausole disponibili
-        $availableClauses = NotificationClause::active()
-            ->ordered()
-            ->get()
-            ->groupBy('applies_to')
-            ->toArray();
-
-        return view('admin.notifications.prepare_notification', [
+        return view('admin.notifications.prepare_notification', array_merge([
             'tournament' => $tournament,
             'notification' => $notification,
-            'assignedReferees' => $assignedReferees,
             'documentStatus' => $documentStatus,
             'hasExistingConvocation' => $hasExistingConvocation,
-            'groupedEmails' => $groupedEmails,
-            'institutionalEmails' => $institutionalEmails,
-            'availableClauses' => $availableClauses,
-        ]);
+        ], $formData));
     }
 
     /**
@@ -198,44 +104,9 @@ class NotificationController extends Controller
     public function documentsStatus(TournamentNotification $notification)
     {
         try {
-            $tournament = $notification->tournament;
-            $documents = is_string($notification->documents) ?
-                json_decode($notification->documents, true) : $notification->documents;
-            $documents = $documents ?? [];
+            $status = $this->documentService->getDocumentsStatus($notification);
 
-            $zone = $this->getZoneFolder($tournament);
-            $response = [
-                'notification_id' => $notification->id,
-                'tournament_id' => $tournament->id,
-                'convocation' => null,
-                'club_letter' => null,
-            ];
-
-            // Check convocazione DOCX
-            if (! empty($documents['convocation'])) {
-                $path = "convocazioni/{$zone}/generated/{$documents['convocation']}";
-                if (Storage::disk('public')->exists($path)) {
-                    $response['convocation'] = [
-                        'filename' => $documents['convocation'],
-                        'generated_at' => Carbon::createFromTimestamp(Storage::disk('public')->lastModified($path))->format('d/m/Y H:i'),
-                        'size' => $this->formatBytes(Storage::disk('public')->size($path)),
-                    ];
-                }
-            }
-
-            // Check lettera circolo
-            if (! empty($documents['club_letter'])) {
-                $path = "convocazioni/{$zone}/generated/{$documents['club_letter']}";
-                if (Storage::disk('public')->exists($path)) {
-                    $response['club_letter'] = [
-                        'filename' => $documents['club_letter'],
-                        'generated_at' => Carbon::createFromTimestamp(Storage::disk('public')->lastModified($path))->format('d/m/Y H:i'),
-                        'size' => $this->formatBytes(Storage::disk('public')->size($path)),
-                    ];
-                }
-            }
-
-            return response()->json($response);
+            return response()->json($status);
         } catch (\Exception $e) {
             Log::error('Error checking documents status', [
                 'notification_id' => $notification->id,
@@ -251,58 +122,13 @@ class NotificationController extends Controller
      */
     public function generateDocument(Request $request, TournamentNotification $notification, $type)
     {
-        $tournament = $notification->tournament;
-
         try {
+            $fileName = $this->documentService->generateDocument($notification, $type);
+
+            // Aggiorna i documenti della notifica
             $documents = is_string($notification->documents) ?
-                json_decode($notification->documents, true) : $notification->documents;
-            $documents = $documents ?? [];
-
-            Log::info('Generating document', [
-                'type' => $type,
-                'notification_id' => $notification->id,
-                'tournament_id' => $tournament->id,
-                'current_documents' => $documents,
-            ]);
-
-            $zone = $this->getZoneFolder($tournament);
-
-            if ($type === 'convocation') {
-                $convocationData = $this->documentService->generateConvocationForTournament($tournament, $notification);
-                $convFileName = basename($convocationData['path']);
-                $destPath = "convocazioni/{$zone}/generated/{$convFileName}";
-                $fullDestDir = Storage::disk('public')->path(dirname($destPath));
-                if (! is_dir($fullDestDir)) {
-                    mkdir($fullDestDir, 0755, true);
-                }
-                copy($convocationData['path'], Storage::disk('public')->path($destPath));
-                if (file_exists($convocationData['path'])) {
-                    unlink($convocationData['path']);
-                }
-                $documents['convocation'] = $convFileName;
-            }
-
-            if ($type === 'club_letter') {
-                $docData = $this->documentService->generateClubDocument($tournament, $notification);
-                $clubFileName = basename($docData['path']);
-                $destPath = "convocazioni/{$zone}/generated/{$clubFileName}";
-                $fullDestDir = Storage::disk('public')->path(dirname($destPath));
-                if (! is_dir($fullDestDir)) {
-                    mkdir($fullDestDir, 0755, true);
-                }
-                copy($docData['path'], Storage::disk('public')->path($destPath));
-                if (file_exists($docData['path'])) {
-                    unlink($docData['path']);
-                }
-                $documents['club_letter'] = $clubFileName;
-            }
-
-            Log::info('Generated document', [
-                'type' => $type,
-                'documents' => $documents,
-                'zone' => $this->getZoneFolder($tournament),
-            ]);
-
+                json_decode($notification->documents, true) : ($notification->documents ?? []);
+            $documents[$type] = $fileName;
             $notification->update(['documents' => $documents]);
 
             // Get updated document status for UI refresh
@@ -316,7 +142,7 @@ class NotificationController extends Controller
         } catch (\Exception $e) {
             Log::error('Errore generazione documento', [
                 'type' => $type,
-                'tournament_id' => $tournament->id,
+                'notification_id' => $notification->id,
                 'error' => $e->getMessage(),
             ]);
 
@@ -333,22 +159,12 @@ class NotificationController extends Controller
     public function deleteDocument(Request $request, TournamentNotification $notification, $type)
     {
         try {
-            $tournament = $notification->tournament;
+            $this->documentService->deleteDocument($notification, $type);
+
+            // Aggiorna i documenti della notifica
             $documents = is_string($notification->documents)
                 ? json_decode($notification->documents, true)
                 : ($notification->documents ?? []);
-
-            if (empty($documents[$type])) {
-                return response()->json(['success' => false, 'message' => 'Documento non trovato'], 404);
-            }
-
-            $zone = $this->getZoneFolder($tournament);
-            $path = "convocazioni/{$zone}/generated/{$documents[$type]}";
-
-            if (Storage::disk('public')->exists($path)) {
-                Storage::disk('public')->delete($path);
-            }
-
             unset($documents[$type]);
             $notification->update(['documents' => $documents]);
 
@@ -377,37 +193,18 @@ class NotificationController extends Controller
     public function downloadDocument(TournamentNotification $notification, $type)
     {
         try {
-            $tournament = $notification->tournament;
-            $documents = is_string($notification->documents) ?
-                json_decode($notification->documents, true) : $notification->documents;
-            $documents = $documents ?? [];
+            $fullPath = $this->documentService->getDocumentPath($notification, $type);
 
-            if (empty($documents[$type])) {
-                throw new \Exception('Documento non trovato');
-            }
-
-            $zone = $this->getZoneFolder($tournament);
-            $path = "convocazioni/{$zone}/generated/{$documents[$type]}";
-            $fullPath = storage_path('app/public/'.$path);
-
-            if (! file_exists($fullPath)) {
-                throw new \Exception('File non trovato sul server');
-            }
-
-            // Log del download
             Log::info('Downloading document', [
                 'notification_id' => $notification->id,
                 'type' => $type,
-                'path' => $path,
             ]);
 
             $filename = $type === 'convocation' ? 'Convocazione.docx' : 'Lettera_Circolo.docx';
 
-            // Usa BinaryFileResponse per garantire integrità binaria
             return response()->file($fullPath, [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                 'Content-Disposition' => 'attachment; filename="'.$filename.'"',
-
             ]);
         } catch (\Exception $e) {
             Log::error('Error downloading document', [
@@ -432,24 +229,11 @@ class NotificationController extends Controller
         }
 
         try {
-            DB::beginTransaction();
-
-            Log::info('Sending notification', [
-                'notification_id' => $notification->id,
-                'metadata' => $notification->metadata,
-            ]);
-
-            // Invia la notifica tramite il servizio
-            $this->notificationService->send($notification);
-
-            DB::commit();
+            $this->transactionService->sendWithTransaction($notification);
 
             return redirect()->route('admin.tournament-notifications.index')
                 ->with('success', 'Notifiche inviate con successo');
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Errore invio notifiche: '.$e->getMessage());
-
             return redirect()->back()
                 ->with('error', 'Errore nell\'invio delle notifiche: '.$e->getMessage());
         }
@@ -461,19 +245,11 @@ class NotificationController extends Controller
     public function resend(TournamentNotification $notification)
     {
         try {
-            DB::beginTransaction();
-
-            // Forza il reinvio
-            $this->notificationService->send($notification, true);
-
-            DB::commit();
+            $this->transactionService->sendWithTransaction($notification, true);
 
             return redirect()->route('admin.tournament-notifications.index')
                 ->with('success', 'Notifiche reinviate con successo');
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Errore reinvio notifiche: '.$e->getMessage());
-
             return redirect()->back()
                 ->with('error', 'Errore nel reinvio delle notifiche: '.$e->getMessage());
         }
@@ -505,57 +281,11 @@ class NotificationController extends Controller
     public function destroy(TournamentNotification $notification)
     {
         try {
-            Log::info('Starting notification deletion', [
-                'notification_id' => $notification->id,
-                'tournament_id' => $notification->tournament_id,
-                'documents' => $notification->documents,
-            ]);
-
-            DB::beginTransaction();
-
-            // Rimuovi i file allegati se esistono
-            $documents = is_string($notification->documents)
-                ? json_decode($notification->documents, true)
-                : ($notification->documents ?? []);
-
-            if (! empty($documents)) {
-                $zone = $this->getZoneFolder($notification->tournament);
-                $basePath = "convocazioni/{$zone}/generated/";
-
-                // Aggiungi logging per debug
-                Log::info('Attempting to delete documents', [
-                    'zone' => $zone,
-                    'basePath' => $basePath,
-                    'documents' => $documents,
-                ]);
-
-                foreach (['convocation', 'club_letter'] as $type) {
-                    if (! empty($documents[$type])) {
-                        $path = $basePath.$documents[$type];
-                        if (Storage::disk('public')->exists($path)) {
-                            Storage::disk('public')->delete($path);
-                            Log::info("Deleted document: {$type}", ['path' => $path]);
-                        } else {
-                            Log::warning("Document not found: {$type}", ['path' => $path]);
-                        }
-                    }
-                }
-            }
-
-            // Elimina la notifica
-            $notification->delete();
-
-            DB::commit();
+            $this->transactionService->deleteWithCleanup($notification);
 
             return redirect()->route('admin.tournament-notifications.index')
                 ->with('success', 'Notifica eliminata con successo');
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error deleting notification', [
-                'notification_id' => $notification->id,
-                'error' => $e->getMessage(),
-            ]);
-
             return redirect()->back()->with('error', "Errore durante l'eliminazione della notifica: ".$e->getMessage());
         }
     }
@@ -571,31 +301,10 @@ class NotificationController extends Controller
         ]);
 
         try {
-            DB::beginTransaction();
-
-            // Rimuovi le selezioni precedenti
-            NotificationClauseSelection::where('tournament_notification_id', $notification->id)->delete();
-
-            $savedCount = 0;
-            if (! empty($validated['clauses'])) {
-                foreach ($validated['clauses'] as $placeholder => $clauseId) {
-                    if (! empty($clauseId)) {
-                        NotificationClauseSelection::create([
-                            'tournament_notification_id' => $notification->id,
-                            'clause_id' => $clauseId,
-                            'placeholder_code' => $placeholder,
-                        ]);
-                        $savedCount++;
-                    }
-                }
-            }
-
-            DB::commit();
-
-            Log::info('Clauses saved via AJAX', [
-                'notification_id' => $notification->id,
-                'saved_count' => $savedCount,
-            ]);
+            $savedCount = $this->preparationService->saveClauseSelections(
+                $notification,
+                $validated['clauses'] ?? []
+            );
 
             return response()->json([
                 'success' => true,
@@ -603,12 +312,6 @@ class NotificationController extends Controller
                 'saved_count' => $savedCount,
             ]);
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error saving clauses via AJAX', [
-                'notification_id' => $notification->id,
-                'error' => $e->getMessage(),
-            ]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Errore nel salvataggio delle clausole: '.$e->getMessage(),
@@ -621,11 +324,6 @@ class NotificationController extends Controller
      */
     public function sendAssignmentWithConvocation(Request $request, Tournament $tournament)
     {
-        Log::info('Starting sendAssignmentWithConvocation', [
-            'tournament_id' => $tournament->id,
-            'request_data' => $request->all(),
-        ]);
-
         $validated = $request->validate([
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
@@ -637,148 +335,35 @@ class NotificationController extends Controller
             'attach_convocation' => 'boolean',
             'clauses' => 'nullable|array',
             'clauses.*' => 'nullable|exists:notification_clauses,id',
-            'action' => 'nullable|string|in:save,send,preview',  // Nuova azione
+            'action' => 'nullable|string|in:save,send,preview',
         ]);
 
-        // Determina l'azione: 'save' = salva bozza, 'send' = invia subito, 'preview' = anteprima
         $action = $request->input('action', 'save');
 
         try {
-            DB::beginTransaction();
-
-            // Recupera o crea la notifica
+            // Recupera la notifica
             $notification = TournamentNotification::where('tournament_id', $tournament->id)
                 ->orderBy('created_at', 'desc')
                 ->firstOrFail();
 
-            // Salva i metadati per l'invio
+            // Prepara i dati per il salvataggio
             $metadata = [
-                'recipients' => [],
+                'subject' => $validated['subject'],
+                'message' => $validated['message'],
+                'attach_convocation' => $request->boolean('attach_convocation', true),
+                'recipients' => [
+                    'referees' => $request->input('recipients', []),
+                    'club' => $request->boolean('send_to_club', true),
+                    'institutional' => $request->input('fixed_addresses', []),
+                ],
             ];
 
-            Log::info('Current tournament assignments', [
-                'tournament_id' => $tournament->id,
-                'assignments' => $tournament->assignments()->with('user')->get()->map(function ($a) {
-                    return ['id' => $a->user_id, 'name' => $a->user->name, 'role' => $a->role];
-                })->toArray(),
-            ]);
-
-            // Gestisci arbitri
-            Log::info('Processing referee recipients', [
-                'has_recipients' => $request->has('recipients'),
-                'recipients_input' => $request->input('recipients'),
-                'all_input' => $request->all(),
-            ]);
-
-            if ($request->has('recipients')) {
-                $metadata['recipients']['referees'] = $request->input('recipients');
-                Log::info('Set referee recipients', ['referees' => $metadata['recipients']['referees']]);
-            } else {
-                Log::warning('No referee recipients in request');
-            }
-
-            // Gestisci club
-            $metadata['recipients']['club'] = $request->boolean('send_to_club', true);
-
-            // Gestisci email istituzionali
-            if ($request->has('fixed_addresses')) {
-                $metadata['recipients']['institutional'] = $request->input('fixed_addresses');
-            }
-
-            // Aggiungi altri metadati
-            $metadata['subject'] = $validated['subject'];
-            $metadata['message'] = $validated['message'];
-            $metadata['attach_convocation'] = $request->boolean('attach_convocation', true);
-
-            $notification->update([
-                'metadata' => $metadata,
-            ]);
-
-            // Salva le clausole selezionate
-            if ($request->has('clauses')) {
-                Log::info('Saving clauses', [
-                    'notification_id' => $notification->id,
-                    'clauses' => $request->input('clauses'),
-                ]);
-
-                // Rimuovi le selezioni precedenti
-                NotificationClauseSelection::where('tournament_notification_id', $notification->id)->delete();
-
-                foreach ($request->input('clauses') as $placeholder => $clauseId) {
-                    if (! empty($clauseId)) {
-                        try {
-                            $selection = NotificationClauseSelection::create([
-                                'tournament_notification_id' => $notification->id,
-                                'clause_id' => $clauseId,
-                                'placeholder_code' => $placeholder,
-                            ]);
-
-                            Log::info('Clause selection created', [
-                                'notification_id' => $notification->id,
-                                'placeholder' => $placeholder,
-                                'clause_id' => $clauseId,
-                                'selection_id' => $selection->id,
-                            ]);
-                        } catch (\Exception $e) {
-                            Log::error('Error saving clause selection', [
-                                'notification_id' => $notification->id,
-                                'placeholder' => $placeholder,
-                                'clause_id' => $clauseId,
-                                'error' => $e->getMessage(),
-                            ]);
-                        }
-                    }
-                }
-            }
-
-            Log::info('Sending notification from form', [
-                'notification_id' => $notification->id,
-                'metadata' => $metadata,
-                'request_data' => $request->all(),
-            ]);
-
-            // Rigenera i documenti con le clausole selezionate prima dell'invio
-            try {
-                $documents = is_string($notification->documents) ? json_decode($notification->documents, true) : ($notification->documents ?? []);
-
-                $zone = $this->getZoneFolder($tournament);
-
-                // Convocazione
-                $convocationData = $this->documentService->generateConvocationForTournament($tournament, $notification);
-                $convFileName = basename($convocationData['path']);
-                $convDest = "convocazioni/{$zone}/generated/{$convFileName}";
-                $fullDestDir = Storage::disk('public')->path(dirname($convDest));
-                if (! is_dir($fullDestDir)) {
-                    mkdir($fullDestDir, 0755, true);
-                }
-                copy($convocationData['path'], Storage::disk('public')->path($convDest));
-                if (file_exists($convocationData['path'])) {
-                    unlink($convocationData['path']);
-                }
-                $documents['convocation'] = $convFileName;
-
-                // Lettera circolo
-                $clubDocData = $this->documentService->generateClubDocument($tournament, $notification);
-                $clubFileName = basename($clubDocData['path']);
-                $clubDest = "convocazioni/{$zone}/generated/{$clubFileName}";
-                copy($clubDocData['path'], Storage::disk('public')->path($clubDest));
-                if (file_exists($clubDocData['path'])) {
-                    unlink($clubDocData['path']);
-                }
-                $documents['club_letter'] = $clubFileName;
-
-                $notification->update(['documents' => $documents]);
-            } catch (\Throwable $e) {
-                Log::warning('Could not regenerate documents with clauses before send', [
-                    'notification_id' => $notification->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-
-            // Marca come PREPARATA
-            $notification->update(['is_prepared' => true]);
-
-            DB::commit();
+            // Salva come bozza con tutti i dati
+            $this->transactionService->saveAsDraft(
+                $notification,
+                $metadata,
+                $request->input('clauses', [])
+            );
 
             // ═══════════════════════════════════════════════════════════════════════
             // GESTIONE AZIONE: save, send, o preview
@@ -786,39 +371,22 @@ class NotificationController extends Controller
 
             // PREVIEW: restituisce JSON con anteprima email
             if ($action === 'preview') {
+                $preview = $this->preparationService->prepareEmailPreview($notification, $tournament);
+
                 return response()->json([
                     'success' => true,
-                    'preview' => [
-                        'subject' => $metadata['subject'],
-                        'message' => $metadata['message'],
-                        'recipients' => [
-                            'club' => $metadata['recipients']['club'] ? $tournament->club->email : null,
-                            'referees' => $tournament->assignments()
-                                ->whereIn('user_id', $metadata['recipients']['referees'] ?? [])
-                                ->with('user')
-                                ->get()
-                                ->map(fn ($a) => ['name' => $a->user->name, 'email' => $a->user->email, 'role' => $a->role]),
-                            'institutional' => InstitutionalEmail::whereIn('id', $metadata['recipients']['institutional'] ?? [])
-                                ->pluck('email'),
-                        ],
-                        'documents' => $notification->documents,
-                    ],
+                    'preview' => $preview,
                 ]);
             }
 
             // SEND: invia subito la notifica
             if ($action === 'send') {
                 try {
-                    $this->notificationService->send($notification);
+                    $this->transactionService->sendWithTransaction($notification);
 
                     return redirect()->route('admin.tournament-notifications.index')
                         ->with('success', 'Notifica inviata con successo a tutti i destinatari!');
                 } catch (\Exception $sendError) {
-                    Log::error('Errore invio notifica', [
-                        'notification_id' => $notification->id,
-                        'error' => $sendError->getMessage(),
-                    ]);
-
                     return redirect()->back()
                         ->with('error', 'Errore nell\'invio: '.$sendError->getMessage())
                         ->with('warning', 'La notifica è stata salvata come bozza.');
@@ -829,53 +397,8 @@ class NotificationController extends Controller
             return redirect()->route('admin.tournaments.index')
                 ->with('success', 'Notifica salvata come bozza. Puoi inviarla dalla lista tornei.');
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Errore preparazione notifica: '.$e->getMessage());
-
             return redirect()->back()->with('error', 'Errore nella preparazione: '.$e->getMessage());
         }
-    }
-
-    /**
-     * Recupera cartella zona per i file
-     */
-    private function getZoneFolder($tournament): string
-    {
-        // Se è nazionale, va in CRC
-        if (
-            $tournament->is_national ||
-            ($tournament->tournamentType && $tournament->tournamentType->is_national)
-        ) {
-            return 'CRC';
-        }
-
-        // Altrimenti usa la zona del circolo
-        $zoneId = $tournament->club->zone_id ?? $tournament->zone_id;
-
-        return match ($zoneId) {
-            1 => 'SZR1',
-            2 => 'SZR2',
-            3 => 'SZR3',
-            4 => 'SZR4',
-            5 => 'SZR5',
-            6 => 'SZR6',
-            7 => 'SZR7',
-            default => 'SZR'.$zoneId
-        };
-    }
-
-    /**
-     * Formatta dimensione file
-     */
-    private function formatBytes($bytes, $precision = 2): string
-    {
-        $units = ['B', 'KB', 'MB', 'GB'];
-
-        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
-            $bytes /= 1024;
-        }
-
-        return round($bytes, $precision).' '.$units[$i];
     }
 
     /**
@@ -898,26 +421,17 @@ class NotificationController extends Controller
     public function uploadDocument(Request $request, TournamentNotification $notification, $type)
     {
         try {
-            $tournament = $notification->tournament;
-
             // Valida il file
             $request->validate([
                 'document' => 'required|file|mimes:doc,docx|max:10240', // max 10MB
             ]);
 
             $file = $request->file('document');
-            $documents = is_string($notification->documents) ?
-                json_decode($notification->documents, true) : $notification->documents;
-            $documents = $documents ?? [];
-
-            // Salva il nuovo file
-            $zone = $this->getZoneFolder($tournament);
-            $filename = str_replace(' ', '_', $file->getClientOriginalName());
-
-            // Muovi il file
-            $file->storeAs("convocazioni/{$zone}/generated", $filename, 'public');
+            $filename = $this->documentService->uploadDocument($notification, $type, $file);
 
             // Aggiorna i documenti della notifica
+            $documents = is_string($notification->documents) ?
+                json_decode($notification->documents, true) : ($notification->documents ?? []);
             $documents[$type] = $filename;
             $notification->update(['documents' => $documents]);
 

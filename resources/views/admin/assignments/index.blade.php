@@ -7,7 +7,7 @@
         {{-- Header --}}
         <x-table-header title="Gestione Assegnazioni" description="Gestisci le assegnazioni degli arbitri ai tornei"
             :create-route="route('admin.assignments.create')" create-text="👤 Assegna Singolo Arbitro" create-color="blue" :secondary-route="route('admin.tournaments.index')"
-            secondary-text="🌏 Assegna per Torneo" secondary-color="green" />
+            secondary-text="📋 Vai a Lista Tornei (per assegnare arbitri)" secondary-color="green" />
 
         {{-- Alert Messages --}}
         @if (session('success'))

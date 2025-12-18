@@ -608,8 +608,8 @@
                                                     Email: {{ $tournament->club->zone->email }}
                                                 </p>
                                             @else
-                                                <p class="text-xs text-red-500 mt-1">
-                                                    ⚠️ Email della sezione non configurata
+                                                <p class="text-xs text-amber-600 mt-1">
+                                                    ℹ️ Email della sezione non configurata - contattare l'amministratore
                                                 </p>
                                             @endif
                                         </div>
