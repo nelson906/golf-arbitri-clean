@@ -20,7 +20,7 @@ class FedergolfController extends Controller
                 'tipo' => '',
                 'keyword' => $keyword,
                 'anno' => date('Y'),
-                'mese' => ''
+                'mese' => '',
             ]
         );
 
@@ -39,7 +39,7 @@ class FedergolfController extends Controller
                 'id' => $gara['id'],
                 'title' => $gara['title'],
                 'tipo' => $tipo,
-                'date' => $gara['date'] ?? null
+                'date' => $gara['date'] ?? null,
             ];
         }
 
@@ -57,7 +57,7 @@ class FedergolfController extends Controller
                 'action' => 'competition-player-list',
                 'competition_id' => $garaId,
                 'page_number' => 1,
-                'page_size' => 250
+                'page_size' => 250,
             ]
         );
 
@@ -71,7 +71,7 @@ class FedergolfController extends Controller
             }
 
             preg_match('/<span class="nome-giocatore">([^<]+)<\/span>/', $entry[1], $matches);
-            if (!empty($matches[1])) {
+            if (! empty($matches[1])) {
                 $iscritti[] = trim($matches[1]);
             }
         }
@@ -87,22 +87,22 @@ class FedergolfController extends Controller
                 ->withHeaders([
                     'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
                     'Accept' => 'application/json',
-                    'X-Requested-With' => 'XMLHttpRequest'
+                    'X-Requested-With' => 'XMLHttpRequest',
                 ])
                 ->post('https://www.federgolf.it/wp-admin/admin-ajax.php', [
                     'action' => 'competitions-search',
                     'tipo' => '',
                     'keyword' => '',
                     'anno' => date('Y'),
-                    'mese' => ''
+                    'mese' => '',
                 ]);
 
-            if (!$response->successful()) {
+            if (! $response->successful()) {
                 return response()->json(['success' => false, 'message' => 'Errore connessione']);
             }
 
             $data = $response->json();
-            $oggi = new \DateTime();
+            $oggi = new \DateTime;
             $gare = [];
 
             foreach ($data['data'] ?? [] as $gara) {
@@ -140,7 +140,7 @@ class FedergolfController extends Controller
                     'title' => $gara['nome'],
                     'tipo' => $tipo,
                     'date' => $gara['data'],
-                    'club' => $gara['club'] ?? null
+                    'club' => $gara['club'] ?? null,
                 ];
             }
 
@@ -148,6 +148,7 @@ class FedergolfController extends Controller
             usort($gare, function ($a, $b) {
                 $dateA = \DateTime::createFromFormat('d/m/Y', $a['date']);
                 $dateB = \DateTime::createFromFormat('d/m/Y', $b['date']);
+
                 return $dateA <=> $dateB;
             });
 

@@ -1,4 +1,5 @@
 <?php
+
 // app/Console/Commands/ScanOrphanReferencesCommand.php
 
 namespace App\Console\Commands;
@@ -7,7 +8,6 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
-use ReflectionClass;
 
 class ScanOrphanReferencesCommand extends Command
 {
@@ -16,18 +16,19 @@ class ScanOrphanReferencesCommand extends Command
     protected $description = 'Scansiona riferimenti orfani che potrebbero causare errori dopo rimozione';
 
     private $orphans = [];
+
     private $targets = [
         'LetterTemplate',
         'Letterhead',
         'LetterTemplateController',
         'LetterheadController',
-        'TemplateManagementController'
+        'TemplateManagementController',
     ];
 
     public function handle()
     {
         $customTargets = $this->argument('targets');
-        if (!empty($customTargets)) {
+        if (! empty($customTargets)) {
             $this->targets = $customTargets;
         }
 
@@ -35,7 +36,7 @@ class ScanOrphanReferencesCommand extends Command
 
         $this->info('🔍 SCANSIONE RIFERIMENTI ORFANI');
         $this->info('═══════════════════════════════');
-        $this->info('Targets: ' . implode(', ', $this->targets));
+        $this->info('Targets: '.implode(', ', $this->targets));
         $this->info('');
 
         // 1. Scansiona USE statements
@@ -141,7 +142,7 @@ class ScanOrphanReferencesCommand extends Command
             $routePatterns = [
                 'letter-templates',
                 'letterheads',
-                'templates.management'
+                'templates.management',
             ];
 
             foreach ($routePatterns as $route) {
@@ -174,7 +175,7 @@ class ScanOrphanReferencesCommand extends Command
 
             $viewPatterns = [
                 'letter-templates',
-                'letterheads'
+                'letterheads',
             ];
 
             foreach ($viewPatterns as $view) {
@@ -228,7 +229,7 @@ class ScanOrphanReferencesCommand extends Command
 
             foreach ($this->targets as $target) {
                 if (strpos($content, $target) !== false) {
-                    $this->addOrphan('policy_registration', $authServiceProvider, $target, "Policy registration", 0);
+                    $this->addOrphan('policy_registration', $authServiceProvider, $target, 'Policy registration', 0);
                 }
             }
         }
@@ -240,7 +241,7 @@ class ScanOrphanReferencesCommand extends Command
 
             foreach ($this->targets as $target) {
                 if (strpos($content, $target) !== false) {
-                    $this->addOrphan('middleware_registration', $kernelFile, $target, "Middleware registration", 0);
+                    $this->addOrphan('middleware_registration', $kernelFile, $target, 'Middleware registration', 0);
                 }
             }
         }
@@ -301,7 +302,9 @@ class ScanOrphanReferencesCommand extends Command
 
         foreach ($directories as $directory) {
             $path = base_path($directory);
-            if (!is_dir($path)) continue;
+            if (! is_dir($path)) {
+                continue;
+            }
 
             $iterator = new RecursiveIteratorIterator(
                 new RecursiveDirectoryIterator($path)
@@ -323,7 +326,9 @@ class ScanOrphanReferencesCommand extends Command
 
         foreach ($directories as $directory) {
             $path = base_path($directory);
-            if (!is_dir($path)) continue;
+            if (! is_dir($path)) {
+                continue;
+            }
 
             $iterator = new RecursiveIteratorIterator(
                 new RecursiveDirectoryIterator($path)
@@ -343,10 +348,10 @@ class ScanOrphanReferencesCommand extends Command
     {
         $this->orphans[] = [
             'type' => $type,
-            'file' => str_replace(base_path() . '/', '', $file),
+            'file' => str_replace(base_path().'/', '', $file),
             'target' => $target,
             'match' => trim($match),
-            'line' => $line
+            'line' => $line,
         ];
     }
 
@@ -362,16 +367,17 @@ class ScanOrphanReferencesCommand extends Command
 
         if (empty($this->orphans)) {
             $this->info('✅ Nessun riferimento orfano trovato!');
+
             return;
         }
 
-        $this->error("❌ Trovati " . count($this->orphans) . " riferimenti orfani");
+        $this->error('❌ Trovati '.count($this->orphans).' riferimenti orfani');
 
         // Raggruppa per tipo
         $byType = collect($this->orphans)->groupBy('type');
 
         foreach ($byType as $type => $orphans) {
-            $this->warn("\n🔍 " . strtoupper(str_replace('_', ' ', $type)) . " ({$orphans->count()}):");
+            $this->warn("\n🔍 ".strtoupper(str_replace('_', ' ', $type))." ({$orphans->count()}):");
 
             if ($detailed) {
                 foreach ($orphans as $orphan) {
@@ -390,7 +396,7 @@ class ScanOrphanReferencesCommand extends Command
 
         // Suggerimenti risoluzione
         $this->info("\n💡 SUGGERIMENTI RISOLUZIONE:");
-        $this->info("   🔧 php artisan scan:orphans --detailed  (per dettagli completi)");
+        $this->info('   🔧 php artisan scan:orphans --detailed  (per dettagli completi)');
         $this->info("   🔧 grep -r 'LetterTemplate' app/  (ricerca manuale)");
         $this->info("   🔧 find . -name '*.php' -exec grep -l 'Letterhead' {} \\;");
     }

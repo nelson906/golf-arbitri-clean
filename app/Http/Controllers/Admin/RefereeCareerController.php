@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\RefereeCareerService;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
 
 class RefereeCareerController extends Controller
 {
@@ -27,16 +27,16 @@ class RefereeCareerController extends Controller
         $search = $request->get('search');
         $sort = $request->get('sort', 'last_name');
         $direction = $request->get('direction', 'asc');
-        
+
         // Gestione zona con default per admin zonale
         $user = auth()->user();
         $zone = $request->get('zone');
-        
+
         // Se non è specificata una zona e l'utente è admin zonale, usa la sua zona
-        if (!$request->has('zone') && $user->user_type === 'admin' && $user->zone_id) {
+        if (! $request->has('zone') && $user->user_type === 'admin' && $user->zone_id) {
             $zone = $user->zone_id;
         }
-        
+
         $level = $request->get('level');
 
         // Ottieni gli anni disponibili dalla tabella referee_career_history
@@ -44,8 +44,9 @@ class RefereeCareerController extends Controller
             ->select('assignments_by_year')
             ->whereNotNull('assignments_by_year')
             ->get()
-            ->flatMap(function($record) {
+            ->flatMap(function ($record) {
                 $assignmentsByYear = json_decode($record->assignments_by_year, true);
+
                 return $assignmentsByYear ? array_keys($assignmentsByYear) : [];
             })
             ->unique()
@@ -70,14 +71,14 @@ class RefereeCareerController extends Controller
         }
 
         $query = User::where('user_type', 'referee')
-                    ->where('level', '!=', 'Archivio')
-                    ->with('zone');
+            ->where('level', '!=', 'Archivio')
+            ->with('zone');
 
         if ($search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('referee_code', 'like', "%{$search}%");
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('referee_code', 'like', "%{$search}%");
             });
         }
 
@@ -98,7 +99,7 @@ class RefereeCareerController extends Controller
         $query->orderBy($sort, $direction);
         $referees = $query->get();
 
-        $stats = $referees->map(function($referee) use ($year) {
+        $stats = $referees->map(function ($referee) use ($year) {
             $fullCareerData = $this->careerService->getCareerData($referee);
             $yearSpecificData = null;
             if ($year) {
@@ -110,12 +111,12 @@ class RefereeCareerController extends Controller
                 'stats' => $fullCareerData['career_summary'] ?? [
                     'total_assignments' => 0,
                     'roles_summary' => [],
-                    'first_year' => null
+                    'first_year' => null,
                 ],
                 'year_data' => $yearSpecificData ?? [
                     'level' => $referee->level,
                     'total_tournaments' => 0,
-                    'roles' => []
+                    'roles' => [],
                 ],
             ];
         });

@@ -10,25 +10,25 @@ return new class extends Migration
     {
         // Prima aggiungi le nuove colonne
         Schema::table('tournament_notifications', function (Blueprint $table) {
-            if (!Schema::hasColumn('tournament_notifications', 'recipients')) {
+            if (! Schema::hasColumn('tournament_notifications', 'recipients')) {
                 $table->json('recipients')->nullable()->after('tournament_id');
             }
-            if (!Schema::hasColumn('tournament_notifications', 'content')) {
+            if (! Schema::hasColumn('tournament_notifications', 'content')) {
                 $table->json('content')->nullable()->after('recipients');
             }
-            if (!Schema::hasColumn('tournament_notifications', 'documents')) {
+            if (! Schema::hasColumn('tournament_notifications', 'documents')) {
                 $table->json('documents')->nullable()->after('content');
             }
-            if (!Schema::hasColumn('tournament_notifications', 'metadata')) {
+            if (! Schema::hasColumn('tournament_notifications', 'metadata')) {
                 $table->json('metadata')->nullable()->after('documents');
             }
-            if (!Schema::hasColumn('tournament_notifications', 'status')) {
+            if (! Schema::hasColumn('tournament_notifications', 'status')) {
                 $table->string('status')->default('pending')->after('metadata');
             }
-            if (!Schema::hasColumn('tournament_notifications', 'sent_by')) {
+            if (! Schema::hasColumn('tournament_notifications', 'sent_by')) {
                 $table->foreignId('sent_by')->nullable()->constrained('users');
             }
-            if (!Schema::hasColumn('tournament_notifications', 'sent_at')) {
+            if (! Schema::hasColumn('tournament_notifications', 'sent_at')) {
                 $table->timestamp('sent_at')->nullable();
             }
         });
@@ -36,7 +36,7 @@ return new class extends Migration
         // Poi rimuovi le vecchie colonne se esistono
         Schema::table('tournament_notifications', function (Blueprint $table) {
             $toDrop = [];
-            
+
             if (Schema::hasColumn('tournament_notifications', 'referee_list')) {
                 $toDrop[] = 'referee_list';
             }
@@ -53,7 +53,7 @@ return new class extends Migration
                 $toDrop[] = 'prepared_at';
             }
 
-            if (!empty($toDrop)) {
+            if (! empty($toDrop)) {
                 $table->dropColumn($toDrop);
             }
         });
@@ -69,24 +69,24 @@ return new class extends Migration
                     $toDrop[] = $column;
                 }
             }
-            if (!empty($toDrop)) {
+            if (! empty($toDrop)) {
                 $table->dropColumn($toDrop);
             }
 
             // Ripristina colonne vecchie se non esistono
-            if (!Schema::hasColumn('tournament_notifications', 'referee_list')) {
+            if (! Schema::hasColumn('tournament_notifications', 'referee_list')) {
                 $table->string('referee_list')->nullable();
             }
-            if (!Schema::hasColumn('tournament_notifications', 'total_recipients')) {
+            if (! Schema::hasColumn('tournament_notifications', 'total_recipients')) {
                 $table->integer('total_recipients')->nullable();
             }
-            if (!Schema::hasColumn('tournament_notifications', 'templates_used')) {
+            if (! Schema::hasColumn('tournament_notifications', 'templates_used')) {
                 $table->json('templates_used')->nullable();
             }
-            if (!Schema::hasColumn('tournament_notifications', 'error_message')) {
+            if (! Schema::hasColumn('tournament_notifications', 'error_message')) {
                 $table->text('error_message')->nullable();
             }
-            if (!Schema::hasColumn('tournament_notifications', 'prepared_at')) {
+            if (! Schema::hasColumn('tournament_notifications', 'prepared_at')) {
                 $table->timestamp('prepared_at')->nullable();
             }
         });

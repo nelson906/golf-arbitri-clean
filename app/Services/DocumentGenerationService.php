@@ -2,14 +2,14 @@
 
 namespace App\Services;
 
+use App\Http\Helpers\RefereeRoleHelper;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
-use PhpOffice\PhpWord\PhpWord;
-use PhpOffice\PhpWord\IOFactory;
-use PhpOffice\PhpWord\TemplateProcessor;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
-use App\Http\Helpers\RefereeRoleHelper;
+use Illuminate\Support\Facades\Log;
+use PhpOffice\PhpWord\IOFactory;
+use PhpOffice\PhpWord\PhpWord;
+use PhpOffice\PhpWord\TemplateProcessor;
 
 class DocumentGenerationService
 {
@@ -37,7 +37,7 @@ class DocumentGenerationService
             5 => 'SZR5',
             6 => 'SZR6',
             7 => 'SZR7',
-            default => 'SZR' . $zoneId
+            default => 'SZR'.$zoneId
         };
     }
 
@@ -49,18 +49,18 @@ class DocumentGenerationService
         Log::info('Starting convocation generation for tournament', [
             'tournament_id' => $tournament->id,
             'tournament_name' => $tournament->name,
-            'zone_id' => $tournament->zone_id
+            'zone_id' => $tournament->zone_id,
         ]);
         try {
             $tournament->load([
                 'club',
                 'zone',
                 'tournamentType',
-                'assignments.user'
+                'assignments.user',
             ]);
 
             // If a specific notification is not provided, try to find the latest one
-            if (!$notification) {
+            if (! $notification) {
                 $notification = TournamentNotification::where('tournament_id', $tournament->id)
                     ->latest()
                     ->first();
@@ -74,7 +74,7 @@ class DocumentGenerationService
             $templatePath = $this->getZoneTemplatePath($tournament->zone_id);
 
             Log::info('Selected template path', [
-                'template_path' => $templatePath
+                'template_path' => $templatePath,
             ]);
 
             // Prepara variabili per sostituzione
@@ -88,8 +88,8 @@ class DocumentGenerationService
                             $selection->placeholder_code => [
                                 'content' => $selection->clause->content,
                                 'title' => $selection->clause->title,
-                                'category' => $selection->clause->category
-                            ]
+                                'category' => $selection->clause->category,
+                            ],
                         ];
                     })
                     ->toArray();
@@ -103,14 +103,14 @@ class DocumentGenerationService
                 'club_name' => $tournament->club->name,
                 'zone_name' => $tournament->zone->name ?? 'Zona Non Specificata',
                 'current_date' => Carbon::now()->format('d/m/Y'),
-                'clauses' => $selectedClauses
+                'clauses' => $selectedClauses,
             ];
 
             // Genera nome file
             $tournamentName = preg_replace('/[^A-Za-z0-9\-]/', '_', $tournament->name);
             $tournamentName = substr($tournamentName, 0, 50);
             $filename = "convocazione_{$tournament->id}_{$tournamentName}.docx";
-            $outputPath = storage_path('app/temp/' . $filename);
+            $outputPath = storage_path('app/temp/'.$filename);
 
             // Carica template, sostituisci variabili e aggiungi arbitri (docType: referee)
             $this->processTemplateWithReferees($templatePath, $variables, $tournament, $outputPath, 'referee');
@@ -118,7 +118,7 @@ class DocumentGenerationService
             return [
                 'path' => $outputPath,
                 'filename' => $filename,
-                'type' => 'convocation'
+                'type' => 'convocation',
             ];
         } catch (\Exception $e) {
             Log::error('Error generating tournament convocation', [
@@ -126,12 +126,11 @@ class DocumentGenerationService
                 'tournament_name' => $tournament->name,
                 'zone_id' => $tournament->zone_id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
-            throw new \Exception('Errore nella generazione della convocazione: ' . $e->getMessage());
+            throw new \Exception('Errore nella generazione della convocazione: '.$e->getMessage());
         }
     }
-
 
     /**
      * Generate facsimile for club
@@ -140,7 +139,7 @@ class DocumentGenerationService
     {
         try {
             // Crea documento PHPWord
-            $phpWord = new PhpWord();
+            $phpWord = new PhpWord;
 
             // Impostazioni lingua e font di default
             $language = new \PhpOffice\PhpWord\Style\Language(\PhpOffice\PhpWord\Style\Language::IT_IT);
@@ -154,25 +153,25 @@ class DocumentGenerationService
                 'italic' => true,
                 'size' => 16,
                 'allCaps' => true,
-                'doubleStrikethrough' => true
+                'doubleStrikethrough' => true,
             ]);
 
             $paragraphStyleName = 'pStyle';
             $phpWord->addParagraphStyle($paragraphStyleName, [
                 'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER,
-                'spaceAfter' => 100
+                'spaceAfter' => 100,
             ]);
 
             $phpWord->addTitleStyle(1, [
                 'underline' => 'single',
                 'allCaps' => true,
                 'color' => 'red',
-                'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER
+                'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER,
             ], ['spaceAfter' => 240]);
 
             $phpWord->addParagraphStyle('ConoscenzaStyle', [
                 'indentation' => ['left' => \PhpOffice\PhpWord\Shared\Converter::cmToTwip(12)],
-                'spaceAfter' => 100
+                'spaceAfter' => 100,
             ]);
 
             $phpWord->addParagraphStyle('ComitatoStyle', [
@@ -191,7 +190,7 @@ class DocumentGenerationService
 
             // Titolo identico
             $section->addTitle(
-                'FAC SIMILE DA INVIARE SU CARTA INTESTATA DEL CIRCOLO ORGANIZZATORE' . "\n\r",
+                'FAC SIMILE DA INVIARE SU CARTA INTESTATA DEL CIRCOLO ORGANIZZATORE'."\n\r",
                 1
             );
             $section->addTextBreak();
@@ -213,7 +212,7 @@ class DocumentGenerationService
             $section->addText('e p.c.:', null, 'ConoscenzaStyle');
 
             // Aggiungi Ufficio Campionati
-            $section->addText("Ufficio Campionati", null, 'ConoscenzaStyle');
+            $section->addText('Ufficio Campionati', null, 'ConoscenzaStyle');
 
             // Aggiungi SZR - Controllo null safety per zone
             $zoneId = $tournament->zone ? ($tournament->zone->id ?? 'X') : 'X';
@@ -221,8 +220,8 @@ class DocumentGenerationService
 
             // Oggetto
             $dateRange = $tournament->start_date->format('d/m/Y');
-            if ($tournament->end_date && !$tournament->start_date->isSameDay($tournament->end_date)) {
-                $dateRange .= " al " . $tournament->end_date->format('d/m/Y');
+            if ($tournament->end_date && ! $tournament->start_date->isSameDay($tournament->end_date)) {
+                $dateRange .= ' al '.$tournament->end_date->format('d/m/Y');
             }
 
             $tournamentName = $tournament->name ?? 'Torneo senza nome';
@@ -233,20 +232,20 @@ class DocumentGenerationService
             $section->addTextBreak();
 
             // Preambolo identico
-            $preambolo = "In qualità di Circolo Organizzatore Vi comunichiamo che siete convocati per la manifestazione indicata in " .
-                "oggetto con i compiti/ruoli sottoindicati:";
+            $preambolo = 'In qualità di Circolo Organizzatore Vi comunichiamo che siete convocati per la manifestazione indicata in '.
+                'oggetto con i compiti/ruoli sottoindicati:';
 
             $section->addText($preambolo, null, [
                 'align' => 'both',
                 'spaceBefore' => 120,
                 'lineHeight' => 1.5,
-                'spacing' => 120
+                'spacing' => 120,
             ]);
 
             // Comitato di Gara
             $section->addText('Comitato di Gara', [
                 'italic' => true,
-                'underline' => 'single'
+                'underline' => 'single',
             ], ['spaceBefore' => 240, 'spacing' => 240]);
 
             // Lista arbitri con ruoli (usando il tuo sistema di ordinamento)
@@ -260,7 +259,7 @@ class DocumentGenerationService
                         default => 'Arbitro'
                     };
                     $section->addText(
-                        $assignment->user->name . "\t" . $ruolo,
+                        $assignment->user->name."\t".$ruolo,
                         ['bold' => true],
                         'ComitatoStyle'
                     );
@@ -270,28 +269,28 @@ class DocumentGenerationService
             $section->addTextBreak();
 
             // Istruzioni finali identiche
-            $preparazione = "Il Comitato e gli Osservatori sono tenuti a presenziare dalle ore 9.00 del giorno precedente l'inizio della " .
-                "manifestazione sino al termine della stessa o secondo le decisioni che verranno direttamente comunicate dal " .
-                "Direttore di Torneo.";
+            $preparazione = "Il Comitato e gli Osservatori sono tenuti a presenziare dalle ore 9.00 del giorno precedente l'inizio della ".
+                'manifestazione sino al termine della stessa o secondo le decisioni che verranno direttamente comunicate dal '.
+                'Direttore di Torneo.';
 
             $section->addText($preparazione, null, [
                 'align' => 'both',
                 'spaceBefore' => 120,
                 'lineHeight' => 1.5,
-                'spacing' => 120
+                'spacing' => 120,
             ]);
 
             // Spese - Testo identico
-            $spese = "Si ricorda che questo Circolo Organizzatore, rimborserà le eventuali spese di viaggio, vitto e alloggio, così come " .
-                "previsto dalla Normativa Tecnica in vigore. Il rimborso sarà effettuato sulla base della nota spese emessa dal " .
-                "singolo soggetto. Tutte le spese sono rimborsate nei limiti previsti dalla FIG e indicati nelle \"Linee guida " .
-                "trasferte e rimborsi spese\" annualmente pubblicate.";
+            $spese = 'Si ricorda che questo Circolo Organizzatore, rimborserà le eventuali spese di viaggio, vitto e alloggio, così come '.
+                'previsto dalla Normativa Tecnica in vigore. Il rimborso sarà effettuato sulla base della nota spese emessa dal '.
+                'singolo soggetto. Tutte le spese sono rimborsate nei limiti previsti dalla FIG e indicati nelle "Linee guida '.
+                'trasferte e rimborsi spese" annualmente pubblicate.';
 
             $section->addText($spese, null, [
                 'align' => 'both',
                 'spaceBefore' => 120,
                 'lineHeight' => 1.5,
-                'spacing' => 120
+                'spacing' => 120,
             ]);
 
             // Conferma - Controllo null safety per zone e club
@@ -303,33 +302,33 @@ class DocumentGenerationService
                 $clubEmail = $tournament->club->email;
             }
 
-            $conferma = "Si prega di confermare la propria presenza sia alla Sezione Zonale Regole di competenza (szr{$zoneId}@federgolf.it) sia " .
+            $conferma = "Si prega di confermare la propria presenza sia alla Sezione Zonale Regole di competenza (szr{$zoneId}@federgolf.it) sia ".
                 "a questo Circolo Organizzatore ({$clubEmail})";
 
             $section->addText($conferma, null, [
                 'align' => 'both',
                 'spaceBefore' => 120,
                 'lineHeight' => 1.5,
-                'spacing' => 120
+                'spacing' => 120,
             ]);
 
             // Saluti identici
-            $saluti = "Cordiali saluti.";
+            $saluti = 'Cordiali saluti.';
 
             $section->addText($saluti, null, [
                 'align' => 'both',
                 'spaceBefore' => 120,
                 'lineHeight' => 1.5,
-                'spacing' => 120
+                'spacing' => 120,
             ]);
 
             // Genera nome file con pattern standard come in gestione_arbitri
             $tournamentName = preg_replace('/[^A-Za-z0-9\-]/', '_', $tournament->name);
             $tournamentName = substr($tournamentName, 0, 50);
             $filename = "lettera_circolo_{$tournament->id}_{$tournamentName}.docx";
-            $tempPath = storage_path('app/temp/' . $filename);
+            $tempPath = storage_path('app/temp/'.$filename);
 
-            if (!is_dir(dirname($tempPath))) {
+            if (! is_dir(dirname($tempPath))) {
                 mkdir(dirname($tempPath), 0777, true);
             }
 
@@ -339,13 +338,13 @@ class DocumentGenerationService
             return [
                 'path' => $tempPath,
                 'filename' => $filename,
-                'type' => 'club_letter'
+                'type' => 'club_letter',
             ];
         } catch (\Exception $e) {
             Log::error('Errore generazione documento circolo', [
                 'tournament_id' => $tournament->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
             ]);
             throw $e;
         }
@@ -360,30 +359,30 @@ class DocumentGenerationService
     protected function getZoneTemplatePath($zoneId): string
     {
         Log::info('Getting zone template path', [
-            'zone_id' => $zoneId
+            'zone_id' => $zoneId,
         ]);
         $zoneCode = $this->getZoneCode($zoneId);
         // Check if storage directory exists
         $storageDir = storage_path('lettere_intestate');
-        if (!is_dir($storageDir)) {
+        if (! is_dir($storageDir)) {
             Log::error('Template directory does not exist', ['directory' => $storageDir]);
             throw new \Exception('Directory dei template non trovata. Contattare l\'amministratore.');
         }
 
         $templatePath = "{$storageDir}/lettera_intestata_{$zoneCode}.docx";
 
-        if (!file_exists($templatePath)) {
+        if (! file_exists($templatePath)) {
             Log::warning('Zone template not found, using default', [
                 'zone_id' => $zoneId,
-                'attempted_path' => $templatePath
+                'attempted_path' => $templatePath,
             ]);
-            $templatePath = storage_path("lettere_intestate/lettera_intestata_default.docx");
+            $templatePath = storage_path('lettere_intestate/lettera_intestata_default.docx');
         }
 
-        if (!file_exists($templatePath)) {
+        if (! file_exists($templatePath)) {
             Log::error('Template not found', [
                 'zone_id' => $zoneId,
-                'template_path' => $templatePath
+                'template_path' => $templatePath,
             ]);
             throw new \Exception("Template non trovato: {$templatePath}. Controlla che i file template esistano in storage/lettere_intestate/");
         }
@@ -407,13 +406,14 @@ class DocumentGenerationService
             default => 'default'
         };
     }
+
     /**
      * Process template with referees list
      */
     protected function processTemplateWithReferees($templatePath, array $variables, Tournament $tournament, $outputPath, string $docType): void
     {
-        if (!class_exists('\PhpOffice\PhpWord\TemplateProcessor')) {
-            throw new \Exception("TemplateProcessor class not found. Install PhpWord with composer require phpoffice/phpword");
+        if (! class_exists('\PhpOffice\PhpWord\TemplateProcessor')) {
+            throw new \Exception('TemplateProcessor class not found. Install PhpWord with composer require phpoffice/phpword');
         }
 
         $templateProcessor = new TemplateProcessor($templatePath);
@@ -423,7 +423,7 @@ class DocumentGenerationService
             $templateVars = $templateProcessor->getVariables();
             Log::info('Template variables found (with referees):', ['variables' => $templateVars]);
         } catch (\Throwable $e) {
-            Log::warning('Could not read template variables (with referees): ' . $e->getMessage());
+            Log::warning('Could not read template variables (with referees): '.$e->getMessage());
         }
 
         // Sostituisci variabili base
@@ -440,7 +440,6 @@ class DocumentGenerationService
             // Ottieni i placeholder disponibili per questo tipo
             $availablePlaceholders = $this->getPlaceholdersForDocumentType($docType);
 
-
             // Usa cloneBlock per rimuovere interi paragrafi quando la clausola non è selezionata
             $clauses = $variables['clauses'] ?? [];
             $this->processClauseBlocks($templateProcessor, $clauses, $docType);
@@ -455,7 +454,7 @@ class DocumentGenerationService
                 'referee_name' => $assignment->user->name,
                 'referee_role' => $this->translateRole($assignment->role),
                 'referee_code' => $assignment->user->referee_code ?? '',
-                'referee_level' => ucwords($assignment->user->level ?? '')
+                'referee_level' => ucwords($assignment->user->level ?? ''),
             ];
         })->toArray();
 
@@ -466,10 +465,10 @@ class DocumentGenerationService
                 $templateProcessor->cloneRow('referee_name', count($refereesList));
 
                 foreach ($refereesList as $index => $referee) {
-                    $templateProcessor->setValue("referee_name#" . ($index + 1), $referee['referee_name']);
-                    $templateProcessor->setValue("referee_role#" . ($index + 1), $referee['referee_role']);
-                    $templateProcessor->setValue("referee_code#" . ($index + 1), $referee['referee_code']);
-                    $templateProcessor->setValue("referee_level#" . ($index + 1), $referee['referee_level']);
+                    $templateProcessor->setValue('referee_name#'.($index + 1), $referee['referee_name']);
+                    $templateProcessor->setValue('referee_role#'.($index + 1), $referee['referee_role']);
+                    $templateProcessor->setValue('referee_code#'.($index + 1), $referee['referee_code']);
+                    $templateProcessor->setValue('referee_level#'.($index + 1), $referee['referee_level']);
                 }
             }
         } catch (\Exception $e) {
@@ -478,7 +477,7 @@ class DocumentGenerationService
         }
 
         // Crea directory se non esiste
-        if (!is_dir(dirname($outputPath))) {
+        if (! is_dir(dirname($outputPath))) {
             mkdir(dirname($outputPath), 0777, true);
         }
 
@@ -516,11 +515,11 @@ class DocumentGenerationService
 
         // Se stesso mese
         if ($startDate->format('m/Y') === $endDate->format('m/Y')) {
-            return $startDate->format('d') . '-' . $endDate->format('d/m/Y');
+            return $startDate->format('d').'-'.$endDate->format('d/m/Y');
         }
 
         // Mesi diversi
-        return $startDate->format('d/m/Y') . ' - ' . $endDate->format('d/m/Y');
+        return $startDate->format('d/m/Y').' - '.$endDate->format('d/m/Y');
     }
 
     /**
@@ -533,21 +532,20 @@ class DocumentGenerationService
             'club' => [
                 'CLAUSOLA_CLUB_SPESE',
                 'CLAUSOLA_CLUB_LOGISTICA',
-                'CLAUSOLA_CLUB_RESPONSABILITA'
+                'CLAUSOLA_CLUB_RESPONSABILITA',
             ],
             'referee' => [
                 'CLAUSOLA_ARBITRO_RESPONSABILITA',
                 'CLAUSOLA_ARBITRO_COMUNICAZIONI',
-                'CLAUSOLA_ARBITRO_ALTRO'
+                'CLAUSOLA_ARBITRO_ALTRO',
             ],
             'institutional' => [
-                'CLAUSOLA_ISTITUZIONALE_RESPONSABILITA'
-            ]
+                'CLAUSOLA_ISTITUZIONALE_RESPONSABILITA',
+            ],
         ];
 
         return $placeholders[$type] ?? [];
     }
-
 
     /**
      * Get block names for clause placeholders
@@ -555,7 +553,7 @@ class DocumentGenerationService
      */
     private function getClauseBlockName(string $placeholderCode): string
     {
-        return 'BLOCCO_' . $placeholderCode;
+        return 'BLOCCO_'.$placeholderCode;
     }
 
     /**
@@ -576,36 +574,36 @@ class DocumentGenerationService
             $blockName = $this->getClauseBlockName($placeholderCode);
 
             try {
-                if (isset($clauses[$placeholderCode]) && !empty($clauses[$placeholderCode]['content'])) {
+                if (isset($clauses[$placeholderCode]) && ! empty($clauses[$placeholderCode]['content'])) {
                     // Clausola presente: sostituisci il placeholder interno con il contenuto
                     // Prima sostituisci il placeholder, poi rimuovi i marcatori del blocco
                     $templateProcessor->setValue($placeholderCode, $clauses[$placeholderCode]['content']);
 
                     // Rimuovi i marcatori di apertura e chiusura del blocco
                     $templateProcessor->setValue($blockName, '');
-                    $templateProcessor->setValue('/' . $blockName, '');
+                    $templateProcessor->setValue('/'.$blockName, '');
 
-                    Log::debug("Clause block filled", [
+                    Log::debug('Clause block filled', [
                         'block' => $blockName,
                         'placeholder' => $placeholderCode,
-                        'content_length' => strlen($clauses[$placeholderCode]['content'])
+                        'content_length' => strlen($clauses[$placeholderCode]['content']),
                     ]);
                 } else {
                     // Clausola non selezionata: rimuovi completamente il blocco (0 cloni)
                     $templateProcessor->cloneBlock($blockName, 0, true, true);
 
-                    Log::debug("Clause block removed (no selection)", [
+                    Log::debug('Clause block removed (no selection)', [
                         'block' => $blockName,
-                        'placeholder' => $placeholderCode
+                        'placeholder' => $placeholderCode,
                     ]);
                 }
             } catch (\Exception $e) {
                 // Se il blocco non esiste nel template, prova con setValue semplice
                 Log::debug("Block {$blockName} not found in template, trying simple setValue", [
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
 
-                if (isset($clauses[$placeholderCode]) && !empty($clauses[$placeholderCode]['content'])) {
+                if (isset($clauses[$placeholderCode]) && ! empty($clauses[$placeholderCode]['content'])) {
                     try {
                         $templateProcessor->setValue($placeholderCode, $clauses[$placeholderCode]['content']);
                     } catch (\Exception $e2) {

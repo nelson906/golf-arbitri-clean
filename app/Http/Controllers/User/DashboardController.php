@@ -16,7 +16,6 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-
         $user->load('zone'); // Eager load zone relationship
 
         $isNationalReferee = in_array($user->level, ['nazionale', 'internazionale']);
@@ -58,7 +57,7 @@ class DashboardController extends Controller
             ->where('availability_deadline', '>=', Carbon::today());
 
         // Filter by zone for non-national referees
-        if (!$isNationalReferee) {
+        if (! $isNationalReferee) {
             $openTournamentsQuery->where('zone_id', $user->zone_id);
         } else {
             // National referees see national tournaments from all zones
@@ -94,7 +93,7 @@ class DashboardController extends Controller
             $month = Carbon::now()->subMonths($i)->format('Y-m');
             $count = $user->assignments()
                 ->whereHas('tournament', function ($q) use ($month) {
-                    $q->where('start_date', 'like', $month . '%');
+                    $q->where('start_date', 'like', $month.'%');
                 })
                 ->count();
             $monthlyStats[$month] = $count;
@@ -112,7 +111,7 @@ class DashboardController extends Controller
         foreach ($assignments as $assignment) {
             if ($assignment->tournament && $assignment->tournament->tournamentType) {
                 $typeName = $assignment->tournament->tournamentType->short_name ?? $assignment->tournament->tournamentType->name ?? 'Altri';
-                if (!isset($assignmentsByType[$typeName])) {
+                if (! isset($assignmentsByType[$typeName])) {
                     $assignmentsByType[$typeName] = 0;
                 }
                 $assignmentsByType[$typeName]++;
@@ -129,12 +128,12 @@ class DashboardController extends Controller
 
         foreach ($calendarAssignments as $assignment) {
             $calendarEvents[] = [
-                'id' => 'assignment-' . $assignment->id,
+                'id' => 'assignment-'.$assignment->id,
                 'title' => $assignment->tournament->name,
                 'start' => $assignment->tournament->start_date->format('Y-m-d'),
                 'end' => $assignment->tournament->end_date ? $assignment->tournament->end_date->addDay()->format('Y-m-d') : $assignment->tournament->start_date->format('Y-m-d'),
                 'color' => $assignment->is_confirmed ? '#10b981' : '#f59e0b',
-                'textColor' => '#ffffff'
+                'textColor' => '#ffffff',
             ];
         }
 

@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
-require_once __DIR__ . '/view-helpers.php';
+require_once __DIR__.'/view-helpers.php';
 
 Route::get('/dev/view-test-all', function () {
     set_time_limit(300);
@@ -13,10 +13,14 @@ Route::get('/dev/view-test-all', function () {
     $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($viewsPath));
 
     foreach ($iterator as $file) {
-        if (!$file->isFile() || $file->getExtension() !== 'php') continue;
+        if (! $file->isFile() || $file->getExtension() !== 'php') {
+            continue;
+        }
 
-        $relativePath = str_replace($viewsPath . '/', '', $file->getPathname());
-        if (!str_contains($relativePath, '.blade.php')) continue;
+        $relativePath = str_replace($viewsPath.'/', '', $file->getPathname());
+        if (! str_contains($relativePath, '.blade.php')) {
+            continue;
+        }
 
         $viewName = str_replace('.blade.php', '', $relativePath);
         $viewName = str_replace('/', '.', $viewName);
@@ -32,11 +36,11 @@ Route::get('/dev/view-test-all', function () {
         try {
             ob_start();
 
-            $data = ['errors' => new \Illuminate\Support\ViewErrorBag()];
+            $data = ['errors' => new \Illuminate\Support\ViewErrorBag];
             $allVars = @analyzeViewRecursive($viewName);
 
             foreach ($allVars as $var) {
-                if (!isset($data[$var])) {
+                if (! isset($data[$var])) {
                     $data[$var] = generateValue($var);
                 }
             }
@@ -54,7 +58,10 @@ Route::get('/dev/view-test-all', function () {
             $error = $e->getMessage();
             @ob_end_clean();
 
-            try { @\Illuminate\Support\Facades\Auth::logout(); } catch (\Throwable $e2) {}
+            try {
+                @\Illuminate\Support\Facades\Auth::logout();
+            } catch (\Throwable $e2) {
+            }
         }
 
         error_reporting(E_ALL);
@@ -64,7 +71,7 @@ Route::get('/dev/view-test-all', function () {
             'name' => $viewName,
             'path' => $relativePath,
             'size' => $file->getSize(),
-            'error' => $error
+            'error' => $error,
         ];
     }
 

@@ -183,7 +183,7 @@ class TournamentTypeRequest extends FormRequest
         // Convert short_name to uppercase
         if ($this->has('short_name')) {
             $this->merge([
-                'short_name' => strtoupper($this->short_name)
+                'short_name' => strtoupper($this->short_name),
             ]);
         }
 
@@ -194,23 +194,23 @@ class TournamentTypeRequest extends FormRequest
         ]);
 
         // If level is not set but is_national is true, set to nazionale
-        if ($this->boolean('is_national') && !$this->has('level')) {
+        if ($this->boolean('is_national') && ! $this->has('level')) {
             $this->merge(['level' => 'nazionale']);
-        } elseif (!$this->boolean('is_national') && !$this->has('level')) {
+        } elseif (! $this->boolean('is_national') && ! $this->has('level')) {
             $this->merge(['level' => 'zonale']);
         }
 
         // Set default sort_order if not provided
-        if (!$this->has('sort_order') || $this->sort_order === null) {
+        if (! $this->has('sort_order') || $this->sort_order === null) {
             $this->merge([
-                'sort_order' => \App\Models\TournamentType::max('sort_order') + 10
+                'sort_order' => \App\Models\TournamentType::max('sort_order') + 10,
             ]);
         }
 
         // Ensure max_referees is at least equal to min_referees
-        if ($this->has('min_referees') && !$this->has('max_referees')) {
+        if ($this->has('min_referees') && ! $this->has('max_referees')) {
             $this->merge([
-                'max_referees' => $this->min_referees
+                'max_referees' => $this->min_referees,
             ]);
         }
     }
@@ -241,7 +241,7 @@ class TournamentTypeRequest extends FormRequest
             }
 
             // Custom validation for zonal tournaments
-            if (!$this->boolean('is_national')) {
+            if (! $this->boolean('is_national')) {
                 // Zonal tournaments should have level = 'zonale'
                 if ($this->level !== 'zonale') {
                     $validator->errors()->add(
@@ -251,7 +251,7 @@ class TournamentTypeRequest extends FormRequest
                 }
 
                 // Zonal tournaments should specify visibility zones
-                if (empty($this->visibility_zones) && !$this->boolean('is_national')) {
+                if (empty($this->visibility_zones) && ! $this->boolean('is_national')) {
                     $validator->errors()->add(
                         'visibility_zones',
                         'I tornei zonali devono specificare le zone di visibilità.'

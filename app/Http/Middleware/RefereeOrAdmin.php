@@ -4,9 +4,9 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
 
 class RefereeOrAdmin
 {
@@ -18,11 +18,11 @@ class RefereeOrAdmin
     public function handle(Request $request, Closure $next): Response
     {
         // Check if user is authenticated
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'message' => 'Authentication required',
-                    'error' => 'Unauthenticated'
+                    'error' => 'Unauthenticated',
                 ], 401);
             }
 
@@ -35,7 +35,7 @@ class RefereeOrAdmin
         // Allowed user types for referee/admin access
         $allowedTypes = ['referee', 'admin', 'national_admin', 'super_admin'];
 
-        if (!in_array($userType, $allowedTypes)) {
+        if (! in_array($userType, $allowedTypes)) {
             // Log unauthorized access attempt
             Log::warning('Unauthorized referee/admin access attempt', [
                 'user_id' => $user->id,
@@ -50,7 +50,7 @@ class RefereeOrAdmin
             if ($request->expectsJson()) {
                 return response()->json([
                     'message' => 'Access denied. Referee or administrator privileges required.',
-                    'error' => 'Forbidden'
+                    'error' => 'Forbidden',
                 ], 403);
             }
 
@@ -138,7 +138,7 @@ class RefereeOrAdmin
             'application' => \App\Models\Application::class,
         ];
 
-        if (!isset($refereeOwnResources[$parameterName])) {
+        if (! isset($refereeOwnResources[$parameterName])) {
             return false;
         }
 
@@ -147,7 +147,7 @@ class RefereeOrAdmin
         try {
             $resource = $modelClass::find($resourceId);
 
-            if (!$resource) {
+            if (! $resource) {
                 return false; // Resource not found, let the controller handle it
             }
 
@@ -193,7 +193,7 @@ class RefereeOrAdmin
             'club' => \App\Models\Club::class,
         ];
 
-        if (!isset($zoneRestrictedResources[$parameterName])) {
+        if (! isset($zoneRestrictedResources[$parameterName])) {
             return false;
         }
 
@@ -202,7 +202,7 @@ class RefereeOrAdmin
         try {
             $resource = $modelClass::find($resourceId);
 
-            if (!$resource) {
+            if (! $resource) {
                 return false; // Resource not found, let the controller handle it
             }
 
@@ -212,6 +212,7 @@ class RefereeOrAdmin
                 if ($resource->zone_id === null) {
                     return false;
                 }
+
                 return true; // Access violation
             }
 

@@ -2,26 +2,27 @@
 
 namespace App\Http\Controllers\Admin;
 
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TournamentRequest;
+use App\Models\Club;
 use App\Models\Tournament;
 use App\Models\TournamentType;
-use App\Models\Club;
 use App\Models\Zone;
-use App\Traits\HasZoneVisibility;
-use App\Services\TournamentColorService;
 use App\Services\CalendarDataService;
+use App\Services\TournamentColorService;
+use App\Traits\HasZoneVisibility;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class TournamentController extends Controller
 {
     use HasZoneVisibility;
 
     protected TournamentColorService $colorService;
+
     protected CalendarDataService $calendarService;
+
     public function __construct(TournamentColorService $colorService, CalendarDataService $calendarService)
     {
         $this->colorService = $colorService;
@@ -70,9 +71,9 @@ class TournamentController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
+                $q->where('name', 'like', '%'.$search.'%')
                     ->orWhereHas('club', function ($clubQuery) use ($search) {
-                        $clubQuery->where('name', 'like', '%' . $search . '%');
+                        $clubQuery->where('name', 'like', '%'.$search.'%');
                     });
             });
         }
@@ -127,6 +128,7 @@ class TournamentController extends Controller
 
         return view('admin.tournaments.calendar', compact('calendarData'));
     }
+
     /**
      * Get admin roles for permissions
      */
@@ -175,7 +177,7 @@ class TournamentController extends Controller
         $this->checkTournamentAccess($tournament);
 
         // Check if editable
-        if (!$tournament->isEditable()) {
+        if (! $tournament->isEditable()) {
             return redirect()
                 ->route('admin.tournaments.show', $tournament)
                 ->with('error', 'Questo torneo non può essere modificato nel suo stato attuale.');
@@ -198,7 +200,6 @@ class TournamentController extends Controller
 
         return view('admin.tournaments.edit', compact('tournament', 'tournamentTypes', 'zones', 'clubs'));
     }
-
 
     /**
      * Store a newly created tournament in storage.
@@ -240,7 +241,7 @@ class TournamentController extends Controller
             'zone',
             'club',
             'assignments.user',
-            'availabilities.user'
+            'availabilities.user',
         ]);
 
         // Ottieni gli arbitri assegnati
@@ -252,7 +253,6 @@ class TournamentController extends Controller
             ->with(relations: 'user')
             ->get();
 
-
         // Statistics
         $stats = [
             'total_assignments' => $assignedReferees ? $assignedReferees->count() : 0,
@@ -261,7 +261,7 @@ class TournamentController extends Controller
             'required_referees' => $tournament->tournamentType->min_referees ?? 2,
             'days_until_deadline' => $tournament->availability_deadline
                 ? now()->diffInDays($tournament->availability_deadline, false)
-                : null
+                : null,
         ];
 
         return view('admin.tournaments.show', compact(
@@ -272,7 +272,6 @@ class TournamentController extends Controller
         ));
     }
 
-
     /**
      * Update the specified tournament in storage.
      */
@@ -282,7 +281,7 @@ class TournamentController extends Controller
         $this->checkTournamentAccess($tournament);
 
         // Check if editable
-        if (!$tournament->isEditable()) {
+        if (! $tournament->isEditable()) {
             return redirect()
                 ->route('admin.tournaments.show', $tournament)->with('error', 'Questo torneo non può essere modificato nel suo stato attuale.');
         }
@@ -311,7 +310,7 @@ class TournamentController extends Controller
         $this->checkTournamentAccess($tournament);
 
         // Check if has assignments and needs confirmation
-        if ($tournament->assignments()->exists() && !$request->has('confirm')) {
+        if ($tournament->assignments()->exists() && ! $request->has('confirm')) {
             return redirect()
                 ->route('admin.tournaments.index')
                 ->with('warning', 'Questo torneo ha delle assegnazioni. Per eliminarlo, conferma nuovamente l\'eliminazione.')
@@ -335,7 +334,7 @@ class TournamentController extends Controller
         $this->checkTournamentAccess($tournament);
 
         $request->validate([
-            'status' => ['required', 'in:' . implode(',', array_keys(Tournament::STATUSES))],
+            'status' => ['required', 'in:'.implode(',', array_keys(Tournament::STATUSES))],
         ]);
 
         $newStatus = $request->status;
@@ -350,10 +349,10 @@ class TournamentController extends Controller
             'completed' => [],
         ];
 
-        if (!in_array($newStatus, $validTransitions[$currentStatus] ?? [])) {
+        if (! in_array($newStatus, $validTransitions[$currentStatus] ?? [])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Transizione di stato non valida.'
+                'message' => 'Transizione di stato non valida.',
             ], 400);
         }
 
@@ -361,7 +360,7 @@ class TournamentController extends Controller
         if ($newStatus === 'assigned' && $tournament->assignments()->count() < $tournament->required_referees) {
             return response()->json([
                 'success' => false,
-                'message' => 'Non ci sono abbastanza arbitri assegnati.'
+                'message' => 'Non ci sono abbastanza arbitri assegnati.',
             ], 400);
         }
 
@@ -386,7 +385,7 @@ class TournamentController extends Controller
         $this->checkTournamentAccess($tournament);
 
         $request->validate([
-            'status' => ['required', 'in:' . implode(',', array_keys(Tournament::STATUSES))],
+            'status' => ['required', 'in:'.implode(',', array_keys(Tournament::STATUSES))],
         ]);
 
         $oldStatus = $tournament->status;
@@ -417,7 +416,7 @@ class TournamentController extends Controller
 
         return redirect()
             ->back()
-            ->with('success', "Stato torneo cambiato da '" . Tournament::STATUSES[$oldStatus] . "' a '" . Tournament::STATUSES[$newStatus] . "'.");
+            ->with('success', "Stato torneo cambiato da '".Tournament::STATUSES[$oldStatus]."' a '".Tournament::STATUSES[$newStatus]."'.");
     }
 
     /**
@@ -433,7 +432,7 @@ class TournamentController extends Controller
             ->with([
                 'user' => function ($query) {
                     $query->with('zone');
-                }
+                },
             ])
             ->get()
             ->sortBy('user.name');
@@ -464,7 +463,7 @@ class TournamentController extends Controller
      */
     private function checkTournamentAccess(Tournament $tournament)
     {
-        if (!$this->canAccessTournament($tournament)) {
+        if (! $this->canAccessTournament($tournament)) {
             abort(403, 'Non sei autorizzato ad accedere a questo torneo.');
         }
     }
@@ -506,7 +505,7 @@ class TournamentController extends Controller
 
     protected function canBeDeleted($tournament): bool
     {
-        return !$tournament->assignments()->exists() && $tournament->status === 'draft';
+        return ! $tournament->assignments()->exists() && $tournament->status === 'draft';
     }
 
     protected function checkAccess($tournament): void

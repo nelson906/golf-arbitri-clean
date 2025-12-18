@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property-read mixed $category_badge_color
  * @property-read mixed $category_display
  * @property-read \App\Models\Zone|null $zone
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail forNotificationType($type)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail forZone($zoneId = null)
@@ -39,6 +40,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail whereReceiveAllNotifications($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail whereZoneId($value)
+ *
  * @mixin \Eloquent
  */
 class InstitutionalEmail extends Model
@@ -109,7 +111,7 @@ class InstitutionalEmail extends Model
         if ($zoneId) {
             return $query->where(function ($q) use ($zoneId) {
                 $q->where('zone_id', $zoneId)
-                  ->orWhereNull('zone_id');
+                    ->orWhereNull('zone_id');
             });
         }
 
@@ -131,7 +133,7 @@ class InstitutionalEmail extends Model
     {
         return $query->where(function ($q) use ($type) {
             $q->where('receive_all_notifications', true)
-              ->orWhereJsonContains('notification_types', $type);
+                ->orWhereJsonContains('notification_types', $type);
         });
     }
 
@@ -178,7 +180,7 @@ class InstitutionalEmail extends Model
      */
     public function shouldReceiveNotificationType(string $type): bool
     {
-        if (!$this->is_active) {
+        if (! $this->is_active) {
             return false;
         }
 
@@ -187,6 +189,7 @@ class InstitutionalEmail extends Model
         }
 
         $types = $this->notification_types ?? [];
+
         return in_array($type, $types);
     }
 
@@ -196,7 +199,7 @@ class InstitutionalEmail extends Model
     public function addNotificationType(string $type): void
     {
         $types = $this->notification_types ?? [];
-        if (!in_array($type, $types)) {
+        if (! in_array($type, $types)) {
             $types[] = $type;
             $this->update(['notification_types' => $types]);
         }
@@ -208,7 +211,7 @@ class InstitutionalEmail extends Model
     public function removeNotificationType(string $type): void
     {
         $types = $this->notification_types ?? [];
-        $types = array_filter($types, fn($t) => $t !== $type);
+        $types = array_filter($types, fn ($t) => $t !== $type);
         $this->update(['notification_types' => array_values($types)]);
     }
 }

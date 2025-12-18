@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\ArubaToolsController;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Route;
 
 // ========================================
 // ROUTE TEMPORANEE PER SETUP INIZIALE
@@ -21,13 +21,13 @@ Route::middleware(['auth'])->group(function () {
 
         $criticalFunctions = ['exec', 'shell_exec', 'system', 'passthru', 'proc_open'];
 
-        $output = "<h2>Funzioni PHP Disabilitate</h2><ul>";
+        $output = '<h2>Funzioni PHP Disabilitate</h2><ul>';
         foreach ($criticalFunctions as $func) {
             $isDisabled = in_array($func, $disabledFunctions);
             $status = $isDisabled ? '❌ DISABILITATA' : '✅ DISPONIBILE';
             $output .= "<li><strong>{$func}()</strong>: {$status}</li>";
         }
-        $output .= "</ul><pre>" . implode("\n", $disabledFunctions) . "</pre>";
+        $output .= '</ul><pre>'.implode("\n", $disabledFunctions).'</pre>';
 
         return $output;
     });
@@ -40,9 +40,10 @@ Route::middleware(['auth'])->group(function () {
 
         try {
             Artisan::call('migrate', ['--force' => true]);
-            return '<pre>✅ Migration eseguita:\n' . Artisan::output() . '</pre>';
+
+            return '<pre>✅ Migration eseguita:\n'.Artisan::output().'</pre>';
         } catch (\Exception $e) {
-            return '<pre>❌ Errore: ' . $e->getMessage() . '</pre>';
+            return '<pre>❌ Errore: '.$e->getMessage().'</pre>';
         }
     });
 

@@ -3,30 +3,31 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
-use App\Models\Tournament;
-use App\Models\Availability;
-use App\Models\Zone;
-use App\Models\TournamentType;
-use App\Traits\HasZoneVisibility;
-use App\Services\TournamentColorService;
-use App\Services\CalendarDataService;
-use Illuminate\Http\Request;
-use Carbon\Carbon;
-use Illuminate\View\View;
-use Illuminate\Support\Facades\DB;
-use App\Mail\BatchAvailabilityNotification;
 use App\Mail\BatchAvailabilityAdminNotification;
-use Illuminate\Support\Facades\Mail;
-use App\Models\User;
+use App\Mail\BatchAvailabilityNotification;
+use App\Models\Availability;
 use App\Models\InstitutionalEmail;
+use App\Models\Tournament;
+use App\Models\TournamentType;
+use App\Models\User;
+use App\Models\Zone;
+use App\Services\CalendarDataService;
+use App\Services\TournamentColorService;
+use App\Traits\HasZoneVisibility;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\View\View;
 
 class AvailabilityController extends Controller
 {
     use HasZoneVisibility;
 
     protected TournamentColorService $colorService;
+
     protected CalendarDataService $calendarService;
+
     public function __construct(TournamentColorService $colorService, CalendarDataService $calendarService)
     {
         $this->colorService = $colorService;
@@ -113,14 +114,14 @@ class AvailabilityController extends Controller
         $request->validate([
             'tournament_id' => 'required|exists:tournaments,id',
             'available' => 'required|boolean',
-            'notes' => 'nullable|string|max:500'
+            'notes' => 'nullable|string|max:500',
         ]);
 
         $user = auth()->user();
         $tournament = Tournament::findOrFail($request->tournament_id);
 
         // Verifica che l'utente possa dichiarare disponibilità per questo torneo
-        if (!$this->canDeclareAvailability($user, $tournament)) {
+        if (! $this->canDeclareAvailability($user, $tournament)) {
             $errorMessage = 'Non sei autorizzato a dichiarare disponibilità per questo torneo.';
 
             if ($tournament->start_date < now()) {
@@ -132,9 +133,10 @@ class AvailabilityController extends Controller
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'error' => $errorMessage
+                    'error' => $errorMessage,
                 ], 403);
             }
+
             return back()->with('error', $errorMessage);
         }
 
@@ -143,11 +145,11 @@ class AvailabilityController extends Controller
             Availability::updateOrCreate(
                 [
                     'user_id' => $user->id,
-                    'tournament_id' => $tournament->id
+                    'tournament_id' => $tournament->id,
                 ],
                 [
                     'notes' => $request->notes,
-                    'submitted_at' => now()
+                    'submitted_at' => now(),
                 ]
             );
             $message = 'Disponibilità dichiarata con successo.';
@@ -169,7 +171,7 @@ class AvailabilityController extends Controller
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => $message
+                'message' => $message,
             ]);
         }
 
@@ -249,7 +251,7 @@ class AvailabilityController extends Controller
             DB::rollback();
             Log::error('Errore salvataggio disponibilità batch', [
                 'user_id' => $user->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return redirect()->back()
@@ -291,6 +293,7 @@ class AvailabilityController extends Controller
                 if ($tournament) {
                     $event['extendedProps']['can_declare'] = $this->canDeclareAvailability($user, $tournament);
                 }
+
                 return $event;
             });
 
@@ -298,13 +301,13 @@ class AvailabilityController extends Controller
         } catch (\Exception $e) {
             Log::error('Errore caricamento calendario disponibilità', [
                 'user_id' => $user->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             $calendarData = [
                 'tournaments' => collect(),
                 'userType' => 'user',
-                'error' => 'Si è verificato un errore nel caricamento del calendario.'
+                'error' => 'Si è verificato un errore nel caricamento del calendario.',
             ];
 
             return view('referee.availabilities.calendar', compact('calendarData'));
@@ -315,8 +318,6 @@ class AvailabilityController extends Controller
      * Private methods
      * Nota: getAccessibleZones e getAccessibleTournaments sono ora nel trait HasZoneVisibility
      */
-
-
     private function canDeclareAvailability($user, $tournament): bool
     {
         // Verifica se il torneo è futuro
@@ -333,7 +334,6 @@ class AvailabilityController extends Controller
         return $this->canAccessTournament($tournament, $user);
     }
 
-
     /**
      * Gestisce l'invio delle notifiche per aggiornamenti batch di disponibilità.
      *
@@ -341,10 +341,11 @@ class AvailabilityController extends Controller
      * 1. MEMO all'arbitro (conferma delle modifiche)
      * 2. Notifica agli admin (zone admin e/o national admin per tornei nazionali)
      *
-     * @param User $user L'arbitro che ha modificato le disponibilità
-     * @param array $newAvailabilities ID tornei con nuova disponibilità
-     * @param array $oldAvailabilities ID tornei con disponibilità precedente
-     */ private function handleNotifications($user, $newAvailabilities, $oldAvailabilities)
+     * @param  User  $user  L'arbitro che ha modificato le disponibilità
+     * @param  array  $newAvailabilities  ID tornei con nuova disponibilità
+     * @param  array  $oldAvailabilities  ID tornei con disponibilità precedente
+     */
+    private function handleNotifications($user, $newAvailabilities, $oldAvailabilities)
     {
         $added = array_diff($newAvailabilities, $oldAvailabilities);
         $removed = array_diff($oldAvailabilities, $newAvailabilities);
@@ -357,7 +358,7 @@ class AvailabilityController extends Controller
                 // ═══════════════════════════════════════════════════════════════
                 // 1. MEMO ALL'ARBITRO - Conferma delle modifiche
                 // ═══════════════════════════════════════════════════════════════
-                if (!empty($user->email)) {
+                if (! empty($user->email)) {
                     Mail::to($user->email)->send(new BatchAvailabilityNotification(
                         $user,
                         $addedTournaments,
@@ -379,7 +380,7 @@ class AvailabilityController extends Controller
                 // Rimuovi duplicati
                 $adminEmails = array_unique($adminEmails);
 
-                if (!empty($adminEmails)) {
+                if (! empty($adminEmails)) {
                     Mail::to($adminEmails)->send(new BatchAvailabilityAdminNotification(
                         $user,
                         $addedTournaments,
@@ -391,12 +392,12 @@ class AvailabilityController extends Controller
                     'user_id' => $user->id,
                     'added_count' => count($added),
                     'removed_count' => count($removed),
-                    'admin_emails_count' => count($adminEmails)
+                    'admin_emails_count' => count($adminEmails),
                 ]);
             } catch (\Exception $e) {
                 Log::error('Errore invio notifiche disponibilità batch', [
                     'user_id' => $user->id,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
             }
         }
@@ -417,14 +418,13 @@ class AvailabilityController extends Controller
      * │ (is_national = false)    │ 2. Email istituzionali della zona (da DB)    │
      * └─────────────────────────────────────────────────────────────────────────┘
      *
-     * @param Tournament $tournament Il torneo per cui è stata dichiarata disponibilità
+     * @param  Tournament  $tournament  Il torneo per cui è stata dichiarata disponibilità
      * @return array Lista di email uniche degli admin da notificare
      *
      * @example
      * // Per torneo nazionale:
      * // - Notifica national_admin + CRC + zone admin
      * $emails = $this->getAdminEmailsForNotification($nationalTournament);
-     *
      * @example
      * // Per torneo zonale:
      * // - Notifica solo zone admin della zona del torneo
@@ -463,7 +463,7 @@ class AvailabilityController extends Controller
             Log::debug('Notifica torneo nazionale', [
                 'tournament_id' => $tournament->id,
                 'national_admins' => count($nationalAdmins),
-                'institutional_emails' => count($institutionalEmails)
+                'institutional_emails' => count($institutionalEmails),
             ]);
         }
 
@@ -492,7 +492,7 @@ class AvailabilityController extends Controller
                 'tournament_id' => $tournament->id,
                 'zone_id' => $tournamentZoneId,
                 'zone_admins' => count($zoneAdmins),
-                'zone_institutional' => count($zoneInstitutionalEmails)
+                'zone_institutional' => count($zoneInstitutionalEmails),
             ]);
         }
 
@@ -502,7 +502,7 @@ class AvailabilityController extends Controller
         Log::info('Email admin per notifica disponibilità', [
             'tournament_id' => $tournament->id,
             'is_national' => $isNationalTournament,
-            'total_emails' => count($uniqueEmails)
+            'total_emails' => count($uniqueEmails),
         ]);
 
         return $uniqueEmails;
@@ -517,10 +517,9 @@ class AvailabilityController extends Controller
      * 1. MEMO all'arbitro (conferma della dichiarazione/rimozione)
      * 2. Notifica agli admin appropriati (determinati da getAdminEmailsForNotification)
      *
-     * @param User $user L'arbitro che ha dichiarato/rimosso la disponibilità
-     * @param Tournament $tournament Il torneo per cui è stata modificata la disponibilità
-     * @param string $action 'added' o 'removed'
-     *
+     * @param  User  $user  L'arbitro che ha dichiarato/rimosso la disponibilità
+     * @param  Tournament  $tournament  Il torneo per cui è stata modificata la disponibilità
+     * @param  string  $action  'added' o 'removed'
      */
     private function handleSingleNotification($user, $tournament, $action)
     {
@@ -535,7 +534,7 @@ class AvailabilityController extends Controller
             // ═══════════════════════════════════════════════════════════════════
             // 1. MEMO ALL'ARBITRO - Conferma della dichiarazione
             // ═══════════════════════════════════════════════════════════════════
-            if (!empty($user->email)) {
+            if (! empty($user->email)) {
                 Mail::to($user->email)->send(new BatchAvailabilityNotification(
                     $user,
                     $addedTournaments,
@@ -548,7 +547,7 @@ class AvailabilityController extends Controller
             // ═══════════════════════════════════════════════════════════════════
             $adminEmails = $this->getAdminEmailsForNotification($tournament);
 
-            if (!empty($adminEmails)) {
+            if (! empty($adminEmails)) {
                 Mail::to($adminEmails)->send(new BatchAvailabilityAdminNotification(
                     $user,
                     $addedTournaments,
@@ -562,7 +561,7 @@ class AvailabilityController extends Controller
                 'tournament_id' => $tournament->id,
                 'is_national' => $tournament->tournamentType?->is_national ?? false,
                 'action' => $action,
-                'admin_emails_count' => count($adminEmails)
+                'admin_emails_count' => count($adminEmails),
             ]);
         } catch (\Exception $e) {
             // Non bloccare l'operazione se l'invio email fallisce
@@ -570,7 +569,7 @@ class AvailabilityController extends Controller
                 'user_id' => $user->id,
                 'tournament_id' => $tournament->id,
                 'action' => $action,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
         }
     }

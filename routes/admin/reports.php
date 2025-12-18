@@ -25,4 +25,3 @@ Route::prefix('reports')->name('reports.')->group(function () {
     Route::get('/export-csv', [StatisticsDashboardController::class, 'exportCsv'])->name('export-csv');
     Route::get('/api-stats/{type}', [StatisticsDashboardController::class, 'apiStats'])->name('api-stats');
 });
-

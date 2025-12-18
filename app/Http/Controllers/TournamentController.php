@@ -2,19 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Models\Tournament;
-use App\Models\Zone;
-use App\Models\TournamentType;
 use App\Models\Club;
-use App\Traits\HasZoneVisibility;
-use App\Services\TournamentColorService;
+use App\Models\Tournament;
+use App\Models\TournamentType;
+use App\Models\Zone;
 use App\Services\CalendarDataService;
+use App\Services\TournamentColorService;
+use App\Traits\HasZoneVisibility;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
-use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 
 /**
  * TournamentController Unificato
@@ -25,7 +22,9 @@ class TournamentController extends Controller
     use HasZoneVisibility;
 
     protected TournamentColorService $colorService;
+
     protected CalendarDataService $calendarService;
+
     public function __construct(TournamentColorService $colorService, CalendarDataService $calendarService)
     {
         $this->colorService = $colorService;
@@ -45,7 +44,7 @@ class TournamentController extends Controller
         $this->applyTournamentVisibility($query, $user);
 
         // Per i non-admin, mostra solo tornei con status visibili
-        if (!$this->isAdmin($user)) {
+        if (! $this->isAdmin($user)) {
             $query->whereIn('status', ['open', 'closed', 'assigned', 'completed']);
         }
 
@@ -56,7 +55,6 @@ class TournamentController extends Controller
 
         // Statistiche per admin
         $stats = $this->isAdmin($user) ? $this->calculateStats($tournaments) : [];
-
 
         return view('tournaments.index', [
             'tournaments' => $tournaments,
@@ -81,7 +79,7 @@ class TournamentController extends Controller
         $query = Tournament::with([
             'tournamentType:id,name,short_name,calendar_color',
             'club:id,name,zone_id',
-            'club.zone:id,name'
+            'club.zone:id,name',
         ]);
 
         // Load additional relations based on user type
@@ -93,7 +91,7 @@ class TournamentController extends Controller
         $this->applyTournamentVisibility($query, $user);
 
         // Per i non-admin, mostra solo tornei con status visibili
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $query->whereIn('status', ['open', 'closed', 'assigned', 'completed']);
         }
 
@@ -230,7 +228,7 @@ class TournamentController extends Controller
         }
 
         if ($request->filled('status')) {
-            $query;
+
         }
 
         if ($request->filled('zone_id')) {
@@ -255,19 +253,19 @@ class TournamentController extends Controller
         }
     }
 
-
     private function checkTournamentAccess($tournament, $user, $isAdmin): void
     {
         // Non-admin non possono vedere tornei in draft
-        if (!$isAdmin && $tournament->status === 'draft') {
+        if (! $isAdmin && $tournament->status === 'draft') {
             abort(404);
         }
 
         // Usa il metodo centralizzato del trait per verificare l'accesso
-        if (!$this->canAccessTournament($tournament, $user)) {
+        if (! $this->canAccessTournament($tournament, $user)) {
             abort(403, 'Non hai accesso a questo torneo.');
         }
     }
+
     private function calculateStats($tournaments): array
     {
         if (method_exists($tournaments, 'getCollection')) {
@@ -289,7 +287,6 @@ class TournamentController extends Controller
             'completed' => $byStatus->get('completed', collect())->count(),
         ];
     }
-
 }
 
 /*

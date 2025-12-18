@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class NotificationClauseSelection extends Model
 {
@@ -12,7 +12,7 @@ class NotificationClauseSelection extends Model
     protected $fillable = [
         'tournament_notification_id',
         'placeholder_code',
-        'clause_id'
+        'clause_id',
     ];
 
     // Relazioni

@@ -6,8 +6,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class TournamentType extends Model
 {
@@ -21,7 +21,7 @@ class TournamentType extends Model
         'calendar_color',
         'short_name',
         'is_active',
-        'sort_order'
+        'sort_order',
     ];
 
     protected $casts = [
@@ -31,18 +31,19 @@ class TournamentType extends Model
     /**
      * RELAZIONI
      */
-
     public function tournaments()
     {
         return $this->hasMany(Tournament::class);
     }
-        /**
+
+    /**
      * Scope a query to only include active types.
      */
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
+
     /**
      * Scope a query to order by sort order.
      */
@@ -62,5 +63,4 @@ class TournamentType extends Model
         // Both should be visible to zone administrators
         return true;
     }
-
 }

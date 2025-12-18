@@ -20,6 +20,7 @@ class BatchAvailabilityAdminNotification extends Mailable
     public function envelope(): Envelope
     {
         $zone = $this->user->zone->name ?? 'N/A';
+
         return new Envelope(
             subject: "[DISPONIBILITÀ] {$this->user->name} - Zona {$zone}",
         );
@@ -37,7 +38,7 @@ class BatchAvailabilityAdminNotification extends Mailable
                 'zone' => $this->user->zone->name ?? 'N/A',
                 'added_tournaments' => $this->addedTournaments,
                 'removed_tournaments' => $this->removedTournaments,
-                'updated_at' => now()->format('d/m/Y H:i')
+                'updated_at' => now()->format('d/m/Y H:i'),
             ]
         );
     }

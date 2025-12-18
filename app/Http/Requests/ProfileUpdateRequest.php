@@ -1,4 +1,5 @@
 <?php
+
 // app/Http/Requests/ProfileUpdateRequest.php
 
 namespace App\Http\Requests;

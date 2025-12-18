@@ -53,8 +53,9 @@ class ArchiveCareerYear extends Command
 
         if ($clearData) {
             $this->warn('ATTENZIONE: I dati sorgente verranno ELIMINATI dopo l\'archiviazione!');
-            if (!$this->confirm('Sei sicuro di voler procedere?')) {
+            if (! $this->confirm('Sei sicuro di voler procedere?')) {
                 $this->info('Operazione annullata.');
+
                 return self::SUCCESS;
             }
         }
@@ -88,7 +89,8 @@ class ArchiveCareerYear extends Command
 
             return self::SUCCESS;
         } catch (\Exception $e) {
-            $this->error('Errore durante l\'archiviazione: ' . $e->getMessage());
+            $this->error('Errore durante l\'archiviazione: '.$e->getMessage());
+
             return self::FAILURE;
         }
     }
@@ -170,7 +172,7 @@ class ArchiveCareerYear extends Command
             ]
         );
 
-        if (!empty($stats['errors'])) {
+        if (! empty($stats['errors'])) {
             $this->newLine();
             $this->warn('Errori riscontrati:');
             foreach ($stats['errors'] as $error) {

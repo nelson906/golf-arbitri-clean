@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class NotificationClause extends Model
 {
@@ -17,12 +17,12 @@ class NotificationClause extends Model
         'content',
         'applies_to',
         'is_active',
-        'sort_order'
+        'sort_order',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
-        'sort_order' => 'integer'
+        'sort_order' => 'integer',
     ];
 
     const CATEGORIES = [
@@ -30,14 +30,14 @@ class NotificationClause extends Model
         'logistica' => 'Logistica e Servizi',
         'responsabilita' => 'Responsabilità e Assicurazioni',
         'comunicazioni' => 'Comunicazioni e Report',
-        'altro' => 'Altro'
+        'altro' => 'Altro',
     ];
 
     const APPLIES_TO = [
         'club' => 'Circolo',
         'referee' => 'Arbitri',
         'institutional' => 'Istituzionali',
-        'all' => 'Tutti'
+        'all' => 'Tutti',
     ];
 
     // Relazioni
@@ -54,9 +54,9 @@ class NotificationClause extends Model
 
     public function scopeForRecipientType($query, string $type)
     {
-        return $query->where(function($q) use ($type) {
+        return $query->where(function ($q) use ($type) {
             $q->where('applies_to', $type)
-              ->orWhere('applies_to', 'all');
+                ->orWhere('applies_to', 'all');
         });
     }
 

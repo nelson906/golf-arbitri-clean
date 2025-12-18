@@ -2,24 +2,20 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\DB;
+use App\Models\Club;
+use App\Models\NotificationClause;
+use App\Models\NotificationClauseSelection;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Models\User;
 use App\Models\Zone;
-use App\Models\Club;
-use App\Models\Assignment;
-use App\Models\NotificationClause;
-use App\Models\NotificationClauseSelection;
 use App\Services\DocumentGenerationService;
 use App\Services\NotificationService;
-use App\Mail\RefereeAssignmentMail;
-use App\Mail\ClubNotificationMail;
 use Carbon\Carbon;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Tests\TestCase;
 
 /**
  * Test non invasivo per il ciclo completo di notifica
@@ -42,10 +38,15 @@ class NotificationCycleTest extends TestCase
     use DatabaseTransactions;
 
     protected DocumentGenerationService $documentService;
+
     protected NotificationService $notificationService;
+
     protected ?Tournament $testTournament = null;
+
     protected ?User $testAdmin = null;
+
     protected array $generatedFiles = [];
+
     protected bool $databaseAvailable = false;
 
     protected function setUp(): void
@@ -73,7 +74,7 @@ class NotificationCycleTest extends TestCase
      */
     protected function requireDatabase(): void
     {
-        if (!$this->databaseAvailable) {
+        if (! $this->databaseAvailable) {
             $this->markTestSkipped('Database non disponibile. Eseguire con: php artisan test --env=local');
         }
     }
@@ -119,7 +120,7 @@ class NotificationCycleTest extends TestCase
         $missingTemplates = [];
         foreach ($zones as $zone) {
             $templatePath = "{$templateDir}/lettera_intestata_{$zone}.docx";
-            if (!file_exists($templatePath)) {
+            if (! file_exists($templatePath)) {
                 $missingTemplates[] = $zone;
             }
         }
@@ -141,7 +142,7 @@ class NotificationCycleTest extends TestCase
         // Trova un torneo esistente per testare
         $tournament = Tournament::with(['club', 'zone', 'tournamentType'])->first();
 
-        if (!$tournament) {
+        if (! $tournament) {
             $this->markTestSkipped('Nessun torneo nel database per il test');
         }
 
@@ -164,7 +165,7 @@ class NotificationCycleTest extends TestCase
             ->with(['club', 'zone', 'tournamentType', 'assignments.user'])
             ->first();
 
-        if (!$tournament) {
+        if (! $tournament) {
             $this->markTestSkipped('Nessun torneo con assegnazioni nel database');
         }
 
@@ -184,7 +185,7 @@ class NotificationCycleTest extends TestCase
             // Verifica che sia un file DOCX valido (ZIP)
             $this->assertStringEndsWith('.docx', $result['filename']);
         } catch (\Exception $e) {
-            $this->fail('Errore generazione convocazione: ' . $e->getMessage());
+            $this->fail('Errore generazione convocazione: '.$e->getMessage());
         }
     }
 
@@ -200,7 +201,7 @@ class NotificationCycleTest extends TestCase
             ->with(['club', 'zone', 'tournamentType', 'assignments.user'])
             ->first();
 
-        if (!$tournament) {
+        if (! $tournament) {
             $this->markTestSkipped('Nessun torneo con assegnazioni nel database');
         }
 
@@ -220,7 +221,7 @@ class NotificationCycleTest extends TestCase
             // Verifica che sia un file DOCX valido
             $this->assertStringEndsWith('.docx', $result['filename']);
         } catch (\Exception $e) {
-            $this->fail('Errore generazione documento circolo: ' . $e->getMessage());
+            $this->fail('Errore generazione documento circolo: '.$e->getMessage());
         }
     }
 
@@ -236,7 +237,7 @@ class NotificationCycleTest extends TestCase
             ->with(['club', 'zone', 'tournamentType', 'assignments.user'])
             ->first();
 
-        if (!$tournament) {
+        if (! $tournament) {
             $this->markTestSkipped('Nessun torneo con assegnazioni nel database');
         }
 
@@ -254,7 +255,7 @@ class NotificationCycleTest extends TestCase
             NotificationClauseSelection::create([
                 'tournament_notification_id' => $notification->id,
                 'clause_id' => $clause->id,
-                'placeholder_code' => 'CLAUSOLA_ARBITRO_RESPONSABILITA'
+                'placeholder_code' => 'CLAUSOLA_ARBITRO_RESPONSABILITA',
             ]);
         }
 
@@ -267,7 +268,7 @@ class NotificationCycleTest extends TestCase
             // Traccia il file per cleanup
             $this->generatedFiles[] = $result['path'];
         } catch (\Exception $e) {
-            $this->fail('Errore generazione convocazione con clausole: ' . $e->getMessage());
+            $this->fail('Errore generazione convocazione con clausole: '.$e->getMessage());
         }
     }
 
@@ -283,7 +284,7 @@ class NotificationCycleTest extends TestCase
             ->with(['club', 'zone', 'tournamentType', 'assignments.user'])
             ->first();
 
-        if (!$tournament) {
+        if (! $tournament) {
             $this->markTestSkipped('Nessun torneo con assegnazioni nel database');
         }
 
@@ -294,7 +295,7 @@ class NotificationCycleTest extends TestCase
             $this->assertEquals($tournament->id, $notification->tournament_id);
             $this->assertEquals('pending', $notification->status);
         } catch (\Exception $e) {
-            $this->fail('Errore preparazione notifica: ' . $e->getMessage());
+            $this->fail('Errore preparazione notifica: '.$e->getMessage());
         }
     }
 
@@ -323,7 +324,7 @@ class NotificationCycleTest extends TestCase
             ->with(['club', 'zone', 'tournamentType', 'assignments.user'])
             ->first();
 
-        if (!$tournament) {
+        if (! $tournament) {
             $this->markTestSkipped('Nessun torneo completo nel database');
         }
 
@@ -339,8 +340,8 @@ class NotificationCycleTest extends TestCase
                     'club' => true,
                     'referees' => $tournament->assignments->pluck('user_id')->toArray(),
                 ],
-                'attach_convocation' => true
-            ]
+                'attach_convocation' => true,
+            ],
         ]);
 
         $this->assertNotNull($notification->id);
@@ -357,13 +358,13 @@ class NotificationCycleTest extends TestCase
             $notification->update([
                 'documents' => [
                     'convocation' => $convocation['filename'],
-                    'club_letter' => $clubDoc['filename']
-                ]
+                    'club_letter' => $clubDoc['filename'],
+                ],
             ]);
 
             $this->assertNotEmpty($notification->documents);
         } catch (\Exception $e) {
-            $this->fail('Errore nel ciclo di notifica: ' . $e->getMessage());
+            $this->fail('Errore nel ciclo di notifica: '.$e->getMessage());
         }
 
         // Step 4: Verifica che le email non siano state inviate (sono fake)
@@ -378,7 +379,6 @@ class NotificationCycleTest extends TestCase
      */
     public function test_tournament_date_formatting(): void
     {
-
 
         // Torneo stesso giorno
         $singleDayTournament = new Tournament([
@@ -475,7 +475,7 @@ class NotificationCycleTest extends TestCase
             ->with(['club', 'zone', 'tournamentType', 'assignments.user'])
             ->first();
 
-        if (!$tournament) {
+        if (! $tournament) {
             $this->markTestSkipped('Nessun torneo con assegnazioni');
         }
 
@@ -484,7 +484,7 @@ class NotificationCycleTest extends TestCase
             $this->generatedFiles[] = $result['path'];
 
             // DOCX è un file ZIP - verifica che sia apribile come ZIP
-            $zip = new \ZipArchive();
+            $zip = new \ZipArchive;
             $opened = $zip->open($result['path']);
 
             $this->assertTrue($opened === true, 'Il file DOCX non è un ZIP valido');
@@ -495,7 +495,7 @@ class NotificationCycleTest extends TestCase
 
             $zip->close();
         } catch (\Exception $e) {
-            $this->fail('Errore verifica DOCX: ' . $e->getMessage());
+            $this->fail('Errore verifica DOCX: '.$e->getMessage());
         }
     }
 
@@ -511,13 +511,13 @@ class NotificationCycleTest extends TestCase
             ->with(['club', 'zone', 'tournamentType'])
             ->first();
 
-        if (!$tournament) {
+        if (! $tournament) {
             // Crea un torneo temporaneo senza assegnazioni
             $zone = Zone::first();
             $club = Club::first();
             $tournamentType = \App\Models\TournamentType::first();
 
-            if (!$zone || !$club || !$tournamentType) {
+            if (! $zone || ! $club || ! $tournamentType) {
                 $this->markTestSkipped('Zone, Club o TournamentType non disponibili');
             }
 

@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\RefereeCareerHistory;
-use App\Models\User;
 use App\Models\Tournament;
+use App\Models\User;
 use App\Models\Zone;
 use App\Services\CareerHistoryService;
 use Illuminate\Http\Request;
@@ -19,6 +19,7 @@ class CareerHistoryController extends Controller
     {
         $this->careerService = $careerService;
     }
+
     /**
      * Check if current user is super admin.
      */
@@ -37,6 +38,7 @@ class CareerHistoryController extends Controller
         if ($user->user_type === 'super_admin') {
             return null; // No restriction
         }
+
         return $user->zone_id;
     }
 
@@ -49,6 +51,7 @@ class CareerHistoryController extends Controller
         if ($zoneId === null) {
             return true; // Super admin can access all
         }
+
         return $targetUser->zone_id === $zoneId;
     }
 
@@ -106,7 +109,7 @@ class CareerHistoryController extends Controller
     public function show(User $user)
     {
         // Check zone access
-        if (!$this->canAccessUser($user)) {
+        if (! $this->canAccessUser($user)) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 
@@ -144,7 +147,7 @@ class CareerHistoryController extends Controller
     public function processArchive(Request $request)
     {
         $request->validate([
-            'year' => 'required|integer|min:2000|max:' . now()->year,
+            'year' => 'required|integer|min:2000|max:'.now()->year,
             'user_id' => 'nullable|exists:users,id',
             'clear_data' => 'nullable|boolean',
         ]);
@@ -154,15 +157,14 @@ class CareerHistoryController extends Controller
         $clearData = $request->boolean('clear_data', false);
 
         // Only super_admin can clear data
-        if ($clearData && !$this->isSuperAdmin()) {
+        if ($clearData && ! $this->isSuperAdmin()) {
             return redirect()
                 ->back()
                 ->with('error', 'Solo il super admin puo svuotare le tabelle');
         }
 
-
         // If not super_admin, must specify a user (can't archive all)
-        if (!$this->isSuperAdmin() && !$userId) {
+        if (! $this->isSuperAdmin() && ! $userId) {
             return redirect()
                 ->back()
                 ->with('error', 'Devi selezionare un arbitro specifico');
@@ -171,7 +173,7 @@ class CareerHistoryController extends Controller
         // If user specified, check zone access
         if ($userId) {
             $targetUser = User::find($userId);
-            if (!$this->canAccessUser($targetUser)) {
+            if (! $this->canAccessUser($targetUser)) {
                 abort(403, 'Non hai accesso a questo arbitro');
             }
         }
@@ -191,7 +193,7 @@ class CareerHistoryController extends Controller
 
                 $message = "Anno {$year} archiviato: {$stats['referees_processed']} arbitri, {$stats['assignments_archived']} assegnazioni";
 
-                if (!empty($stats['errors'])) {
+                if (! empty($stats['errors'])) {
                     $message .= " ({$stats['errors']} errori)";
                 }
                 // Svuota le tabelle se richiesto
@@ -208,12 +210,12 @@ class CareerHistoryController extends Controller
             Log::error('Errore archiviazione career history', [
                 'year' => $year,
                 'user_id' => $userId,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return redirect()
                 ->back()
-                ->with('error', 'Errore durante l\'archiviazione: ' . $e->getMessage());
+                ->with('error', 'Errore durante l\'archiviazione: '.$e->getMessage());
         }
     }
 
@@ -223,12 +225,12 @@ class CareerHistoryController extends Controller
     public function editYear(User $user, int $year)
     {
         // Check zone access
-        if (!$this->canAccessUser($user)) {
+        if (! $this->canAccessUser($user)) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 
         $history = RefereeCareerHistory::where('user_id', $user->id)->first();
-        if (!$history) {
+        if (! $history) {
             return redirect()
                 ->route('admin.career-history.show', $user)
                 ->with('error', 'Nessuno storico trovato per questo arbitro');
@@ -262,7 +264,7 @@ class CareerHistoryController extends Controller
     public function addTournament(Request $request, User $user)
     {
         // Check zone access
-        if (!$this->canAccessUser($user)) {
+        if (! $this->canAccessUser($user)) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 
@@ -290,7 +292,7 @@ class CareerHistoryController extends Controller
             $history = RefereeCareerHistory::where('user_id', $user->id)->first();
             $assignments = $history->assignments_by_year ?? [];
 
-            if (!isset($assignments[$request->year])) {
+            if (! isset($assignments[$request->year])) {
                 $assignments[$request->year] = [];
             }
 
@@ -318,7 +320,7 @@ class CareerHistoryController extends Controller
     public function addMultipleTournaments(Request $request, User $user)
     {
         // Check zone access
-        if (!$this->canAccessUser($user)) {
+        if (! $this->canAccessUser($user)) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 
@@ -351,13 +353,13 @@ class CareerHistoryController extends Controller
 
             // Se c'e un ruolo, aggiungi anche l'assegnazione
             if ($request->filled('role')) {
-                if (!$history) {
+                if (! $history) {
                     $history = RefereeCareerHistory::where('user_id', $user->id)->first();
                 }
 
                 $assignments = $history->assignments_by_year ?? [];
 
-                if (!isset($assignments[$request->year])) {
+                if (! isset($assignments[$request->year])) {
                     $assignments[$request->year] = [];
                 }
 
@@ -390,7 +392,7 @@ class CareerHistoryController extends Controller
     public function removeTournament(Request $request, User $user)
     {
         // Check zone access
-        if (!$this->canAccessUser($user)) {
+        if (! $this->canAccessUser($user)) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 
@@ -412,7 +414,7 @@ class CareerHistoryController extends Controller
             if (isset($assignments[$request->year])) {
                 $assignments[$request->year] = array_values(array_filter(
                     $assignments[$request->year],
-                    fn($a) => $a['tournament_id'] != $request->tournament_id
+                    fn ($a) => $a['tournament_id'] != $request->tournament_id
                 ));
                 $history->assignments_by_year = $assignments;
                 $history->career_stats = $history->generateStatsSummary();

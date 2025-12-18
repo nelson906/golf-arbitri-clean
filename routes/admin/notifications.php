@@ -1,4 +1,5 @@
 <?php
+
 /*
 |--------------------------------------------------------------------------
 | routes/admin/notifications.php - Notification System Routes
@@ -6,7 +7,6 @@
 */
 use App\Http\Controllers\Admin\NotificationController;
 use Illuminate\Support\Facades\Route;
-
 
 // Tournament Notifications System (Document Management)
 Route::prefix('tournament-notifications')->name('tournament-notifications.')->group(function () {
@@ -29,7 +29,6 @@ Route::prefix('tournament-notifications')->name('tournament-notifications.')->gr
     // Clause management (AJAX)
     Route::post('/{notification}/save-clauses', [NotificationController::class, 'saveClauses'])
         ->name('save-clauses');
-
 
     // Core notification operations
     Route::post('/{notification}/send', [NotificationController::class, 'send'])->name('send');

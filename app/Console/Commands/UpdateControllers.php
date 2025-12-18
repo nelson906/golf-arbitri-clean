@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\File;
 class UpdateControllers extends Command
 {
     protected $signature = 'update:controllers';
+
     protected $description = 'Aggiorna controllers per schema users unificato';
 
     public function handle()
@@ -49,7 +50,7 @@ class UpdateControllers extends Command
         $content = $this->getUserControllerContent();
         File::put($controllerPath, $content);
 
-        $this->line("✅ UserController unificato creato");
+        $this->line('✅ UserController unificato creato');
     }
 
     private function updateTournamentController()
@@ -66,7 +67,7 @@ class UpdateControllers extends Command
         $content = $this->getTournamentControllerContent();
         File::put($controllerPath, $content);
 
-        $this->line("✅ TournamentController aggiornato");
+        $this->line('✅ TournamentController aggiornato');
     }
 
     private function updateAssignmentController()
@@ -83,7 +84,7 @@ class UpdateControllers extends Command
         $content = $this->getAssignmentControllerContent();
         File::put($controllerPath, $content);
 
-        $this->line("✅ AssignmentController aggiornato");
+        $this->line('✅ AssignmentController aggiornato');
     }
 
     private function createDashboardController()
@@ -95,7 +96,7 @@ class UpdateControllers extends Command
         $content = $this->getDashboardControllerContent();
         File::put($controllerPath, $content);
 
-        $this->line("✅ DashboardController creato");
+        $this->line('✅ DashboardController creato');
     }
 
     private function getUserControllerContent()

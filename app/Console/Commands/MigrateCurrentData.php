@@ -2,16 +2,17 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
+use App\Models\TournamentType;
 use App\Models\User;
 use App\Models\Zone;
-use App\Models\TournamentType;
 use Carbon\Carbon;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class MigrateCurrentData extends Command
 {
     protected $signature = 'migrate:current-data {--dry-run} {--debug}';
+
     protected $description = 'Migra dati correnti: tournaments, clubs, assignments, availabilities';
 
     public function handle()
@@ -27,12 +28,12 @@ class MigrateCurrentData extends Command
         }
 
         // Test connessione
-        if (!$this->testConnection()) {
+        if (! $this->testConnection()) {
             return 1;
         }
 
         // Verifica prerequisiti
-        if (!$this->checkPrerequisites()) {
+        if (! $this->checkPrerequisites()) {
             return 1;
         }
 
@@ -47,6 +48,7 @@ class MigrateCurrentData extends Command
         $this->showFinalReport();
 
         $this->info('Migrazione dati correnti completata');
+
         return 0;
     }
 
@@ -55,9 +57,11 @@ class MigrateCurrentData extends Command
         try {
             $count = DB::connection('old_mysql')->table('tournaments')->count();
             $this->info("Connessione DB vecchio OK: {$count} tournaments");
+
             return true;
         } catch (\Exception $e) {
             $this->error("Errore connessione: {$e->getMessage()}");
+
             return false;
         }
     }
@@ -79,6 +83,7 @@ class MigrateCurrentData extends Command
 
         if ($userCount === 0) {
             $this->error('ERRORE: Nessun user trovato. Esegui prima: php artisan migrate:core-data');
+
             return false;
         }
 
@@ -93,6 +98,7 @@ class MigrateCurrentData extends Command
         $existingCount = TournamentType::count();
         if ($existingCount > 0) {
             $this->warn("Tournament Types già presenti: {$existingCount}. Skip migrazione tournament types.");
+
             return;
         }
 
@@ -100,11 +106,13 @@ class MigrateCurrentData extends Command
             $oldTypes = DB::connection('old_mysql')->table('tournament_types')->get();
         } catch (\Exception $e) {
             $this->warn("Tabella tournament_types non trovata nel DB vecchio: {$e->getMessage()}");
+
             return;
         }
 
         if ($oldTypes->isEmpty()) {
             $this->warn('Nessun tournament type trovato nel DB vecchio');
+
             return;
         }
 
@@ -121,13 +129,13 @@ class MigrateCurrentData extends Command
                     'name' => $oldType->name,
                     'short_name' => $oldType->short_name ?? substr($oldType->name, 0, 10),
                     'description' => $oldType->description,
-                    'is_national' => (bool)($oldType->is_national ?? false),
+                    'is_national' => (bool) ($oldType->is_national ?? false),
                     'level' => $oldType->level ?? 1,
                     'required_level' => $oldType->required_level ?? 1,
                     'min_referees' => $oldType->min_referees ?? 1,
                     'max_referees' => $oldType->max_referees ?? 2,
                     'sort_order' => $oldType->sort_order ?? 100,
-                    'is_active' => (bool)($oldType->is_active ?? true),
+                    'is_active' => (bool) ($oldType->is_active ?? true),
                     'settings' => $oldType->settings ?? null,
                     'created_at' => $oldType->created_at ?? now(),
                     'updated_at' => $oldType->updated_at ?? now(),
@@ -138,13 +146,13 @@ class MigrateCurrentData extends Command
                     $this->warn("DEBUG Tournament Type ID {$oldType->id}:");
                     $this->line("Name: {$typeData['name']}");
                     $this->line("Short Name: {$typeData['short_name']}");
-                    $this->line("Is National: " . ($typeData['is_national'] ? 'Yes' : 'No'));
+                    $this->line('Is National: '.($typeData['is_national'] ? 'Yes' : 'No'));
                     $this->line("Level: {$typeData['level']}");
                     $this->line("Required Level: {$typeData['required_level']}");
                     $this->line("Min/Max Referees: {$typeData['min_referees']}/{$typeData['max_referees']}");
                 }
 
-                if (!$dryRun) {
+                if (! $dryRun) {
                     // Usa insert diretto per mantenere l'ID originale
                     DB::table('tournament_types')->insert($typeData);
                 }
@@ -175,6 +183,7 @@ class MigrateCurrentData extends Command
         $existingCount = DB::table('clubs')->count();
         if ($existingCount > 0) {
             $this->warn("Clubs già presenti: {$existingCount}. Skip migrazione clubs.");
+
             return;
         }
 
@@ -182,11 +191,13 @@ class MigrateCurrentData extends Command
             $oldClubs = DB::connection('old_mysql')->table('clubs')->get();
         } catch (\Exception $e) {
             $this->warn("Tabella clubs non trovata nel DB vecchio: {$e->getMessage()}");
+
             return;
         }
 
         if ($oldClubs->isEmpty()) {
             $this->warn('Nessun club trovato nel DB vecchio');
+
             return;
         }
 
@@ -207,7 +218,7 @@ class MigrateCurrentData extends Command
                     'city' => $oldClub->city ?? 'Unknown',
                     'province' => $oldClub->province ?? 'IT',
                     'zone_id' => $this->mapZoneId($oldClub->zone_id),
-                    'is_active' => (bool)($oldClub->is_active ?? true),
+                    'is_active' => (bool) ($oldClub->is_active ?? true),
                     'created_at' => $oldClub->created_at ?? now(),
                     'updated_at' => $oldClub->updated_at ?? now(),
                 ];
@@ -219,7 +230,7 @@ class MigrateCurrentData extends Command
                     $this->line("Zone: {$clubData['zone_id']}");
                 }
 
-                if (!$dryRun) {
+                if (! $dryRun) {
                     DB::table('clubs')->insert($clubData);
                 }
 
@@ -249,6 +260,7 @@ class MigrateCurrentData extends Command
 
         if ($oldTournaments->isEmpty()) {
             $this->warn('Nessun tournament trovato');
+
             return;
         }
 
@@ -285,7 +297,7 @@ class MigrateCurrentData extends Command
                     $this->line("Zone ID: {$tournamentData['zone_id']}");
                 }
 
-                if (!$dryRun) {
+                if (! $dryRun) {
                     DB::table('tournaments')->insert($tournamentData);
                 }
 
@@ -315,6 +327,7 @@ class MigrateCurrentData extends Command
 
         if ($oldAssignments->isEmpty()) {
             $this->warn('Nessun assignment trovato');
+
             return;
         }
 
@@ -331,9 +344,10 @@ class MigrateCurrentData extends Command
                 $newUserId = $this->findMappedUserId($oldAssignment->user_id);
                 $newTournamentId = $this->findMappedTournamentId($oldAssignment->tournament_id);
 
-                if (!$newUserId || !$newTournamentId) {
+                if (! $newUserId || ! $newTournamentId) {
                     $skipped++;
                     $progress->advance();
+
                     continue;
                 }
 
@@ -347,7 +361,7 @@ class MigrateCurrentData extends Command
                     'updated_at' => $oldAssignment->updated_at ?? now(),
                 ];
 
-                if (!$dryRun) {
+                if (! $dryRun) {
                     DB::table('assignments')->insert($assignmentData);
                 }
 
@@ -377,11 +391,13 @@ class MigrateCurrentData extends Command
             $oldAvailabilities = DB::connection('old_mysql')->table('availabilities')->get();
         } catch (\Exception $e) {
             $this->warn("Tabella availabilities non accessibile: {$e->getMessage()}");
+
             return;
         }
 
         if ($oldAvailabilities->isEmpty()) {
             $this->warn('Nessuna availability trovata (normale se tabella vuota)');
+
             return;
         }
 
@@ -402,7 +418,7 @@ class MigrateCurrentData extends Command
                     'updated_at' => $oldAvailability->updated_at ?? now(),
                 ];
 
-                if (!$dryRun) {
+                if (! $dryRun) {
                     DB::table('availabilities')->insert($availabilityData);
                 }
 
@@ -422,17 +438,22 @@ class MigrateCurrentData extends Command
 
     private function mapZoneId(?int $oldZoneId): int
     {
-        if (!$oldZoneId) return 1;
+        if (! $oldZoneId) {
+            return 1;
+        }
 
         $zone = Zone::find($oldZoneId);
+
         return $zone ? $zone->id : 1;
     }
 
     private function mapClubId(?int $oldClubId): int
     {
-       if (!$oldClubId) return 1;
+        if (! $oldClubId) {
+            return 1;
+        }
 
-       // Trova club nel nuovo DB per ID corrispondente
+        // Trova club nel nuovo DB per ID corrispondente
         $club = DB::table('clubs')->orderBy('id')->find($oldClubId);
 
         return $club ? $club->id : 1;
@@ -440,57 +461,73 @@ class MigrateCurrentData extends Command
 
     private function mapTournamentTypeId($oldTournament): int
     {
-    // Cerca per tournament_type_id se esiste
+        // Cerca per tournament_type_id se esiste
         if (isset($oldTournament)) {
             $type = TournamentType::find($oldTournament);
-            if ($type) return $type->id;
+            if ($type) {
+                return $type->id;
+            }
         }
 
         // Fallback: cerca per nome o prendi il primo
         $firstType = TournamentType::first();
+
         return $firstType ? $firstType->id : 1;
     }
 
     private function mapUserId(?int $oldUserId): int
     {
-        if (!$oldUserId) return 1;
+        if (! $oldUserId) {
+            return 1;
+        }
 
         $user = User::find($oldUserId);
+
         return $user ? $user->id : 1;
     }
 
     private function findMappedUserId(?int $oldUserId): ?int
     {
-        if (!$oldUserId) return null;
+        if (! $oldUserId) {
+            return null;
+        }
 
         $user = User::find($oldUserId);
+
         return $user ? $user->id : null;
     }
 
     private function findMappedTournamentId(?int $oldTournamentId): ?int
     {
-        if (!$oldTournamentId) return null;
+        if (! $oldTournamentId) {
+            return null;
+        }
 
         // Assumiamo che i tournament ID siano sequenziali nella migrazione
         $tournament = DB::table('tournaments')->where('id', $oldTournamentId)->first();
+
         return $tournament ? $tournament->id : null;
     }
 
     private function mapStatus(?string $status): string
     {
         $validStatuses = ['draft', 'open', 'closed', 'assigned', 'completed', 'cancelled'];
+
         return in_array($status, $validStatuses) ? $status : 'draft';
     }
 
     private function mapRole(?string $role): string
     {
         $validRoles = ['Direttore di Torneo', 'Arbitro', 'Osservatore'];
+
         return in_array($role, $validRoles) ? $role : 'Arbitro';
     }
 
     private function parseDate($dateValue): ?string
     {
-        if (empty($dateValue)) return null;
+        if (empty($dateValue)) {
+            return null;
+        }
 
         try {
             return Carbon::parse($dateValue)->format('Y-m-d');
@@ -501,7 +538,9 @@ class MigrateCurrentData extends Command
 
     private function parseDateTime($dateTimeValue): ?string
     {
-        if (empty($dateTimeValue)) return null;
+        if (empty($dateTimeValue)) {
+            return null;
+        }
 
         try {
             return Carbon::parse($dateTimeValue)->format('Y-m-d H:i:s');

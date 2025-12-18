@@ -21,10 +21,10 @@ class NotificationClauseController extends Controller
         // Filtro ricerca testuale
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('code', 'like', "%{$search}%")
-                  ->orWhere('title', 'like', "%{$search}%")
-                  ->orWhere('content', 'like', "%{$search}%");
+                    ->orWhere('title', 'like', "%{$search}%")
+                    ->orWhere('content', 'like', "%{$search}%");
             });
         }
 
@@ -73,20 +73,20 @@ class NotificationClauseController extends Controller
                 'string',
                 'max:50',
                 'regex:/^[a-z0-9_]+$/',
-                'unique:notification_clauses,code'
+                'unique:notification_clauses,code',
             ],
             'category' => [
                 'required',
-                Rule::in(array_keys(NotificationClause::CATEGORIES))
+                Rule::in(array_keys(NotificationClause::CATEGORIES)),
             ],
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'applies_to' => [
                 'required',
-                Rule::in(array_keys(NotificationClause::APPLIES_TO))
+                Rule::in(array_keys(NotificationClause::APPLIES_TO)),
             ],
             'is_active' => 'boolean',
-            'sort_order' => 'integer|min:0'
+            'sort_order' => 'integer|min:0',
         ]);
 
         $validated['is_active'] = $validated['is_active'] ?? true;
@@ -99,11 +99,12 @@ class NotificationClauseController extends Controller
                 ->route('super-admin.clauses.index')
                 ->with('success', 'Clausola creata con successo.');
         } catch (\Exception $e) {
-            Log::error('Errore creazione clausola: ' . $e->getMessage());
+            Log::error('Errore creazione clausola: '.$e->getMessage());
+
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Errore nella creazione della clausola: ' . $e->getMessage());
+                ->with('error', 'Errore nella creazione della clausola: '.$e->getMessage());
         }
     }
 
@@ -140,20 +141,20 @@ class NotificationClauseController extends Controller
                 'string',
                 'max:50',
                 'regex:/^[a-z0-9_]+$/',
-                Rule::unique('notification_clauses', 'code')->ignore($clause->id)
+                Rule::unique('notification_clauses', 'code')->ignore($clause->id),
             ],
             'category' => [
                 'required',
-                Rule::in(array_keys(NotificationClause::CATEGORIES))
+                Rule::in(array_keys(NotificationClause::CATEGORIES)),
             ],
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'applies_to' => [
                 'required',
-                Rule::in(array_keys(NotificationClause::APPLIES_TO))
+                Rule::in(array_keys(NotificationClause::APPLIES_TO)),
             ],
             'is_active' => 'boolean',
-            'sort_order' => 'integer|min:0'
+            'sort_order' => 'integer|min:0',
         ]);
 
         $validated['is_active'] = $validated['is_active'] ?? false;
@@ -165,11 +166,12 @@ class NotificationClauseController extends Controller
                 ->route('super-admin.clauses.index')
                 ->with('success', 'Clausola aggiornata con successo.');
         } catch (\Exception $e) {
-            Log::error('Errore aggiornamento clausola: ' . $e->getMessage());
+            Log::error('Errore aggiornamento clausola: '.$e->getMessage());
+
             return redirect()
                 ->back()
                 ->withInput()
-                ->with('error', 'Errore nell\'aggiornamento della clausola: ' . $e->getMessage());
+                ->with('error', 'Errore nell\'aggiornamento della clausola: '.$e->getMessage());
         }
     }
 
@@ -194,10 +196,11 @@ class NotificationClauseController extends Controller
                 ->route('super-admin.clauses.index')
                 ->with('success', 'Clausola eliminata con successo.');
         } catch (\Exception $e) {
-            Log::error('Errore eliminazione clausola: ' . $e->getMessage());
+            Log::error('Errore eliminazione clausola: '.$e->getMessage());
+
             return redirect()
                 ->back()
-                ->with('error', 'Errore nell\'eliminazione della clausola: ' . $e->getMessage());
+                ->with('error', 'Errore nell\'eliminazione della clausola: '.$e->getMessage());
         }
     }
 
@@ -207,7 +210,7 @@ class NotificationClauseController extends Controller
     public function toggleActive(NotificationClause $clause)
     {
         try {
-            $clause->update(['is_active' => !$clause->is_active]);
+            $clause->update(['is_active' => ! $clause->is_active]);
 
             $message = $clause->is_active
                 ? 'Clausola attivata con successo.'
@@ -217,10 +220,11 @@ class NotificationClauseController extends Controller
                 ->back()
                 ->with('success', $message);
         } catch (\Exception $e) {
-            Log::error('Errore toggle clausola: ' . $e->getMessage());
+            Log::error('Errore toggle clausola: '.$e->getMessage());
+
             return redirect()
                 ->back()
-                ->with('error', 'Errore nel cambio stato: ' . $e->getMessage());
+                ->with('error', 'Errore nel cambio stato: '.$e->getMessage());
         }
     }
 
@@ -232,7 +236,7 @@ class NotificationClauseController extends Controller
         $validated = $request->validate([
             'items' => 'required|array',
             'items.*.id' => 'required|exists:notification_clauses,id',
-            'items.*.sort_order' => 'required|integer|min:0'
+            'items.*.sort_order' => 'required|integer|min:0',
         ]);
 
         try {
@@ -247,15 +251,15 @@ class NotificationClauseController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Ordine aggiornato con successo.'
+                'message' => 'Ordine aggiornato con successo.',
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Errore riordino clausole: ' . $e->getMessage());
+            Log::error('Errore riordino clausole: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Errore nell\'aggiornamento dell\'ordine.'
+                'message' => 'Errore nell\'aggiornamento dell\'ordine.',
             ], 500);
         }
     }
@@ -269,7 +273,7 @@ class NotificationClauseController extends Controller
             'success' => true,
             'content' => $clause->formatted_content,
             'title' => $clause->title,
-            'category' => $clause->category_label
+            'category' => $clause->category_label,
         ]);
     }
 }

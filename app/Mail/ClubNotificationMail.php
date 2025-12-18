@@ -2,18 +2,20 @@
 
 namespace App\Mail;
 
+use App\Models\Tournament;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use App\Models\Tournament;
 
 class ClubNotificationMail extends Mailable
 {
     use SerializesModels;
 
     public $tournament;
+
     public $attachmentPaths;
+
     public $sortedAssignments; // AGGIUNGI QUESTO
 
     /**
@@ -29,7 +31,7 @@ class ClubNotificationMail extends Mailable
         $roleOrder = [
             'Direttore di Torneo' => 1,
             'Arbitro' => 2,
-            'Osservatore' => 3
+            'Osservatore' => 3,
         ];
 
         $this->sortedAssignments = $tournament->assignments->sort(function ($a, $b) use ($roleOrder) {
@@ -60,11 +62,11 @@ class ClubNotificationMail extends Mailable
     public function content(): Content
     {
         // Prepara i dati per la view
-        $referees = $this->tournament->assignments->map(function($assignment) {
+        $referees = $this->tournament->assignments->map(function ($assignment) {
             return [
                 'name' => $assignment->user->name,
                 'role' => $assignment->role,
-                'email' => $assignment->user->email
+                'email' => $assignment->user->email,
             ];
         })->toArray();
 
@@ -79,7 +81,7 @@ class ClubNotificationMail extends Mailable
                 'zone_email' => "szr{$this->tournament->zone_id}@federgolf.it",
                 'club_email' => $this->tournament->club->email,
                 'attachments_info' => count($this->attachmentPaths) > 0 ?
-                    ['Facsimile convocazione in formato Word'] : null
+                    ['Facsimile convocazione in formato Word'] : null,
             ]
         );
     }
@@ -96,20 +98,20 @@ class ClubNotificationMail extends Mailable
         }
 
         foreach ($this->attachmentPaths as $attachment) {
-            if (!is_array($attachment) || !isset($attachment['path'])) {
+            if (! is_array($attachment) || ! isset($attachment['path'])) {
                 continue;
             }
-            
+
             $path = $attachment['path'];
             $name = $attachment['name'] ?? basename($path);
-            
+
             if (file_exists($path)) {
                 $mailAttachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path)
                     ->as($name);
             } else {
                 Log::warning('Attachment file not found', [
                     'path' => $path,
-                    'name' => $name
+                    'name' => $name,
                 ]);
             }
         }

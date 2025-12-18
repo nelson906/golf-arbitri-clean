@@ -22,13 +22,13 @@ class RefereeRequest extends FormRequest
                 'required',
                 'email',
                 'max:255',
-                Rule::unique('users', 'email')->ignore($refereeId)
+                Rule::unique('users', 'email')->ignore($refereeId),
             ],
             'referee_code' => [
                 'required',
                 'string',
                 'max:20',
-                Rule::unique('users', 'referee_code')->ignore($refereeId)
+                Rule::unique('users', 'referee_code')->ignore($refereeId),
             ],
             'level' => 'required|in:aspirante,primo_livello,regionale,nazionale,internazionale',
             'zone_id' => 'required|exists:zones,id',

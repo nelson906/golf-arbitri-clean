@@ -1,8 +1,8 @@
 <?php
+
 use App\Http\Controllers\User\DashboardController;
 use App\Http\Controllers\User\QuadrantiController;
 use Illuminate\Support\Facades\Route;
-
 
 Route::get('/referee/dashboard', [DashboardController::class, 'index'])->name('referee.dashboard');
 

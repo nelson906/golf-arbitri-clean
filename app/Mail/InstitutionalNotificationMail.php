@@ -2,10 +2,10 @@
 
 namespace App\Mail;
 
+use App\Models\Tournament;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use App\Models\Tournament;
 
 class InstitutionalNotificationMail extends Mailable
 {
@@ -28,14 +28,14 @@ class InstitutionalNotificationMail extends Mailable
             with: [
                 'recipient_name' => 'Ufficio Campionati',
                 'tournament_name' => $this->tournament->name,
-                'tournament_dates' => $this->tournament->date_range ?? $this->tournament->start_date->format('d/m/Y') . ' - ' . $this->tournament->end_date->format('d/m/Y'),
+                'tournament_dates' => $this->tournament->date_range ?? $this->tournament->start_date->format('d/m/Y').' - '.$this->tournament->end_date->format('d/m/Y'),
                 'club_name' => $this->tournament->club->name,
-                'referees' => $this->tournament->assignments->map(function($assignment) {
+                'referees' => $this->tournament->assignments->map(function ($assignment) {
                     return [
                         'name' => $assignment->user->name ?? $assignment->referee->name ?? 'N/D',
-                        'role' => $assignment->role ?? 'Arbitro'
+                        'role' => $assignment->role ?? 'Arbitro',
                     ];
-                })->toArray()
+                })->toArray(),
             ]
         );
     }

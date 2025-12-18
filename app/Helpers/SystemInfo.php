@@ -2,8 +2,8 @@
 
 namespace App\Helpers;
 
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 
 class SystemInfo
 {
@@ -103,7 +103,7 @@ class SystemInfo
             $bytes /= 1024;
         }
 
-        return round($bytes, 2) . ' ' . $units[$i];
+        return round($bytes, 2).' '.$units[$i];
     }
 
     /**
@@ -113,7 +113,7 @@ class SystemInfo
     {
         $logFile = storage_path('logs/laravel.log');
 
-        if (!File::exists($logFile)) {
+        if (! File::exists($logFile)) {
             return ['error' => 'File log non trovato'];
         }
 

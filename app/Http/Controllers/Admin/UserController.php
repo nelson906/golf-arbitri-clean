@@ -1,4 +1,5 @@
 <?php
+
 // File: app/Http/Controllers/Admin/UserController.php
 
 namespace App\Http\Controllers\Admin;
@@ -98,7 +99,7 @@ class UserController extends Controller
             'referee' => 'Arbitro',
             'admin' => 'Admin Zona',
             'national_admin' => 'Admin Nazionale',
-            'super_admin' => 'Super Admin'
+            'super_admin' => 'Super Admin',
         ];
 
         // Array dei livelli (se utilizzati)
@@ -108,7 +109,7 @@ class UserController extends Controller
             '1' => 'Primo Livello',
             'R' => 'Regionale',
             'N' => 'Nazionale',
-            'I' => 'Internazionale'
+            'I' => 'Internazionale',
         ];
 
         return view('admin.users.index', compact(
@@ -132,7 +133,7 @@ class UserController extends Controller
         $isSuperAdmin = $this->isSuperAdmin($currentUser);
 
         // Verifica permessi visualizzazione tramite trait
-        if (!$isNationalAdmin && $this->getUserZoneId($currentUser) != $user->zone_id) {
+        if (! $isNationalAdmin && $this->getUserZoneId($currentUser) != $user->zone_id) {
             abort(403, 'Non autorizzato a visualizzare questo utente');
         }
 
@@ -163,7 +164,7 @@ class UserController extends Controller
 
         // Zone disponibili (filtrate per ruolo)
         $zones = Zone::orderBy('name');
-        if (!$isNationalAdmin && $currentUser->zone_id) {
+        if (! $isNationalAdmin && $currentUser->zone_id) {
             $zones = $zones->where('id', $currentUser->zone_id);
         }
         $zones = $zones->get();
@@ -188,7 +189,6 @@ class UserController extends Controller
     {
         $currentUser = auth()->user();
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
-
 
         // Validazione base
         $rules = [
@@ -230,7 +230,7 @@ class UserController extends Controller
         if (Schema::hasColumn('users', 'referee_code') && empty($validated['referee_code'])) {
             $lastUser = User::orderBy('id', 'desc')->first();
             $nextId = $lastUser ? $lastUser->id + 1 : 1;
-            $validated['referee_code'] = 'REF' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            $validated['referee_code'] = 'REF'.str_pad($nextId, 4, '0', STR_PAD_LEFT);
         }
 
         // Crea utente
@@ -251,13 +251,13 @@ class UserController extends Controller
         $isSuperAdmin = $this->isSuperAdmin($currentUser);
 
         // Verifica permessi tramite trait
-        if (!$isNationalAdmin && $this->getUserZoneId($currentUser) != $user->zone_id) {
+        if (! $isNationalAdmin && $this->getUserZoneId($currentUser) != $user->zone_id) {
             abort(403, 'Non autorizzato a modificare questo utente');
         }
 
         // Zone disponibili (filtrate per ruolo)
         $zones = Zone::orderBy('name');
-        if (!$isNationalAdmin && $currentUser->zone_id) {
+        if (! $isNationalAdmin && $currentUser->zone_id) {
             $zones = $zones->where('id', $currentUser->zone_id);
         }
         $zones = $zones->get();
@@ -284,15 +284,15 @@ class UserController extends Controller
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
 
         // Verifica permessi tramite trait
-        if (!$isNationalAdmin && $this->getUserZoneId($currentUser) != $user->zone_id) {
+        if (! $isNationalAdmin && $this->getUserZoneId($currentUser) != $user->zone_id) {
             abort(403, 'Non autorizzato a modificare questo utente');
         }
 
         // Validazione
         $rules = [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'user_type' => 'required|in:referee,admin' . ($isNationalAdmin ? ',national_admin,super_admin' : ''),
+            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
+            'user_type' => 'required|in:referee,admin'.($isNationalAdmin ? ',national_admin,super_admin' : ''),
             'zone_id' => 'required|exists:zones,id',
         ];
 
@@ -303,7 +303,7 @@ class UserController extends Controller
 
         // Campi opzionali
         if (\Schema::hasColumn('users', 'referee_code')) {
-            $rules['referee_code'] = 'nullable|string|max:20|unique:users,referee_code,' . $user->id;
+            $rules['referee_code'] = 'nullable|string|max:20|unique:users,referee_code,'.$user->id;
         }
 
         if (\Schema::hasColumn('users', 'level')) {
@@ -354,7 +354,7 @@ class UserController extends Controller
     {
         $currentUser = auth()->user();
         // Verifica permessi tramite trait
-        if (!$this->isNationalAdmin($currentUser)) {
+        if (! $this->isNationalAdmin($currentUser)) {
             abort(403, 'Solo gli admin nazionali possono eliminare utenti');
         }
 
@@ -382,15 +382,16 @@ class UserController extends Controller
     {
         $currentUser = auth()->user();
         // Verifica permessi tramite trait
-        if (!$this->isNationalAdmin($currentUser) && $this->getUserZoneId($currentUser) != $user->zone_id) {
+        if (! $this->isNationalAdmin($currentUser) && $this->getUserZoneId($currentUser) != $user->zone_id) {
             abort(403, 'Non autorizzato');
         }
 
         // Toggle is_active
-        $user->is_active = !$user->is_active;
+        $user->is_active = ! $user->is_active;
         $user->save();
 
         $status = $user->is_active ? 'attivato' : 'disattivato';
+
         return back()->with('success', "Utente {$status} con successo");
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 // app/Console/Commands/ScanTechnicalOrphansCommand.php
 
 namespace App\Console\Commands;
@@ -15,6 +16,7 @@ class ScanTechnicalOrphansCommand extends Command
     protected $description = 'Scansiona aspetti tecnici che potrebbero causare errori 500 silenziosi';
 
     private $issues = [];
+
     private $fixableIssues = [];
 
     public function handle()
@@ -56,7 +58,7 @@ class ScanTechnicalOrphansCommand extends Command
         // Report e fix opzionali
         $this->generateTechnicalReport();
 
-        if ($this->option('fix') && !empty($this->fixableIssues)) {
+        if ($this->option('fix') && ! empty($this->fixableIssues)) {
             $this->applyAutomaticFixes();
         }
 
@@ -75,7 +77,7 @@ class ScanTechnicalOrphansCommand extends Command
             foreach ($tables as $table) {
                 $tableName = $table->{"Tables_in_{$dbName}"};
 
-                $foreignKeys = DB::select("
+                $foreignKeys = DB::select('
                     SELECT
                         CONSTRAINT_NAME,
                         COLUMN_NAME,
@@ -86,7 +88,7 @@ class ScanTechnicalOrphansCommand extends Command
                         CONSTRAINT_SCHEMA = ? AND
                         TABLE_NAME = ? AND
                         REFERENCED_TABLE_NAME IS NOT NULL
-                ", [$dbName, $tableName]);
+                ', [$dbName, $tableName]);
 
                 foreach ($foreignKeys as $fk) {
                     // Verifica se la tabella referenziata esiste ancora
@@ -98,7 +100,7 @@ class ScanTechnicalOrphansCommand extends Command
                 }
             }
         } catch (\Exception $e) {
-            $this->warn("⚠️ Impossibile scansionare FK: " . $e->getMessage());
+            $this->warn('⚠️ Impossibile scansionare FK: '.$e->getMessage());
         }
     }
 
@@ -131,7 +133,7 @@ class ScanTechnicalOrphansCommand extends Command
                 }
             }
         } catch (\Exception $e) {
-            $this->warn("⚠️ Impossibile scansionare indici: " . $e->getMessage());
+            $this->warn('⚠️ Impossibile scansionare indici: '.$e->getMessage());
         }
     }
 
@@ -165,7 +167,7 @@ class ScanTechnicalOrphansCommand extends Command
             if ($suspiciousJobs > 0) {
                 $this->addIssue('queued_jobs', 'database',
                     "{$suspiciousJobs} job in coda contengono riferimenti orfani",
-                    true, "Pulizia manuale job queue richiesta");
+                    true, 'Pulizia manuale job queue richiesta');
             }
         }
     }
@@ -267,17 +269,17 @@ class ScanTechnicalOrphansCommand extends Command
             $content = File::get($file);
 
             $patterns = [
-                "/exists:letter_templates/",
-                "/exists:letterheads/",
-                "/unique:letter_templates/",
-                "/unique:letterheads/",
+                '/exists:letter_templates/',
+                '/exists:letterheads/',
+                '/unique:letter_templates/',
+                '/unique:letterheads/',
             ];
 
             foreach ($patterns as $pattern) {
                 if (preg_match($pattern, $content, $matches)) {
                     $this->addIssue('validation_rule', $file,
                         "Validation rule orfana: {$matches[0]}",
-                        true, "Rimuovere regola di validazione");
+                        true, 'Rimuovere regola di validazione');
                 }
             }
         }
@@ -296,8 +298,8 @@ class ScanTechnicalOrphansCommand extends Command
                 strpos($content, 'Letterhead') !== false) {
 
                 $this->addIssue('model_observer', $file,
-                    "Observer per modello che sarà rimosso",
-                    true, "Rimuovere observer file");
+                    'Observer per modello che sarà rimosso',
+                    true, 'Rimuovere observer file');
             }
         }
 
@@ -307,15 +309,15 @@ class ScanTechnicalOrphansCommand extends Command
             $content = File::get($appServiceProvider);
 
             $patterns = [
-                "/LetterTemplate::observe/",
-                "/Letterhead::observe/",
+                '/LetterTemplate::observe/',
+                '/Letterhead::observe/',
             ];
 
             foreach ($patterns as $pattern) {
                 if (preg_match($pattern, $content)) {
                     $this->addIssue('observer_registration', $appServiceProvider,
-                        "Observer registration orfana",
-                        true, "Rimuovere registrazione observer");
+                        'Observer registration orfana',
+                        true, 'Rimuovere registrazione observer');
                 }
             }
         }
@@ -333,8 +335,8 @@ class ScanTechnicalOrphansCommand extends Command
                 strpos(basename($file), 'Letterhead') !== false) {
 
                 $this->addIssue('factory_file', $file,
-                    "Factory file per modello rimosso",
-                    true, "Rimuovere factory file");
+                    'Factory file per modello rimosso',
+                    true, 'Rimuovere factory file');
             }
         }
 
@@ -348,7 +350,7 @@ class ScanTechnicalOrphansCommand extends Command
                 strpos($content, 'Letterhead') !== false) {
 
                 $this->addIssue('seeder_reference', $file,
-                    "Seeder contiene riferimenti orfani",
+                    'Seeder contiene riferimenti orfani',
                     false);
             }
         }
@@ -367,13 +369,13 @@ class ScanTechnicalOrphansCommand extends Command
             $patterns = [
                 '/letter-template/',
                 '/letterhead/',
-                '/template-management/'
+                '/template-management/',
             ];
 
             foreach ($patterns as $pattern) {
                 if (preg_match($pattern, $content)) {
                     $this->addIssue('css_reference', $file,
-                        "CSS contiene selettori orfani",
+                        'CSS contiene selettori orfani',
                         false);
                 }
             }
@@ -389,20 +391,20 @@ class ScanTechnicalOrphansCommand extends Command
                 strpos($content, 'letterhead') !== false) {
 
                 $this->addIssue('js_reference', $file,
-                    "JavaScript contiene riferimenti orfani",
+                    'JavaScript contiene riferimenti orfani',
                     false);
             }
         }
     }
 
-    private function addIssue(string $type, string $location, string $description, bool $fixable, string $fix = null)
+    private function addIssue(string $type, string $location, string $description, bool $fixable, ?string $fix = null)
     {
         $issue = [
             'type' => $type,
-            'location' => str_replace(base_path() . '/', '', $location),
+            'location' => str_replace(base_path().'/', '', $location),
             'description' => $description,
             'fixable' => $fixable,
-            'fix' => $fix
+            'fix' => $fix,
         ];
 
         $this->issues[] = $issue;
@@ -419,16 +421,17 @@ class ScanTechnicalOrphansCommand extends Command
 
         if (empty($this->issues)) {
             $this->info('✅ Nessun problema tecnico rilevato!');
+
             return;
         }
 
-        $this->error("⚠️ Rilevati " . count($this->issues) . " problemi tecnici");
+        $this->error('⚠️ Rilevati '.count($this->issues).' problemi tecnici');
 
         $byType = collect($this->issues)->groupBy('type');
 
         foreach ($byType as $type => $issues) {
             $fixableCount = $issues->where('fixable', true)->count();
-            $this->warn("\n🔧 " . strtoupper(str_replace('_', ' ', $type)) . " ({$issues->count()} totali, {$fixableCount} fixabili):");
+            $this->warn("\n🔧 ".strtoupper(str_replace('_', ' ', $type))." ({$issues->count()} totali, {$fixableCount} fixabili):");
 
             foreach ($issues as $issue) {
                 $icon = $issue['fixable'] ? '🔧' : '⚠️';
@@ -441,7 +444,7 @@ class ScanTechnicalOrphansCommand extends Command
             }
         }
 
-        if (!empty($this->fixableIssues)) {
+        if (! empty($this->fixableIssues)) {
             $this->info("\n💡 Esegui con --fix per applicare correzioni automatiche sicure");
         }
     }
@@ -473,7 +476,7 @@ class ScanTechnicalOrphansCommand extends Command
                         $this->warn("⚠️ Fix manuale richiesto per: {$issue['location']}");
                 }
             } catch (\Exception $e) {
-                $this->error("❌ Errore fix {$issue['location']}: " . $e->getMessage());
+                $this->error("❌ Errore fix {$issue['location']}: ".$e->getMessage());
             }
         }
     }

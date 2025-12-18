@@ -51,23 +51,24 @@ Route::prefix('tournaments')->group(function () {
     });
 
     Route::get('/{tournament}', function (\App\Models\Tournament $tournament) {
-        if (!in_array($tournament->status, ['completed', 'assigned'])) {
+        if (! in_array($tournament->status, ['completed', 'assigned'])) {
             abort(404);
         }
+
         return $tournament->load(['club', 'zone', 'tournamentType', 'assignments.user']);
     });
 
     // Statistics (Public - inline closure)
     Route::get('/stats/summary', function () {
         $currentYear = now()->year;
+
         return response()->json([
             'tournaments_completed' => \App\Models\Tournament::where('status', 'completed')
                 ->whereYear('start_date', $currentYear)->count(),
             'total_assignments' => \App\Models\Assignment::whereHas('tournament', function ($q) use ($currentYear) {
                 $q->whereYear('start_date', $currentYear);
             })->count(),
-            'zones_active' => \App\Models\Zone::active()->count()
+            'zones_active' => \App\Models\Zone::active()->count(),
         ]);
     });
 });
-

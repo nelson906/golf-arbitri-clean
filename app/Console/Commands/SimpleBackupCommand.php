@@ -1,4 +1,5 @@
 <?php
+
 // app/Console/Commands/SimpleBackupCommand.php
 
 namespace App\Console\Commands;
@@ -9,6 +10,7 @@ use Illuminate\Support\Facades\File;
 class SimpleBackupCommand extends Command
 {
     protected $signature = 'backup:simple {--db-only : Solo database} {--code-only : Solo codice}';
+
     protected $description = 'Backup semplice senza dipendenze esterne';
 
     public function handle()
@@ -20,19 +22,20 @@ class SimpleBackupCommand extends Command
         $backupDir = storage_path('app/backups');
 
         // Crea directory backup
-        if (!File::exists($backupDir)) {
+        if (! File::exists($backupDir)) {
             File::makeDirectory($backupDir, 0755, true);
         }
 
-        if (!$this->option('code-only')) {
+        if (! $this->option('code-only')) {
             $this->backupDatabase($backupDir, $timestamp);
         }
 
-        if (!$this->option('db-only')) {
+        if (! $this->option('db-only')) {
             $this->backupCode($timestamp);
         }
 
         $this->info("✅ Backup completato in: {$backupDir}");
+
         return 0;
     }
 
@@ -64,9 +67,9 @@ class SimpleBackupCommand extends Command
             $size = $this->formatBytes(filesize($backupFile));
             $this->info("✅ Database backup: {$backupFile} ({$size})");
         } else {
-            $this->error("❌ Errore backup database");
-            if (!empty($output)) {
-                $this->error("Output: " . implode("\n", $output));
+            $this->error('❌ Errore backup database');
+            if (! empty($output)) {
+                $this->error('Output: '.implode("\n", $output));
             }
         }
     }
@@ -76,16 +79,17 @@ class SimpleBackupCommand extends Command
         $this->info('📁 Backup Git...');
 
         // Verifica se è un repository git
-        if (!is_dir(base_path('.git'))) {
+        if (! is_dir(base_path('.git'))) {
             $this->warn('⚠️ Non è un repository Git. Creo backup fisico...');
             $this->createPhysicalBackup($timestamp);
+
             return;
         }
 
         // Status Git
         exec('git status --porcelain', $gitStatus);
 
-        if (!empty($gitStatus)) {
+        if (! empty($gitStatus)) {
             $this->info('📝 Commit cambiamenti pendenti...');
             exec('git add -A', $addOutput);
             exec("git commit -m '🔒 Backup automatico pre-cleanup {$timestamp}'", $commitOutput, $commitReturn);
@@ -121,14 +125,14 @@ class SimpleBackupCommand extends Command
             'config/',
             'composer.json',
             'composer.lock',
-            '.env'
+            '.env',
         ];
 
         File::makeDirectory($backupDir, 0755, true);
 
         foreach ($important as $item) {
             $sourcePath = base_path($item);
-            $destPath = $backupDir . '/' . $item;
+            $destPath = $backupDir.'/'.$item;
 
             if (File::exists($sourcePath)) {
                 if (File::isDirectory($sourcePath)) {
@@ -140,17 +144,17 @@ class SimpleBackupCommand extends Command
             }
         }
 
-        $this->info("✅ Backup fisico completato");
+        $this->info('✅ Backup fisico completato');
     }
 
     private function formatBytes($bytes, $precision = 2)
     {
-        $units = array('B', 'KB', 'MB', 'GB', 'TB');
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
 
         for ($i = 0; $bytes > 1024; $i++) {
             $bytes /= 1024;
         }
 
-        return round($bytes, $precision) . ' ' . $units[$i];
+        return round($bytes, $precision).' '.$units[$i];
     }
 }

@@ -1,8 +1,8 @@
 <?php
 
 use App\Http\Middleware\AdminOrSuperAdmin;
-use App\Http\Middleware\SuperAdmin;
 use App\Http\Middleware\RefereeOrAdmin;
+use App\Http\Middleware\SuperAdmin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;

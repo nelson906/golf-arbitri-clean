@@ -3,52 +3,55 @@
 use Illuminate\Support\Facades\Route;
 
 // ⚠️ INCLUDE helpers condivisi
-require_once __DIR__ . '/view-helpers.php';
+require_once __DIR__.'/view-helpers.php';
 
 Route::get('/dev/view-preview/{view?}', function ($view = null) {
 
-    if (!$view) {
+    if (! $view) {
         $viewsPath = resource_path('views');
         $allViews = [];
         $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($viewsPath));
 
         foreach ($iterator as $file) {
             if ($file->isFile() && $file->getExtension() === 'php') {
-                $relativePath = str_replace($viewsPath . '/', '', $file->getPathname());
+                $relativePath = str_replace($viewsPath.'/', '', $file->getPathname());
                 if (str_contains($relativePath, '.blade.php')) {
                     $viewName = str_replace('.blade.php', '', $relativePath);
                     $viewName = str_replace('/', '.', $viewName);
                     $allViews[] = [
                         'name' => $viewName,
                         'path' => $relativePath,
-                        'size' => $file->getSize()
+                        'size' => $file->getSize(),
                     ];
                 }
             }
         }
 
-        usort($allViews, fn($a, $b) => strcmp($a['name'], $b['name']));
+        usort($allViews, fn ($a, $b) => strcmp($a['name'], $b['name']));
+
         return view('dev.view-list', ['views' => $allViews]);
     }
 
     $viewName = str_replace('/', '.', $view);
 
-    if (!view()->exists($viewName)) {
+    if (! view()->exists($viewName)) {
         abort(404, "View '$viewName' non trovata");
     }
 
     DebugCollector::clear();
 
     // Error handler - sopprimi tutto
-    set_error_handler(function () { return true; });
+    set_error_handler(function () {
+        return true;
+    });
     error_reporting(0);
 
     try {
         $allVariables = analyzeViewRecursive($viewName);
 
-        $data = ['errors' => new \Illuminate\Support\ViewErrorBag()];
+        $data = ['errors' => new \Illuminate\Support\ViewErrorBag];
         foreach ($allVariables as $varName) {
-            if (!isset($data[$varName])) {
+            if (! isset($data[$varName])) {
                 $data[$varName] = generateValue($varName);
             }
         }
@@ -75,7 +78,7 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
         \Illuminate\Support\Facades\Auth::logout();
 
         // ⚠️ Se ha prodotto QUALCOSA, mostralo
-        if (!empty(trim($renderedView))) {
+        if (! empty(trim($renderedView))) {
             if (DebugCollector::hasIssues()) {
                 $renderedView .= view('dev.debug-panel', [
                     'issues' => DebugCollector::getIssues(),
@@ -87,9 +90,9 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
         }
 
         // ⚠️ Se VUOTO: Mostra analisi del codice sorgente
-        $viewFile = resource_path('views/' . str_replace('.', '/', $viewName) . '.blade.php');
+        $viewFile = resource_path('views/'.str_replace('.', '/', $viewName).'.blade.php');
 
-        if (!file_exists($viewFile)) {
+        if (! file_exists($viewFile)) {
             return response("<div style='padding:40px;'>View file non trovato</div>");
         }
 
@@ -137,24 +140,24 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
                 </div>
 
                 <div class='grid'>
-                    <div class='badge " . ($hasForm ? 'badge-yes' : 'badge-no') . "'>
-                        <div class='badge-icon'>" . ($hasForm ? '✅' : '❌') . "</div>
+                    <div class='badge ".($hasForm ? 'badge-yes' : 'badge-no')."'>
+                        <div class='badge-icon'>".($hasForm ? '✅' : '❌')."</div>
                         <div class='badge-label'>Forms</div>
                     </div>
-                    <div class='badge " . ($hasTable ? 'badge-yes' : 'badge-no') . "'>
-                        <div class='badge-icon'>" . ($hasTable ? '✅' : '❌') . "</div>
+                    <div class='badge ".($hasTable ? 'badge-yes' : 'badge-no')."'>
+                        <div class='badge-icon'>".($hasTable ? '✅' : '❌')."</div>
                         <div class='badge-label'>Tabelle</div>
                     </div>
-                    <div class='badge " . ($hasCards ? 'badge-yes' : 'badge-no') . "'>
-                        <div class='badge-icon'>" . ($hasCards ? '✅' : '❌') . "</div>
+                    <div class='badge ".($hasCards ? 'badge-yes' : 'badge-no')."'>
+                        <div class='badge-icon'>".($hasCards ? '✅' : '❌')."</div>
                         <div class='badge-label'>Cards</div>
                     </div>
-                    <div class='badge " . ($hasButtons ? 'badge-yes' : 'badge-no') . "'>
-                        <div class='badge-icon'>" . ($hasButtons ? '✅' : '❌') . "</div>
+                    <div class='badge ".($hasButtons ? 'badge-yes' : 'badge-no')."'>
+                        <div class='badge-icon'>".($hasButtons ? '✅' : '❌')."</div>
                         <div class='badge-label'>Bottoni</div>
                     </div>
-                    <div class='badge " . ($hasComponents ? 'badge-yes' : 'badge-no') . "'>
-                        <div class='badge-icon'>" . ($hasComponents ? '✅' : '❌') . "</div>
+                    <div class='badge ".($hasComponents ? 'badge-yes' : 'badge-no')."'>
+                        <div class='badge-icon'>".($hasComponents ? '✅' : '❌')."</div>
                         <div class='badge-label'>Componenti</div>
                     </div>
                 </div>
@@ -162,15 +165,15 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
                 <div class='stats'>
                     <div class='stats-title'>📊 Statistiche:</div>
                     <div class='stats-grid'>
-                        <div><strong>Righe:</strong> " . count($lines) . "</div>
-                        <div><strong>Dimensione:</strong> " . number_format(strlen($source) / 1024, 2) . " KB</div>
-                        <div><strong>Extends:</strong> " . (preg_match('/@extends/', $source) ? '✅ Sì' : '❌ No') . "</div>
+                        <div><strong>Righe:</strong> ".count($lines).'</div>
+                        <div><strong>Dimensione:</strong> '.number_format(strlen($source) / 1024, 2).' KB</div>
+                        <div><strong>Extends:</strong> '.(preg_match('/@extends/', $source) ? '✅ Sì' : '❌ No')."</div>
                     </div>
                 </div>
 
                 <details open class='code-container'>
                     <summary class='code-header'>📝 Codice Sorgente (click per espandere/chiudere)</summary>
-                    <pre class='code-content'>" . htmlspecialchars($source) . "</pre>
+                    <pre class='code-content'>".htmlspecialchars($source)."</pre>
                 </details>
 
                 <div class='tip'>
@@ -186,7 +189,10 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
     } catch (\Throwable $e) {
         restore_error_handler();
         error_reporting(E_ALL);
-        try { \Illuminate\Support\Facades\Auth::logout(); } catch (\Throwable $e2) {}
+        try {
+            \Illuminate\Support\Facades\Auth::logout();
+        } catch (\Throwable $e2) {
+        }
 
         return response()->view('dev.view-error', [
             'view' => $viewName,

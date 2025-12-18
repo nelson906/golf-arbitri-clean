@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Helpers\SystemInfo;
+use App\Helpers\SystemOperations;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
-use App\Helpers\SystemInfo;
-use App\Helpers\SystemOperations;
 
 class ArubaToolsController extends Controller
 {
@@ -79,7 +79,7 @@ class ArubaToolsController extends Controller
 
             return back()->with('success', implode('<br>', $output));
         } catch (\Exception $e) {
-            return back()->with('error', 'Errore: ' . $e->getMessage());
+            return back()->with('error', 'Errore: '.$e->getMessage());
         }
     }
 
@@ -95,7 +95,7 @@ class ArubaToolsController extends Controller
 
             return back()->with('success', '✅ Applicazione ottimizzata');
         } catch (\Exception $e) {
-            return back()->with('error', 'Errore: ' . $e->getMessage());
+            return back()->with('error', 'Errore: '.$e->getMessage());
         }
     }
 
@@ -127,12 +127,13 @@ class ArubaToolsController extends Controller
 
             if (File::exists($logFile)) {
                 File::put($logFile, '');
+
                 return back()->with('success', '✅ Log puliti');
             }
 
             return back()->with('error', 'File log non trovato');
         } catch (\Exception $e) {
-            return back()->with('error', 'Errore: ' . $e->getMessage());
+            return back()->with('error', 'Errore: '.$e->getMessage());
         }
     }
 
@@ -172,7 +173,7 @@ class ArubaToolsController extends Controller
                     $results[] = "✅ Cartella creata: {$dir}";
                 }
             } catch (\Exception $e) {
-                $results[] = "❌ Errore su {$dir}: " . $e->getMessage();
+                $results[] = "❌ Errore su {$dir}: ".$e->getMessage();
             }
         }
 
@@ -197,11 +198,10 @@ class ArubaToolsController extends Controller
 
         $message = $result['success']
             ? '✅ Autoload rigenerato'
-            : '❌ Errore: ' . $result['output'];
+            : '❌ Errore: '.$result['output'];
 
         return back()->with($result['success'] ? 'success' : 'error', $message);
     }
-
 
     /**
      * Diagnostica Composer
@@ -216,12 +216,12 @@ class ArubaToolsController extends Controller
             '/opt/alt/php81/usr/bin/composer',
             '/opt/alt/php82/usr/bin/composer',
             '/opt/alt/php83/usr/bin/composer',
-            getenv('HOME') . '/composer',
-            getenv('HOME') . '/bin/composer',
+            getenv('HOME').'/composer',
+            getenv('HOME').'/bin/composer',
         ];
 
         $output = "🔍 RICERCA COMPOSER SUL SERVER\n";
-        $output .= str_repeat("=", 50) . "\n\n";
+        $output .= str_repeat('=', 50)."\n\n";
 
         $found = false;
         $foundPath = null;
@@ -232,9 +232,9 @@ class ArubaToolsController extends Controller
             try {
                 exec("{$path} --version 2>&1", $result, $returnCode);
 
-                if ($returnCode === 0 && !empty($result)) {
+                if ($returnCode === 0 && ! empty($result)) {
                     $output .= "  ✅ TROVATO!\n";
-                    $output .= "  Versione: " . implode("\n", $result) . "\n";
+                    $output .= '  Versione: '.implode("\n", $result)."\n";
                     $found = true;
                     $foundPath = $path;
                     break;
@@ -242,13 +242,13 @@ class ArubaToolsController extends Controller
                     $output .= "  ❌ Non trovato (exit code: {$returnCode})\n";
                 }
             } catch (\Exception $e) {
-                $output .= "  ❌ Errore: " . $e->getMessage() . "\n";
+                $output .= '  ❌ Errore: '.$e->getMessage()."\n";
             }
 
             $output .= "\n";
         }
 
-        $output .= str_repeat("=", 50) . "\n";
+        $output .= str_repeat('=', 50)."\n";
 
         if ($found) {
             $output .= "\n✅ COMPOSER TROVATO IN: {$foundPath}\n";
@@ -268,7 +268,6 @@ class ArubaToolsController extends Controller
         ]);
     }
 
-
     // ================================
     // DATABASE BACKUP
     // ================================
@@ -285,10 +284,10 @@ class ArubaToolsController extends Controller
         $result = SystemOperations::backupDatabase();
 
         if ($result['success']) {
-            return back()->with('success', "✅ Backup creato: {$result['filename']} (" . number_format($result['size'] / 1024 / 1024, 2) . " MB)");
+            return back()->with('success', "✅ Backup creato: {$result['filename']} (".number_format($result['size'] / 1024 / 1024, 2).' MB)');
         }
 
-        return back()->with('error', '❌ ' . $result['output']);
+        return back()->with('error', '❌ '.$result['output']);
     }
 
     public function databaseRestore(Request $request)
@@ -298,7 +297,7 @@ class ArubaToolsController extends Controller
 
         return back()->with(
             $result['success'] ? 'success' : 'error',
-            $result['success'] ? "✅ Database ripristinato da: {$filename}" : '❌ ' . $result['output']
+            $result['success'] ? "✅ Database ripristinato da: {$filename}" : '❌ '.$result['output']
         );
     }
 

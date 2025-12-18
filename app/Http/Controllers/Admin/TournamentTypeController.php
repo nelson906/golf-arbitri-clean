@@ -15,7 +15,7 @@ class TournamentTypeController extends Controller
     public function index()
     {
         $types = TournamentType::orderBy('sort_order')->paginate(20);
-        
+
         return view('admin.tournament-types.index', compact('types'));
     }
 
@@ -38,7 +38,7 @@ class TournamentTypeController extends Controller
             'description' => 'nullable|string',
             'calendar_color' => 'nullable|string|max:7',
             'sort_order' => 'integer|min:0',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
         ]);
 
         // Generate code if not provided
@@ -49,7 +49,7 @@ class TournamentTypeController extends Controller
         // Set default values
         $validated['sort_order'] = $validated['sort_order'] ?? (TournamentType::max('sort_order') ?? 0) + 1;
         $validated['is_active'] = $validated['is_active'] ?? true;
-        $validated['calendar_color'] = $validated['calendar_color'] ?? '#' . substr(md5($validated['name']), 0, 6);
+        $validated['calendar_color'] = $validated['calendar_color'] ?? '#'.substr(md5($validated['name']), 0, 6);
 
         TournamentType::create($validated);
 
@@ -83,12 +83,12 @@ class TournamentTypeController extends Controller
     public function update(Request $request, TournamentType $tournamentType)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:tournament_types,name,' . $tournamentType->id,
-            'code' => 'nullable|string|max:50|unique:tournament_types,code,' . $tournamentType->id,
+            'name' => 'required|string|max:255|unique:tournament_types,name,'.$tournamentType->id,
+            'code' => 'nullable|string|max:50|unique:tournament_types,code,'.$tournamentType->id,
             'description' => 'nullable|string',
             'calendar_color' => 'nullable|string|max:7',
             'sort_order' => 'integer|min:0',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
         ]);
 
         $tournamentType->update($validated);
@@ -119,12 +119,12 @@ class TournamentTypeController extends Controller
     public function toggleActive(TournamentType $tournamentType)
     {
         $tournamentType->update([
-            'is_active' => !$tournamentType->is_active
+            'is_active' => ! $tournamentType->is_active,
         ]);
 
-        return back()->with('success', 
-            $tournamentType->is_active ? 
-                'Tipo di torneo attivato.' : 
+        return back()->with('success',
+            $tournamentType->is_active ?
+                'Tipo di torneo attivato.' :
                 'Tipo di torneo disattivato.'
         );
     }
@@ -136,7 +136,7 @@ class TournamentTypeController extends Controller
     {
         $validated = $request->validate([
             'order' => 'required|array',
-            'order.*' => 'required|integer|exists:tournament_types,id'
+            'order.*' => 'required|integer|exists:tournament_types,id',
         ]);
 
         foreach ($validated['order'] as $index => $id) {

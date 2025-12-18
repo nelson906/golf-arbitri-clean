@@ -24,7 +24,7 @@ class DocumentUploadRequest extends FormRequest
                 'required',
                 'file',
                 'max:10240', // 10MB
-                'mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,txt,csv'
+                'mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png,txt,csv',
             ],
             'category' => 'required|string|in:general,tournament,regulation,form,template',
             'description' => 'nullable|string|max:1000',

@@ -2,11 +2,11 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Models\User;
-use App\Models\Assignment;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class AssignmentRequest extends FormRequest
 {
@@ -18,13 +18,13 @@ class AssignmentRequest extends FormRequest
         $user = $this->user();
 
         // Check user type
-        if (!in_array($user->user_type, ['admin', 'national_admin', 'super_admin'])) {
+        if (! in_array($user->user_type, ['admin', 'national_admin', 'super_admin'])) {
             return false;
         }
 
         // Check tournament access
         $tournament = Tournament::find($this->tournament_id);
-        if (!$tournament) {
+        if (! $tournament) {
             return false;
         }
 
@@ -49,12 +49,12 @@ class AssignmentRequest extends FormRequest
                 'exists:tournaments,id',
                 function ($attribute, $value, $fail) {
                     $tournament = Tournament::find($value);
-                    if (!$tournament) {
+                    if (! $tournament) {
                         return;
                     }
 
                     // Check if tournament can accept assignments
-                    if (!in_array($tournament->status, ['open', 'closed'])) {
+                    if (! in_array($tournament->status, ['open', 'closed'])) {
                         $fail('Il torneo non è in uno stato che permette assegnazioni.');
                     }
 
@@ -69,7 +69,7 @@ class AssignmentRequest extends FormRequest
                 'exists:users,id',
                 function ($attribute, $value, $fail) {
                     $user = User::find($value);
-                    if (!$user) {
+                    if (! $user) {
                         return;
                     }
 
@@ -79,7 +79,7 @@ class AssignmentRequest extends FormRequest
                     }
 
                     // Check if user is active
-                    if (!$user->is_active) {
+                    if (! $user->is_active) {
                         $fail('L\'arbitro selezionato non è attivo.');
                     }
 
@@ -104,7 +104,7 @@ class AssignmentRequest extends FormRequest
                     }
 
                     // Check zone for non-national tournaments
-                    if ($tournament && !$tournament->tournamentType->is_national) {
+                    if ($tournament && ! $tournament->tournamentType->is_national) {
                         if ($user->zone_id !== $tournament->zone_id) {
                             $fail('L\'arbitro appartiene a una zona diversa.');
                         }

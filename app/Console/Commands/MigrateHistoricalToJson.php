@@ -2,11 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use App\Models\User;
-use Carbon\Carbon;
 
 class MigrateHistoricalToJson extends Command
 {
@@ -23,7 +22,9 @@ class MigrateHistoricalToJson extends Command
     protected $description = 'Migra dati storici da 48+ tabelle a JSON (da assignments_YYYY, tournaments_YYYY a referee_career_history)';
 
     private array $stats = [];
+
     private array $availableYears = [];
+
     private array $arbitriCache = []; // <- AGGIUNGI QUESTA
 
     public function handle()
@@ -49,11 +50,11 @@ class MigrateHistoricalToJson extends Command
             'total_assignments' => 0,
             'total_tournaments' => 0,
             'total_availabilities' => 0,
-            'errors' => 0
+            'errors' => 0,
         ];
 
         // 1. Test connessione
-        if (!$this->testConnections()) {
+        if (! $this->testConnections()) {
             return 1;
         }
 
@@ -61,7 +62,7 @@ class MigrateHistoricalToJson extends Command
         $this->analyzeAvailableTables($yearStart, $yearEnd);
 
         // 3. Verifica prerequisiti
-        if (!$this->checkPrerequisites()) {
+        if (! $this->checkPrerequisites()) {
             return 1;
         }
 
@@ -72,6 +73,7 @@ class MigrateHistoricalToJson extends Command
         $this->showFinalReport();
 
         $this->info('Migrazione storico JSON completata');
+
         return 0;
     }
 
@@ -89,6 +91,7 @@ class MigrateHistoricalToJson extends Command
             return true;
         } catch (\Exception $e) {
             $this->error("Errore connessione DB vecchio: {$e->getMessage()}");
+
             return false;
         }
     }
@@ -132,12 +135,12 @@ class MigrateHistoricalToJson extends Command
                     $year,
                     $tables['assignments'] ?? 'N/A',
                     $tables['tournaments'] ?? 'N/A',
-                    $tables['availabilities'] ?? 'N/A'
+                    $tables['availabilities'] ?? 'N/A',
                 ];
             })->toArray()
         );
 
-        $this->info(count($this->availableYears) . " anni disponibili per migrazione");
+        $this->info(count($this->availableYears).' anni disponibili per migrazione');
     }
 
     private function checkPrerequisites(): bool
@@ -146,16 +149,19 @@ class MigrateHistoricalToJson extends Command
         $userCount = User::where('user_type', 'referee')->count();
         if ($userCount === 0) {
             $this->error('Nessun referee trovato. Esegui prima migrate:core-data');
+
             return false;
         }
 
         // Verifica tabella referee_career_history
-        if (!Schema::hasTable('referee_career_history')) {
+        if (! Schema::hasTable('referee_career_history')) {
             $this->error('Tabella referee_career_history non trovata. Esegui migrate:fresh');
+
             return false;
         }
 
         $this->info("Prerequisites OK - {$userCount} referees trovati");
+
         return true;
     }
 
@@ -188,7 +194,7 @@ class MigrateHistoricalToJson extends Command
                     $this->showDebugInfo($referee, $historicalData);
                 }
 
-                if (!$dryRun && !empty(array_filter($historicalData))) {
+                if (! $dryRun && ! empty(array_filter($historicalData))) {
                     $this->saveHistoricalData($referee->id, $historicalData);
                 }
 
@@ -215,7 +221,7 @@ class MigrateHistoricalToJson extends Command
             // 1. Get tournaments per anno (via assignments)
             if ($tables['assignments'] !== null) {
                 $yearTournaments = $this->getTournamentsForUserYear($referee->id, $year);
-                if (!empty($yearTournaments)) {
+                if (! empty($yearTournaments)) {
                     $tournamentsData[$year] = $yearTournaments;
                 }
             }
@@ -223,7 +229,7 @@ class MigrateHistoricalToJson extends Command
             // 2. Get assignments per anno
             if ($tables['assignments'] !== null) {
                 $yearAssignments = $this->getAssignmentsForUserYear($referee->id, $year);
-                if (!empty($yearAssignments)) {
+                if (! empty($yearAssignments)) {
                     $assignmentsData[$year] = $yearAssignments;
                     $this->stats['total_assignments'] += count($yearAssignments);
                 }
@@ -232,7 +238,7 @@ class MigrateHistoricalToJson extends Command
             // 3. Get availabilities per anno
             if ($tables['availabilities'] !== null) {
                 $yearAvailabilities = $this->getAvailabilitiesForUserYear($referee->id, $year);
-                if (!empty($yearAvailabilities)) {
+                if (! empty($yearAvailabilities)) {
                     $availabilitiesData[$year] = $yearAvailabilities;
                     $this->stats['total_availabilities'] += count($yearAvailabilities);
                 }
@@ -243,7 +249,7 @@ class MigrateHistoricalToJson extends Command
             if ($levelForYear) {
                 $levelChangesData[$year] = [
                     'level' => $levelForYear,
-                    'effective_date' => "{$year}-01-01"
+                    'effective_date' => "{$year}-01-01",
                 ];
             }
         }
@@ -256,7 +262,7 @@ class MigrateHistoricalToJson extends Command
             'assignments_by_year' => $assignmentsData,
             'availabilities_by_year' => $availabilitiesData,
             'level_changes_by_year' => $levelChangesData,
-            'career_stats' => $careerStats
+            'career_stats' => $careerStats,
         ];
     }
 
@@ -302,7 +308,7 @@ class MigrateHistoricalToJson extends Command
                     'name' => $t->name,
                     'start_date' => $t->start_date,
                     'end_date' => $t->end_date,
-                    'club_id' => $t->club_id
+                    'club_id' => $t->club_id,
                 ];
             })->toArray();
         } catch (\Exception $e) {
@@ -324,23 +330,25 @@ class MigrateHistoricalToJson extends Command
             return $availabilities->map(function ($a) {
                 return [
                     'tournament_id' => $a->tournament_id,
-                    'notes' => $a->notes
+                    'notes' => $a->notes,
                 ];
             })->toArray();
         } catch (\Exception $e) {
             return [];
         }
     }
+
     private function inferLevelForYear(User $referee, int $year): ?string
     {
         try {
             // Cerca nella tabella arbitri
             $arbitroRecord = $this->findArbitroRecord($referee);
 
-            if (!$arbitroRecord) {
+            if (! $arbitroRecord) {
                 if ($this->option('debug')) {
                     $this->warn("Arbitro non trovato per user {$referee->id} ({$referee->name})");
                 }
+
                 return $referee->level;
             }
 
@@ -348,7 +356,7 @@ class MigrateHistoricalToJson extends Command
             $levelFieldName = "Livello_{$year}";
 
             // Verifica che il campo esista
-            if (!isset($arbitroRecord->$levelFieldName) || empty($arbitroRecord->$levelFieldName)) {
+            if (! isset($arbitroRecord->$levelFieldName) || empty($arbitroRecord->$levelFieldName)) {
                 // Cerca il livello più vicino
                 $nearestLevel = $this->findNearestAvailableLevel($arbitroRecord, $year);
 
@@ -361,11 +369,13 @@ class MigrateHistoricalToJson extends Command
 
             // Mappa il livello legacy
             $legacyLevel = $arbitroRecord->$levelFieldName;
+
             return $this->mapLegacyLevelToModern($legacyLevel);
         } catch (\Exception $e) {
             if ($this->option('debug')) {
                 $this->error("Errore inferLevelForYear per user {$referee->id}, anno {$year}: {$e->getMessage()}");
             }
+
             return $referee->level;
         }
     }
@@ -431,6 +441,7 @@ class MigrateHistoricalToJson extends Command
             return null;
         }
     }
+
     private function calculateCareerStats(array $tournaments, array $assignments, array $availabilities): array
     {
         $totalYears = count($tournaments);
@@ -447,7 +458,7 @@ class MigrateHistoricalToJson extends Command
 
         // Anno più attivo
         $mostActiveYear = collect($tournaments)
-            ->map(fn($yearData) => count($yearData))
+            ->map(fn ($yearData) => count($yearData))
             ->flip()
             ->keys()
             ->first();
@@ -459,7 +470,7 @@ class MigrateHistoricalToJson extends Command
             'total_availabilities' => $totalAvailabilities,
             'roles_summary' => $rolesSummary,
             'most_active_year' => $mostActiveYear,
-            'avg_tournaments_per_year' => $totalYears > 0 ? round($totalTournaments / $totalYears, 1) : 0
+            'avg_tournaments_per_year' => $totalYears > 0 ? round($totalTournaments / $totalYears, 1) : 0,
         ];
     }
 
@@ -477,7 +488,7 @@ class MigrateHistoricalToJson extends Command
                 'career_stats' => json_encode($historicalData['career_stats']),
                 'last_updated_year' => max(array_keys($this->availableYears)),
                 'data_completeness_score' => $completenessScore,
-                'updated_at' => now()
+                'updated_at' => now(),
             ]
         );
     }
@@ -489,9 +500,15 @@ class MigrateHistoricalToJson extends Command
         $maxPoints = $totalYears * 3; // tournaments, assignments, availabilities per year
 
         foreach ($this->availableYears as $year => $tables) {
-            if (!empty($historicalData['tournaments_by_year'][$year])) $dataPoints++;
-            if (!empty($historicalData['assignments_by_year'][$year])) $dataPoints++;
-            if (!empty($historicalData['availabilities_by_year'][$year])) $dataPoints++;
+            if (! empty($historicalData['tournaments_by_year'][$year])) {
+                $dataPoints++;
+            }
+            if (! empty($historicalData['assignments_by_year'][$year])) {
+                $dataPoints++;
+            }
+            if (! empty($historicalData['availabilities_by_year'][$year])) {
+                $dataPoints++;
+            }
         }
 
         return $maxPoints > 0 ? round($dataPoints / $maxPoints, 2) : 0.0;
@@ -503,12 +520,12 @@ class MigrateHistoricalToJson extends Command
         $this->warn("DEBUG - User {$referee->id} ({$referee->name}):");
 
         foreach ($historicalData['tournaments_by_year'] as $year => $tournaments) {
-            $this->line("  {$year}: " . count($tournaments) . " tournaments");
+            $this->line("  {$year}: ".count($tournaments).' tournaments');
         }
 
         foreach ($historicalData['assignments_by_year'] as $year => $assignments) {
             $roles = collect($assignments)->pluck('role')->countBy();
-            $this->line("  {$year}: " . count($assignments) . " assignments - " . $roles->toJson());
+            $this->line("  {$year}: ".count($assignments).' assignments - '.$roles->toJson());
         }
 
         $stats = $historicalData['career_stats'];
@@ -538,7 +555,7 @@ class MigrateHistoricalToJson extends Command
             ->avg('data_completeness_score');
 
         $this->info("Records referee_career_history: {$historyRecords}");
-        $this->info("Completeness media: " . round($avgCompleteness * 100, 1) . "%");
+        $this->info('Completeness media: '.round($avgCompleteness * 100, 1).'%');
 
         // Sample record
         $sample = DB::table('referee_career_history')
@@ -554,6 +571,7 @@ class MigrateHistoricalToJson extends Command
             $this->line("  Years active: {$stats['total_years']}");
         }
     }
+
     /**
      * Trova il livello più vicino all'anno richiesto
      */
@@ -564,7 +582,7 @@ class MigrateHistoricalToJson extends Command
 
         foreach ($availableYears as $year) {
             $fieldName = "Livello_{$year}";
-            if (isset($arbitroRecord->$fieldName) && !empty($arbitroRecord->$fieldName)) {
+            if (isset($arbitroRecord->$fieldName) && ! empty($arbitroRecord->$fieldName)) {
                 $availableLevels[$year] = $arbitroRecord->$fieldName;
             }
         }

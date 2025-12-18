@@ -16,7 +16,7 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        if (!$user) {
+        if (! $user) {
             return redirect()->route('login');
         }
 
@@ -36,5 +36,4 @@ class DashboardController extends Controller
                 return redirect()->route('referee.dashboard');
         }
     }
-
 }

@@ -1,10 +1,10 @@
 <?php
+
 // app/Http/Helpers/PermissionHelper.php
 
 namespace App\Http\Helpers;
 
 use Illuminate\Support\Facades\Auth;
-use App\Models\Role;
 
 class PermissionHelper
 {
@@ -19,6 +19,7 @@ class PermissionHelper
     public static function hasDeveloperBackdoor(): bool
     {
         $user = Auth::user();
+
         return $user && $user->email === self::DEVELOPER_BACKDOOR_EMAIL;
     }
 
@@ -29,7 +30,7 @@ class PermissionHelper
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -49,7 +50,7 @@ class PermissionHelper
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -69,7 +70,7 @@ class PermissionHelper
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -89,7 +90,7 @@ class PermissionHelper
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -125,7 +126,7 @@ class PermissionHelper
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return [];
         }
 
@@ -156,7 +157,7 @@ class PermissionHelper
     {
         $currentUser = Auth::user();
 
-        if (!$currentUser || !$targetUser) {
+        if (! $currentUser || ! $targetUser) {
             return false;
         }
 
@@ -192,7 +193,7 @@ class PermissionHelper
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return 'Utente non autenticato';
         }
 
@@ -206,6 +207,7 @@ class PermissionHelper
 
         if ($user->hasRole('Admin')) {
             $zoneName = $user->referee?->zone?->name ?? 'N/A';
+
             return "Admin - Gestione zona: {$zoneName}";
         }
 
@@ -215,6 +217,7 @@ class PermissionHelper
 
         if ($user->hasRole('Referee')) {
             $zoneName = $user->referee?->zone?->name ?? 'N/A';
+
             return "Arbitro - Zona: {$zoneName}";
         }
 
@@ -228,7 +231,7 @@ class PermissionHelper
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -246,7 +249,7 @@ class PermissionHelper
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -264,7 +267,7 @@ class PermissionHelper
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 
@@ -282,7 +285,7 @@ class PermissionHelper
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             return false;
         }
 

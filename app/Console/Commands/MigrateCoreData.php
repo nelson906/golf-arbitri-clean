@@ -2,17 +2,16 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\Zone;
 use Carbon\Carbon;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class MigrateCoreData extends Command
 {
     protected $signature = 'migrate:core-data {--dry-run} {--limit=0} {--debug}';
+
     protected $description = 'Migra users unificata dal vecchio sistema (users + referees → users)';
 
     public function handle()
@@ -33,7 +32,7 @@ class MigrateCoreData extends Command
         }
 
         // 1. Test connessione database vecchio
-        if (!$this->testOldConnection()) {
+        if (! $this->testOldConnection()) {
             return 1;
         }
 
@@ -49,11 +48,12 @@ class MigrateCoreData extends Command
         $this->migrateUsersUnified($dryRun, $limit, $debug);
 
         // 4. Report finale
-        if (!$dryRun) {
+        if (! $dryRun) {
             $this->showFinalReport();
         }
 
         $this->info('✅ Migrazione completata!');
+
         return 0;
     }
 
@@ -62,11 +62,13 @@ class MigrateCoreData extends Command
         try {
             $count = DB::connection('old_mysql')->table('users')->count();
             $this->info("✅ Connessione DB vecchio: {$count} users trovati");
+
             return true;
         } catch (\Exception $e) {
             $this->error('❌ Errore connessione database vecchio:');
             $this->error($e->getMessage());
             $this->warn('Verifica configurazione database in .env e config/database.php');
+
             return false;
         }
     }
@@ -76,7 +78,7 @@ class MigrateCoreData extends Command
         $this->info('👥 Migrazione Users Unificata (users + referees → users)...');
 
         // Trunca tabella users per ripartire da capo
-        if (!$dryRun) {
+        if (! $dryRun) {
             $this->warn('🗑️ Svuoto tabella users per migrazione pulita...');
 
             try {
@@ -114,6 +116,7 @@ class MigrateCoreData extends Command
 
         if ($oldUsers->isEmpty()) {
             $this->warn('⚠️ Nessun user trovato da migrare');
+
             return;
         }
 
@@ -142,7 +145,7 @@ class MigrateCoreData extends Command
                     'remember_token' => $oldUser->remember_token,
 
                     // ✅ REFEREE DATA - VALORI REALI DAL DEBUG
-                    'referee_code' => !empty(trim($oldUser->referee_code)) ? $oldUser->referee_code : null,
+                    'referee_code' => ! empty(trim($oldUser->referee_code)) ? $oldUser->referee_code : null,
                     'level' => $oldUser->level, // Valore enum corretto già presente
                     'gender' => $this->mapGender($oldUser->category), // category → gender
                     'certified_date' => $this->parseDate($oldUser->certified_date),
@@ -170,8 +173,8 @@ class MigrateCoreData extends Command
                     'preferences' => $oldUser->preferences ?? $referee?->preferences,
 
                     // Flags - VALORI REALI
-                    'is_active' => (bool)$oldUser->is_active,
-                    'available_for_international' => (bool)($referee?->available_for_international ?? false),
+                    'is_active' => (bool) $oldUser->is_active,
+                    'available_for_international' => (bool) ($referee?->available_for_international ?? false),
 
                     // Stats
                     'total_tournaments' => $referee?->total_tournaments ?? 0,
@@ -204,7 +207,7 @@ class MigrateCoreData extends Command
                     );
                 }
 
-                if (!$dryRun) {
+                if (! $dryRun) {
                     // ✅ INSERT DIRETTO invece di User::create per evitare mutators
                     DB::table('users')->insert($unifiedData);
                 }
@@ -233,9 +236,12 @@ class MigrateCoreData extends Command
     // ✅ HELPER SEMPLIFICATO
     private function mapGender(?string $category): string
     {
-        if (empty($category)) return 'mixed';
+        if (empty($category)) {
+            return 'mixed';
+        }
 
         $cat = strtolower(trim($category));
+
         return match ($cat) {
             'maschile', 'uomini', 'm', 'male' => 'male',
             'femminile', 'donne', 'f', 'female' => 'female',
@@ -246,7 +252,9 @@ class MigrateCoreData extends Command
 
     private function parseDate($dateValue): ?string
     {
-        if (empty($dateValue) || $dateValue === 'NULL') return null;
+        if (empty($dateValue) || $dateValue === 'NULL') {
+            return null;
+        }
 
         try {
             return Carbon::parse($dateValue)->format('Y-m-d');
@@ -254,9 +262,12 @@ class MigrateCoreData extends Command
             return null;
         }
     }
+
     private function normalizeLevel(?string $level): string
     {
-        if (empty($level)) return '1_livello';
+        if (empty($level)) {
+            return '1_livello';
+        }
 
         // Mantieni il valore se già corretto
         $validLevels = ['Aspirante', '1_livello', 'Regionale', 'Nazionale', 'Internazionale', 'Archivio'];
@@ -278,7 +289,9 @@ class MigrateCoreData extends Command
 
     private function mapZoneId(?int $zoneId): ?int
     {
-        if (empty($zoneId)) return null;
+        if (empty($zoneId)) {
+            return null;
+        }
 
         // Se zone ID esiste nel nuovo DB, usalo
         $zone = Zone::find($zoneId);
@@ -288,16 +301,22 @@ class MigrateCoreData extends Command
 
         // Fallback alla prima zona
         $firstZone = Zone::first();
+
         return $firstZone ? $firstZone->id : null;
     }
 
     private function parseJson($jsonValue): ?array
     {
-        if (empty($jsonValue)) return null;
-        if (is_array($jsonValue)) return $jsonValue;
+        if (empty($jsonValue)) {
+            return null;
+        }
+        if (is_array($jsonValue)) {
+            return $jsonValue;
+        }
 
         try {
             $decoded = json_decode($jsonValue, true);
+
             return is_array($decoded) ? $decoded : null;
         } catch (\Exception $e) {
             return null;
@@ -331,7 +350,7 @@ class MigrateCoreData extends Command
         $this->info('📊 Distribuzione User Types:');
         $this->table(
             ['User Type', 'Count'],
-            $userTypes->map(fn($ut) => [$ut->user_type, $ut->count])->toArray()
+            $userTypes->map(fn ($ut) => [$ut->user_type, $ut->count])->toArray()
         );
     }
 }

@@ -7,8 +7,8 @@ use App\Models\Club;
 use App\Models\Zone;
 use App\Traits\HasZoneVisibility;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ClubController extends Controller
 {
@@ -55,7 +55,6 @@ class ClubController extends Controller
 
         // Filtro zona già applicato da applyClubVisibility()
 
-
         // Ordinamento
         $clubs = $query
             ->withCount('tournaments')
@@ -63,7 +62,6 @@ class ClubController extends Controller
             ->orderBy('name')
             ->paginate(20)
             ->withQueryString();
-
 
         // Zone per filtro
         $zones = Zone::orderBy('name')->get();
@@ -111,12 +109,11 @@ class ClubController extends Controller
 
         // Zone disponibili (filtrate per ruolo)
         $zones = Zone::orderBy('name');
-        if (!$isNationalAdmin && $user->zone_id) {
+        if (! $isNationalAdmin && $user->zone_id) {
             $zones = $zones->where('id', $user->zone_id);
         }
 
         $zones = $zones->get();
-
 
         return view('admin.clubs.create', compact('zones', 'isNationalAdmin'));
     }
@@ -149,7 +146,7 @@ class ClubController extends Controller
         $validated = $request->validate($rules);
 
         // Imposta defaults se necessario
-        if (Schema::hasColumn('clubs', 'active') && !isset($validated['active'])) {
+        if (Schema::hasColumn('clubs', 'active') && ! isset($validated['active'])) {
             $validated['active'] = true;
         }
 
@@ -169,17 +166,16 @@ class ClubController extends Controller
         $isNationalAdmin = $this->isNationalAdmin($user);
 
         // Verifica permessi tramite trait
-        if (!$isNationalAdmin && $club->zone_id != $this->getUserZoneId($user)) {
+        if (! $isNationalAdmin && $club->zone_id != $this->getUserZoneId($user)) {
             abort(403, 'Non autorizzato a modificare questo circolo');
         }
 
         // Zone disponibili (filtrate per ruolo)
         $zones = Zone::orderBy('name');
-        if (!$isNationalAdmin && $user->zone_id) {
+        if (! $isNationalAdmin && $user->zone_id) {
             $zones = $zones->where('id', $user->zone_id);
         }
         $zones = $zones->get();
-
 
         return view('admin.clubs.edit', compact('club', 'zones', 'isNationalAdmin'));
     }
@@ -193,7 +189,7 @@ class ClubController extends Controller
         $isNationalAdmin = $this->isNationalAdmin($user);
 
         // Verifica permessi tramite trait
-        if (!$isNationalAdmin && $club->zone_id != $this->getUserZoneId($user)) {
+        if (! $isNationalAdmin && $club->zone_id != $this->getUserZoneId($user)) {
             abort(403, 'Non autorizzato a modificare questo circolo');
         }
 
@@ -210,7 +206,7 @@ class ClubController extends Controller
 
         // Validazione campi opzionali
         if (Schema::hasColumn('clubs', 'code')) {
-            $rules['code'] = 'nullable|string|max:20|unique:clubs,code,' . $club->id;
+            $rules['code'] = 'nullable|string|max:20|unique:clubs,code,'.$club->id;
         }
 
         if (Schema::hasColumn('clubs', 'active')) {
@@ -231,7 +227,7 @@ class ClubController extends Controller
      */
     public function destroy(Club $club)
     {
-        if (!$this->isNationalAdmin()) {
+        if (! $this->isNationalAdmin()) {
             abort(403, 'Solo gli admin nazionali possono eliminare circoli');
         }
 
@@ -252,21 +248,22 @@ class ClubController extends Controller
      */
     public function toggleActive(Club $club)
     {
-        if (!Schema::hasColumn('clubs', 'active')) {
+        if (! Schema::hasColumn('clubs', 'active')) {
             return back()->with('error', 'Funzionalità non disponibile');
         }
 
         $user = auth()->user();
 
         // Verifica permessi tramite trait
-        if (!$this->isNationalAdmin($user) && $club->zone_id != $this->getUserZoneId($user)) {
+        if (! $this->isNationalAdmin($user) && $club->zone_id != $this->getUserZoneId($user)) {
             abort(403, 'Non autorizzato');
         }
 
-        $club->active = !$club->active;
+        $club->active = ! $club->active;
         $club->save();
 
         $status = $club->active ? 'attivato' : 'disattivato';
+
         return back()->with('success', "Circolo {$status} con successo");
     }
 
@@ -300,7 +297,7 @@ class ClubController extends Controller
         // Genera CSV
         $headers = [
             'Content-Type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="circoli_' . date('Y-m-d') . '.csv"',
+            'Content-Disposition' => 'attachment; filename="circoli_'.date('Y-m-d').'.csv"',
         ];
 
         $callback = function () use ($clubs) {
@@ -317,7 +314,7 @@ class ClubController extends Controller
                     $club->city ?? '',
                     $club->email ?? '',
                     $club->phone ?? '',
-                    $club->tournaments()->count()
+                    $club->tournaments()->count(),
                 ]);
             }
 

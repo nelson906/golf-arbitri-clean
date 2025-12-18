@@ -20,7 +20,7 @@ class RefereeCareerHistory extends Model
         'level_changes_by_year',
         'career_stats',
         'last_updated_year',
-        'data_completeness_score'
+        'data_completeness_score',
     ];
 
     protected $casts = [
@@ -29,7 +29,7 @@ class RefereeCareerHistory extends Model
         'availabilities_by_year' => 'array',
         'level_changes_by_year' => 'array',
         'career_stats' => 'array',
-        'data_completeness_score' => 'decimal:2'
+        'data_completeness_score' => 'decimal:2',
     ];
 
     // Relationships
@@ -37,6 +37,7 @@ class RefereeCareerHistory extends Model
     {
         return $this->belongsTo(User::class);
     }
+
     public function referee(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -70,13 +71,13 @@ class RefereeCareerHistory extends Model
         $rolesSummary = collect($assignments)
             ->flatten(1)
             ->groupBy('role')
-            ->map(fn($items) => count($items))
+            ->map(fn ($items) => count($items))
             ->toArray();
 
         // Trova l'anno con più tornei
         $mostActiveYear = null;
-        if (!empty($tournaments)) {
-            $yearCounts = collect($tournaments)->map(fn($items) => count($items));
+        if (! empty($tournaments)) {
+            $yearCounts = collect($tournaments)->map(fn ($items) => count($items));
             $mostActiveYear = $yearCounts->sortDesc()->keys()->first();
         }
 
@@ -85,6 +86,6 @@ class RefereeCareerHistory extends Model
             'total_tournaments' => $totalTournaments,
             'avg_tournaments_per_year' => $totalYears > 0 ? round($totalTournaments / $totalYears, 1) : 0,
             'roles_summary' => $rolesSummary,
-            'most_active_year' => $mostActiveYear        ];
+            'most_active_year' => $mostActiveYear];
     }
 }

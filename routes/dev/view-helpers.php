@@ -1,24 +1,27 @@
 <?php
 
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Contracts\Auth\Authenticatable;
 
-if (!class_exists('DebugCollector')) {
+if (! class_exists('DebugCollector')) {
     class DebugCollector
     {
         private static $issues = [];
+
         public static function addIssue($type, $message, $context = [])
         {
             self::$issues[] = compact('type', 'message', 'context');
         }
+
         public static function getIssues()
         {
             return self::$issues;
         }
+
         public static function clear()
         {
             self::$issues = [];
         }
+
         public static function hasIssues()
         {
             return count(self::$issues) > 0;
@@ -26,13 +29,14 @@ if (!class_exists('DebugCollector')) {
     }
 }
 
-if (!class_exists('MockPaginatorView')) {
+if (! class_exists('MockPaginatorView')) {
     class MockPaginatorView
     {
         public function __toString()
         {
             return '';
         }
+
         public function __call($m, $a)
         {
             return $this;
@@ -40,21 +44,24 @@ if (!class_exists('MockPaginatorView')) {
     }
 }
 
-if (!class_exists('MockCollection')) {
+if (! class_exists('MockCollection')) {
     class MockCollection extends \Illuminate\Support\Collection
     {
         public function links($view = null, $data = [])
         {
-            return new MockPaginatorView();
+            return new MockPaginatorView;
         }
+
         public function render($view = null, $data = [])
         {
-            return new MockPaginatorView();
+            return new MockPaginatorView;
         }
+
         public function withQueryString()
         {
             return $this;
         }
+
         public function appends($key, $value = null)
         {
             return $this;
@@ -62,45 +69,49 @@ if (!class_exists('MockCollection')) {
     }
 }
 
-if (!class_exists('UniversalValue')) {
-    class UniversalValue implements
-        Authenticatable,
-        \ArrayAccess,
-        \Countable,
-        \IteratorAggregate,
-        \Stringable,
-        \JsonSerializable
+if (! class_exists('UniversalValue')) {
+    class UniversalValue implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializable, \Stringable, Authenticatable
     {
         private $data = [];
 
         public function __construct($data = [])
         {
             $this->data = is_array($data) ? $data : ['value' => $data];
-            if (!isset($this->data['id'])) $this->data['id'] = rand(1, 999);
-            if (!isset($this->data['name'])) $this->data['name'] = 'Mock';
+            if (! isset($this->data['id'])) {
+                $this->data['id'] = rand(1, 999);
+            }
+            if (! isset($this->data['name'])) {
+                $this->data['name'] = 'Mock';
+            }
         }
 
         public function getAuthIdentifierName()
         {
             return 'id';
         }
+
         public function getAuthIdentifier()
         {
             return $this->data['id'] ?? 1;
         }
+
         public function getAuthPassword()
         {
             return '';
         }
+
         public function getAuthPasswordName()
         {
             return 'password';
         }
+
         public function getRememberToken()
         {
             return null;
         }
+
         public function setRememberToken($value) {}
+
         public function getRememberTokenName()
         {
             return null;
@@ -108,8 +119,11 @@ if (!class_exists('UniversalValue')) {
 
         public function __get($name)
         {
-            if (isset($this->data[$name])) return $this->data[$name];
+            if (isset($this->data[$name])) {
+                return $this->data[$name];
+            }
             $this->data[$name] = $this->generate($name);
+
             return $this->data[$name];
         }
 
@@ -117,6 +131,7 @@ if (!class_exists('UniversalValue')) {
         {
             $this->data[$name] = $value;
         }
+
         public function __isset($name)
         {
             return true;
@@ -129,9 +144,14 @@ if (!class_exists('UniversalValue')) {
 
         public function offsetGet($offset): mixed
         {
-            if (isset($this->data[$offset])) return $this->data[$offset];
-            if (is_numeric($offset)) return new UniversalValue(['id' => $offset + 1, 'name' => "Item $offset"]);
+            if (isset($this->data[$offset])) {
+                return $this->data[$offset];
+            }
+            if (is_numeric($offset)) {
+                return new UniversalValue(['id' => $offset + 1, 'name' => "Item $offset"]);
+            }
             $this->data[$offset] = $this->generate($offset);
+
             return $this->data[$offset];
         }
 
@@ -139,14 +159,17 @@ if (!class_exists('UniversalValue')) {
         {
             $this->data[$offset] = $value;
         }
+
         public function offsetUnset($offset): void
         {
             unset($this->data[$offset]);
         }
+
         public function count(): int
         {
             return 5;
         }
+
         public function getIterator(): \Traversable
         {
             return new \ArrayIterator($this->data);
@@ -154,8 +177,13 @@ if (!class_exists('UniversalValue')) {
 
         public function __toString(): string
         {
-            if (isset($this->data['id'])) return (string)$this->data['id'];
-            if (isset($this->data['name'])) return (string)$this->data['name'];
+            if (isset($this->data['id'])) {
+                return (string) $this->data['id'];
+            }
+            if (isset($this->data['name'])) {
+                return (string) $this->data['name'];
+            }
+
             return 'mock';
         }
 
@@ -168,17 +196,29 @@ if (!class_exists('UniversalValue')) {
         {
             // ⚠️ AGGIUNGI: Metodi che ritornano null devono ritornare MockCollection
             if (in_array($method, ['isEmpty', 'isNotEmpty', 'keys', 'values', 'where', 'filter'])) {
-                if ($method === 'isEmpty') return false;
-                if ($method === 'isNotEmpty') return true;
-                if ($method === 'where') return new MockCollection([new UniversalValue()]);
+                if ($method === 'isEmpty') {
+                    return false;
+                }
+                if ($method === 'isNotEmpty') {
+                    return true;
+                }
+                if ($method === 'where') {
+                    return new MockCollection([new UniversalValue]);
+                }
+
                 return new MockCollection(['mock']);
             }
 
             // ⚠️ Paginator methods
             if (in_array($method, ['links', 'render', 'withQueryString', 'appends', 'hasPages', 'total'])) {
-                if ($method === 'total') return 10;
-                if ($method === 'hasPages') return true;
-                return new MockPaginatorView();
+                if ($method === 'total') {
+                    return 10;
+                }
+                if ($method === 'hasPages') {
+                    return true;
+                }
+
+                return new MockPaginatorView;
             }
 
             // ⚠️ AGGIUNGI: Metodi che ritornano oggetti
@@ -191,11 +231,17 @@ if (!class_exists('UniversalValue')) {
                 return true;
             }
 
-            if ($method === 'count') return 5;
-            if ($method === 'format') return now()->format($args[0] ?? 'd/m/Y');
-            if ($method === 'first') return new UniversalValue(['id' => 1]);
+            if ($method === 'count') {
+                return 5;
+            }
+            if ($method === 'format') {
+                return now()->format($args[0] ?? 'd/m/Y');
+            }
+            if ($method === 'first') {
+                return new UniversalValue(['id' => 1]);
+            }
             if (in_array($method, ['get', 'all'])) {
-                return new MockCollection([new UniversalValue()]);
+                return new MockCollection([new UniversalValue]);
             }
 
             // ⚠️ Default: ritorna $this per method chaining
@@ -234,7 +280,9 @@ if (!class_exists('UniversalValue')) {
                 'content' => 'Mock Content',
             ];
 
-            if (isset($strings[$name])) return $strings[$name];
+            if (isset($strings[$name])) {
+                return $strings[$name];
+            }
 
             // Booleani
             if (
@@ -246,7 +294,7 @@ if (!class_exists('UniversalValue')) {
 
             // ⚠️ Collection/Array properties
             if (in_array($name, ['items', 'data', 'results', 'records'])) {
-                return new MockCollection([new UniversalValue()]);
+                return new MockCollection([new UniversalValue]);
             }
 
             // ⚠️ Default: SEMPRE ritorna UniversalValue (mai null!)
@@ -255,11 +303,13 @@ if (!class_exists('UniversalValue')) {
     }
 }
 
-if (!function_exists('analyzeViewRecursive')) {
+if (! function_exists('analyzeViewRecursive')) {
     function analyzeViewRecursive($viewName, &$allVariables = [])
     {
-        $viewFile = resource_path('views/' . str_replace('.', '/', $viewName) . '.blade.php');
-        if (!file_exists($viewFile)) return $allVariables;
+        $viewFile = resource_path('views/'.str_replace('.', '/', $viewName).'.blade.php');
+        if (! file_exists($viewFile)) {
+            return $allVariables;
+        }
 
         $content = file_get_contents($viewFile);
         preg_match_all('/\$(\w+)/', $content, $matches);
@@ -278,7 +328,7 @@ if (!function_exists('analyzeViewRecursive')) {
     }
 }
 
-if (!function_exists('generateValue')) {
+if (! function_exists('generateValue')) {
     function generateValue($name)
     {
         // ⚠️ Array keywords → Array PHP nativo
@@ -290,10 +340,10 @@ if (!function_exists('generateValue')) {
         }
 
         // ⚠️ IMPORTANTE: SEMPRE MockCollection per plurali (MAI null!)
-        if (str_ends_with($name, 's') && !in_array($name, ['class', 'status', 'errors'])) {
+        if (str_ends_with($name, 's') && ! in_array($name, ['class', 'status', 'errors'])) {
             return new MockCollection([
                 new UniversalValue(['id' => 1, 'name' => 'Item 1']),
-                new UniversalValue(['id' => 2, 'name' => 'Item 2'])
+                new UniversalValue(['id' => 2, 'name' => 'Item 2']),
             ]);
         }
 

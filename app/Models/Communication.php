@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Carbon\Carbon;
 
 /**
  * 📢 Communication Model - Gestione comunicazioni di sistema
@@ -27,6 +26,7 @@ use Carbon\Carbon;
  * @property-read string $priority_badge
  * @property-read string $type_badge
  * @property-read \App\Models\Zone|null $zone
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication published()
  */
@@ -55,8 +55,11 @@ class Communication extends Model
 
     // Communication types
     const TYPE_ANNOUNCEMENT = 'announcement';
+
     const TYPE_ALERT = 'alert';
+
     const TYPE_MAINTENANCE = 'maintenance';
+
     const TYPE_INFO = 'info';
 
     const TYPES = [
@@ -68,7 +71,9 @@ class Communication extends Model
 
     // Communication statuses
     const STATUS_DRAFT = 'draft';
+
     const STATUS_PUBLISHED = 'published';
+
     const STATUS_EXPIRED = 'expired';
 
     const STATUSES = [
@@ -79,8 +84,11 @@ class Communication extends Model
 
     // Priority levels
     const PRIORITY_LOW = 'low';
+
     const PRIORITY_NORMAL = 'normal';
+
     const PRIORITY_HIGH = 'high';
+
     const PRIORITY_URGENT = 'urgent';
 
     const PRIORITIES = [
@@ -112,14 +120,14 @@ class Communication extends Model
     public function scopePublished($query)
     {
         return $query->where('status', self::STATUS_PUBLISHED)
-                    ->where(function($q) {
-                        $q->whereNull('scheduled_at')
-                          ->orWhere('scheduled_at', '<=', now());
-                    })
-                    ->where(function($q) {
-                        $q->whereNull('expires_at')
-                          ->orWhere('expires_at', '>', now());
-                    });
+            ->where(function ($q) {
+                $q->whereNull('scheduled_at')
+                    ->orWhere('scheduled_at', '<=', now());
+            })
+            ->where(function ($q) {
+                $q->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            });
     }
 
     /**
@@ -145,7 +153,7 @@ class Communication extends Model
      */
     public function getPriorityBadgeAttribute(): string
     {
-        return match($this->priority) {
+        return match ($this->priority) {
             self::PRIORITY_LOW => 'bg-gray-100 text-gray-800',
             self::PRIORITY_NORMAL => 'bg-blue-100 text-blue-800',
             self::PRIORITY_HIGH => 'bg-yellow-100 text-yellow-800',
@@ -159,7 +167,7 @@ class Communication extends Model
      */
     public function getTypeBadgeAttribute(): string
     {
-        return match($this->type) {
+        return match ($this->type) {
             self::TYPE_ANNOUNCEMENT => 'bg-green-100 text-green-800',
             self::TYPE_ALERT => 'bg-red-100 text-red-800',
             self::TYPE_MAINTENANCE => 'bg-orange-100 text-orange-800',

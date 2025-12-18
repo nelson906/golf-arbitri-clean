@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Tournament;
 use App\Models\TournamentType;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Servizio centralizzato per la gestione dei colori calendario tornei.
@@ -84,8 +83,9 @@ class TournamentColorService
     ];
 
     private const DEFAULT_COLOR = '#3B82F6';
+
     private const DEFAULT_BORDER = '#10B981';
-    
+
     // Aggiunto qui per visibilità dal metodo pubblico
     public const TYPE_COLORS_MAP = self::TYPE_COLORS;
 
@@ -125,8 +125,9 @@ class TournamentColorService
             $color = $tournament->tournamentType->calendar_color;
             // Aggiungi trasparenza per tornei non assegnati/disponibili
             if (str_starts_with($color, '#')) {
-                return $color . '80'; // 50% trasparenza
+                return $color.'80'; // 50% trasparenza
             }
+
             return $color;
         }
 
@@ -178,8 +179,13 @@ class TournamentColorService
      */
     public function getPersonalStatus(bool $isAssigned, bool $isAvailable): string
     {
-        if ($isAssigned) return 'assigned';
-        if ($isAvailable) return 'available';
+        if ($isAssigned) {
+            return 'assigned';
+        }
+        if ($isAvailable) {
+            return 'available';
+        }
+
         return 'can_apply';
     }
 
@@ -192,7 +198,7 @@ class TournamentColorService
         $types = TournamentType::where('is_active', true)
             ->orderBy('name')
             ->get();
-        
+
         $legend = [];
         foreach ($types as $type) {
             $shortName = $type->short_name ?? $type->name;
@@ -200,7 +206,7 @@ class TournamentColorService
             $color = self::TYPE_COLORS[$shortName] ?? self::DEFAULT_COLOR;
             $legend[$type->name] = $color;
         }
-        
+
         return $legend;
     }
 

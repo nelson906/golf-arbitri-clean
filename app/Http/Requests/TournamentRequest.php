@@ -2,12 +2,11 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+use App\Models\Club;
 use App\Models\Tournament;
 use App\Models\TournamentType;
-use App\Models\Club;
-use Carbon\Carbon;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class TournamentRequest extends FormRequest
 {
@@ -19,7 +18,7 @@ class TournamentRequest extends FormRequest
         $user = $this->user();
 
         // Check user type
-        if (!in_array($user->user_type, ['admin', 'national_admin', 'super_admin'])) {
+        if (! in_array($user->user_type, ['admin', 'national_admin', 'super_admin'])) {
             return false;
         }
 
@@ -56,13 +55,13 @@ class TournamentRequest extends FormRequest
                 'exists:tournament_types,id',
                 function ($attribute, $value, $fail) {
                     $category = TournamentType::find($value);
-                    if ($category && !$category->is_active) {
+                    if ($category && ! $category->is_active) {
                         $fail('La categoria selezionata non è attiva.');
                     }
 
                     // Check if category is available for user's zone
                     $user = $this->user();
-                    if ($user->user_type === 'admin' && !$category->isAvailableForZone($user->zone_id)) {
+                    if ($user->user_type === 'admin' && ! $category->isAvailableForZone($user->zone_id)) {
                         $fail('Questa categoria non è disponibile per la tua zona.');
                     }
                 },
@@ -72,7 +71,7 @@ class TournamentRequest extends FormRequest
                 'exists:clubs,id',
                 function ($attribute, $value, $fail) {
                     $club = club::find($value);
-                    if ($club && !$club->is_active) {
+                    if ($club && ! $club->is_active) {
                         $fail('Il circolo selezionato non è attivo.');
                     }
 
@@ -104,14 +103,14 @@ class TournamentRequest extends FormRequest
                 'sometimes',
                 Rule::in(array_keys(Tournament::STATUSES)),
                 function ($attribute, $value, $fail) use ($isUpdate, $tournament) {
-                    if (!$isUpdate) {
+                    if (! $isUpdate) {
                         // For new tournaments, only draft and open are allowed
-                        if (!in_array($value, ['draft', 'open'])) {
+                        if (! in_array($value, ['draft', 'open'])) {
                             $fail('Stato non valido per un nuovo torneo.');
                         }
                     } else {
                         // For updates, check if tournament is editable
-                        if (!$tournament->isEditable()) {
+                        if (! $tournament->isEditable()) {
                             $fail('Questo torneo non può essere modificato nel suo stato attuale.');
                         }
                     }
@@ -170,15 +169,15 @@ class TournamentRequest extends FormRequest
             $club = club::find($this->club_id);
             if ($club) {
                 $this->merge([
-                    'zone_id' => $club->zone_id
+                    'zone_id' => $club->zone_id,
                 ]);
             }
         }
 
         // Set default status if not provided
-        if (!$this->has('status') && !$this->route('tournament')) {
+        if (! $this->has('status') && ! $this->route('tournament')) {
             $this->merge([
-                'status' => 'draft'
+                'status' => 'draft',
             ]);
         }
     }

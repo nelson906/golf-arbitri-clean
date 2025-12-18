@@ -60,7 +60,6 @@ Route::prefix('assignments')->name('assignments.')->group(function () {
         ->name('cancel');
 });
 
-
 // Assignment Validation & Quality Control
 Route::prefix('assignment-validation')->name('assignment-validation.')->group(function () {
     Route::get('/', [AssignmentController::class, 'validation'])->name('index');

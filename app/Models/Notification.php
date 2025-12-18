@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Assignment;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
@@ -38,6 +37,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property-read mixed $status_badge_color
  * @property-read mixed $status_display
  * @property-read \App\Models\Tournament|null $tournament
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification failed()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification newQuery()
@@ -67,6 +67,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereTournamentId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification withPriority($priority)
+ *
  * @mixin \Eloquent
  */
 class Notification extends Model
@@ -102,23 +103,31 @@ class Notification extends Model
      * Notification statuses
      */
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_SENT = 'sent';
+
     public const STATUS_FAILED = 'failed';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     /**
      * Notification priorities
      */
     public const PRIORITY_LOW = 'low';
+
     public const PRIORITY_NORMAL = 'normal';
+
     public const PRIORITY_HIGH = 'high';
 
     /**
      * Recipient types
      */
     public const TYPE_REFEREE = 'referee';
+
     public const TYPE_CLUB = 'club';
+
     public const TYPE_INSTITUTIONAL = 'institutional';
+
     public const TYPE_CUSTOM = 'custom';
 
     /**
@@ -288,7 +297,6 @@ class Notification extends Model
         return $this->sent_at ? $this->sent_at->format('d/m/Y H:i') : '-';
     }
 
-
     /**
      * Get tournament information through assignment
      */
@@ -310,7 +318,7 @@ class Notification extends Model
      */
     public function hasAttachments(): bool
     {
-        return !empty($this->attachments);
+        return ! empty($this->attachments);
     }
 
     /**
@@ -346,6 +354,4 @@ class Notification extends Model
     {
         return $this->belongsTo(Tournament::class);
     }
-
-
 }

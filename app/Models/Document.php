@@ -33,6 +33,7 @@ use Illuminate\Support\Facades\Storage;
  * @property-read \App\Models\Tournament|null $tournament
  * @property-read \App\Models\User $uploader
  * @property-read \App\Models\Zone|null $zone
+ *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document category(string $category)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document newQuery()
@@ -54,6 +55,7 @@ use Illuminate\Support\Facades\Storage;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereUpdatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereUploaderId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereZoneId($value)
+ *
  * @mixin \Eloquent
  */
 class Document extends Model
@@ -84,9 +86,13 @@ class Document extends Model
 
     // Document categories
     const CATEGORY_GENERAL = 'general';
+
     const CATEGORY_TOURNAMENT = 'tournament';
+
     const CATEGORY_REGULATION = 'regulation';
+
     const CATEGORY_FORM = 'form';
+
     const CATEGORY_TEMPLATE = 'template';
 
     const CATEGORIES = [
@@ -99,10 +105,15 @@ class Document extends Model
 
     // Document types
     const TYPE_PDF = 'pdf';
+
     const TYPE_DOCUMENT = 'document';
+
     const TYPE_SPREADSHEET = 'spreadsheet';
+
     const TYPE_IMAGE = 'image';
+
     const TYPE_TEXT = 'text';
+
     const TYPE_OTHER = 'other';
 
     const TYPES = [
@@ -150,7 +161,7 @@ class Document extends Model
             $bytes /= 1024;
         }
 
-        return round($bytes, 2) . ' ' . $units[$i];
+        return round($bytes, 2).' '.$units[$i];
     }
 
     /**
@@ -174,7 +185,7 @@ class Document extends Model
      */
     public function getTypeIconAttribute(): string
     {
-        return match($this->type) {
+        return match ($this->type) {
             self::TYPE_PDF => 'fas fa-file-pdf text-red-500',
             self::TYPE_DOCUMENT => 'fas fa-file-word text-blue-500',
             self::TYPE_SPREADSHEET => 'fas fa-file-excel text-green-500',

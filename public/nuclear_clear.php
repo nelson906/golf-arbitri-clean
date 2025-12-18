@@ -1,20 +1,20 @@
 <?php
+
 /**
  * PULIZIA NUCLEARE - Elimina TUTTA la cache
  * Usa solo se gli altri script non hanno funzionato
  */
-
-echo "<pre>";
+echo '<pre>';
 echo "=== ☢️  PULIZIA NUCLEARE CACHE ☢️  ===\n\n";
 echo "⚠️  ATTENZIONE: Questo script eliminerà TUTTA la cache!\n\n";
 
-$basePath = realpath(__DIR__ . '/..');
+$basePath = realpath(__DIR__.'/..');
 $deleted = 0;
 $errors = 0;
 
 // 1. ELIMINA TUTTO bootstrap/cache
 echo "=== BOOTSTRAP CACHE ===\n";
-$bootstrapCache = $basePath . '/bootstrap/cache';
+$bootstrapCache = $basePath.'/bootstrap/cache';
 
 if (is_dir($bootstrapCache)) {
     $files = scandir($bootstrapCache);
@@ -23,7 +23,7 @@ if (is_dir($bootstrapCache)) {
             continue;
         }
 
-        $fullPath = $bootstrapCache . '/' . $file;
+        $fullPath = $bootstrapCache.'/'.$file;
         if (is_file($fullPath)) {
             if (@unlink($fullPath)) {
                 echo "✓ Deleted: $file\n";
@@ -40,10 +40,11 @@ if (is_dir($bootstrapCache)) {
 
 // 2. ELIMINA TUTTO storage/framework/cache
 echo "\n=== FRAMEWORK CACHE ===\n";
-$frameworkCache = $basePath . '/storage/framework/cache';
+$frameworkCache = $basePath.'/storage/framework/cache';
 
-function deleteAllFiles($dir, &$deleted, &$errors) {
-    if (!is_dir($dir)) {
+function deleteAllFiles($dir, &$deleted, &$errors)
+{
+    if (! is_dir($dir)) {
         return;
     }
 
@@ -53,7 +54,7 @@ function deleteAllFiles($dir, &$deleted, &$errors) {
             continue;
         }
 
-        $path = $dir . '/' . $item;
+        $path = $dir.'/'.$item;
 
         if (is_file($path)) {
             if (@unlink($path)) {
@@ -73,19 +74,19 @@ echo "✓ Cleaned framework cache\n";
 
 // 3. ELIMINA TUTTO storage/framework/views
 echo "\n=== COMPILED VIEWS ===\n";
-$views = $basePath . '/storage/framework/views';
+$views = $basePath.'/storage/framework/views';
 deleteAllFiles($views, $deleted, $errors);
 echo "✓ Cleaned compiled views\n";
 
 // 4. ELIMINA TUTTO storage/framework/sessions
 echo "\n=== SESSIONS ===\n";
-$sessions = $basePath . '/storage/framework/sessions';
+$sessions = $basePath.'/storage/framework/sessions';
 deleteAllFiles($sessions, $deleted, $errors);
 echo "✓ Cleaned sessions\n";
 
 // 5. ELIMINA composer cache se esiste
 echo "\n=== COMPOSER CACHE ===\n";
-$composerCache = $basePath . '/vendor/composer';
+$composerCache = $basePath.'/vendor/composer';
 if (is_dir($composerCache)) {
     $composerFiles = ['autoload_classmap.php', 'autoload_files.php', 'autoload_psr4.php', 'autoload_static.php'];
     // NON eliminare questi, ma segnala
@@ -105,13 +106,13 @@ $specificCaches = [
 ];
 
 foreach ($specificCaches as $cache) {
-    $path = $basePath . '/' . $cache;
+    $path = $basePath.'/'.$cache;
     if (file_exists($path)) {
         if (@unlink($path)) {
-            echo "✓ Deleted: " . basename($cache) . "\n";
+            echo '✓ Deleted: '.basename($cache)."\n";
             $deleted++;
         } else {
-            echo "✗ Failed: " . basename($cache) . "\n";
+            echo '✗ Failed: '.basename($cache)."\n";
             $errors++;
         }
     }
@@ -138,7 +139,7 @@ $checkDirs = [
 ];
 
 foreach ($checkDirs as $dir => $name) {
-    $fullPath = $basePath . '/' . $dir;
+    $fullPath = $basePath.'/'.$dir;
     if (is_dir($fullPath)) {
         $files = array_diff(scandir($fullPath), ['.', '..', '.gitignore']);
         $count = count($files);
@@ -160,4 +161,4 @@ echo "   - Controlla il file trovato e correggilo\n";
 echo "4. ELIMINA TUTTI gli script di debug dalla /public/\n";
 
 echo "\n⚠️  ELIMINA QUESTO FILE DOPO L'USO!\n";
-echo "</pre>";
+echo '</pre>';

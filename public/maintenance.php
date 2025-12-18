@@ -1,13 +1,14 @@
 <?php
+
 // Prevenzione corruzione cache
 
-echo date('Y-m-d H:i:s') . " - Manutenzione preventiva<br>";
+echo date('Y-m-d H:i:s').' - Manutenzione preventiva<br>';
 
 // Pulisci cache vecchia (non Laravel)
 $dirs = [
     '../storage/framework/cache/data',
     '../storage/framework/sessions',
-    '../storage/framework/views'
+    '../storage/framework/views',
 ];
 
 foreach ($dirs as $dir) {
@@ -22,9 +23,8 @@ foreach ($dirs as $dir) {
                 $cleaned++;
             }
         }
-        echo "🧹 Puliti {$cleaned} file vecchi da " . basename($dir) . "<br>";
+        echo "🧹 Puliti {$cleaned} file vecchi da ".basename($dir).'<br>';
     }
 }
 
-echo "✅ Manutenzione completata<br>";
-?>
+echo '✅ Manutenzione completata<br>';

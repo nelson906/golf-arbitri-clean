@@ -1,20 +1,12 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Models\Tournament;
-use App\Models\TournamentNotification;
-use App\Services\DocumentGenerationService;
-use App\Services\FileStorageService;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController;
 use App\Http\Controllers\User\FedergolfController;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\RedirectResponse;
-
-
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,6 +22,7 @@ Route::get('/', function () {
     if (auth()->check()) {
         return redirect()->route('dashboard');
     }
+
     return view('welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
@@ -70,10 +63,10 @@ Route::middleware(['auth'])->prefix('user/federgolf')->group(function () {
 });
 
 // Authentication routes
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';
 
 // Super Admin routes
-require __DIR__ . '/super-admin.php';
+require __DIR__.'/super-admin.php';
 
 /*
 |--------------------------------------------------------------------------
@@ -86,7 +79,7 @@ require __DIR__ . '/super-admin.php';
 Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
     Route::prefix('admin')->name('admin.')->group(function () {
         // Redirect root admin a dashboard
-        Route::get('/', fn() => redirect()->route('admin.dashboard'));
+        Route::get('/', fn () => redirect()->route('admin.dashboard'));
 
         // Dashboard admin (route diretta)
         Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
@@ -100,19 +93,19 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
         })->name('settings');
 
         // ===== MODULAR ADMIN ROUTES =====
-        require __DIR__ . '/admin/tournaments.php';
-        require __DIR__ . '/admin/referee-career.php';      // SPOSTATO da inline
-        require __DIR__ . '/admin/users.php';
-        require __DIR__ . '/admin/assignments.php';
-        require __DIR__ . '/admin/dashboard.php';
-        require __DIR__ . '/admin/statistics.php';           // RINOMINATO da statistic.php
-        require __DIR__ . '/admin/monitoring.php';
-        require __DIR__ . '/admin/clubs.php';
-        require __DIR__ . '/admin/notifications.php';
-        require __DIR__ . '/admin/reports.php';
-        require __DIR__ . '/admin/documents.php';
-        require __DIR__ . '/admin/communications.php';       // SPOSTATO da inline
-        require __DIR__ . '/admin/career-history.php';       // Gestione storico carriera arbitri
+        require __DIR__.'/admin/tournaments.php';
+        require __DIR__.'/admin/referee-career.php';      // SPOSTATO da inline
+        require __DIR__.'/admin/users.php';
+        require __DIR__.'/admin/assignments.php';
+        require __DIR__.'/admin/dashboard.php';
+        require __DIR__.'/admin/statistics.php';           // RINOMINATO da statistic.php
+        require __DIR__.'/admin/monitoring.php';
+        require __DIR__.'/admin/clubs.php';
+        require __DIR__.'/admin/notifications.php';
+        require __DIR__.'/admin/reports.php';
+        require __DIR__.'/admin/documents.php';
+        require __DIR__.'/admin/communications.php';       // SPOSTATO da inline
+        require __DIR__.'/admin/career-history.php';       // Gestione storico carriera arbitri
     });
 });
 
@@ -127,14 +120,14 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::prefix('user')->name('user.')->group(function () {
         // Redirect root user a availability
-        Route::get('/', fn(): RedirectResponse => redirect()->route('user.availability.index'));
+        Route::get('/', fn (): RedirectResponse => redirect()->route('user.availability.index'));
 
         // ===== MODULAR USER ROUTES =====
-        require __DIR__ . '/user/availability.php';
-        require __DIR__ . '/user/quadranti.php';
-        require __DIR__ . '/user/curriculum.php';
-        require __DIR__ . '/user/documents.php';
-        require __DIR__ . '/user/communications.php';
+        require __DIR__.'/user/availability.php';
+        require __DIR__.'/user/quadranti.php';
+        require __DIR__.'/user/curriculum.php';
+        require __DIR__.'/user/documents.php';
+        require __DIR__.'/user/communications.php';
     });
 });
 
@@ -149,12 +142,12 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth', 'referee_or_admin'])->group(function () {
     Route::prefix('referee')->name('referee.')->group(function () {
         // Redirect legacy referee dashboard a user
-        Route::get('/', fn(): RedirectResponse => redirect()->route('user.availability.index'));
+        Route::get('/', fn (): RedirectResponse => redirect()->route('user.availability.index'));
     });
 });
 
 // Referee dashboard route (outside prefix to avoid /referee/referee/dashboard)
-require __DIR__ . '/referee/dashboard.php';
+require __DIR__.'/referee/dashboard.php';
 
 // Redirect admin referees a users con filtro
 Route::redirect('/admin/referees', '/admin/users?user_type=referee');
@@ -168,18 +161,18 @@ Route::redirect('/admin/referees', '/admin/users?user_type=referee');
 */
 Route::prefix('api')->name('api.')->group(function () {
     // Internal API per chiamate AJAX
-    require __DIR__ . '/api/internal.php';
+    require __DIR__.'/api/internal.php';
 
     // Versioned API per integrazioni esterne
     Route::prefix('v1')->name('v1.')->group(function () {
-        require __DIR__ . '/api/v1/tournaments.php';
-        require __DIR__ . '/api/v1/notifications.php';
+        require __DIR__.'/api/v1/tournaments.php';
+        require __DIR__.'/api/v1/notifications.php';
     });
 });
 
-require __DIR__ . '/dev/view-preview.php';
+require __DIR__.'/dev/view-preview.php';
 if (app()->environment(['local', 'staging'])) {
-    require __DIR__ . '/dev/view-preview.php';
-    require __DIR__ . '/dev/view-test-all.php'; // ⚠️ AGGIUNGI
+    require __DIR__.'/dev/view-preview.php';
+    require __DIR__.'/dev/view-test-all.php'; // ⚠️ AGGIUNGI
 }
-require __DIR__ . '/maintenance.php';
+require __DIR__.'/maintenance.php';

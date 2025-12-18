@@ -15,16 +15,16 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('availability')->name('availability.')->group(function () {
     // Lista disponibilità dichiarate
     Route::get('/', [AvailabilityController::class, 'index'])->name('index');
-    
+
     // Vista tornei per dichiarare disponibilità
     Route::get('/tournaments', [AvailabilityController::class, 'tournaments'])->name('tournaments');
-    
+
     // Salva/rimuovi disponibilità singola
     Route::post('/store', [AvailabilityController::class, 'store'])->name('store');
-    
+
     // Salva disponibilità batch
     Route::post('/save-batch', [AvailabilityController::class, 'saveBatch'])->name('saveBatch');
-    
+
     // Vista calendario
     Route::get('/calendar', [AvailabilityController::class, 'calendar'])->name('calendar');
 });

@@ -2,13 +2,13 @@
 
 namespace App\Services;
 
+use App\Models\Club;
 use App\Models\Tournament;
+use App\Models\TournamentType;
 use App\Models\User;
 use App\Models\Zone;
-use App\Models\TournamentType;
-use App\Models\Club;
-use Illuminate\Support\Collection;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * Servizio centralizzato per la preparazione dati calendario.
@@ -30,9 +30,6 @@ class CalendarDataService
     /**
      * Prepara dati calendario per vista ADMIN.
      * Mostra tutti i tornei della zona/nazionali con colori per tipo torneo.
-     *
-     * @param Collection $tournaments
-     * @return Collection
      */
     public function prepareAdminCalendarData(Collection $tournaments): Collection
     {
@@ -53,11 +50,8 @@ class CalendarDataService
      * Prepara dati calendario per vista ARBITRO.
      * Mostra tornei con colori basati su stato personale (assegnato/disponibile/candidabile).
      *
-     * @param Collection $tournaments
-     * @param User $user
-     * @param array $availableTournamentIds IDs tornei dove l'utente ha dichiarato disponibilità
-     * @param array $assignedTournamentIds IDs tornei dove l'utente è assegnato
-     * @return Collection
+     * @param  array  $availableTournamentIds  IDs tornei dove l'utente ha dichiarato disponibilità
+     * @param  array  $assignedTournamentIds  IDs tornei dove l'utente è assegnato
      */
     public function prepareRefereeCalendarData(
         Collection $tournaments,
@@ -65,13 +59,13 @@ class CalendarDataService
         array $availableTournamentIds = [],
         array $assignedTournamentIds = []
     ): Collection {
-        return $tournaments->map(function ($tournament) use ($user, $availableTournamentIds, $assignedTournamentIds) {
+        return $tournaments->map(function ($tournament) use ($availableTournamentIds, $assignedTournamentIds) {
             $isAvailable = in_array($tournament->id, $availableTournamentIds);
             $isAssigned = in_array($tournament->id, $assignedTournamentIds);
 
             return [
                 'id' => $tournament->id,
-                'title' => $tournament->name ?? 'Torneo #' . $tournament->id,
+                'title' => $tournament->name ?? 'Torneo #'.$tournament->id,
                 'start' => $tournament->start_date ? $tournament->start_date->format('Y-m-d') : now()->format('Y-m-d'),
                 'end' => $tournament->end_date ? $tournament->end_date->addDay()->format('Y-m-d') : now()->addDay()->format('Y-m-d'),
                 'color' => $this->colorService->getRefereeEventColor($tournament, $isAssigned, $isAvailable),
@@ -84,12 +78,6 @@ class CalendarDataService
     /**
      * Prepara dati calendario per vista MISTA (admin/referee).
      * Usato quando la stessa vista serve entrambi i ruoli.
-     *
-     * @param Collection $tournaments
-     * @param User $user
-     * @param array $availableTournamentIds
-     * @param array $assignedTournamentIds
-     * @return Collection
      */
     public function prepareMixedCalendarData(
         Collection $tournaments,
@@ -99,7 +87,7 @@ class CalendarDataService
     ): Collection {
         $isAdmin = in_array($user->user_type, ['admin', 'national_admin', 'super_admin']);
 
-        return $tournaments->map(function ($tournament) use ($user, $isAdmin, $availableTournamentIds, $assignedTournamentIds) {
+        return $tournaments->map(function ($tournament) use ($isAdmin, $availableTournamentIds, $assignedTournamentIds) {
             $isAvailable = in_array($tournament->id, $availableTournamentIds);
             $isAssigned = in_array($tournament->id, $assignedTournamentIds);
 
@@ -118,11 +106,8 @@ class CalendarDataService
     /**
      * Prepara dati completi per la pagina calendario (tornei + filtri + metadata).
      *
-     * @param Collection $tournaments
-     * @param User $user
-     * @param string $viewType 'admin' | 'referee' | 'mixed'
-     * @param array $options Opzioni aggiuntive (availableTournamentIds, assignedTournamentIds, etc.)
-     * @return array
+     * @param  string  $viewType  'admin' | 'referee' | 'mixed'
+     * @param  array  $options  Opzioni aggiuntive (availableTournamentIds, assignedTournamentIds, etc.)
      */
     public function prepareFullCalendarData(
         Collection $tournaments,
@@ -225,7 +210,7 @@ class CalendarDataService
      */
     protected function formatZones(Collection $zones): Collection
     {
-        return $zones->map(fn($zone) => [
+        return $zones->map(fn ($zone) => [
             'id' => $zone->id,
             'name' => $zone->name,
         ]);
@@ -236,7 +221,7 @@ class CalendarDataService
      */
     protected function formatClubs(Collection $clubs): Collection
     {
-        return $clubs->map(fn($club) => [
+        return $clubs->map(fn ($club) => [
             'id' => $club->id,
             'name' => $club->name,
             'zone_id' => $club->zone_id,
@@ -248,7 +233,7 @@ class CalendarDataService
      */
     protected function formatTournamentTypes(Collection $types): Collection
     {
-        return $types->map(fn($type) => [
+        return $types->map(fn ($type) => [
             'id' => $type->id,
             'name' => $type->name,
             'short_name' => $type->short_name,

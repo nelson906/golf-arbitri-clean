@@ -13,8 +13,11 @@ class TournamentNotificationMail extends Mailable
     use Queueable, SerializesModels;
 
     public $tournament;
+
     public $notification;
+
     public $recipientType;
+
     public $attachments;
 
     public function __construct(
@@ -38,14 +41,14 @@ class TournamentNotificationMail extends Mailable
             ->with([
                 'tournament' => $this->tournament,
                 'message' => $content['message'] ?? '',
-                'recipientType' => $this->recipientType
+                'recipientType' => $this->recipientType,
             ]);
 
         // Aggiungi allegati
         foreach ($this->attachments as $attachment) {
             if (file_exists($attachment['path'])) {
                 $mail->attach($attachment['path'], [
-                    'as' => $attachment['name']
+                    'as' => $attachment['name'],
                 ]);
             }
         }

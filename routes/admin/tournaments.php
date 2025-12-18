@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\Admin\TournamentController;
 use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\TournamentController;
 use App\Http\Controllers\Admin\TournamentTypeController;
 use Illuminate\Support\Facades\Route;
 

@@ -1,13 +1,14 @@
 <?php
+
 // ============================================
 // File: app/Models/Club.php
 // ============================================
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 
 class Club extends Model
@@ -35,7 +36,6 @@ class Club extends Model
     /**
      * RELAZIONI
      */
-
     public function zone()
     {
         return $this->belongsTo(Zone::class);
@@ -49,12 +49,12 @@ class Club extends Model
     /**
      * SCOPES
      */
-
     public function scopeActive($query)
     {
         if (Schema::hasColumn($this->getTable(), 'active')) {
             return $query->where('active', true);
         }
+
         return $query;
     }
 
@@ -65,6 +65,7 @@ class Club extends Model
     {
         return $query->orderBy('name');
     }
+
     /**
      * Scope per filtrare circoli visibili all'utente.
      *
@@ -72,15 +73,14 @@ class Club extends Model
      * - super_admin/national_admin: vedono tutto
      * - admin zonale: solo circoli della propria zona
      *
-     * @param Builder $query
-     * @param User|null $user
+     * @param  Builder  $query
      * @return Builder
      */
     public function scopeVisible($query, ?User $user = null)
     {
         $user = $user ?? auth()->user();
 
-        if (!$user) {
+        if (! $user) {
             return $query->whereRaw('1 = 0');
         }
 

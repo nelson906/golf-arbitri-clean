@@ -2,14 +2,12 @@
 
 namespace App\Services;
 
-use App\Models\User;
 use App\Models\Assignment;
 use App\Models\Availability;
-use App\Models\Tournament;
 use App\Models\RefereeCareerHistory;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use App\Models\Tournament;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class CareerHistoryService
 {
@@ -17,8 +15,8 @@ class CareerHistoryService
      * Archivia un anno intero per tutti gli arbitri.
      * Trasferisce i dati dalle tabelle correnti allo storico.
      *
-     * @param int $year Anno da archiviare
-     * @param bool $clearSourceData Se true, elimina i dati dalla tabella sorgente dopo l'archiviazione
+     * @param  int  $year  Anno da archiviare
+     * @param  bool  $clearSourceData  Se true, elimina i dati dalla tabella sorgente dopo l'archiviazione
      * @return array Statistiche dell'operazione
      */
     public function archiveYear(int $year, bool $clearSourceData = false): array
@@ -53,11 +51,11 @@ class CareerHistoryService
                 $stats['availabilities_archived'] += $result['availabilities_count'];
                 $stats['tournaments_archived'] += $result['tournaments_count'];
             } catch (\Exception $e) {
-                $stats['errors'][] = "User {$userId}: " . $e->getMessage();
-                Log::error("Errore archiviazione career history", [
+                $stats['errors'][] = "User {$userId}: ".$e->getMessage();
+                Log::error('Errore archiviazione career history', [
                     'user_id' => $userId,
                     'year' => $year,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
             }
         }
@@ -98,7 +96,7 @@ class CareerHistoryService
             ->get();
 
         // Prepara i dati nel formato JSON
-        $tournamentsData = $tournaments->map(fn($t) => [
+        $tournamentsData = $tournaments->map(fn ($t) => [
             'id' => $t->id,
             'name' => $t->name,
             'club_id' => $t->club_id,
@@ -107,7 +105,7 @@ class CareerHistoryService
             'end_date' => $t->end_date->format('Y-m-d'),
         ])->values()->toArray();
 
-        $assignmentsData = $assignments->map(fn($a) => [
+        $assignmentsData = $assignments->map(fn ($a) => [
             'tournament_id' => $a->tournament_id,
             'tournament_name' => $a->tournament->name ?? null,
             'role' => $a->role,
@@ -115,7 +113,7 @@ class CareerHistoryService
             'status' => $a->status,
         ])->values()->toArray();
 
-        $availabilitiesData = $availabilities->map(fn($av) => [
+        $availabilitiesData = $availabilities->map(fn ($av) => [
             'tournament_id' => $av->tournament_id,
             'tournament_name' => $av->tournament->name ?? null,
             'submitted_at' => Carbon::parse($av->submitted_at)?->format('Y-m-d H:i'),
@@ -183,13 +181,13 @@ class CareerHistoryService
     {
         $history = RefereeCareerHistory::where('user_id', $userId)->first();
 
-        if (!$history) {
+        if (! $history) {
             return false;
         }
 
         $tournaments = $history->tournaments_by_year ?? [];
 
-        if (!isset($tournaments[$year])) {
+        if (! isset($tournaments[$year])) {
             return false;
         }
 
@@ -229,7 +227,7 @@ class CareerHistoryService
 
         $tournaments = $history->tournaments_by_year ?? [];
 
-        if (!isset($tournaments[$year])) {
+        if (! isset($tournaments[$year])) {
             $tournaments[$year] = [];
         }
 
@@ -248,19 +246,19 @@ class CareerHistoryService
     {
         $history = RefereeCareerHistory::where('user_id', $userId)->first();
 
-        if (!$history) {
+        if (! $history) {
             return false;
         }
 
         $tournaments = $history->tournaments_by_year ?? [];
 
-        if (!isset($tournaments[$year])) {
+        if (! isset($tournaments[$year])) {
             return false;
         }
 
         $tournaments[$year] = array_values(array_filter(
             $tournaments[$year],
-            fn($t) => $t['id'] != $tournamentId
+            fn ($t) => $t['id'] != $tournamentId
         ));
 
         $history->tournaments_by_year = $tournaments;
@@ -279,17 +277,17 @@ class CareerHistoryService
         $maxScore = 5;
 
         // Ha tornei?
-        if (!empty($history->tournaments_by_year)) {
+        if (! empty($history->tournaments_by_year)) {
             $score += 1;
         }
 
         // Ha assegnazioni?
-        if (!empty($history->assignments_by_year)) {
+        if (! empty($history->assignments_by_year)) {
             $score += 1;
         }
 
         // Ha disponibilità?
-        if (!empty($history->availabilities_by_year)) {
+        if (! empty($history->availabilities_by_year)) {
             $score += 1;
         }
 

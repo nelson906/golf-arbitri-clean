@@ -23,6 +23,7 @@ trait HasZoneVisibility
     protected function isSuperAdmin(?User $user = null): bool
     {
         $user = $user ?? auth()->user();
+
         return $user->user_type === 'super_admin';
     }
 
@@ -32,6 +33,7 @@ trait HasZoneVisibility
     protected function isNationalAdmin(?User $user = null): bool
     {
         $user = $user ?? auth()->user();
+
         return in_array($user->user_type, ['national_admin', 'super_admin']);
     }
 
@@ -41,6 +43,7 @@ trait HasZoneVisibility
     protected function isAdmin(?User $user = null): bool
     {
         $user = $user ?? auth()->user();
+
         return in_array($user->user_type, ['admin', 'national_admin', 'super_admin']);
     }
 
@@ -50,6 +53,7 @@ trait HasZoneVisibility
     protected function isZoneAdmin(?User $user = null): bool
     {
         $user = $user ?? auth()->user();
+
         return $user->user_type === 'admin';
     }
 
@@ -59,6 +63,7 @@ trait HasZoneVisibility
     protected function isNationalReferee(?User $user = null): bool
     {
         $user = $user ?? auth()->user();
+
         return in_array($user->level ?? '', ['Nazionale', 'Internazionale']);
     }
 
@@ -68,15 +73,15 @@ trait HasZoneVisibility
     protected function getUserZoneId(?User $user = null): ?int
     {
         $user = $user ?? auth()->user();
+
         return $user->zone_id;
     }
 
     /**
      * Applica filtro visibilità su query Tournament.
      *
-     * @param Builder $query Query su Tournament
-     * @param User|null $user Utente (default: auth user)
-     * @return Builder
+     * @param  Builder  $query  Query su Tournament
+     * @param  User|null  $user  Utente (default: auth user)
      */
     protected function applyTournamentVisibility(Builder $query, ?User $user = null): Builder
     {
@@ -105,9 +110,9 @@ trait HasZoneVisibility
                 // Nazionale/Internazionale: propria zona + tornei nazionali
                 return $query->where(function ($q) use ($user) {
                     $q->where('zone_id', $user->zone_id)
-                      ->orWhereHas('tournamentType', function ($sub) {
-                          $sub->where('is_national', true);
-                      });
+                        ->orWhereHas('tournamentType', function ($sub) {
+                            $sub->where('is_national', true);
+                        });
                 });
             } else {
                 // 1_livello/Regionale: solo propria zona
@@ -127,10 +132,9 @@ trait HasZoneVisibility
      * Applica filtro visibilità su query con relazione al torneo.
      * Utile per Assignment, Availability, Notification, ecc.
      *
-     * @param Builder $query Query su entità con relazione tournament
-     * @param User|null $user Utente (default: auth user)
-     * @param string $tournamentRelation Nome della relazione (default: 'tournament')
-     * @return Builder
+     * @param  Builder  $query  Query su entità con relazione tournament
+     * @param  User|null  $user  Utente (default: auth user)
+     * @param  string  $tournamentRelation  Nome della relazione (default: 'tournament')
      */
     protected function applyTournamentRelationVisibility(
         Builder $query,
@@ -164,9 +168,9 @@ trait HasZoneVisibility
         if ($user->user_type === 'referee' && $this->isNationalReferee($user)) {
             return $query->whereHas($tournamentRelation, function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id)
-                  ->orWhereHas('tournamentType', function ($sub) {
-                      $sub->where('is_national', true);
-                  });
+                    ->orWhereHas('tournamentType', function ($sub) {
+                        $sub->where('is_national', true);
+                    });
             });
         }
 
@@ -183,9 +187,8 @@ trait HasZoneVisibility
     /**
      * Applica filtro visibilità su query User (arbitri).
      *
-     * @param Builder $query Query su User
-     * @param User|null $user Utente (default: auth user)
-     * @return Builder
+     * @param  Builder  $query  Query su User
+     * @param  User|null  $user  Utente (default: auth user)
      */
     protected function applyUserVisibility(Builder $query, ?User $user = null): Builder
     {
@@ -212,9 +215,8 @@ trait HasZoneVisibility
     /**
      * Applica filtro visibilità su query Club.
      *
-     * @param Builder $query Query su Club
-     * @param User|null $user Utente (default: auth user)
-     * @return Builder
+     * @param  Builder  $query  Query su Club
+     * @param  User|null  $user  Utente (default: auth user)
      */
     protected function applyClubVisibility(Builder $query, ?User $user = null): Builder
     {
@@ -236,9 +238,7 @@ trait HasZoneVisibility
     /**
      * Verifica se l'utente può accedere a un torneo specifico.
      *
-     * @param \App\Models\Tournament $tournament
-     * @param User|null $user
-     * @return bool
+     * @param  \App\Models\Tournament  $tournament
      */
     protected function canAccessTournament($tournament, ?User $user = null): bool
     {
@@ -271,9 +271,6 @@ trait HasZoneVisibility
 
     /**
      * Restituisce informazioni di contesto per le viste.
-     *
-     * @param User|null $user
-     * @return array
      */
     protected function getVisibilityContext(?User $user = null): array
     {

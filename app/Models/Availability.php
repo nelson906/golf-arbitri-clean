@@ -6,8 +6,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Availability extends Model
 {
@@ -28,7 +28,6 @@ class Availability extends Model
     /**
      * RELAZIONI
      */
-
     public function tournament()
     {
         return $this->belongsTo(Tournament::class);

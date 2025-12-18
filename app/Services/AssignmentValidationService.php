@@ -109,6 +109,7 @@ class AssignmentValidationService
             $inadequateReferees = $tournament->assignments->filter(function ($assignment) use ($levels, $requiredIndex) {
                 $normalizedUserLevel = RefereeLevelsHelper::normalize($assignment->user->level);
                 $userIndex = array_search($normalizedUserLevel, $levels);
+
                 return $userIndex === false || $userIndex < $requiredIndex;
             });
 
@@ -122,7 +123,7 @@ class AssignmentValidationService
             }
 
             // Controlla zona per tornei non nazionali
-            if (!$tournament->tournamentType->is_national) {
+            if (! $tournament->tournamentType->is_national) {
                 $wrongZoneReferees = $tournament->assignments->filter(function ($assignment) use ($tournament) {
                     return $assignment->user->zone_id !== $tournament->zone_id;
                 });
@@ -139,7 +140,7 @@ class AssignmentValidationService
 
             // Controlla presenza ruoli chiave
             $roles = $tournament->assignments->pluck('role');
-            if (!$roles->contains('Direttore di Torneo') && $tournament->tournamentType->level === 'nazionale') {
+            if (! $roles->contains('Direttore di Torneo') && $tournament->tournamentType->level === 'nazionale') {
                 $tournamentIssues[] = [
                     'type' => 'missing_role',
                     'message' => 'Manca il Direttore di Torneo',
@@ -147,7 +148,7 @@ class AssignmentValidationService
                 ];
             }
 
-            if (!empty($tournamentIssues)) {
+            if (! empty($tournamentIssues)) {
                 $issues->push([
                     'tournament' => $tournament,
                     'issues' => $tournamentIssues,
@@ -339,6 +340,7 @@ class AssignmentValidationService
         } elseif ($daysDiff <= 1) {
             return 'medium'; // Giorni consecutivi
         }
+
         return 'low';
     }
 
@@ -353,6 +355,7 @@ class AssignmentValidationService
                 default => 0,
             };
         }
+
         return $score;
     }
 
@@ -373,7 +376,7 @@ class AssignmentValidationService
         $query->whereIn('level', $acceptableLevels);
 
         // Filtra per zona se non nazionale
-        if (!$tournament->tournamentType->is_national) {
+        if (! $tournament->tournamentType->is_national) {
             $query->where('zone_id', $tournament->zone_id);
         }
 
@@ -383,10 +386,10 @@ class AssignmentValidationService
                 $tq->where(function ($dateQuery) use ($tournament) {
                     $dateQuery->whereBetween('start_date', [
                         $tournament->start_date,
-                        $tournament->end_date
+                        $tournament->end_date,
                     ])->orWhereBetween('end_date', [
                         $tournament->start_date,
-                        $tournament->end_date
+                        $tournament->end_date,
                     ]);
                 });
             });

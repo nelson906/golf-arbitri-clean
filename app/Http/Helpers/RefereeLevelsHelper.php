@@ -63,7 +63,7 @@ class RefereeLevelsHelper
     {
         $levels = self::DB_ENUM_VALUES;
 
-        if (!$includeArchived) {
+        if (! $includeArchived) {
             unset($levels['Archivio']);
         }
 
@@ -92,9 +92,9 @@ class RefereeLevelsHelper
         }
 
         // Se non trovato, log warning e restituisci originale
-        \Log::warning("RefereeLevelsHelper: Unknown level variant", [
+        \Log::warning('RefereeLevelsHelper: Unknown level variant', [
             'input_level' => $level,
-            'lowercase' => $levelLower
+            'lowercase' => $levelLower,
         ]);
 
         return $level;
@@ -124,6 +124,7 @@ class RefereeLevelsHelper
         }
 
         $normalized = self::normalize($level);
+
         return array_key_exists($normalized, self::DB_ENUM_VALUES);
     }
 
@@ -133,6 +134,7 @@ class RefereeLevelsHelper
     public static function canAccessNationalTournaments(?string $level): bool
     {
         $normalized = self::normalize($level);
+
         return in_array($normalized, ['Nazionale', 'Internazionale']);
     }
 
@@ -172,21 +174,21 @@ class RefereeLevelsHelper
 /**
  * Funzioni helper globali
  */
-if (!function_exists('referee_levels')) {
+if (! function_exists('referee_levels')) {
     function referee_levels(bool $includeArchived = false): array
     {
         return RefereeLevelsHelper::getSelectOptions($includeArchived);
     }
 }
 
-if (!function_exists('normalize_referee_level')) {
+if (! function_exists('normalize_referee_level')) {
     function normalize_referee_level(?string $level): ?string
     {
         return RefereeLevelsHelper::normalize($level);
     }
 }
 
-if (!function_exists('referee_level_label')) {
+if (! function_exists('referee_level_label')) {
     function referee_level_label(?string $level): string
     {
         return RefereeLevelsHelper::getLabel($level);

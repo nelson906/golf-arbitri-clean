@@ -3,7 +3,6 @@
 namespace App\Helpers;
 
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\DB;
 
 class SystemOperations
 {
@@ -15,7 +14,7 @@ class SystemOperations
         $output = [];
         $returnVar = 0;
 
-        exec($command . ' 2>&1', $output, $returnVar);
+        exec($command.' 2>&1', $output, $returnVar);
 
         return [
             'success' => $returnVar === 0,
@@ -23,7 +22,6 @@ class SystemOperations
             'exit_code' => $returnVar,
         ];
     }
-
 
     // ================================
     // COMPOSER OPERATIONS
@@ -43,15 +41,15 @@ class SystemOperations
             '/opt/alt/php81/usr/bin/composer',    // Aruba CloudLinux PHP 8.1
             '/opt/alt/php82/usr/bin/composer',    // Aruba CloudLinux PHP 8.2
             '/opt/alt/php83/usr/bin/composer',    // Aruba CloudLinux PHP 8.3
-            getenv('HOME') . '/composer',         // Home directory
-            getenv('HOME') . '/bin/composer',     // Home bin
+            getenv('HOME').'/composer',         // Home directory
+            getenv('HOME').'/bin/composer',     // Home bin
         ];
 
         foreach ($possiblePaths as $path) {
             // Prova ad eseguire composer --version
             $result = self::execCommand("{$path} --version 2>&1");
 
-            if ($result['success'] && !empty($result['output'])) {
+            if ($result['success'] && ! empty($result['output'])) {
                 $output = $result['output'][0] ?? '';
 
                 // Verifica che contenga "Composer"
@@ -83,18 +81,19 @@ class SystemOperations
             '/opt/alt/php81/usr/bin/composer',
             '/opt/alt/php82/usr/bin/composer',
             '/opt/alt/php83/usr/bin/composer',
-            getenv('HOME') . '/composer',
-            getenv('HOME') . '/bin/composer',
+            getenv('HOME').'/composer',
+            getenv('HOME').'/bin/composer',
         ];
 
         foreach ($possiblePaths as $path) {
             $result = self::execCommand("{$path} --version 2>&1");
 
-            if ($result['success'] && !empty($result['output'])) {
+            if ($result['success'] && ! empty($result['output'])) {
                 $output = $result['output'][0] ?? '';
 
                 if (stripos($output, 'composer') !== false) {
                     $composerPath = $path;
+
                     return $composerPath;
                 }
             }
@@ -115,7 +114,8 @@ class SystemOperations
 
         // Per altri comandi
         $result = self::execCommand("which {$command} 2>&1");
-        return $result['success'] && !empty($result['output']);
+
+        return $result['success'] && ! empty($result['output']);
     }
 
     /**
@@ -125,7 +125,7 @@ class SystemOperations
     {
         $composerPath = self::findComposerPath();
 
-        if (!$composerPath) {
+        if (! $composerPath) {
             return [
                 'success' => false,
                 'output' => 'Composer non trovato. Verifica l\'installazione.',
@@ -148,7 +148,7 @@ class SystemOperations
     {
         $composerPath = self::findComposerPath();
 
-        if (!$composerPath) {
+        if (! $composerPath) {
             return [
                 'success' => false,
                 'output' => 'Composer non trovato. Verifica l\'installazione.',
@@ -173,7 +173,7 @@ class SystemOperations
     {
         $composerPath = self::findComposerPath();
 
-        if (!$composerPath) {
+        if (! $composerPath) {
             return [
                 'success' => false,
                 'output' => 'Composer non trovato. Verifica l\'installazione.',
@@ -196,7 +196,7 @@ class SystemOperations
     {
         $composerPath = self::findComposerPath();
 
-        if (!$composerPath) {
+        if (! $composerPath) {
             return [
                 'success' => false,
                 'packages' => ['Composer non trovato'],
@@ -229,7 +229,7 @@ class SystemOperations
      */
     public static function getCurrentBranch(): ?string
     {
-        if (!self::isGitAvailable()) {
+        if (! self::isGitAvailable()) {
             return null;
         }
 
@@ -244,14 +244,14 @@ class SystemOperations
      */
     public static function getLatestCommit(): ?array
     {
-        if (!self::isGitAvailable()) {
+        if (! self::isGitAvailable()) {
             return null;
         }
 
         $basePath = base_path();
         $result = self::execCommand("cd {$basePath} && git log -1 --pretty=format:'%H|%an|%ae|%ad|%s'");
 
-        if (!$result['success'] || empty($result['output'])) {
+        if (! $result['success'] || empty($result['output'])) {
             return null;
         }
 
@@ -271,12 +271,12 @@ class SystemOperations
      */
     public static function gitPull(): array
     {
-        if (!self::isGitAvailable()) {
+        if (! self::isGitAvailable()) {
             return ['success' => false, 'output' => 'Git non disponibile'];
         }
 
         $basePath = base_path();
-        $result = self::execCommand("cd {$basePath} && git pull origin " . self::getCurrentBranch());
+        $result = self::execCommand("cd {$basePath} && git pull origin ".self::getCurrentBranch());
 
         return [
             'success' => $result['success'],
@@ -289,7 +289,7 @@ class SystemOperations
      */
     public static function gitStatus(): array
     {
-        if (!self::isGitAvailable()) {
+        if (! self::isGitAvailable()) {
             return ['success' => false, 'output' => 'Git non disponibile'];
         }
 
@@ -326,15 +326,15 @@ class SystemOperations
 
         $backupPath = storage_path('backups/database');
 
-        if (!File::exists($backupPath)) {
+        if (! File::exists($backupPath)) {
             File::makeDirectory($backupPath, 0775, true);
         }
 
-        $filename = $database . '_' . date('Y-m-d_H-i-s') . '.sql';
-        $filepath = $backupPath . '/' . $filename;
+        $filename = $database.'_'.date('Y-m-d_H-i-s').'.sql';
+        $filepath = $backupPath.'/'.$filename;
 
         // Verifica se mysqldump esiste
-        if (!self::commandExists('mysqldump')) {
+        if (! self::commandExists('mysqldump')) {
             return ['success' => false, 'output' => 'mysqldump non disponibile'];
         }
 
@@ -364,7 +364,7 @@ class SystemOperations
     {
         $backupPath = storage_path('backups/database');
 
-        if (!File::exists($backupPath)) {
+        if (! File::exists($backupPath)) {
             return [];
         }
 
@@ -395,9 +395,9 @@ class SystemOperations
      */
     public static function restoreDatabase(string $filename): array
     {
-        $filepath = storage_path('backups/database/' . $filename);
+        $filepath = storage_path('backups/database/'.$filename);
 
-        if (!File::exists($filepath)) {
+        if (! File::exists($filepath)) {
             return ['success' => false, 'output' => 'File backup non trovato'];
         }
 
@@ -407,7 +407,7 @@ class SystemOperations
         $password = config("database.connections.{$connection}.password");
         $host = config("database.connections.{$connection}.host");
 
-        if (!self::commandExists('mysql')) {
+        if (! self::commandExists('mysql')) {
             return ['success' => false, 'output' => 'mysql command non disponibile'];
         }
 
@@ -437,14 +437,15 @@ class SystemOperations
      */
     public static function getDirectorySize(string $path): array
     {
-        if (!File::exists($path)) {
+        if (! File::exists($path)) {
             return ['success' => false, 'size' => 0];
         }
 
-        $result = self::execCommand("du -sh " . escapeshellarg($path));
+        $result = self::execCommand('du -sh '.escapeshellarg($path));
 
-        if ($result['success'] && !empty($result['output'])) {
+        if ($result['success'] && ! empty($result['output'])) {
             $parts = explode("\t", $result['output'][0]);
+
             return [
                 'success' => true,
                 'size' => $parts[0] ?? '0',
@@ -460,7 +461,7 @@ class SystemOperations
      */
     public static function cleanOldFiles(string $path, int $daysOld = 30): array
     {
-        if (!File::exists($path)) {
+        if (! File::exists($path)) {
             return ['success' => false, 'deleted' => 0];
         }
 
@@ -517,14 +518,14 @@ class SystemOperations
         if ($memResult['success'] && count($memResult['output']) > 1) {
             $memLine = preg_split('/\s+/', $memResult['output'][1]);
             $memInfo = [
-                'total' => ($memLine[1] ?? 0) . ' MB',
-                'used' => ($memLine[2] ?? 0) . ' MB',
-                'free' => ($memLine[3] ?? 0) . ' MB',
+                'total' => ($memLine[1] ?? 0).' MB',
+                'used' => ($memLine[2] ?? 0).' MB',
+                'free' => ($memLine[3] ?? 0).' MB',
             ];
         }
 
         // Disco
-        $diskResult = self::execCommand('df -h ' . base_path());
+        $diskResult = self::execCommand('df -h '.base_path());
         $diskInfo = [];
 
         if ($diskResult['success'] && count($diskResult['output']) > 1) {
@@ -575,7 +576,7 @@ class SystemOperations
                     'permissions' => $perms,
                     'writable' => is_writable($path),
                     'readable' => is_readable($path),
-                    'secure' => !is_writable($path) || $name === 'storage/', // storage deve essere writable
+                    'secure' => ! is_writable($path) || $name === 'storage/', // storage deve essere writable
                 ];
             } else {
                 $results[$name] = ['exists' => false];
@@ -595,7 +596,7 @@ class SystemOperations
         // Cerca file con estensioni sospette nel public
         $command = sprintf(
             'find %s -type f \( -name "*.php.bak" -o -name "*.php~" -o -name ".DS_Store" \)',
-            escapeshellarg($basePath . '/public')
+            escapeshellarg($basePath.'/public')
         );
 
         $result = self::execCommand($command);

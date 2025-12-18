@@ -2,14 +2,13 @@
 
 namespace App\Mail;
 
+use App\Models\Assignment;
+use App\Models\Tournament;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use App\Models\Assignment;
-use App\Models\Tournament;
 
 class RefereeAssignmentMail extends Mailable
 {
@@ -67,12 +66,12 @@ class RefereeAssignmentMail extends Mailable
                 'referees' => [[
                     'name' => $this->assignment->user->name,
                     'role' => $this->assignment->role,
-                    'email' => $this->assignment->user->email
+                    'email' => $this->assignment->user->email,
                 ]],
                 'zone_email' => "szr{$this->tournament->zone_id}@federgolf.it",
                 'club_email' => $this->tournament->club->email,
                 'attachments_info' => count($this->attachmentPaths) > 0 ?
-                    ['Convocazione ufficiale in allegato'] : null
+                    ['Convocazione ufficiale in allegato'] : null,
             ]
         );
     }
@@ -89,7 +88,7 @@ class RefereeAssignmentMail extends Mailable
         }
 
         foreach ($this->attachmentPaths as $attachment) {
-            if (!is_array($attachment) || !isset($attachment['path'])) {
+            if (! is_array($attachment) || ! isset($attachment['path'])) {
                 continue;
             }
 

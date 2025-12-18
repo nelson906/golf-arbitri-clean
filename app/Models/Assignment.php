@@ -6,8 +6,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 
 class Assignment extends Model
@@ -30,9 +30,9 @@ class Assignment extends Model
                 ? 'user_id'
                 : 'referee_id';
         }
+
         return self::$userFieldCache;
     }
-
 
     protected $fillable = [
         'tournament_id',
@@ -56,7 +56,6 @@ class Assignment extends Model
     /**
      * RELAZIONI
      */
-
     public function tournament()
     {
         return $this->belongsTo(Tournament::class);
@@ -74,6 +73,7 @@ class Assignment extends Model
     {
         return $this->user();
     }
+
     public function assignedBy()
     {
         return $this->belongsTo(User::class, 'assigned_by_id');
@@ -92,6 +92,7 @@ class Assignment extends Model
         if (isset($this->attributes['referee_id'])) {
             return $this->attributes['referee_id'];
         }
+
         return null;
     }
 }

@@ -15,7 +15,7 @@ class DocumentAccess
     {
         $user = auth()->user();
 
-        if (!$user) {
+        if (! $user) {
             return redirect()->route('login');
         }
 
@@ -23,7 +23,7 @@ class DocumentAccess
         if ($user->user_type === 'referee') {
             // Referee può accedere solo a documenti pubblici o della sua zona
             $document = $request->route('document');
-            if ($document && !$document->is_public && $document->zone_id !== $user->zone_id) {
+            if ($document && ! $document->is_public && $document->zone_id !== $user->zone_id) {
                 abort(403, 'Accesso negato a questo documento.');
             }
         }

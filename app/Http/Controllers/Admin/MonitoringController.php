@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class MonitoringController extends Controller
 {
@@ -51,7 +51,7 @@ class MonitoringController extends Controller
             'queue' => $this->checkQueue(),
         ];
 
-        $overallHealth = collect($checks)->every(fn($check) => $check['status'] === 'healthy');
+        $overallHealth = collect($checks)->every(fn ($check) => $check['status'] === 'healthy');
 
         $response = [
             'status' => $overallHealth ? 'healthy' : 'unhealthy',
@@ -154,28 +154,28 @@ class MonitoringController extends Controller
                 'min' => 95,
                 'avg' => 245,
                 'max' => 1200,
-                'p95' => 485
+                'p95' => 485,
             ],
             'database_performance' => [
                 'queries_per_sec' => 12.5,
                 'slow_queries' => 2,
-                'connections' => '3/100'
+                'connections' => '3/100',
             ],
             'cache_performance' => [
                 'hit_rate' => 89.2,
                 'miss_rate' => 10.8,
-                'evictions' => 45
+                'evictions' => 45,
             ],
             'memory_trends' => [
                 'cpu' => 15.2,
                 'memory' => 75.8,
                 'disk' => 45.1,
-                'network' => '2.1MB/s'
+                'network' => '2.1MB/s',
             ],
             'slow_queries' => [
                 ['time' => 1200, 'query' => 'SELECT * FROM tournaments WHERE start_date >= \'2025-01-01\''],
-                ['time' => 650, 'query' => 'SELECT u.*, z.name FROM users u LEFT JOIN zones z ON u.zone_id = z.id']
-            ]
+                ['time' => 650, 'query' => 'SELECT u.*, z.name FROM users u LEFT JOIN zones z ON u.zone_id = z.id'],
+            ],
         ];
 
         return view('admin.monitoring.performance', compact('metrics', 'timeframe'));
@@ -216,7 +216,7 @@ class MonitoringController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'Cache pulita con successo',
-                'results' => $results
+                'results' => $results,
             ]);
 
         } catch (\Exception $e) {
@@ -224,7 +224,7 @@ class MonitoringController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Errore durante la pulizia della cache: ' . $e->getMessage()
+                'message' => 'Errore durante la pulizia della cache: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -264,7 +264,7 @@ class MonitoringController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => 'Sistema ottimizzato con successo',
-                'results' => $results
+                'results' => $results,
             ]);
 
         } catch (\Exception $e) {
@@ -272,7 +272,7 @@ class MonitoringController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Errore durante l\'ottimizzazione: ' . $e->getMessage()
+                'message' => 'Errore durante l\'ottimizzazione: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -305,8 +305,8 @@ class MonitoringController extends Controller
     private function getRealtimeStats()
     {
         return [
-            'requests_per_minute' => Cache::remember('requests_per_minute', 60, fn() => rand(45, 85)),
-            'active_sessions' => Cache::remember('active_sessions', 300, fn() => rand(15, 45)),
+            'requests_per_minute' => Cache::remember('requests_per_minute', 60, fn () => rand(45, 85)),
+            'active_sessions' => Cache::remember('active_sessions', 300, fn () => rand(15, 45)),
             'queue_size' => $this->getQueueSize(),
             'error_rate' => $this->getCurrentErrorRate(),
         ];
@@ -322,7 +322,7 @@ class MonitoringController extends Controller
             $alerts[] = [
                 'type' => 'warning',
                 'message' => "Utilizzo memoria elevato: {$memoryUsage['percentage']}%",
-                'timestamp' => Carbon::now()
+                'timestamp' => Carbon::now(),
             ];
         }
 
@@ -332,7 +332,7 @@ class MonitoringController extends Controller
             $alerts[] = [
                 'type' => 'critical',
                 'message' => "Spazio disco in esaurimento: {$diskUsage['percentage']}%",
-                'timestamp' => Carbon::now()
+                'timestamp' => Carbon::now(),
             ];
         }
 
@@ -342,7 +342,7 @@ class MonitoringController extends Controller
             $alerts[] = [
                 'type' => 'error',
                 'message' => "Tasso di errore elevato: {$errorRate}%",
-                'timestamp' => Carbon::now()
+                'timestamp' => Carbon::now(),
             ];
         }
 
@@ -368,7 +368,7 @@ class MonitoringController extends Controller
 
             return [
                 'status' => 'healthy',
-                'response_time' => $responseTime . 'ms',
+                'response_time' => $responseTime.'ms',
                 'connections' => $this->getDatabaseConnections(),
             ];
         } catch (\Exception $e) {
@@ -382,7 +382,7 @@ class MonitoringController extends Controller
     private function checkCache()
     {
         try {
-            $testKey = 'health_check_' . time();
+            $testKey = 'health_check_'.time();
             $testValue = 'test';
 
             Cache::put($testKey, $testValue, 60);
@@ -449,12 +449,13 @@ class MonitoringController extends Controller
     private function getUptime()
     {
         $uptimeFile = storage_path('app/uptime.txt');
-        if (!file_exists($uptimeFile)) {
+        if (! file_exists($uptimeFile)) {
             file_put_contents($uptimeFile, time());
+
             return '0 seconds';
         }
 
-        $startTime = (int)file_get_contents($uptimeFile);
+        $startTime = (int) file_get_contents($uptimeFile);
         $uptime = time() - $startTime;
 
         return $this->formatUptime($uptime);
@@ -510,7 +511,7 @@ class MonitoringController extends Controller
 
     private function getActiveUsers()
     {
-        return Cache::remember('active_users_count', 300, function() {
+        return Cache::remember('active_users_count', 300, function () {
             return DB::table('sessions')->where('last_activity', '>', time() - 900)->count();
         });
     }
@@ -519,6 +520,7 @@ class MonitoringController extends Controller
     {
         try {
             $connections = DB::select('SHOW STATUS LIKE "Threads_connected"');
+
             return $connections[0]->Value ?? 'N/A';
         } catch (\Exception $e) {
             return 'N/A';
@@ -532,7 +534,7 @@ class MonitoringController extends Controller
 
     private function getAverageResponseTime()
     {
-        return Cache::remember('avg_response_time', 300, fn() => rand(150, 350));
+        return Cache::remember('avg_response_time', 300, fn () => rand(150, 350));
     }
 
     private function getResponseTimes()
@@ -555,12 +557,12 @@ class MonitoringController extends Controller
 
     private function getCurrentErrorRate()
     {
-        return Cache::remember('current_error_rate', 300, fn() => rand(0, 3));
+        return Cache::remember('current_error_rate', 300, fn () => rand(0, 3));
     }
 
     private function getThroughput()
     {
-        return Cache::remember('throughput', 300, fn() => rand(50, 120));
+        return Cache::remember('throughput', 300, fn () => rand(50, 120));
     }
 
     private function getQueueSize()
@@ -575,10 +577,10 @@ class MonitoringController extends Controller
     private function parseMemoryLimit($limit)
     {
         $limit = trim($limit);
-        $last = strtolower($limit[strlen($limit)-1]);
+        $last = strtolower($limit[strlen($limit) - 1]);
         $limit = (int) $limit;
 
-        switch($last) {
+        switch ($last) {
             case 'g': $limit *= 1024;
             case 'm': $limit *= 1024;
             case 'k': $limit *= 1024;
@@ -589,25 +591,68 @@ class MonitoringController extends Controller
 
     private function formatBytes($bytes, $precision = 2)
     {
-        $units = array('B', 'KB', 'MB', 'GB', 'TB');
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
 
         for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
             $bytes /= 1024;
         }
 
-        return round($bytes, $precision) . ' ' . $units[$i];
+        return round($bytes, $precision).' '.$units[$i];
     }
 
     // Metodi placeholder per funzionalità avanzate
-    private function getHistoricalData($period, $metric) { return []; }
-    private function calculateTrends($data) { return []; }
-    private function getSystemLogs($level, $date, $search) { return []; }
-    private function getLogStatistics($date) { return []; }
-    private function getDetailedResponseTimes($timeframe) { return []; }
-    private function getDatabasePerformance($timeframe) { return []; }
-    private function getCachePerformance($timeframe) { return []; }
-    private function getMemoryTrends($timeframe) { return []; }
-    private function getSlowQueries($timeframe) { return []; }
-    private function identifyBottlenecks($timeframe) { return []; }
-    private function optimizeDatabase() { return true; }
+    private function getHistoricalData($period, $metric)
+    {
+        return [];
+    }
+
+    private function calculateTrends($data)
+    {
+        return [];
+    }
+
+    private function getSystemLogs($level, $date, $search)
+    {
+        return [];
+    }
+
+    private function getLogStatistics($date)
+    {
+        return [];
+    }
+
+    private function getDetailedResponseTimes($timeframe)
+    {
+        return [];
+    }
+
+    private function getDatabasePerformance($timeframe)
+    {
+        return [];
+    }
+
+    private function getCachePerformance($timeframe)
+    {
+        return [];
+    }
+
+    private function getMemoryTrends($timeframe)
+    {
+        return [];
+    }
+
+    private function getSlowQueries($timeframe)
+    {
+        return [];
+    }
+
+    private function identifyBottlenecks($timeframe)
+    {
+        return [];
+    }
+
+    private function optimizeDatabase()
+    {
+        return true;
+    }
 }

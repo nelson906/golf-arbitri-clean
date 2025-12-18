@@ -3,20 +3,19 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Tournament;
-use App\Models\TournamentNotification;
 use App\Models\InstitutionalEmail;
 use App\Models\NotificationClause;
 use App\Models\NotificationClauseSelection;
+use App\Models\Tournament;
+use App\Models\TournamentNotification;
+use App\Services\DocumentGenerationService;
+use App\Services\NotificationService;
 use App\Traits\HasZoneVisibility;
 use Carbon\Carbon;
-use App\Services\DocumentGenerationService;
-use Illuminate\Support\Facades\Storage;
-use App\Services\NotificationService;
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Gestione convocazioni collettive e lettere circoli (solo DOCX)
@@ -26,6 +25,7 @@ class NotificationController extends Controller
     use HasZoneVisibility;
 
     protected $notificationService;
+
     protected $documentService;
 
     public function __construct(
@@ -46,7 +46,7 @@ class NotificationController extends Controller
         $query = TournamentNotification::with([
             'tournament.club',
             'tournament.zone',
-            'tournament.assignments.user'
+            'tournament.assignments.user',
         ]);
 
         // Filtro visibilità per zona/ruolo (centralizzato nel trait)
@@ -70,7 +70,7 @@ class NotificationController extends Controller
             if (empty($notification->referee_list) || $notification->total_recipients != $total) {
                 $notification->update([
                     'referee_list' => $refereeNames,
-                    'total_recipients' => $total
+                    'total_recipients' => $total,
                 ]);
 
                 // Aggiorna anche l'oggetto in memoria
@@ -100,7 +100,7 @@ class NotificationController extends Controller
                 'status' => 'pending',
                 'referee_list' => $tournament->assignments->pluck('user.name')->implode(', '),
                 'total_recipients' => $tournament->assignments->count() + 1,
-                'sent_by' => auth()->id()
+                'sent_by' => auth()->id(),
             ]
         );
 
@@ -116,7 +116,7 @@ class NotificationController extends Controller
 
                 // Assicurati che la directory esista
                 $fullDestDir = Storage::disk('public')->path(dirname($convDestPath));
-                if (!is_dir($fullDestDir)) {
+                if (! is_dir($fullDestDir)) {
                     mkdir($fullDestDir, 0755, true);
                 }
 
@@ -142,7 +142,7 @@ class NotificationController extends Controller
                 Log::error('Error generating documents in assignment form', [
                     'tournament_id' => $tournament->id,
                     'notification_id' => $notification->id,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
                 session()->flash('warning', 'Si è verificato un errore nella generazione dei documenti. È possibile rigenerarli manualmente.');
             }
@@ -158,9 +158,9 @@ class NotificationController extends Controller
 
         $documentStatus = [
             'hasConvocation' => isset($documents['convocation']) &&
-                Storage::disk('public')->exists("convocazioni/" . $this->getZoneFolder($tournament) . "/generated/{$documents['convocation']}"),
+                Storage::disk('public')->exists('convocazioni/'.$this->getZoneFolder($tournament)."/generated/{$documents['convocation']}"),
             'hasClubLetter' => isset($documents['club_letter']) &&
-                Storage::disk('public')->exists("convocazioni/" . $this->getZoneFolder($tournament) . "/generated/{$documents['club_letter']}")
+                Storage::disk('public')->exists('convocazioni/'.$this->getZoneFolder($tournament)."/generated/{$documents['club_letter']}"),
         ];
 
         // Controlla se esistono documenti
@@ -188,7 +188,7 @@ class NotificationController extends Controller
             'hasExistingConvocation' => $hasExistingConvocation,
             'groupedEmails' => $groupedEmails,
             'institutionalEmails' => $institutionalEmails,
-            'availableClauses' => $availableClauses
+            'availableClauses' => $availableClauses,
         ]);
     }
 
@@ -208,29 +208,29 @@ class NotificationController extends Controller
                 'notification_id' => $notification->id,
                 'tournament_id' => $tournament->id,
                 'convocation' => null,
-                'club_letter' => null
+                'club_letter' => null,
             ];
 
             // Check convocazione DOCX
-            if (!empty($documents['convocation'])) {
+            if (! empty($documents['convocation'])) {
                 $path = "convocazioni/{$zone}/generated/{$documents['convocation']}";
                 if (Storage::disk('public')->exists($path)) {
                     $response['convocation'] = [
                         'filename' => $documents['convocation'],
                         'generated_at' => Carbon::createFromTimestamp(Storage::disk('public')->lastModified($path))->format('d/m/Y H:i'),
-                        'size' => $this->formatBytes(Storage::disk('public')->size($path))
+                        'size' => $this->formatBytes(Storage::disk('public')->size($path)),
                     ];
                 }
             }
 
             // Check lettera circolo
-            if (!empty($documents['club_letter'])) {
+            if (! empty($documents['club_letter'])) {
                 $path = "convocazioni/{$zone}/generated/{$documents['club_letter']}";
                 if (Storage::disk('public')->exists($path)) {
                     $response['club_letter'] = [
                         'filename' => $documents['club_letter'],
                         'generated_at' => Carbon::createFromTimestamp(Storage::disk('public')->lastModified($path))->format('d/m/Y H:i'),
-                        'size' => $this->formatBytes(Storage::disk('public')->size($path))
+                        'size' => $this->formatBytes(Storage::disk('public')->size($path)),
                     ];
                 }
             }
@@ -239,9 +239,10 @@ class NotificationController extends Controller
         } catch (\Exception $e) {
             Log::error('Error checking documents status', [
                 'notification_id' => $notification->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-            return response()->json(['error' => 'Errore nel caricamento dei documenti: ' . $e->getMessage()], 500);
+
+            return response()->json(['error' => 'Errore nel caricamento dei documenti: '.$e->getMessage()], 500);
         }
     }
 
@@ -261,7 +262,7 @@ class NotificationController extends Controller
                 'type' => $type,
                 'notification_id' => $notification->id,
                 'tournament_id' => $tournament->id,
-                'current_documents' => $documents
+                'current_documents' => $documents,
             ]);
 
             $zone = $this->getZoneFolder($tournament);
@@ -271,7 +272,7 @@ class NotificationController extends Controller
                 $convFileName = basename($convocationData['path']);
                 $destPath = "convocazioni/{$zone}/generated/{$convFileName}";
                 $fullDestDir = Storage::disk('public')->path(dirname($destPath));
-                if (!is_dir($fullDestDir)) {
+                if (! is_dir($fullDestDir)) {
                     mkdir($fullDestDir, 0755, true);
                 }
                 copy($convocationData['path'], Storage::disk('public')->path($destPath));
@@ -286,7 +287,7 @@ class NotificationController extends Controller
                 $clubFileName = basename($docData['path']);
                 $destPath = "convocazioni/{$zone}/generated/{$clubFileName}";
                 $fullDestDir = Storage::disk('public')->path(dirname($destPath));
-                if (!is_dir($fullDestDir)) {
+                if (! is_dir($fullDestDir)) {
                     mkdir($fullDestDir, 0755, true);
                 }
                 copy($docData['path'], Storage::disk('public')->path($destPath));
@@ -299,7 +300,7 @@ class NotificationController extends Controller
             Log::info('Generated document', [
                 'type' => $type,
                 'documents' => $documents,
-                'zone' => $this->getZoneFolder($tournament)
+                'zone' => $this->getZoneFolder($tournament),
             ]);
 
             $notification->update(['documents' => $documents]);
@@ -310,18 +311,18 @@ class NotificationController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Documento generato con successo',
-                'status' => $status
+                'status' => $status,
             ]);
         } catch (\Exception $e) {
             Log::error('Errore generazione documento', [
                 'type' => $type,
                 'tournament_id' => $tournament->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Errore nella generazione: ' . $e->getMessage()
+                'message' => 'Errore nella generazione: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -363,8 +364,9 @@ class NotificationController extends Controller
             Log::error('Errore eliminazione documento', [
                 'notification_id' => $notification->id,
                 'type' => $type,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
+
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
@@ -386,9 +388,9 @@ class NotificationController extends Controller
 
             $zone = $this->getZoneFolder($tournament);
             $path = "convocazioni/{$zone}/generated/{$documents[$type]}";
-            $fullPath = storage_path('app/public/' . $path);
+            $fullPath = storage_path('app/public/'.$path);
 
-            if (!file_exists($fullPath)) {
+            if (! file_exists($fullPath)) {
                 throw new \Exception('File non trovato sul server');
             }
 
@@ -396,7 +398,7 @@ class NotificationController extends Controller
             Log::info('Downloading document', [
                 'notification_id' => $notification->id,
                 'type' => $type,
-                'path' => $path
+                'path' => $path,
             ]);
 
             $filename = $type === 'convocation' ? 'Convocazione.docx' : 'Lettera_Circolo.docx';
@@ -404,15 +406,16 @@ class NotificationController extends Controller
             // Usa BinaryFileResponse per garantire integrità binaria
             return response()->file($fullPath, [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
 
             ]);
         } catch (\Exception $e) {
             Log::error('Error downloading document', [
                 'notification_id' => $notification->id,
                 'type' => $type,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
+
             return redirect()->back()->with('error', $e->getMessage());
         }
     }
@@ -433,20 +436,22 @@ class NotificationController extends Controller
 
             Log::info('Sending notification', [
                 'notification_id' => $notification->id,
-                'metadata' => $notification->metadata
+                'metadata' => $notification->metadata,
             ]);
 
             // Invia la notifica tramite il servizio
             $this->notificationService->send($notification);
 
             DB::commit();
+
             return redirect()->route('admin.tournament-notifications.index')
                 ->with('success', 'Notifiche inviate con successo');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Errore invio notifiche: ' . $e->getMessage());
+            Log::error('Errore invio notifiche: '.$e->getMessage());
+
             return redirect()->back()
-                ->with('error', 'Errore nell\'invio delle notifiche: ' . $e->getMessage());
+                ->with('error', 'Errore nell\'invio delle notifiche: '.$e->getMessage());
         }
     }
 
@@ -462,13 +467,15 @@ class NotificationController extends Controller
             $this->notificationService->send($notification, true);
 
             DB::commit();
+
             return redirect()->route('admin.tournament-notifications.index')
                 ->with('success', 'Notifiche reinviate con successo');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Errore reinvio notifiche: ' . $e->getMessage());
+            Log::error('Errore reinvio notifiche: '.$e->getMessage());
+
             return redirect()->back()
-                ->with('error', 'Errore nel reinvio delle notifiche: ' . $e->getMessage());
+                ->with('error', 'Errore nel reinvio delle notifiche: '.$e->getMessage());
         }
     }
 
@@ -478,6 +485,7 @@ class NotificationController extends Controller
     public function show(TournamentNotification $notification)
     {
         $tournamentNotification = $notification->load(['tournament.club', 'tournament.zone', 'tournament.assignments.user']);
+
         return view('admin.tournament-notifications.show', ['tournamentNotification' => $tournamentNotification]);
     }
 
@@ -487,6 +495,7 @@ class NotificationController extends Controller
     public function edit(TournamentNotification $notification)
     {
         $tournamentNotification = $notification;
+
         return view('admin.tournament-notifications.edit', compact('tournamentNotification'));
     }
 
@@ -499,7 +508,7 @@ class NotificationController extends Controller
             Log::info('Starting notification deletion', [
                 'notification_id' => $notification->id,
                 'tournament_id' => $notification->tournament_id,
-                'documents' => $notification->documents
+                'documents' => $notification->documents,
             ]);
 
             DB::beginTransaction();
@@ -509,7 +518,7 @@ class NotificationController extends Controller
                 ? json_decode($notification->documents, true)
                 : ($notification->documents ?? []);
 
-            if (!empty($documents)) {
+            if (! empty($documents)) {
                 $zone = $this->getZoneFolder($notification->tournament);
                 $basePath = "convocazioni/{$zone}/generated/";
 
@@ -517,12 +526,12 @@ class NotificationController extends Controller
                 Log::info('Attempting to delete documents', [
                     'zone' => $zone,
                     'basePath' => $basePath,
-                    'documents' => $documents
+                    'documents' => $documents,
                 ]);
 
                 foreach (['convocation', 'club_letter'] as $type) {
-                    if (!empty($documents[$type])) {
-                        $path = $basePath . $documents[$type];
+                    if (! empty($documents[$type])) {
+                        $path = $basePath.$documents[$type];
                         if (Storage::disk('public')->exists($path)) {
                             Storage::disk('public')->delete($path);
                             Log::info("Deleted document: {$type}", ['path' => $path]);
@@ -537,15 +546,17 @@ class NotificationController extends Controller
             $notification->delete();
 
             DB::commit();
+
             return redirect()->route('admin.tournament-notifications.index')
                 ->with('success', 'Notifica eliminata con successo');
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error deleting notification', [
                 'notification_id' => $notification->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
-            return redirect()->back()->with('error', "Errore durante l'eliminazione della notifica: " . $e->getMessage());
+
+            return redirect()->back()->with('error', "Errore durante l'eliminazione della notifica: ".$e->getMessage());
         }
     }
 
@@ -566,13 +577,13 @@ class NotificationController extends Controller
             NotificationClauseSelection::where('tournament_notification_id', $notification->id)->delete();
 
             $savedCount = 0;
-            if (!empty($validated['clauses'])) {
+            if (! empty($validated['clauses'])) {
                 foreach ($validated['clauses'] as $placeholder => $clauseId) {
-                    if (!empty($clauseId)) {
+                    if (! empty($clauseId)) {
                         NotificationClauseSelection::create([
                             'tournament_notification_id' => $notification->id,
                             'clause_id' => $clauseId,
-                            'placeholder_code' => $placeholder
+                            'placeholder_code' => $placeholder,
                         ]);
                         $savedCount++;
                     }
@@ -583,24 +594,24 @@ class NotificationController extends Controller
 
             Log::info('Clauses saved via AJAX', [
                 'notification_id' => $notification->id,
-                'saved_count' => $savedCount
+                'saved_count' => $savedCount,
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => "Salvate {$savedCount} clausole",
-                'saved_count' => $savedCount
+                'saved_count' => $savedCount,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error saving clauses via AJAX', [
                 'notification_id' => $notification->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Errore nel salvataggio delle clausole: ' . $e->getMessage()
+                'message' => 'Errore nel salvataggio delle clausole: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -612,7 +623,7 @@ class NotificationController extends Controller
     {
         Log::info('Starting sendAssignmentWithConvocation', [
             'tournament_id' => $tournament->id,
-            'request_data' => $request->all()
+            'request_data' => $request->all(),
         ]);
 
         $validated = $request->validate([
@@ -626,7 +637,7 @@ class NotificationController extends Controller
             'attach_convocation' => 'boolean',
             'clauses' => 'nullable|array',
             'clauses.*' => 'nullable|exists:notification_clauses,id',
-            'action' => 'nullable|string|in:save,send,preview'  // Nuova azione
+            'action' => 'nullable|string|in:save,send,preview',  // Nuova azione
         ]);
 
         // Determina l'azione: 'save' = salva bozza, 'send' = invia subito, 'preview' = anteprima
@@ -642,21 +653,21 @@ class NotificationController extends Controller
 
             // Salva i metadati per l'invio
             $metadata = [
-                'recipients' => []
+                'recipients' => [],
             ];
 
             Log::info('Current tournament assignments', [
                 'tournament_id' => $tournament->id,
                 'assignments' => $tournament->assignments()->with('user')->get()->map(function ($a) {
                     return ['id' => $a->user_id, 'name' => $a->user->name, 'role' => $a->role];
-                })->toArray()
+                })->toArray(),
             ]);
 
             // Gestisci arbitri
             Log::info('Processing referee recipients', [
                 'has_recipients' => $request->has('recipients'),
                 'recipients_input' => $request->input('recipients'),
-                'all_input' => $request->all()
+                'all_input' => $request->all(),
             ]);
 
             if ($request->has('recipients')) {
@@ -680,40 +691,40 @@ class NotificationController extends Controller
             $metadata['attach_convocation'] = $request->boolean('attach_convocation', true);
 
             $notification->update([
-                'metadata' => $metadata
+                'metadata' => $metadata,
             ]);
 
             // Salva le clausole selezionate
             if ($request->has('clauses')) {
                 Log::info('Saving clauses', [
                     'notification_id' => $notification->id,
-                    'clauses' => $request->input('clauses')
+                    'clauses' => $request->input('clauses'),
                 ]);
 
                 // Rimuovi le selezioni precedenti
                 NotificationClauseSelection::where('tournament_notification_id', $notification->id)->delete();
 
                 foreach ($request->input('clauses') as $placeholder => $clauseId) {
-                    if (!empty($clauseId)) {
+                    if (! empty($clauseId)) {
                         try {
                             $selection = NotificationClauseSelection::create([
                                 'tournament_notification_id' => $notification->id,
                                 'clause_id' => $clauseId,
-                                'placeholder_code' => $placeholder
+                                'placeholder_code' => $placeholder,
                             ]);
 
                             Log::info('Clause selection created', [
                                 'notification_id' => $notification->id,
                                 'placeholder' => $placeholder,
                                 'clause_id' => $clauseId,
-                                'selection_id' => $selection->id
+                                'selection_id' => $selection->id,
                             ]);
                         } catch (\Exception $e) {
                             Log::error('Error saving clause selection', [
                                 'notification_id' => $notification->id,
                                 'placeholder' => $placeholder,
                                 'clause_id' => $clauseId,
-                                'error' => $e->getMessage()
+                                'error' => $e->getMessage(),
                             ]);
                         }
                     }
@@ -723,7 +734,7 @@ class NotificationController extends Controller
             Log::info('Sending notification from form', [
                 'notification_id' => $notification->id,
                 'metadata' => $metadata,
-                'request_data' => $request->all()
+                'request_data' => $request->all(),
             ]);
 
             // Rigenera i documenti con le clausole selezionate prima dell'invio
@@ -737,7 +748,7 @@ class NotificationController extends Controller
                 $convFileName = basename($convocationData['path']);
                 $convDest = "convocazioni/{$zone}/generated/{$convFileName}";
                 $fullDestDir = Storage::disk('public')->path(dirname($convDest));
-                if (!is_dir($fullDestDir)) {
+                if (! is_dir($fullDestDir)) {
                     mkdir($fullDestDir, 0755, true);
                 }
                 copy($convocationData['path'], Storage::disk('public')->path($convDest));
@@ -760,7 +771,7 @@ class NotificationController extends Controller
             } catch (\Throwable $e) {
                 Log::warning('Could not regenerate documents with clauses before send', [
                     'notification_id' => $notification->id,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
             }
 
@@ -786,12 +797,12 @@ class NotificationController extends Controller
                                 ->whereIn('user_id', $metadata['recipients']['referees'] ?? [])
                                 ->with('user')
                                 ->get()
-                                ->map(fn($a) => ['name' => $a->user->name, 'email' => $a->user->email, 'role' => $a->role]),
+                                ->map(fn ($a) => ['name' => $a->user->name, 'email' => $a->user->email, 'role' => $a->role]),
                             'institutional' => InstitutionalEmail::whereIn('id', $metadata['recipients']['institutional'] ?? [])
-                                ->pluck('email')
+                                ->pluck('email'),
                         ],
-                        'documents' => $notification->documents
-                    ]
+                        'documents' => $notification->documents,
+                    ],
                 ]);
             }
 
@@ -805,10 +816,11 @@ class NotificationController extends Controller
                 } catch (\Exception $sendError) {
                     Log::error('Errore invio notifica', [
                         'notification_id' => $notification->id,
-                        'error' => $sendError->getMessage()
+                        'error' => $sendError->getMessage(),
                     ]);
+
                     return redirect()->back()
-                        ->with('error', 'Errore nell\'invio: ' . $sendError->getMessage())
+                        ->with('error', 'Errore nell\'invio: '.$sendError->getMessage())
                         ->with('warning', 'La notifica è stata salvata come bozza.');
                 }
             }
@@ -818,8 +830,9 @@ class NotificationController extends Controller
                 ->with('success', 'Notifica salvata come bozza. Puoi inviarla dalla lista tornei.');
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Errore preparazione notifica: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Errore nella preparazione: ' . $e->getMessage());
+            Log::error('Errore preparazione notifica: '.$e->getMessage());
+
+            return redirect()->back()->with('error', 'Errore nella preparazione: '.$e->getMessage());
         }
     }
 
@@ -847,7 +860,7 @@ class NotificationController extends Controller
             5 => 'SZR5',
             6 => 'SZR6',
             7 => 'SZR7',
-            default => 'SZR' . $zoneId
+            default => 'SZR'.$zoneId
         };
     }
 
@@ -862,7 +875,7 @@ class NotificationController extends Controller
             $bytes /= 1024;
         }
 
-        return round($bytes, $precision) . ' ' . $units[$i];
+        return round($bytes, $precision).' '.$units[$i];
     }
 
     /**
@@ -875,7 +888,7 @@ class NotificationController extends Controller
             ->first();
 
         return response()->json([
-            'notification_id' => $notification?->id
+            'notification_id' => $notification?->id,
         ]);
     }
 
@@ -889,7 +902,7 @@ class NotificationController extends Controller
 
             // Valida il file
             $request->validate([
-                'document' => 'required|file|mimes:doc,docx|max:10240' // max 10MB
+                'document' => 'required|file|mimes:doc,docx|max:10240', // max 10MB
             ]);
 
             $file = $request->file('document');
@@ -914,17 +927,18 @@ class NotificationController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Documento caricato con successo',
-                'status' => $status
+                'status' => $status,
             ]);
         } catch (\Exception $e) {
             Log::error('Errore caricamento documento', [
                 'notification_id' => $notification->id,
                 'type' => $type,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
+
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 500);
         }
     }

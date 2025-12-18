@@ -2,11 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\User;
 use App\Models\Assignment;
-use App\Models\Tournament;
 use App\Models\RefereeCareerHistory;
-use Carbon\Carbon;
+use App\Models\Tournament;
+use App\Models\User;
 use Illuminate\Support\Collection;
 
 class RefereeCareerService
@@ -38,7 +37,7 @@ class RefereeCareerService
                 $allYears = array_merge($allYears, array_keys($historicalData['tournaments']));
             }
 
-            $firstYear = !empty($allYears) ? min($allYears) : null;
+            $firstYear = ! empty($allYears) ? min($allYears) : null;
 
             // Aggiorna career_summary con first_year corretto
             if (isset($historicalData['career_summary'])) {
@@ -121,18 +120,19 @@ class RefereeCareerService
         $assignments = Assignment::where('user_id', $referee->id)
             ->with('tournament')
             ->get()
-            ->filter(function($assignment) {
+            ->filter(function ($assignment) {
                 return $assignment->tournament && $assignment->tournament->start_date;
             })
-            ->map(function($assignment) {
+            ->map(function ($assignment) {
                 $year = date('Y', strtotime($assignment->tournament->start_date));
+
                 return [
                     'id' => $assignment->id,
                     'tournament_id' => $assignment->tournament_id,
                     'role' => $assignment->role,
                     'tournament_name' => $assignment->tournament->name ?? 'N/A',
                     'tournament_date' => $assignment->tournament->start_date,
-                    'year' => (int)$year,
+                    'year' => (int) $year,
                     'is_confirmed' => $assignment->is_confirmed ?? false,
                 ];
             })
@@ -144,12 +144,12 @@ class RefereeCareerService
     protected function getAssignmentsForYear(User $referee, int $year): array
     {
         $assignments = Assignment::where('user_id', $referee->id)
-            ->whereHas('tournament', function($q) use ($year) {
+            ->whereHas('tournament', function ($q) use ($year) {
                 $q->whereYear('start_date', $year);
             })
             ->with('tournament')
             ->get()
-            ->map(function($assignment) {
+            ->map(function ($assignment) {
                 return [
                     'id' => $assignment->id,
                     'tournament_id' => $assignment->tournament_id,
@@ -167,11 +167,11 @@ class RefereeCareerService
     protected function getTournamentsForYear(User $referee, int $year): array
     {
         $tournaments = Tournament::whereYear('start_date', $year)
-            ->whereHas('assignments', function($q) use ($referee) {
+            ->whereHas('assignments', function ($q) use ($referee) {
                 $q->where('user_id', $referee->id);
             })
             ->get()
-            ->map(function($tournament) {
+            ->map(function ($tournament) {
                 return [
                     'id' => $tournament->id,
                     'name' => $tournament->name,
@@ -193,7 +193,7 @@ class RefereeCareerService
         $years = [];
         foreach ($assignments as $assignment) {
             if (isset($assignment['year']) && is_numeric($assignment['year'])) {
-                $years[] = (int)$assignment['year'];
+                $years[] = (int) $assignment['year'];
             }
         }
 
@@ -209,11 +209,11 @@ class RefereeCareerService
         $years = [];
         foreach ($assignments as $assignment) {
             if (isset($assignment['year']) && is_numeric($assignment['year'])) {
-                $years[] = (int)$assignment['year'];
+                $years[] = (int) $assignment['year'];
             }
         }
 
-        return !empty($years) ? min($years) : null;
+        return ! empty($years) ? min($years) : null;
     }
 
     protected function getYearSummary(array $assignments, ?string $level, array $tournaments = []): array

@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Communication;
 use App\Traits\HasZoneVisibility;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
 
 /**
  * CommunicationController - Gestione comunicazioni di sistema
@@ -28,7 +28,7 @@ class CommunicationController extends Controller
             ->orderBy('created_at', 'desc');
 
         // Filtro per zona se non è national admin (usa trait)
-        if (!$this->isNationalAdmin($user)) {
+        if (! $this->isNationalAdmin($user)) {
             $query->where(function ($q) use ($user) {
                 $q->where('zone_id', $this->getUserZoneId($user))
                     ->orWhereNull('zone_id'); // Comunicazioni globali
@@ -46,8 +46,8 @@ class CommunicationController extends Controller
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
-                $q->where('title', 'like', '%' . $request->search . '%')
-                    ->orWhere('content', 'like', '%' . $request->search . '%');
+                $q->where('title', 'like', '%'.$request->search.'%')
+                    ->orWhere('content', 'like', '%'.$request->search.'%');
             });
         }
 
@@ -97,7 +97,7 @@ class CommunicationController extends Controller
         // Se non è admin nazionale, forza la zona dell'utente (usa trait)
 
         $user = Auth::user();
-        if (!$this->isNationalAdmin($user)) {
+        if (! $this->isNationalAdmin($user)) {
             $validated['zone_id'] = $this->getUserZoneId($user);
         }
 

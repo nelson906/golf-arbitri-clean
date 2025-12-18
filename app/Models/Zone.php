@@ -6,8 +6,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
 class Zone extends Model
 {
@@ -22,7 +22,6 @@ class Zone extends Model
     /**
      * RELAZIONI
      */
-
     public function clubs()
     {
         return $this->hasMany(Club::class);

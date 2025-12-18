@@ -1,7 +1,6 @@
 <?php
-namespace App\Http\Helpers;
 
-use Illuminate\Support\Facades\Log;
+namespace App\Http\Helpers;
 
 class RefereeRoleHelper
 {
@@ -11,7 +10,7 @@ class RefereeRoleHelper
     const ROLE_HIERARCHY = [
         'Direttore di Torneo' => 1,
         'Arbitro' => 2,
-        'Osservatore' => 3
+        'Osservatore' => 3,
     ];
 
     /**

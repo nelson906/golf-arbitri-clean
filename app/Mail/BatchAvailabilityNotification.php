@@ -34,7 +34,7 @@ class BatchAvailabilityNotification extends Mailable
                 'removed_count' => $this->removedTournaments->count(),
                 'added_tournaments' => $this->addedTournaments,
                 'removed_tournaments' => $this->removedTournaments,
-                'total_availabilities' => $this->user->availabilities()->count()
+                'total_availabilities' => $this->user->availabilities()->count(),
             ]
         );
     }

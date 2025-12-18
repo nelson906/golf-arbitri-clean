@@ -1,15 +1,16 @@
 <?php
+
 // ============================================
 // File: app/Models/Tournament.php
 // ============================================
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 class Tournament extends Model
 {
@@ -34,17 +35,13 @@ class Tournament extends Model
         'end_date' => 'datetime',
     ];
 
-
     /**
-
      * Default attribute values.
 
      * I nuovi tornei sono visibili (open) di default.
 
      * Solo se specificato esplicitamente saranno in bozza (draft).
-
      */
-
     protected $attributes = [
 
         'status' => self::STATUS_OPEN,
@@ -55,9 +52,13 @@ class Tournament extends Model
      * Tournament statuses
      */
     const STATUS_DRAFT = 'draft';
+
     const STATUS_OPEN = 'open';
+
     const STATUS_CLOSED = 'closed';
+
     const STATUS_ASSIGNED = 'assigned';
+
     const STATUS_COMPLETED = 'completed';
 
     const STATUSES = [
@@ -129,6 +130,7 @@ class Tournament extends Model
         if (Schema::hasTable('availabilities')) {
             return $this->hasMany(Availability::class);
         }
+
         return $this->hasMany(Availability::class);
     }
 
@@ -147,14 +149,15 @@ class Tournament extends Model
     /**
      * SCOPES
      */
-
     public function scopeActive($query)
     {
         if (Schema::hasColumn($this->getTable(), 'status')) {
             return $query->where('status', 'active');
         }
+
         return $query;
     }
+
     /**
      * Scope a query to only include upcoming tournaments.
      */
@@ -173,15 +176,14 @@ class Tournament extends Model
      * - referee nazionale/internazionale: propria zona + tornei nazionali
      * - referee 1_livello/regionale: solo propria zona
      *
-     * @param Builder $query
-     * @param User|null $user
+     * @param  Builder  $query
      * @return Builder
      */
     public function scopeVisible($query, ?User $user = null)
     {
         $user = $user ?? auth()->user();
 
-        if (!$user) {
+        if (! $user) {
             return $query->whereRaw('1 = 0'); // Nessun utente = nessun risultato
         }
 
@@ -192,12 +194,12 @@ class Tournament extends Model
 
         // National admin vede solo tornei nazionali
         if ($user->user_type === 'national_admin') {
-            return $query->whereHas('tournamentType', fn($q) => $q->where('is_national', true));
+            return $query->whereHas('tournamentType', fn ($q) => $q->where('is_national', true));
         }
 
         // Admin zonale vede solo la propria zona
         if ($user->user_type === 'admin') {
-            return $query->whereHas('club', fn($q) => $q->where('zone_id', $user->zone_id));
+            return $query->whereHas('club', fn ($q) => $q->where('zone_id', $user->zone_id));
         }
 
         // Referee
@@ -207,18 +209,18 @@ class Tournament extends Model
             if ($isNational) {
                 // Nazionale/Internazionale: propria zona + tornei nazionali
                 return $query->where(function ($q) use ($user) {
-                    $q->whereHas('club', fn($sub) => $sub->where('zone_id', $user->zone_id))
-                      ->orWhereHas('tournamentType', fn($sub) => $sub->where('is_national', true));
+                    $q->whereHas('club', fn ($sub) => $sub->where('zone_id', $user->zone_id))
+                        ->orWhereHas('tournamentType', fn ($sub) => $sub->where('is_national', true));
                 });
             } else {
                 // 1_livello/Regionale: solo propria zona
-                return $query->whereHas('club', fn($q) => $q->where('zone_id', $user->zone_id));
+                return $query->whereHas('club', fn ($q) => $q->where('zone_id', $user->zone_id));
             }
         }
 
         // Fallback: filtra per zona se presente
         if ($user->zone_id) {
-            return $query->whereHas('club', fn($q) => $q->where('zone_id', $user->zone_id));
+            return $query->whereHas('club', fn ($q) => $q->where('zone_id', $user->zone_id));
         }
 
         return $query;
@@ -231,12 +233,13 @@ class Tournament extends Model
     {
         // Logica semplice: modificabile se non ha una data o se la data è futura
         if (Schema::hasColumn('tournaments', 'date')) {
-            return !$this->date || $this->date >= now()->startOfDay();
+            return ! $this->date || $this->date >= now()->startOfDay();
         }
 
         // Se non c'è campo date, sempre modificabile
         return true;
     }
+
     /**
      * Check if tournament needs referees
      */

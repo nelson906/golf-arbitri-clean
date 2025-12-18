@@ -1,12 +1,12 @@
 <?php
+
 /**
  * Script per trovare dove viene referenziato il disco 'files'
  */
-
-echo "<pre>";
+echo '<pre>';
 echo "=== RICERCA RIFERIMENTI A DISCO 'files' ===\n\n";
 
-$basePath = realpath(__DIR__ . '/..');
+$basePath = realpath(__DIR__.'/..');
 $filesToCheck = [];
 
 // Directory da controllare
@@ -20,10 +20,11 @@ $directories = [
 echo "Cercando in:\n";
 
 foreach ($directories as $dir) {
-    $fullPath = $basePath . '/' . $dir;
+    $fullPath = $basePath.'/'.$dir;
 
-    if (!is_dir($fullPath)) {
+    if (! is_dir($fullPath)) {
         echo "⚠️  Directory $dir non trovata\n";
+
         continue;
     }
 
@@ -42,7 +43,7 @@ foreach ($directories as $dir) {
     }
 }
 
-echo "\nTotale file da controllare: " . count($filesToCheck) . "\n\n";
+echo "\nTotale file da controllare: ".count($filesToCheck)."\n\n";
 echo "=== RISULTATI RICERCA ===\n\n";
 
 $found = [];
@@ -56,13 +57,13 @@ foreach ($filesToCheck as $file) {
         '/"files"/' => 'Stringa "files"',
         "/Storage::disk\('files'\)/" => "Storage::disk('files')",
         '/disk\(.*files.*\)/' => "disk() con 'files'",
-        "/FILESYSTEM.*=.*files/i" => "FILESYSTEM = files",
+        '/FILESYSTEM.*=.*files/i' => 'FILESYSTEM = files',
         "/'default'\s*=>\s*'files'/" => "default => 'files'",
     ];
 
     foreach ($patterns as $pattern => $description) {
         if (preg_match($pattern, $content, $matches)) {
-            $relativePath = str_replace($basePath . '/', '', $file);
+            $relativePath = str_replace($basePath.'/', '', $file);
 
             // Trova la linea esatta
             $lines = file($file);
@@ -88,7 +89,7 @@ if (empty($found)) {
     echo "  3. Riferimento in un pacchetto vendor/\n";
     echo "  4. File di configurazione cached\n";
 } else {
-    echo "⚠️  TROVATI " . count($found) . " RIFERIMENTI:\n\n";
+    echo '⚠️  TROVATI '.count($found)." RIFERIMENTI:\n\n";
 
     foreach ($found as $item) {
         echo "📍 {$item['file']}:{$item['line']}\n";
@@ -107,14 +108,14 @@ $envFiles = [
 ];
 
 foreach ($envFiles as $envFile) {
-    $envPath = $basePath . '/' . $envFile;
+    $envPath = $basePath.'/'.$envFile;
 
     if (file_exists($envPath)) {
         echo "Controllo $envFile:\n";
         $content = file_get_contents($envPath);
 
         if (preg_match('/FILESYSTEM.*=.*files/i', $content, $matches)) {
-            echo "  ⚠️  TROVATO: " . trim($matches[0]) . "\n";
+            echo '  ⚠️  TROVATO: '.trim($matches[0])."\n";
             echo "  CORREGGERE IN: FILESYSTEM_DISK=local\n";
         } else {
             echo "  ✓ OK\n";
@@ -132,7 +133,7 @@ $cacheFiles = [
 ];
 
 foreach ($cacheFiles as $cacheFile) {
-    $cachePath = $basePath . '/' . $cacheFile;
+    $cachePath = $basePath.'/'.$cacheFile;
 
     if (file_exists($cachePath)) {
         echo "⚠️  $cacheFile ESISTE (dovrebbe essere pulito)\n";
@@ -165,7 +166,7 @@ echo "   - Deve contenere: FILESYSTEM_DISK=local\n";
 echo "   - NON deve contenere: FILESYSTEM_DISK=files\n\n";
 
 echo "4. CERCA IN COMPOSER.JSON:\n";
-$composerPath = $basePath . '/composer.json';
+$composerPath = $basePath.'/composer.json';
 if (file_exists($composerPath)) {
     $composer = json_decode(file_get_contents($composerPath), true);
     if (isset($composer['extra']['laravel']['providers'])) {
@@ -177,4 +178,4 @@ if (file_exists($composerPath)) {
 }
 
 echo "\n⚠️  ELIMINA QUESTO FILE DOPO L'USO!\n";
-echo "</pre>";
+echo '</pre>';

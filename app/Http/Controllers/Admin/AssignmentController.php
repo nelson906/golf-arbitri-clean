@@ -1,4 +1,5 @@
 <?php
+
 // File: app/Http/Controllers/Admin/AssignmentController.php
 
 namespace App\Http\Controllers\Admin;
@@ -8,19 +9,19 @@ use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Models\User;
-use App\Models\Availability;
+use App\Services\AssignmentValidationService;
 use App\Traits\HasZoneVisibility;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
-use App\Services\AssignmentValidationService;
+use Illuminate\Support\Facades\Schema;
 
 class AssignmentController extends Controller
 {
     use HasZoneVisibility;
+
     protected AssignmentValidationService $validationService;
 
     public function __construct(AssignmentValidationService $validationService)
@@ -123,7 +124,7 @@ class AssignmentController extends Controller
                 $otherReferees = User::where('user_type', 'referee')
                     ->whereNotIn('id', $availableRefereeIds)
                     ->whereNotIn('id', $assignedRefereeIds)
-                    ->when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
+                    ->when($zoneId, fn ($q) => $q->where('zone_id', $zoneId))
                     ->get();
             }
         }
@@ -178,6 +179,7 @@ class AssignmentController extends Controller
             ->route('admin.assignments.index')
             ->with('success', 'Assegnazione creata con successo');
     }
+
     /**
      * Show assignment details
      */
@@ -190,7 +192,7 @@ class AssignmentController extends Controller
             'user',
             'tournament.club',
             'tournament.tournamentType',
-            'assignedBy'
+            'assignedBy',
         ])
             ->find($assignmentId);
 
@@ -198,7 +200,7 @@ class AssignmentController extends Controller
             $assignment = $found;
         }
 
-        if (!$assignment) {
+        if (! $assignment) {
             abort(404, 'Assegnazione non trovata');
         }
 
@@ -281,12 +283,12 @@ class AssignmentController extends Controller
         } catch (\Exception $e) {
             Log::error('Error updating assignment', [
                 'assignment_id' => $assignment->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return back()
                 ->withInput()
-                ->with('error', 'Errore durante l\'aggiornamento: ' . $e->getMessage());
+                ->with('error', 'Errore durante l\'aggiornamento: '.$e->getMessage());
         }
     }
 
@@ -297,6 +299,7 @@ class AssignmentController extends Controller
     {
         $this->checkTournamentAccess($assignment->tournament);
     }
+
     /**
      * Confirm assignment.
      */
@@ -313,13 +316,14 @@ class AssignmentController extends Controller
         } catch (\Exception $e) {
             Log::error('Error confirming assignment', [
                 'assignment_id' => $assignment->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             return redirect()->back()
-                ->with('error', 'Errore durante la conferma dell\'assegnazione: ' . $e->getMessage());
+                ->with('error', 'Errore durante la conferma dell\'assegnazione: '.$e->getMessage());
         }
     }
+
     /**
      * Mostra form per assegnare arbitri a un torneo
      */
@@ -390,6 +394,7 @@ class AssignmentController extends Controller
                     // Usa user_id o referee_id a seconda della struttura
                     $assignment->user_id = $assignment->user->id;
                 }
+
                 return $assignment;
             });
 
@@ -424,7 +429,7 @@ class AssignmentController extends Controller
         }
 
         // Escludi già assegnati
-        if (!empty($excludeIds)) {
+        if (! empty($excludeIds)) {
             $query->whereNotIn('id', $excludeIds);
         }
 
@@ -459,7 +464,7 @@ class AssignmentController extends Controller
         }
 
         // Escludi già assegnati
-        if (!empty($excludeIds)) {
+        if (! empty($excludeIds)) {
             $query->whereNotIn('id', $excludeIds);
         }
 
@@ -472,7 +477,7 @@ class AssignmentController extends Controller
     private function getNationalReferees($tournament, $excludeIds = [], $availableReferees = null, $possibleReferees = null)
     {
         // Se il torneo non è nazionale, ritorna collezione vuota
-        if (!isset($tournament->tournamentType) || !$tournament->tournamentType->is_national) {
+        if (! isset($tournament->tournamentType) || ! $tournament->tournamentType->is_national) {
             return collect();
         }
 
@@ -492,7 +497,7 @@ class AssignmentController extends Controller
         }
 
         // Escludi già assegnati
-        if (!empty($excludeIds)) {
+        if (! empty($excludeIds)) {
             $query->whereNotIn('id', $excludeIds);
         }
 
@@ -532,12 +537,10 @@ class AssignmentController extends Controller
                     ->where($userField, $refereeId)
                     ->exists();
 
-                if (!$exists) {
+                if (! $exists) {
                     // Default role è 'Arbitro' se non specificato
 
                     $role = $request->roles[$refereeId] ?? 'Arbitro';
-
-
 
                     $data = [
 
@@ -572,7 +575,7 @@ class AssignmentController extends Controller
                 // ✅ HOOK: Auto-crea TournamentNotification se non esiste
                 $existingNotification = TournamentNotification::where('tournament_id', $tournament->id)->first();
 
-                if (!$existingNotification && $created > 0) {
+                if (! $existingNotification && $created > 0) {
                     TournamentNotification::create([
                         'tournament_id' => $tournament->id,
                         'status' => 'draft',
@@ -580,21 +583,21 @@ class AssignmentController extends Controller
                         'notifications_data' => json_encode([
                             'referees_count' => $created,
                             'auto_created' => true,
-                            'created_at' => now()->toISOString()
+                            'created_at' => now()->toISOString(),
                         ]),
                         'attachments' => json_encode([]),
                     ]);
 
                     Log::info('Auto-created TournamentNotification', [
                         'tournament_id' => $tournament->id,
-                        'referees_count' => $created
+                        'referees_count' => $created,
                     ]);
                 }
             } catch (\Exception $e) {
                 // Non bloccare l'assegnazione se la notifica fallisce
                 Log::warning('Failed to auto-create TournamentNotification', [
                     'tournament_id' => $tournament->id,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ]);
             }
             $message = "Assegnati {$created} arbitri al torneo.";
@@ -607,8 +610,9 @@ class AssignmentController extends Controller
                 ->with('success', $message);
         } catch (\Exception $e) {
             DB::rollback();
+
             return back()
-                ->with('error', 'Errore durante l\'assegnazione: ' . $e->getMessage());
+                ->with('error', 'Errore durante l\'assegnazione: '.$e->getMessage());
         }
     }
 
@@ -625,6 +629,7 @@ class AssignmentController extends Controller
 
         if ($assignment) {
             $assignment->delete();
+
             return back()->with('success', 'Arbitro rimosso dal torneo');
         }
 
@@ -636,7 +641,7 @@ class AssignmentController extends Controller
      */
     private function checkTournamentAccess($tournament)
     {
-        if (!$this->canAccessTournament($tournament)) {
+        if (! $this->canAccessTournament($tournament)) {
             abort(403, 'Non autorizzato a gestire questo torneo');
         }
     }
@@ -666,7 +671,7 @@ class AssignmentController extends Controller
     {
         try {
             // Verifica permessi usando il trait
-            if ($assignment->tournament && !$this->canAccessTournament($assignment->tournament)) {
+            if ($assignment->tournament && ! $this->canAccessTournament($assignment->tournament)) {
                 return back()->with('error', 'Non hai i permessi per rimuovere questa assegnazione');
             }
             // Salva info per il messaggio e il redirect
@@ -682,7 +687,7 @@ class AssignmentController extends Controller
                 ->route('admin.tournaments.show', $tournamentId)
                 ->with('success', "Assegnazione di {$refereeName} rimossa dal torneo {$tournamentName}");
         } catch (\Exception $e) {
-            return back()->with('error', 'Errore durante la rimozione: ' . $e->getMessage());
+            return back()->with('error', 'Errore durante la rimozione: '.$e->getMessage());
         }
     }
 
@@ -701,16 +706,16 @@ class AssignmentController extends Controller
         // Ottieni statistiche aggiuntive
         $stats = [
             'total_assignments' => Assignment::when($zoneId, function ($q) use ($zoneId) {
-                $q->whereHas('tournament', fn($tq) => $tq->where('zone_id', $zoneId));
+                $q->whereHas('tournament', fn ($tq) => $tq->where('zone_id', $zoneId));
             })->count(),
 
             'active_tournaments' => Tournament::whereIn('status', ['open', 'closed'])
-                ->when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
+                ->when($zoneId, fn ($q) => $q->where('zone_id', $zoneId))
                 ->count(),
 
             'active_referees' => User::where('user_type', 'referee')
                 ->where('is_active', true)
-                ->when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
+                ->when($zoneId, fn ($q) => $q->where('zone_id', $zoneId))
                 ->count(),
         ];
 
@@ -883,7 +888,7 @@ class AssignmentController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('admin.assignment-validation.conflicts')
-                ->with('error', 'Errore durante la risoluzione automatica: ' . $e->getMessage());
+                ->with('error', 'Errore durante la risoluzione automatica: '.$e->getMessage());
         }
     }
 

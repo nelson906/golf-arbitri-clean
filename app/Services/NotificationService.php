@@ -2,15 +2,14 @@
 
 namespace App\Services;
 
-use App\Services\DocumentGenerationService;
+use App\Mail\ClubNotificationMail;
+use App\Mail\InstitutionalNotificationMail;
+use App\Mail\RefereeAssignmentMail;
+use App\Models\InstitutionalEmail;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
-use App\Models\InstitutionalEmail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\ClubNotificationMail;
-use App\Mail\RefereeAssignmentMail;
-use App\Mail\InstitutionalNotificationMail;
 
 /**
  * Notification Service - Gestione notifiche tornei
@@ -19,7 +18,8 @@ class NotificationService
 {
     protected $documentService;
 
-    public function __construct(DocumentGenerationService $documentService) {
+    public function __construct(DocumentGenerationService $documentService)
+    {
         $this->documentService = $documentService;
     }
 
@@ -33,8 +33,8 @@ class NotificationService
                 'recipients' => [
                     'club' => true,
                     'referees' => $tournament->assignments->pluck('user_id')->toArray(),
-                    'institutional' => []
-                ]
+                    'institutional' => [],
+                ],
             ]
         );
 
@@ -65,18 +65,18 @@ class NotificationService
             $notification->update([
                 'documents' => [
                     'convocation' => basename($convocationData['path']),
-                    'club_letter' => basename($clubLetterData['path'])
-                ]
+                    'club_letter' => basename($clubLetterData['path']),
+                ],
             ]);
 
             Log::info('Documents generated for notification', [
                 'notification_id' => $notification->id,
-                'tournament_id' => $tournament->id
+                'tournament_id' => $tournament->id,
             ]);
         } catch (\Exception $e) {
             Log::error('Error generating documents', [
                 'notification_id' => $notification->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -89,7 +89,7 @@ class NotificationService
             'force' => $force,
             'status' => $notification->status,
             'metadata' => $notification->metadata,
-            'recipients' => $notification->recipients
+            'recipients' => $notification->recipients,
         ]);
 
         // Controllo metadata
@@ -107,7 +107,7 @@ class NotificationService
         $recipients = $notification->recipients ?: ($metadata['recipients'] ?? [
             'club' => false,
             'referees' => [],
-            'institutional' => []
+            'institutional' => [],
         ]);
 
         // Get current assignments
@@ -117,14 +117,14 @@ class NotificationService
         // RESEND: use current assignments, ignoring stored recipients
         if ($force === true) {
             Log::info('Resend: using current assignments', [
-                'current_assignments' => $currentRefereeIds
+                'current_assignments' => $currentRefereeIds,
             ]);
             $selectedRefereeIds = $currentRefereeIds;
         }
         // SEND: use specified recipients, but validate they exist in assignments
         else {
             Log::info('Send: using specified recipients', [
-                'recipients' => $recipients
+                'recipients' => $recipients,
             ]);
             $selectedRefereeIds = isset($recipients['referees']) && is_array($recipients['referees'])
                 ? $recipients['referees']
@@ -132,7 +132,7 @@ class NotificationService
         }
 
         // Default to sending to club unless explicitly disabled
-        if (!array_key_exists('club', $recipients)) {
+        if (! array_key_exists('club', $recipients)) {
             $recipients['club'] = true;
         }
 
@@ -141,14 +141,14 @@ class NotificationService
 
         // Persist back normalized recipients for traceability
         $notification->recipients = [
-            'club' => (bool)($recipients['club'] ?? false),
+            'club' => (bool) ($recipients['club'] ?? false),
             'referees' => $finalRefereeIds,
-            'institutional' => is_array($recipients['institutional'] ?? null) ? $recipients['institutional'] : []
+            'institutional' => is_array($recipients['institutional'] ?? null) ? $recipients['institutional'] : [],
         ];
 
         Log::info('Normalized recipients for sending', [
             'recipients' => $notification->recipients,
-            'current_assignments' => $currentRefereeIds
+            'current_assignments' => $currentRefereeIds,
         ]);
 
         $successCount = 0;
@@ -166,7 +166,7 @@ class NotificationService
                 'has_referees' => isset($notification->recipients['referees']),
                 'is_array' => isset($notification->recipients['referees']) ? is_array($notification->recipients['referees']) : null,
                 'referees' => $notification->recipients['referees'] ?? null,
-                'raw_recipients' => $notification->recipients
+                'raw_recipients' => $notification->recipients,
             ]);
 
             if (isset($notification->recipients['referees']) && is_array($notification->recipients['referees'])) {
@@ -179,7 +179,7 @@ class NotificationService
                     } catch (\Exception $e) {
                         Log::error('Error sending to referee', [
                             'referee_id' => $refereeId,
-                            'error' => $e->getMessage()
+                            'error' => $e->getMessage(),
                         ]);
                         $errorCount++;
                     }
@@ -197,7 +197,7 @@ class NotificationService
                     } catch (\Exception $e) {
                         Log::error('Error sending to institutional', [
                             'email_id' => $emailId,
-                            'error' => $e->getMessage()
+                            'error' => $e->getMessage(),
                         ]);
                         $errorCount++;
                     }
@@ -218,22 +218,22 @@ class NotificationService
                 'metadata' => array_merge($metadata, [
                     'success_count' => $successCount,
                     'error_count' => $errorCount,
-                    'last_error' => null
-                ])
+                    'last_error' => null,
+                ]),
             ]);
 
             // Log success
             Log::info('Notification sent', [
                 'notification_id' => $notification->id,
                 'success' => $successCount,
-                'errors' => $errorCount
+                'errors' => $errorCount,
             ]);
 
         } catch (\Exception $e) {
             // Log error
             Log::error('Error sending notification', [
                 'notification_id' => $notification->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ]);
 
             // Update status
@@ -242,8 +242,8 @@ class NotificationService
                 'metadata' => array_merge($notification->metadata ?? [], [
                     'last_error' => $e->getMessage(),
                     'success_count' => $successCount,
-                    'error_count' => $errorCount
-                ])
+                    'error_count' => $errorCount,
+                ]),
             ]);
 
             throw $e;
@@ -255,8 +255,8 @@ class NotificationService
         $tournament = $notification->tournament;
         $club = $tournament->club;
 
-        if (!$club->email) {
-            throw new \Exception("Club email not found");
+        if (! $club->email) {
+            throw new \Exception('Club email not found');
         }
 
         // Get both club letter and convocation
@@ -268,7 +268,7 @@ class NotificationService
         Log::info('Sending club notification', [
             'notification_id' => $notification->id,
             'documents' => $notification->documents,
-            'attachments' => $attachments
+            'attachments' => $attachments,
         ]);
 
         // Parse metadata for message and flags
@@ -281,8 +281,8 @@ class NotificationService
         Log::info('Sending club notification', [
             'club_email' => $club->email,
             'attachments' => $attachments,
-            'has_documents' => !empty($notification->documents),
-            'attach_enabled' => !empty($metadata['attach_convocation'])
+            'has_documents' => ! empty($notification->documents),
+            'attach_enabled' => ! empty($metadata['attach_convocation']),
         ]);
 
         Mail::to($club->email)
@@ -300,7 +300,7 @@ class NotificationService
             ->where('user_id', $refereeId)
             ->first();
 
-        if (!$assignment) {
+        if (! $assignment) {
             throw new \Exception("Assignment not found for referee {$refereeId}");
         }
 
@@ -315,7 +315,7 @@ class NotificationService
     private function sendToInstitutional(TournamentNotification $notification, $emailId)
     {
         $institutionalEmail = InstitutionalEmail::find($emailId);
-        if (!$institutionalEmail) {
+        if (! $institutionalEmail) {
             throw new \Exception("Institutional email {$emailId} not found");
         }
 
@@ -344,12 +344,12 @@ class NotificationService
         $basePath = storage_path("app/public/convocazioni/{$zone}/generated/");
 
         // Aggiungi lettera circolo
-        if (!empty($notification->documents['club_letter'])) {
-            $fullPath = $basePath . $notification->documents['club_letter'];
+        if (! empty($notification->documents['club_letter'])) {
+            $fullPath = $basePath.$notification->documents['club_letter'];
             if (file_exists($fullPath)) {
                 $attachments[] = [
                     'path' => $fullPath,
-                    'name' => 'Lettera_Circolo.docx'
+                    'name' => 'Lettera_Circolo.docx',
                 ];
             }
         }
@@ -368,12 +368,12 @@ class NotificationService
         $basePath = storage_path("app/public/convocazioni/{$zone}/generated/");
 
         // Aggiungi convocazione
-        if (!empty($notification->documents['convocation'])) {
-            $fullPath = $basePath . $notification->documents['convocation'];
+        if (! empty($notification->documents['convocation'])) {
+            $fullPath = $basePath.$notification->documents['convocation'];
             if (file_exists($fullPath)) {
                 $attachments[] = [
                     'path' => $fullPath,
-                    'name' => 'Convocazione.docx'
+                    'name' => 'Convocazione.docx',
                 ];
             }
         }
@@ -388,7 +388,8 @@ class NotificationService
             return 'CRC';
         }
         $zoneId = $tournament->club->zone_id ?? $tournament->zone_id;
-        return match($zoneId) {
+
+        return match ($zoneId) {
             1 => 'SZR1',
             2 => 'SZR2',
             3 => 'SZR3',
@@ -396,7 +397,7 @@ class NotificationService
             5 => 'SZR5',
             6 => 'SZR6',
             7 => 'SZR7',
-            default => 'SZR' . $zoneId,
+            default => 'SZR'.$zoneId,
         };
     }
 }

@@ -1,16 +1,17 @@
 <?php
+
 // ============================================
 // File: app/Models/User.php
 // ============================================
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Builder;
-use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Facades\Schema;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
@@ -46,13 +47,18 @@ class User extends Authenticatable
     protected $attributes = [
         'is_active' => true,
     ];
+
     /**
      * Referee levels
      */
     const LEVEL_ASPIRANTE = 'aspirante';
+
     const LEVEL_PRIMO_LIVELLO = 'primo_livello';
+
     const LEVEL_REGIONALE = 'regionale';
+
     const LEVEL_NAZIONALE = 'nazionale';
+
     const LEVEL_INTERNAZIONALE = 'internazionale';
 
     const LEVELS = [
@@ -67,7 +73,9 @@ class User extends Authenticatable
      * Referee categories
      */
     const CATEGORY_MASCHILE = 'maschile';
+
     const CATEGORY_FEMMINILE = 'femminile';
+
     const CATEGORY_MISTO = 'misto';
 
     const CATEGORIES = [
@@ -98,8 +106,10 @@ class User extends Authenticatable
     {
         if (Schema::hasTable('availabilities')) {
             $foreignKey = Schema::hasColumn('availabilities', 'user_id') ? 'user_id' : 'referee_id';
+
             return $this->hasMany(Availability::class, $foreignKey);
         }
+
         // Return empty collection if table doesn't exist
         return $this->newCollection();
     }
@@ -109,8 +119,8 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Tournament::class, 'assignments', Assignment::getUserField(), 'tournament_id')
             ->withPivot('role', 'notes')
-            ->withTimestamps();    }
-
+            ->withTimestamps();
+    }
 
     // Storico carriera
     public function careerHistory()
@@ -124,7 +134,6 @@ class User extends Authenticatable
     /**
      * SCOPES
      */
-
     public function scopeReferees($query)
     {
         return $query->where('user_type', 'referee');
@@ -137,8 +146,10 @@ class User extends Authenticatable
         } elseif (Schema::hasColumn($this->getTable(), 'active')) {
             return $query->where('active', true);
         }
+
         return $query;
     }
+
     /**
      * Scope per filtrare utenti/arbitri visibili all'utente.
      *
@@ -147,15 +158,14 @@ class User extends Authenticatable
      * - national_admin: solo arbitri nazionali/internazionali
      * - admin zonale: solo arbitri della propria zona
      *
-     * @param Builder $query
-     * @param User|null $user
+     * @param  Builder  $query
      * @return Builder
      */
     public function scopeVisible($query, ?self $user = null)
     {
         $user = $user ?? auth()->user();
 
-        if (!$user) {
+        if (! $user) {
             return $query->whereRaw('1 = 0');
         }
 
@@ -190,6 +200,7 @@ class User extends Authenticatable
         if (isset($this->attributes['active'])) {
             return $this->attributes['active'];
         }
+
         return true; // default
     }
 
@@ -209,7 +220,7 @@ class User extends Authenticatable
         ];
 
         // Se il ruolo non è mappato, verifica direttamente con user_type
-        if (!isset($roleMapping[$role])) {
+        if (! isset($roleMapping[$role])) {
             return $this->user_type === $role;
         }
 

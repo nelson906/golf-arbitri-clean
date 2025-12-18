@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\NotificationClauseSelection;
 
 /**
  * @property int $id
@@ -31,6 +30,7 @@ use App\Models\NotificationClauseSelection;
  * @property-read int|null $individual_notifications_count
  * @property-read \App\Models\User|null $sentBy
  * @property-read \App\Models\Tournament $tournament
+ *
  * @method static \Database\Factories\TournamentNotificationFactory factory($count = null, $state = [])
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification failed()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification forZone($zoneId)
@@ -52,6 +52,7 @@ use App\Models\NotificationClauseSelection;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereTotalRecipients($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereTournamentId($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereUpdatedAt($value)
+ *
  * @mixin \Eloquent
  */
 class TournamentNotification extends Model
@@ -67,7 +68,7 @@ class TournamentNotification extends Model
         'status',        // pending, sent, failed
         'sent_by',
         'sent_at',
-        'is_prepared'
+        'is_prepared',
     ];
 
     protected $casts = [
@@ -75,7 +76,7 @@ class TournamentNotification extends Model
         'content' => 'array',
         'documents' => 'array',
         'metadata' => 'array',
-        'sent_at' => 'datetime'
+        'sent_at' => 'datetime',
     ];
 
     /**
@@ -105,6 +106,7 @@ class TournamentNotification extends Model
                     ->where('created_at', '<=', $this->sent_at->addMinutes(5));
             });
     }
+
     /**
      * 📊 Scope: Solo notifiche inviate con successo
      */
@@ -148,7 +150,7 @@ class TournamentNotification extends Model
             'sent' => '✅ Inviato',
             'partial' => '⚠️ Parziale',
             'failed' => '❌ Fallito',
-            'pending' => '⏳ In attesa'
+            'pending' => '⏳ In attesa',
         ];
 
         return $statuses[$this->status] ?? $this->status;
@@ -178,7 +180,7 @@ class TournamentNotification extends Model
                 'institutional_failed' => 0,
                 'total_sent' => $details['sent'] ?? $this->total_recipients ?? 0,
                 'total_failed' => 0,
-                'success_rate' => 100.0
+                'success_rate' => 100.0,
             ];
         }
 
@@ -194,7 +196,7 @@ class TournamentNotification extends Model
             'total_failed' => ($details['club']['failed'] ?? 0) +
                 ($details['referees']['failed'] ?? 0) +
                 ($details['institutional']['failed'] ?? 0),
-            'success_rate' => $this->calculateSuccessRate()
+            'success_rate' => $this->calculateSuccessRate(),
         ];
     }
 
@@ -228,7 +230,7 @@ class TournamentNotification extends Model
         $recipients = [];
 
         if ($stats['club_sent'] > 0) {
-            $recipients[] = "1 circolo";
+            $recipients[] = '1 circolo';
         }
         if ($stats['referees_sent'] > 0) {
             $recipients[] = "{$stats['referees_sent']} arbitri";
@@ -245,7 +247,9 @@ class TournamentNotification extends Model
      */
     public function getTimeAgoAttribute(): string
     {
-        if (!$this->sent_at) return 'Mai inviato';
+        if (! $this->sent_at) {
+            return 'Mai inviato';
+        }
 
         return $this->sent_at->diffForHumans();
     }
@@ -262,12 +266,13 @@ class TournamentNotification extends Model
 
         return true;
     }
+
     /**
      * ❌ Metodo: Ha errori?
      */
     public function hasErrors(): bool
     {
-        return !empty($this->error_message) ||
+        return ! empty($this->error_message) ||
             ($this->details['failed'] ?? 0) > 0;
     }
 
@@ -282,7 +287,9 @@ class TournamentNotification extends Model
             ($stats['referees']['failed'] ?? 0) +
             ($stats['institutional']['failed'] ?? 0);
 
-        if ($totalSent == 0) return 0;
+        if ($totalSent == 0) {
+            return 0;
+        }
 
         return round((($totalSent - $totalFailed) / $totalSent) * 100, 1);
     }
@@ -316,9 +323,9 @@ class TournamentNotification extends Model
             'this_month' => self::whereMonth('sent_at', now()->month)->count(),
             'this_week' => self::whereBetween('sent_at', [
                 now()->startOfWeek(),
-                now()->endOfWeek()
+                now()->endOfWeek(),
             ])->count(),
-            'today' => self::whereDate('sent_at', today())->count()
+            'today' => self::whereDate('sent_at', today())->count(),
         ];
     }
 
@@ -332,13 +339,15 @@ class TournamentNotification extends Model
 
         return $total > 0 ? round(($sent / $total) * 100, 1) : 0;
     }
-public function getAttachmentsAttribute($value)
-{
-    if (is_string($value)) {
-        return json_decode($value, true) ?? [];
+
+    public function getAttachmentsAttribute($value)
+    {
+        if (is_string($value)) {
+            return json_decode($value, true) ?? [];
+        }
+
+        return $value ?? [];
     }
-    return $value ?? [];
-}
 
     public function setAttachmentsAttribute($value)
     {
@@ -366,11 +375,10 @@ public function getAttachmentsAttribute($value)
                     $selection->placeholder_code => [
                         'content' => $selection->clause->content,
                         'title' => $selection->clause->title,
-                        'category' => $selection->clause->category
-                    ]
+                        'category' => $selection->clause->category,
+                    ],
                 ];
             })
             ->toArray();
     }
-
 }
