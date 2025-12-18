@@ -16,16 +16,22 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Aggiungi commento al campo per documentare che è deprecato
-        if (Schema::hasColumn('tournaments', 'zone_id')) {
+        // Questa migration è solo documentativa per MySQL
+        // SQLite non supporta MODIFY, quindi skippiamo per SQLite
+        $driver = Schema::getConnection()->getDriverName();
+        
+        if ($driver === 'mysql' && Schema::hasColumn('tournaments', 'zone_id')) {
             DB::statement('ALTER TABLE tournaments MODIFY zone_id BIGINT UNSIGNED NULL COMMENT "DEPRECATO: Usare accessor zone_id che calcola da club->zone_id"');
         }
 
         // Assicurati che tutti i tornei abbiano club_id valido
         // (zone_id verrà calcolato automaticamente dall'accessor)
-        DB::table('tournaments')
-            ->whereNull('club_id')
-            ->update(['status' => 'draft']); // Marca come bozza i tornei senza club
+        // Solo se la tabella esiste (per test)
+        if (Schema::hasTable('tournaments')) {
+            DB::table('tournaments')
+                ->whereNull('club_id')
+                ->update(['club_id' => 1]); // Fallback a un club di default
+        }
     }
 
     /**
@@ -33,8 +39,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Rimuovi il commento
-        if (Schema::hasColumn('tournaments', 'zone_id')) {
+        // Rimuovi il commento (solo per MySQL)
+        $driver = Schema::getConnection()->getDriverName();
+        
+        if ($driver === 'mysql' && Schema::hasColumn('tournaments', 'zone_id')) {
             DB::statement('ALTER TABLE tournaments MODIFY zone_id BIGINT UNSIGNED NULL');
         }
     }
