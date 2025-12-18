@@ -124,6 +124,7 @@ class Tournament extends Model
         // Fallback: carica il club per ottenere la zona
         if ($this->club_id) {
             $club = $this->club()->first();
+
             return $club ? $club->zone_id : null;
         }
 
