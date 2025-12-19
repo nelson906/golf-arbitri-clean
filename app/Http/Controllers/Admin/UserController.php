@@ -219,9 +219,6 @@ class UserController extends Controller
         // Imposta tipo utente predefinito (referee)
         $validated['user_type'] = 'referee';
 
-        // Gestisci il campo is_active (checkbox)
-        $validated['is_active'] = $request->has('is_active');
-
         // Genera codice arbitro se non è fornito
         if (empty($validated['referee_code'])) {
             $lastUser = User::orderBy('id', 'desc')->first();
