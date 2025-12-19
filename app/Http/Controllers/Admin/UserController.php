@@ -165,9 +165,6 @@ class UserController extends Controller
         }
         $zones = $zones->get();
 
-        // Circoli disponibili (tutti, anche fuori zona)
-        $clubs = \App\Models\Club::orderBy('name')->get();
-
         // Tipi utente che può creare
         $userTypes = ['referee' => 'Arbitro'];
         if ($isNationalAdmin) {
@@ -178,7 +175,7 @@ class UserController extends Controller
             $userTypes['super_admin'] = 'Super Admin';
         }
 
-        return view('admin.users.create', compact('zones', 'clubs', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
+        return view('admin.users.create', compact('zones', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
     }
 
     /**
@@ -186,38 +183,37 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        \Log::info('=== STORE METHOD CALLED ===');
-        \Log::info('Request data:', $request->all());
-
         $currentUser = auth()->user();
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
 
         // Validazione base
         $rules = [
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'zone_id' => 'required|exists:zones,id',
             'referee_code' => 'nullable|string|max:20|unique:users',
             'level' => 'required|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio',
             'phone' => 'nullable|string|max:20',
             'city' => 'nullable|string|max:255',
-            'club_member' => 'nullable|string|max:255',
         ];
+
+        // Includi club_member solo se la colonna esiste nel database
+        if (Schema::hasColumn('users', 'club_member')) {
+            $rules['club_member'] = 'nullable|string|max:255';
+        }
 
         $validated = $request->validate($rules);
 
-        // Genera automaticamente il campo 'name' concatenando first_name e last_name
-        $validated['name'] = trim($validated['first_name'] . ' ' . $validated['last_name']);
+        // Rimuovi club_member dai validated se la colonna non esiste
+        if (!Schema::hasColumn('users', 'club_member') && isset($validated['club_member'])) {
+            unset($validated['club_member']);
+        }
 
         // Imposta password predefinita (come indicato nel form)
         $validated['password'] = Hash::make('password123');
 
         // Imposta tipo utente predefinito (referee)
         $validated['user_type'] = 'referee';
-
-        // Gestisci is_active
-        $validated['is_active'] = $request->has('is_active');
 
         // Genera codice arbitro se non è fornito
         if (empty($validated['referee_code'])) {
@@ -255,9 +251,6 @@ class UserController extends Controller
         }
         $zones = $zones->get();
 
-        // Circoli disponibili (tutti, anche fuori zona)
-        $clubs = \App\Models\Club::orderBy('name')->get();
-
         // Tipi utente modificabili
         $userTypes = ['referee' => 'Arbitro'];
         if ($isNationalAdmin) {
@@ -268,7 +261,7 @@ class UserController extends Controller
             $userTypes['super_admin'] = 'Super Admin';
         }
 
-        return view('admin.users.edit', compact('user', 'zones', 'clubs', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
+        return view('admin.users.edit', compact('user', 'zones', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
     }
 
     /**
@@ -286,8 +279,7 @@ class UserController extends Controller
 
         // Validazione
         $rules = [
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
+            'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             'user_type' => 'required|in:referee,admin'.($isNationalAdmin ? ',national_admin,super_admin' : ''),
             'zone_id' => 'required|exists:zones,id',
@@ -297,17 +289,18 @@ class UserController extends Controller
             'gender' => 'nullable|in:male,female,mixed',
             'notes' => 'nullable|string',
             'city' => 'nullable|string|max:255',
-            'club_member' => 'nullable|string|max:255',
         ];
+
+        // Includi club_member solo se la colonna esiste nel database
+        if (Schema::hasColumn('users', 'club_member')) {
+            $rules['club_member'] = 'nullable|string|max:255';
+        }
 
         // Password opzionale in update
         if ($request->filled('password')) {
             $rules['password'] = 'string|min:8|confirmed';
         }
         $validated = $request->validate($rules);
-
-        // Genera automaticamente il campo 'name' concatenando first_name e last_name
-        $validated['name'] = trim($validated['first_name'] . ' ' . $validated['last_name']);
 
         // Hash password se fornita
         if ($request->filled('password')) {
@@ -316,6 +309,11 @@ class UserController extends Controller
 
         // Gestisci il campo is_active (checkbox)
         $validated['is_active'] = $request->has('is_active');
+
+        // Rimuovi club_member dai validated se la colonna non esiste
+        if (!Schema::hasColumn('users', 'club_member') && isset($validated['club_member'])) {
+            unset($validated['club_member']);
+        }
 
         // Aggiorna utente
         $user->update($validated);
