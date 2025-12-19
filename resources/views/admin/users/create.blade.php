@@ -127,8 +127,16 @@
                     {{-- Circolo di appartenenza --}}
                     <div>
                         <label for="club_member" class="block text-sm font-medium text-gray-700">Circolo</label>
-                        <input type="text" name="club_member" id="club_member" value="{{ old('club_member') }}"
+                        <select name="club_member" id="club_member"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            <option value="">Seleziona circolo (opzionale)</option>
+                            @foreach($clubs as $club)
+                                <option value="{{ $club->name }}" {{ old('club_member') == $club->name ? 'selected' : '' }}>
+                                    {{ $club->name }} ({{ $club->zone->name ?? 'N/A' }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">Puoi selezionare circoli anche fuori dalla zona dell'arbitro</p>
                     </div>
                 </div>
                 {{-- Info automatiche --}}

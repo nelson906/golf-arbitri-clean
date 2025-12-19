@@ -165,6 +165,11 @@ class UserController extends Controller
         }
         $zones = $zones->get();
 
+        // Circoli disponibili (tutti, anche fuori zona)
+        $clubs = \App\Models\Club::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
         // Tipi utente che può creare
         $userTypes = ['referee' => 'Arbitro'];
         if ($isNationalAdmin) {
@@ -175,7 +180,7 @@ class UserController extends Controller
             $userTypes['super_admin'] = 'Super Admin';
         }
 
-        return view('admin.users.create', compact('zones', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
+        return view('admin.users.create', compact('zones', 'clubs', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
     }
 
     /**
@@ -246,6 +251,11 @@ class UserController extends Controller
         }
         $zones = $zones->get();
 
+        // Circoli disponibili (tutti, anche fuori zona)
+        $clubs = \App\Models\Club::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
         // Tipi utente modificabili
         $userTypes = ['referee' => 'Arbitro'];
         if ($isNationalAdmin) {
@@ -256,7 +266,7 @@ class UserController extends Controller
             $userTypes['super_admin'] = 'Super Admin';
         }
 
-        return view('admin.users.edit', compact('user', 'zones', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
+        return view('admin.users.edit', compact('user', 'zones', 'clubs', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
     }
 
     /**

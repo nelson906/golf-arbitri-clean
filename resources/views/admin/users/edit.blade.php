@@ -154,10 +154,18 @@
 
 {{-- Circolo --}}
 <div>
-    <label for="club" class="block text-sm font-medium text-gray-700">Circolo</label>
-    <input type="text" name="club_member" id="club" value="{{ old('club', $user->club_member) }}"
-           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-    @error('club')
+    <label for="club_member" class="block text-sm font-medium text-gray-700">Circolo</label>
+    <select name="club_member" id="club_member"
+        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+        <option value="">Seleziona circolo (opzionale)</option>
+        @foreach($clubs as $club)
+            <option value="{{ $club->name }}" {{ old('club_member', $user->club_member) == $club->name ? 'selected' : '' }}>
+                {{ $club->name }} ({{ $club->zone->name ?? 'N/A' }})
+            </option>
+        @endforeach
+    </select>
+    <p class="mt-1 text-xs text-gray-500">Puoi selezionare circoli anche fuori dalla zona dell'arbitro</p>
+    @error('club_member')
         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
     @enderror
 </div>
