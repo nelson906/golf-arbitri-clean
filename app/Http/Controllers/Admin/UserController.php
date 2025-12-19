@@ -188,6 +188,9 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        \Log::info('=== STORE METHOD CALLED ===');
+        \Log::info('Request data:', $request->all());
+
         $currentUser = auth()->user();
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
 
