@@ -40,11 +40,22 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {{-- Nome --}}
                     <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Nome Completo *</label>
-                        <input type="text" name="name" id="name" value="{{ old('name') }}"
-                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('name') border-red-500 @enderror"
+                        <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                        <input type="text" name="first_name" id="first_name" value="{{ old('first_name') }}"
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('first_name') border-red-500 @enderror"
                             required>
-                        @error('name')
+                        @error('first_name')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Cognome --}}
+                    <div>
+                        <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Cognome *</label>
+                        <input type="text" name="last_name" id="last_name" value="{{ old('last_name') }}"
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('last_name') border-red-500 @enderror"
+                            required>
+                        @error('last_name')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
