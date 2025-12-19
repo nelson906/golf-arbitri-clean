@@ -28,7 +28,7 @@ class DocumentController extends Controller
             ->orderBy('created_at', 'desc');
 
         // Admin di zona vede solo documenti della sua zona o globali
-        if ($user->user_type === 'admin') {
+        if ($user && $user->user_type === 'admin') {
             $query->where(function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id)
                     ->orWhereNull('zone_id');
@@ -45,7 +45,7 @@ class DocumentController extends Controller
             $query->where('category', $request->category);
         }
 
-        if ($request->filled('zone_id') && in_array($user->user_type, ['national_admin', 'super_admin'])) {
+        if ($request->filled('zone_id') && $user && in_array($user->user_type, ['national_admin', 'super_admin'])) {
             $query->where('zone_id', $request->zone_id);
         }
 
@@ -123,7 +123,7 @@ class DocumentController extends Controller
 
             // Per admin, usa la zone_id fornita o quella dell'utente
             $zoneId = $request->zone_id;
-            if (! $zoneId && $user->user_type === 'admin') {
+            if (! $zoneId && $user && $user->user_type === 'admin') {
                 $zoneId = $user->zone_id;
             }
 
@@ -139,7 +139,7 @@ class DocumentController extends Controller
                 'description' => $request->description,
                 'tournament_id' => $request->tournament_id,
                 'zone_id' => $zoneId,
-                'uploader_id' => $user->id,
+                'uploader_id' => $user?->id,
                 'is_public' => $request->boolean('is_public', false),
             ]);
 
@@ -311,6 +311,10 @@ class DocumentController extends Controller
     private function authorizeDocumentAccess(Document $document, bool $requireOwnership = false): void
     {
         $user = Auth::user();
+
+        if (!$user) {
+            abort(403, 'Autenticazione richiesta.');
+        }
 
         // Super admin e national admin possono accedere a tutto
         if ($user->user_type === 'super_admin' || $user->user_type === 'national_admin') {

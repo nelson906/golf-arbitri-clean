@@ -113,9 +113,9 @@ class StatisticsDashboardController extends Controller
             ->with(['zone'])
             ->withCount(['availabilities', 'assignments']);
 
-        if ($user->user_type === 'admin') {
+        if ($user && $user->user_type === 'admin') {
             $refereesQuery->where('zone_id', $user->zone_id);
-        } elseif ($user->user_type === 'national_admin') {
+        } elseif ($user && $user->user_type === 'national_admin') {
             $refereesQuery->whereIn('level', ['Nazionale', 'Internazionale']);
         }
 

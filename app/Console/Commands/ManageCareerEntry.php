@@ -191,8 +191,8 @@ class ManageCareerEntry extends Command
             'name' => $tournament->name,
             'club_id' => $tournament->club_id,
             'club_name' => $tournament->club->name ?? null,
-            'start_date' => $tournament->start_date->format('Y-m-d'),
-            'end_date' => $tournament->end_date->format('Y-m-d'),
+            'start_date' => $tournament->start_date?->format('Y-m-d') ?? '',
+            'end_date' => $tournament->end_date?->format('Y-m-d') ?? '',
         ];
 
         $this->careerService->addTournamentEntry($user->id, (int) $year, $tournamentData);
@@ -201,22 +201,24 @@ class ManageCareerEntry extends Command
         $role = $this->option('role');
         if ($role) {
             $history = RefereeCareerHistory::where('user_id', $user->id)->first();
-            $assignments = $history->assignments_by_year ?? [];
+            if ($history) {
+                $assignments = $history->assignments_by_year ?? [];
 
-            if (! isset($assignments[$year])) {
-                $assignments[$year] = [];
+                if (! isset($assignments[$year])) {
+                    $assignments[$year] = [];
+                }
+
+                $assignments[$year][] = [
+                    'tournament_id' => $tournament->id,
+                    'tournament_name' => $tournament->name,
+                    'role' => $role,
+                    'assigned_at' => now()->format('Y-m-d'),
+                    'status' => 'confirmed',
+                ];
+
+                $history->assignments_by_year = $assignments;
+                $history->save();
             }
-
-            $assignments[$year][] = [
-                'tournament_id' => $tournament->id,
-                'tournament_name' => $tournament->name,
-                'role' => $role,
-                'assigned_at' => now()->format('Y-m-d'),
-                'status' => 'confirmed',
-            ];
-
-            $history->assignments_by_year = $assignments;
-            $history->save();
         }
 
         $this->info("Torneo '{$tournament->name}' aggiunto allo storico {$year} di {$user->name}");

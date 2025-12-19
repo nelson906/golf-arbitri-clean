@@ -104,7 +104,7 @@ class ClubController extends Controller
 
         // Zone disponibili (filtrate per ruolo)
         $zones = Zone::orderBy('name');
-        if (! $isNationalAdmin && $user->zone_id) {
+        if (! $isNationalAdmin && $user && $user->zone_id) {
             $zones = $zones->where('id', $user->zone_id);
         }
 
@@ -160,7 +160,7 @@ class ClubController extends Controller
 
         // Zone disponibili (filtrate per ruolo)
         $zones = Zone::orderBy('name');
-        if (! $isNationalAdmin && $user->zone_id) {
+        if (! $isNationalAdmin && $user && $user->zone_id) {
             $zones = $zones->where('id', $user->zone_id);
         }
         $zones = $zones->get();

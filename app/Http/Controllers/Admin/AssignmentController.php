@@ -118,7 +118,7 @@ class AssignmentController extends Controller
 
                 // Altri arbitri della zona (non hanno dato disponibilità ma sono nella stessa zona)
                 $user = auth()->user();
-                $zoneId = $user->user_type === 'admin' ? $user->zone_id : null;
+                $zoneId = ($user && $user->user_type === 'admin') ? $user->zone_id : null;
 
                 $otherReferees = User::where('user_type', 'referee')
                     ->whereNotIn('id', $availableRefereeIds)

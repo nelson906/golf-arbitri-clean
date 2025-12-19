@@ -144,7 +144,7 @@ class CareerHistoryController extends Controller
         // If user specified, check zone access
         if ($userId) {
             $targetUser = User::find($userId);
-            if (!$this->isSuperAdmin($currentUser) && $targetUser->zone_id !== $this->getUserZoneId($currentUser)) {
+            if ($targetUser && !$this->isSuperAdmin($currentUser) && $targetUser->zone_id !== $this->getUserZoneId($currentUser)) {
                 abort(403, 'Non hai accesso a questo arbitro');
             }
         }
@@ -152,12 +152,12 @@ class CareerHistoryController extends Controller
         try {
             if ($userId) {
                 // Archivia solo per un utente
-                $result = $this->careerService->archiveYearForUser($userId, $year);
-                $user = User::find($userId);
+            $result = $this->careerService->archiveYearForUser($userId, $year);
+                $targetUser = User::find($userId);
 
                 return redirect()
-                    ->route('admin.career-history.show', $user)
-                    ->with('success', "Anno {$year} archiviato per {$user->name}: {$result['tournaments_count']} tornei, {$result['assignments_count']} assegnazioni");
+                    ->route('admin.career-history.show', $targetUser)
+                    ->with('success', "Anno {$year} archiviato per {$targetUser?->name}: {$result['tournaments_count']} tornei, {$result['assignments_count']} assegnazioni");
             } else {
                 // Archivia per tutti (solo super_admin)
                 $stats = $this->careerService->archiveYear($year, false);
@@ -249,13 +249,19 @@ class CareerHistoryController extends Controller
 
         $tournament = Tournament::with('club')->find($request->tournament_id);
 
+        if (!$tournament) {
+            return redirect()
+                ->back()
+                ->with('error', 'Torneo non trovato');
+        }
+
         $tournamentData = [
             'id' => $tournament->id,
             'name' => $tournament->name,
             'club_id' => $tournament->club_id,
             'club_name' => $tournament->club->name ?? null,
-            'start_date' => $tournament->start_date->format('Y-m-d'),
-            'end_date' => $tournament->end_date->format('Y-m-d'),
+            'start_date' => $tournament->start_date?->format('Y-m-d') ?? '',
+            'end_date' => $tournament->end_date?->format('Y-m-d') ?? '',
         ];
 
         $this->careerService->addTournamentEntry($user->id, $request->year, $tournamentData);
@@ -263,23 +269,25 @@ class CareerHistoryController extends Controller
         // Se c'è un ruolo, aggiungi anche l'assegnazione
         if ($request->filled('role')) {
             $history = RefereeCareerHistory::where('user_id', $user->id)->first();
-            $assignments = $history->assignments_by_year ?? [];
+            if ($history) {
+                $assignments = $history->assignments_by_year ?? [];
 
-            if (! isset($assignments[$request->year])) {
-                $assignments[$request->year] = [];
+                if (! isset($assignments[$request->year])) {
+                    $assignments[$request->year] = [];
+                }
+
+                $assignments[$request->year][] = [
+                    'tournament_id' => $tournament->id,
+                    'tournament_name' => $tournament->name,
+                    'role' => $request->role,
+                    'assigned_at' => now()->format('Y-m-d'),
+                    'status' => 'manual_entry',
+                ];
+
+                $history->assignments_by_year = $assignments;
+                $history->career_stats = $history->generateStatsSummary();
+                $history->save();
             }
-
-            $assignments[$request->year][] = [
-                'tournament_id' => $tournament->id,
-                'tournament_name' => $tournament->name,
-                'role' => $request->role,
-                'assigned_at' => now()->format('Y-m-d'),
-                'status' => 'manual_entry',
-            ];
-
-            $history->assignments_by_year = $assignments;
-            $history->career_stats = $history->generateStatsSummary();
-            $history->save();
         }
 
         return redirect()
@@ -318,8 +326,8 @@ class CareerHistoryController extends Controller
                 'name' => $tournament->name,
                 'club_id' => $tournament->club_id,
                 'club_name' => $tournament->club->name ?? null,
-                'start_date' => $tournament->start_date->format('Y-m-d'),
-                'end_date' => $tournament->end_date->format('Y-m-d'),
+                'start_date' => $tournament->start_date?->format('Y-m-d') ?? '',
+                'end_date' => $tournament->end_date?->format('Y-m-d') ?? '',
             ];
 
             $this->careerService->addTournamentEntry($user->id, $request->year, $tournamentData);
@@ -331,21 +339,23 @@ class CareerHistoryController extends Controller
                     $history = RefereeCareerHistory::where('user_id', $user->id)->first();
                 }
 
-                $assignments = $history->assignments_by_year ?? [];
+                if ($history) {
+                    $assignments = $history->assignments_by_year ?? [];
 
-                if (! isset($assignments[$request->year])) {
-                    $assignments[$request->year] = [];
+                    if (! isset($assignments[$request->year])) {
+                        $assignments[$request->year] = [];
+                    }
+
+                    $assignments[$request->year][] = [
+                        'tournament_id' => $tournament->id,
+                        'tournament_name' => $tournament->name,
+                        'role' => $request->role,
+                        'assigned_at' => now()->format('Y-m-d'),
+                        'status' => 'manual_entry',
+                    ];
+
+                    $history->assignments_by_year = $assignments;
                 }
-
-                $assignments[$request->year][] = [
-                    'tournament_id' => $tournament->id,
-                    'tournament_name' => $tournament->name,
-                    'role' => $request->role,
-                    'assigned_at' => now()->format('Y-m-d'),
-                    'status' => 'manual_entry',
-                ];
-
-                $history->assignments_by_year = $assignments;
             }
         }
 
