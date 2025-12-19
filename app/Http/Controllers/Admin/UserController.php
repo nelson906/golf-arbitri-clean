@@ -195,10 +195,19 @@ class UserController extends Controller
             'level' => 'required|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio',
             'phone' => 'nullable|string|max:20',
             'city' => 'nullable|string|max:255',
-            'club_member' => 'nullable|string|max:255',
         ];
 
+        // Includi club_member solo se la colonna esiste nel database
+        if (Schema::hasColumn('users', 'club_member')) {
+            $rules['club_member'] = 'nullable|string|max:255';
+        }
+
         $validated = $request->validate($rules);
+
+        // Rimuovi club_member dai validated se la colonna non esiste
+        if (!Schema::hasColumn('users', 'club_member') && isset($validated['club_member'])) {
+            unset($validated['club_member']);
+        }
 
         // Imposta password predefinita (come indicato nel form)
         $validated['password'] = Hash::make('password123');
@@ -280,8 +289,13 @@ class UserController extends Controller
             'gender' => 'nullable|in:male,female,mixed',
             'notes' => 'nullable|string',
             'city' => 'nullable|string|max:255',
-            'club_member' => 'nullable|string|max:255',
         ];
+
+        // Includi club_member solo se la colonna esiste nel database
+        if (Schema::hasColumn('users', 'club_member')) {
+            $rules['club_member'] = 'nullable|string|max:255';
+        }
+
         // Password opzionale in update
         if ($request->filled('password')) {
             $rules['password'] = 'string|min:8|confirmed';
@@ -295,6 +309,11 @@ class UserController extends Controller
 
         // Gestisci il campo is_active (checkbox)
         $validated['is_active'] = $request->has('is_active');
+
+        // Rimuovi club_member dai validated se la colonna non esiste
+        if (!Schema::hasColumn('users', 'club_member') && isset($validated['club_member'])) {
+            unset($validated['club_member']);
+        }
 
         // Aggiorna utente
         $user->update($validated);

@@ -98,7 +98,15 @@ class RefereeCareerController extends Controller
             }
         }
 
-        $query->orderBy($sort, $direction);
+        // Ordinamento: usa COALESCE per gestire last_name NULL
+        if ($sort === 'last_name') {
+            $query->orderByRaw("COALESCE(last_name, name) {$direction}");
+        } elseif ($sort === 'first_name') {
+            $query->orderByRaw("COALESCE(first_name, name) {$direction}");
+        } else {
+            $query->orderBy($sort, $direction);
+        }
+
         $referees = $query->get();
 
         $stats = $referees->map(function ($referee) use ($year) {
