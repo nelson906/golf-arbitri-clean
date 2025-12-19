@@ -201,10 +201,14 @@ class UserController extends Controller
             'level' => 'required|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio',
             'phone' => 'nullable|string|max:20',
             'city' => 'nullable|string|max:255',
-            'club_member' => 'nullable|string|max:255',
         ];
 
         $validated = $request->validate($rules);
+
+        // Aggiungi club_member solo se la colonna esiste
+        if (Schema::hasColumn('users', 'club_member') && $request->has('club_member')) {
+            $validated['club_member'] = $request->input('club_member');
+        }
 
         // Genera automaticamente il campo 'name' concatenando first_name e last_name
         $validated['name'] = trim($validated['first_name'] . ' ' . $validated['last_name']);
@@ -295,7 +299,6 @@ class UserController extends Controller
             'gender' => 'nullable|in:male,female,mixed',
             'notes' => 'nullable|string',
             'city' => 'nullable|string|max:255',
-            'club_member' => 'nullable|string|max:255',
         ];
 
         // Password opzionale in update
@@ -303,6 +306,11 @@ class UserController extends Controller
             $rules['password'] = 'string|min:8|confirmed';
         }
         $validated = $request->validate($rules);
+
+        // Aggiungi club_member solo se la colonna esiste
+        if (Schema::hasColumn('users', 'club_member') && $request->has('club_member')) {
+            $validated['club_member'] = $request->input('club_member');
+        }
 
         // Genera automaticamente il campo 'name' concatenando first_name e last_name
         $validated['name'] = trim($validated['first_name'] . ' ' . $validated['last_name']);
