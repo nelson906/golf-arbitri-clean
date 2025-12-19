@@ -244,6 +244,17 @@ class UserController extends Controller
             abort(403, 'Non autorizzato a modificare questo utente');
         }
 
+        // Se first_name o last_name sono NULL, prova a popolarli dal campo name
+        if (empty($user->first_name) || empty($user->last_name)) {
+            $nameParts = explode(' ', $user->name, 2);
+            if (empty($user->first_name)) {
+                $user->first_name = $nameParts[0] ?? '';
+            }
+            if (empty($user->last_name)) {
+                $user->last_name = $nameParts[1] ?? $nameParts[0] ?? '';
+            }
+        }
+
         // Zone disponibili (filtrate per ruolo)
         $zones = Zone::orderBy('name');
         if (! $isNationalAdmin && $currentUser->zone_id) {
