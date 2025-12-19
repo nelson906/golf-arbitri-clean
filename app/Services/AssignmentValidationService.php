@@ -102,7 +102,7 @@ class AssignmentValidationService
             }
 
             // Controlla livello arbitri (usa RefereeLevelsHelper per normalizzazione)
-            $requiredLevel = RefereeLevelsHelper::normalize($tournament->tournamentType->required_referee_level);
+            $requiredLevel = RefereeLevelsHelper::normalize($tournament->tournamentType->required_level ?? '');
             $levels = array_keys(RefereeLevelsHelper::DB_ENUM_VALUES);
             $requiredIndex = array_search($requiredLevel, $levels);
 
@@ -362,7 +362,7 @@ class AssignmentValidationService
     private function findAlternativeReferees(Tournament $tournament, int $excludeUserId): Collection
     {
         // Usa RefereeLevelsHelper per normalizzazione livelli
-        $requiredLevel = RefereeLevelsHelper::normalize($tournament->tournamentType->required_referee_level);
+        $requiredLevel = RefereeLevelsHelper::normalize($tournament->tournamentType->required_level ?? '');
         $levels = array_keys(RefereeLevelsHelper::DB_ENUM_VALUES);
         $requiredIndex = array_search($requiredLevel, $levels);
 

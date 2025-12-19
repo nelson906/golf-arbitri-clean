@@ -6,9 +6,27 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string|null $code
+ * @property string|null $email
+ * @property string|null $phone
+ * @property string|null $description
+ * @property bool|null $is_national
+ * @property bool|null $is_active
+ *
+ * @property-read Collection<int, Club> $clubs
+ * @property-read Collection<int, User> $users
+ * @property-read Collection<int, User> $referees
+ * @property-read Collection<int, Tournament> $tournaments
+ */
 class Zone extends Model
 {
     use HasFactory;

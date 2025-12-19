@@ -163,7 +163,7 @@ class CareerHistoryService
         $history->tournaments_by_year = $tournaments;
         $history->assignments_by_year = $assignments;
         $history->availabilities_by_year = $availabilities;
-        $history->last_updated_year = $year;
+        $history->last_updated_year = (string) $year;
 
         // Ricalcola stats
         $history->career_stats = $history->generateStatsSummary();

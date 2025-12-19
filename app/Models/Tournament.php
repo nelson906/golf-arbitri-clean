@@ -8,10 +8,43 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * @property int $id
+ * @property int|null $club_id
+ * @property string $name
+ * @property int|null $tournament_type_id
+ * @property int|null $zone_id
+ * @property Carbon|null $start_date
+ * @property Carbon|null $end_date
+ * @property Carbon|null $availability_deadline
+ * @property string $status
+ * @property string|null $notes
+ * @property int|null $created_by
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ *
+ * @property-read Club|null $club
+ * @property-read Zone|null $zone
+ * @property-read TournamentType|null $tournamentType
+ * @property-read Collection<int, Assignment> $assignments
+ * @property-read Collection<int, Availability> $availabilities
+ * @property-read Collection<int, User> $referees
+ * @property-read string|null $date_range
+ * @property-read string|null $status_color
+ * @property-read int $required_referees
+ * @property-read Collection<int, User> $assignedReferees
+ *
+ * @method static Builder|Tournament visible(?User $user = null)
+ * @method static Builder|Tournament upcoming()
+ * @method static Builder|Tournament active()
+ */
 class Tournament extends Model
 {
     use HasFactory;

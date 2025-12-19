@@ -7,10 +7,34 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property int|null $zone_id
+ * @property string|null $code
+ * @property string|null $city
+ * @property string|null $province
+ * @property string|null $address
+ * @property string|null $phone
+ * @property string|null $email
+ * @property string|null $website
+ * @property bool $is_active
+ * @property string|null $notes
+ *
+ * @property-read Zone|null $zone
+ * @property-read Collection<int, Tournament> $tournaments
+ *
+ * @method static Builder|Club visible(?User $user = null)
+ * @method static Builder|Club active()
+ * @method static Builder|Club ordered()
+ */
 class Club extends Model
 {
     use HasFactory;

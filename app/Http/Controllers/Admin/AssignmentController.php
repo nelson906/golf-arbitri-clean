@@ -329,12 +329,10 @@ class AssignmentController extends Controller
         // Carica relazioni base del torneo
         $tournament->load(['club']);
 
-        // Aggiungi la zona attraverso il club (Tournament non ha relazione diretta con zone)
+        // La zona viene già ottenuta attraverso il club (Tournament non ha relazione diretta con zone)
         if ($tournament->club) {
             $tournament->club->load('zone');
-            // Crea proprietà virtuale per retrocompatibilità
-            $tournament->zone = $tournament->club->zone;
-            $tournament->zone_id = $tournament->club->zone_id;
+            // zone_id è già accessibile tramite accessor in Tournament
         }
 
         // Carica tipo torneo

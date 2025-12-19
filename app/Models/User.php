@@ -6,13 +6,50 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string|null $first_name
+ * @property string|null $last_name
+ * @property string $email
+ * @property string $password
+ * @property string|null $user_type
+ * @property int|null $zone_id
+ * @property string|null $referee_code
+ * @property string|null $level
+ * @property string|null $club_member
+ * @property string|null $city
+ * @property string|null $phone
+ * @property bool $is_active
+ * @property string|null $gender
+ * @property string|null $notes
+ * @property Carbon|null $email_verified_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ *
+ * @property-read Zone|null $zone
+ * @property-read Collection<int, Assignment> $assignments
+ * @property-read Collection<int, Availability> $availabilities
+ * @property-read Collection<int, Tournament> $tournaments
+ * @property-read RefereeCareerHistory|null $careerHistory
+ * @property-read int|null $assignments_count
+ *
+ * @method static Builder|User visible(?User $user = null)
+ * @method static Builder|User referees()
+ * @method static Builder|User active()
+ */
 class User extends Authenticatable
 {
     use HasApiTokens;

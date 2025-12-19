@@ -178,9 +178,8 @@ class PermissionHelper
 
         // Admin può modificare arbitri nella sua zona
         if ($currentUser->hasRole('Admin')) {
-            if ($currentUser->referee && $targetUser->referee) {
-                return $currentUser->referee->zone_id === $targetUser->referee->zone_id;
-            }
+            // User non ha più relazione referee, usa direttamente zone_id
+            return $currentUser->zone_id === $targetUser->zone_id;
         }
 
         return false;

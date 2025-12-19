@@ -6,9 +6,27 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Schema;
 
+/**
+ * @property int $id
+ * @property int $tournament_id
+ * @property int|null $user_id
+ * @property int|null $referee_id
+ * @property string|null $notes
+ * @property Carbon|null $submitted_at
+ * @property bool $is_available
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ *
+ * @property-read Tournament|null $tournament
+ * @property-read User|null $user
+ * @property-read User|null $referee
+ */
 class Availability extends Model
 {
     use HasFactory;
@@ -35,7 +53,7 @@ class Availability extends Model
 
     public function user()
     {
-        if (\Schema::hasColumn('availabilities', 'user_id')) {
+        if (Schema::hasColumn('availabilities', 'user_id')) {
             return $this->belongsTo(User::class, 'user_id');
         } else {
             return $this->belongsTo(User::class, 'referee_id');

@@ -135,7 +135,6 @@ class RefereeOrAdmin
             'referee' => \App\Models\User::class,
             'availability' => \App\Models\Availability::class,
             'assignment' => \App\Models\Assignment::class,
-            'application' => \App\Models\Application::class,
         ];
 
         if (! isset($refereeOwnResources[$parameterName])) {

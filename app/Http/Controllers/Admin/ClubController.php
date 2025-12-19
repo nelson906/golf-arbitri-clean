@@ -237,10 +237,10 @@ class ClubController extends Controller
             abort(403, 'Non autorizzato');
         }
 
-        $club->active = ! $club->active;
+        $club->is_active = ! $club->is_active;
         $club->save();
 
-        $status = $club->active ? 'attivato' : 'disattivato';
+        $status = $club->is_active ? 'attivato' : 'disattivato';
 
         return back()->with('success', "Circolo {$status} con successo");
     }

@@ -6,9 +6,30 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $tournament_id
+ * @property int $user_id
+ * @property string|null $role
+ * @property Carbon|null $assigned_at
+ * @property int|null $assigned_by
+ * @property string|null $status
+ * @property string|null $notes
+ * @property Carbon|null $confirmed_at
+ * @property bool $is_confirmed
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ *
+ * @property-read Tournament|null $tournament
+ * @property-read User|null $user
+ * @property-read User|null $referee
+ * @property-read User|null $assignedBy
+ */
 class Assignment extends Model
 {
     use HasFactory;
@@ -63,5 +84,14 @@ class Assignment extends Model
     public function assignedBy()
     {
         return $this->belongsTo(User::class, 'assigned_by');
+    }
+
+    /**
+     * Determina il nome del campo utente (user_id o referee_id)
+     * per retrocompatibilità con database legacy
+     */
+    public static function getUserField(): string
+    {
+        return 'user_id';
     }
 }
