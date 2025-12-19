@@ -45,13 +45,26 @@
                 <input type="hidden" name="user_type" value="{{ old('user_type', $user->user_type) }}">
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {{-- Nome (dall'User) --}}
+                    {{-- Nome --}}
                     <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Nome Completo *</label>
-                        <input type="text" name="name" id="name" value="{{ old('name', $user->name) }}"
-                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('name') border-red-500 @enderror"
+                        <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                        <input type="text" name="first_name" id="first_name"
+                            value="{{ old('first_name', $user->first_name) }}"
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('first_name') border-red-500 @enderror"
                             required>
-                        @error('name')
+                        @error('first_name')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Cognome --}}
+                    <div>
+                        <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Cognome *</label>
+                        <input type="text" name="last_name" id="last_name"
+                            value="{{ old('last_name', $user->last_name) }}"
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('last_name') border-red-500 @enderror"
+                            required>
+                        @error('last_name')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
@@ -59,8 +72,7 @@
                     {{-- Email (dall'User) --}}
                     <div>
                         <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                        <input type="email" name="email" id="email"
-                            value="{{ old('email', $user->email) }}"
+                        <input type="email" name="email" id="email" value="{{ old('email', $user->email) }}"
                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('email') border-red-500 @enderror"
                             required>
                         @error('email')
@@ -85,8 +97,7 @@
                     {{-- Telefono (dall'User) --}}
                     <div>
                         <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
-                        <input type="text" name="phone" id="phone"
-                            value="{{ old('phone', $user->phone) }}"
+                        <input type="text" name="phone" id="phone" value="{{ old('phone', $user->phone) }}"
                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('phone') border-red-500 @enderror">
                         @error('phone')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -100,7 +111,7 @@
                             required>
                             <option value="">Seleziona livello</option>
                             {{-- ✅ FIX: usa referee_levels(true) per includere Archivio --}}
-                            @foreach(referee_levels(true) as $key => $label)
+                            @foreach (referee_levels(true) as $key => $label)
                                 <option value="{{ $key }}"
                                     {{ old('level', normalize_referee_level($user->level ?? 'Archivio')) == $key ? 'selected' : '' }}>
                                     {{ $label }}
@@ -131,25 +142,35 @@
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
-{{-- Città --}}
-<div>
-    <label for="city" class="block text-sm font-medium text-gray-700">Città</label>
-    <input type="text" name="city" id="city" value="{{ old('city', $user->city) }}"
-           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-    @error('city')
-        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-    @enderror
-</div>
+                    {{-- Città --}}
+                    <div>
+                        <label for="city" class="block text-sm font-medium text-gray-700">Città</label>
+                        <input type="text" name="city" id="city" value="{{ old('city', $user->city) }}"
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        @error('city')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
 
-{{-- Circolo --}}
-<div>
-    <label for="club" class="block text-sm font-medium text-gray-700">Circolo</label>
-    <input type="text" name="club_member" id="club" value="{{ old('club', $user->club_member) }}"
-           class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-    @error('club')
-        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-    @enderror
-</div>
+                    {{-- Circolo --}}
+                    <div>
+                        <label for="club_member" class="block text-sm font-medium text-gray-700">Circolo</label>
+                        <select name="club_member" id="club_member"
+                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">Seleziona circolo (opzionale)</option>
+                            @foreach ($clubs as $club)
+                                <option value="{{ $club->name }}"
+                                    {{ old('club_member', $user->club_member) == $club->name ? 'selected' : '' }}>
+                                    {{ $club->name }} ({{ $club->zone->name ?? 'N/A' }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">Puoi selezionare circoli anche fuori dalla zona dell'arbitro
+                        </p>
+                        @error('club_member')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
                     {{-- Gender --}}
                     <div>
                         <label for="gender" class="block text-sm font-medium text-gray-700 mb-1">Genere</label>

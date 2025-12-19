@@ -34,17 +34,28 @@
 
         {{-- Form --}}
         <div class="bg-white rounded-lg shadow p-6">
-            <form method="POST" action="{{ route('admin.users.store') }}" class="space-y-6">
+            <form id="create-user-form" method="POST" action="{{ route('admin.users.store') }}" class="space-y-6">
                 @csrf
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {{-- Nome --}}
                     <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Nome Completo *</label>
-                        <input type="text" name="name" id="name" value="{{ old('name') }}"
-                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('name') border-red-500 @enderror"
+                        <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                        <input type="text" name="first_name" id="first_name" value="{{ old('first_name') }}"
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('first_name') border-red-500 @enderror"
                             required>
-                        @error('name')
+                        @error('first_name')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
+                    {{-- Cognome --}}
+                    <div>
+                        <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Cognome *</label>
+                        <input type="text" name="last_name" id="last_name" value="{{ old('last_name') }}"
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('last_name') border-red-500 @enderror"
+                            required>
+                        @error('last_name')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
@@ -113,12 +124,24 @@
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                     </div>
 
+
                     {{-- Circolo di appartenenza --}}
                     <div>
                         <label for="club_member" class="block text-sm font-medium text-gray-700">Circolo</label>
-                        <input type="text" name="club_member" id="club_member" value="{{ old('club_member') }}"
+                        <select name="club_member" id="club_member"
                             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            <option value="">Seleziona circolo (opzionale)</option>
+                            @foreach ($clubs as $club)
+                                <option value="{{ $club->name }}"
+                                    {{ old('club_member') == $club->name ? 'selected' : '' }}>
+                                    {{ $club->name }} ({{ $club->zone->name ?? 'N/A' }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">Puoi selezionare circoli anche fuori dalla zona dell'arbitro
+                        </p>
                     </div>
+
                 </div>
                 {{-- Info automatiche --}}
                 <div class="bg-blue-50 border border-blue-200 rounded-md p-4">
@@ -162,7 +185,31 @@
                         Crea Arbitro
                     </button>
                 </div>
+                <script>
+document.querySelector('form').addEventListener('submit', function(e) {
+    console.log('Form submit event fired!');
+    console.log('Form action:', this.action);
+    console.log('Form method:', this.method);
+});
+</script>
+
+
             </form>
         </div>
     </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+
+    form.addEventListener('submit', function(e) {
+        console.log('Form submitted!', new FormData(form));
+    });
+
+    // Log click del bottone
+    document.querySelector('button[type="submit"]').addEventListener('click', function(e) {
+        console.log('Button clicked!');
+    });
+});
+</script>
+
 @endsection

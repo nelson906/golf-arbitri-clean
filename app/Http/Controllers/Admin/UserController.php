@@ -165,6 +165,11 @@ class UserController extends Controller
         }
         $zones = $zones->get();
 
+        // Circoli disponibili (tutti, anche fuori zona)
+        $clubs = \App\Models\Club::orderBy('name')->get();
+
+
+
         // Tipi utente che può creare
         $userTypes = ['referee' => 'Arbitro'];
         if ($isNationalAdmin) {
@@ -175,7 +180,7 @@ class UserController extends Controller
             $userTypes['super_admin'] = 'Super Admin';
         }
 
-        return view('admin.users.create', compact('zones', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
+        return view('admin.users.create', compact('zones', 'clubs', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
     }
 
     /**
@@ -188,7 +193,8 @@ class UserController extends Controller
 
         // Validazione base
         $rules = [
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'zone_id' => 'required|exists:zones,id',
             'referee_code' => 'nullable|string|max:20|unique:users',
@@ -203,14 +209,22 @@ class UserController extends Controller
         // Imposta password predefinita (come indicato nel form)
         $validated['password'] = Hash::make('password123');
 
+        // Genera automaticamente il campo 'name' concatenando first_name e last_name
+        $validated['name'] = trim($validated['first_name'] . ' ' . $validated['last_name']);
+
+
         // Imposta tipo utente predefinito (referee)
         $validated['user_type'] = 'referee';
+
+        // Gestisci il campo is_active (checkbox)
+        $validated['is_active'] = $request->has('is_active');
+
 
         // Genera codice arbitro se non è fornito
         if (empty($validated['referee_code'])) {
             $lastUser = User::orderBy('id', 'desc')->first();
             $nextId = $lastUser ? $lastUser->id + 1 : 1;
-            $validated['referee_code'] = 'REF'.str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            $validated['referee_code'] = 'REF' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
         }
 
         // Crea utente
@@ -242,6 +256,11 @@ class UserController extends Controller
         }
         $zones = $zones->get();
 
+        // Circoli disponibili (tutti, anche fuori zona)
+        $clubs = \App\Models\Club::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
         // Tipi utente modificabili
         $userTypes = ['referee' => 'Arbitro'];
         if ($isNationalAdmin) {
@@ -252,7 +271,7 @@ class UserController extends Controller
             $userTypes['super_admin'] = 'Super Admin';
         }
 
-        return view('admin.users.edit', compact('user', 'zones', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
+        return view('admin.users.edit', compact('user', 'zones', 'clubs', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
     }
 
     /**
@@ -270,11 +289,12 @@ class UserController extends Controller
 
         // Validazione
         $rules = [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
-            'user_type' => 'required|in:referee,admin'.($isNationalAdmin ? ',national_admin,super_admin' : ''),
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'user_type' => 'required|in:referee,admin' . ($isNationalAdmin ? ',national_admin,super_admin' : ''),
             'zone_id' => 'required|exists:zones,id',
-            'referee_code' => 'nullable|string|max:20|unique:users,referee_code,'.$user->id,
+            'referee_code' => 'nullable|string|max:20|unique:users,referee_code,' . $user->id,
             'level' => 'nullable|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio',
             'phone' => 'nullable|string|max:20',
             'gender' => 'nullable|in:male,female,mixed',
@@ -293,6 +313,10 @@ class UserController extends Controller
             $validated['password'] = Hash::make($validated['password']);
         }
 
+        // Genera automaticamente il campo 'name' concatenando first_name e last_name
+        $validated['name'] = trim($validated['first_name'] . ' ' . $validated['last_name']);
+
+
         // Gestisci il campo is_active (checkbox)
         $validated['is_active'] = $request->has('is_active');
 
@@ -310,9 +334,11 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         $currentUser = auth()->user();
-        // Verifica permessi tramite trait
-        if (! $this->isNationalAdmin($currentUser)) {
-            abort(403, 'Solo gli admin nazionali possono eliminare utenti');
+        $isNationalAdmin = $this->isNationalAdmin($currentUser);
+
+        // Verifica permessi: admin nazionale può eliminare tutti, admin zonale solo utenti della propria zona
+        if (! $isNationalAdmin && $this->getUserZoneId($currentUser) != $user->zone_id) {
+            abort(403, 'Non autorizzato a eliminare questo utente');
         }
 
         // Non permettere auto-eliminazione
