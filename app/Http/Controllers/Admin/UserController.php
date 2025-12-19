@@ -166,9 +166,7 @@ class UserController extends Controller
         $zones = $zones->get();
 
         // Circoli disponibili (tutti, anche fuori zona)
-        $clubs = \App\Models\Club::where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $clubs = \App\Models\Club::orderBy('name')->get();
 
         // Tipi utente che può creare
         $userTypes = ['referee' => 'Arbitro'];
@@ -258,9 +256,7 @@ class UserController extends Controller
         $zones = $zones->get();
 
         // Circoli disponibili (tutti, anche fuori zona)
-        $clubs = \App\Models\Club::where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $clubs = \App\Models\Club::orderBy('name')->get();
 
         // Tipi utente modificabili
         $userTypes = ['referee' => 'Arbitro'];
