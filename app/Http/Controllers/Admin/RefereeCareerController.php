@@ -5,12 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\RefereeCareerService;
+use App\Traits\HasZoneVisibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class RefereeCareerController extends Controller
 {
+    use HasZoneVisibility;
     protected RefereeCareerService $careerService;
 
     public function __construct(RefereeCareerService $careerService)
@@ -33,8 +35,8 @@ class RefereeCareerController extends Controller
         $zone = $request->get('zone');
 
         // Se non è specificata una zona e l'utente è admin zonale, usa la sua zona
-        if (! $request->has('zone') && $user->user_type === 'admin' && $user->zone_id) {
-            $zone = $user->zone_id;
+        if (!$request->has('zone') && $this->isZoneAdmin($user)) {
+            $zone = $this->getUserZoneId($user);
         }
 
         $level = $request->get('level');

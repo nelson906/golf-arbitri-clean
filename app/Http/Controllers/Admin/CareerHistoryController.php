@@ -8,11 +8,14 @@ use App\Models\Tournament;
 use App\Models\User;
 use App\Models\Zone;
 use App\Services\CareerHistoryService;
+use App\Traits\HasZoneVisibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class CareerHistoryController extends Controller
 {
+    use HasZoneVisibility;
+    
     protected CareerHistoryService $careerService;
 
     public function __construct(CareerHistoryService $careerService)
@@ -21,47 +24,12 @@ class CareerHistoryController extends Controller
     }
 
     /**
-     * Check if current user is super admin.
-     */
-    private function isSuperAdmin(): bool
-    {
-        return auth()->user()->user_type === 'super_admin';
-    }
-
-    /**
-     * Get zone restriction for current admin.
-     * Returns null if super_admin (no restriction), otherwise returns zone_id.
-     */
-    private function getZoneRestriction(): ?int
-    {
-        $user = auth()->user();
-        if ($user->user_type === 'super_admin') {
-            return null; // No restriction
-        }
-
-        return $user->zone_id;
-    }
-
-    /**
-     * Check if admin can access a specific user.
-     */
-    private function canAccessUser(User $targetUser): bool
-    {
-        $zoneId = $this->getZoneRestriction();
-        if ($zoneId === null) {
-            return true; // Super admin can access all
-        }
-
-        return $targetUser->zone_id === $zoneId;
-    }
-
-    /**
      * Lista arbitri con storico carriera.
      */
     public function index(Request $request)
     {
         $currentUser = auth()->user();
-        $zoneRestriction = $this->getZoneRestriction();
+        $zoneRestriction = $this->getUserZoneId($currentUser);
 
         $query = User::where('user_type', 'referee')
             ->with(['careerHistory', 'zone'])
@@ -97,8 +65,8 @@ class CareerHistoryController extends Controller
         $referees = $query->orderBy('name')->paginate(30);
 
         // Get zones for filter (only for super_admin)
-        $zones = $this->isSuperAdmin() ? Zone::orderBy('name')->get() : collect();
-        $canArchiveAll = $this->isSuperAdmin();
+        $zones = $this->isSuperAdmin($currentUser) ? Zone::orderBy('name')->get() : collect();
+        $canArchiveAll = $this->isSuperAdmin($currentUser);
 
         return view('admin.career-history.index', compact('referees', 'zones', 'canArchiveAll'));
     }
@@ -109,7 +77,8 @@ class CareerHistoryController extends Controller
     public function show(User $user)
     {
         // Check zone access
-        if (! $this->canAccessUser($user)) {
+        $currentUser = auth()->user();
+        if (!$this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 
@@ -123,8 +92,9 @@ class CareerHistoryController extends Controller
      */
     public function archiveForm()
     {
+        $currentUser = auth()->user();
         $currentYear = now()->year;
-        $zoneRestriction = $this->getZoneRestriction();
+        $zoneRestriction = $this->getUserZoneId($currentUser);
 
         // Statistiche per preview (filtrate per zona se necessario)
         $stats = $this->getYearStats($currentYear, $zoneRestriction);
@@ -136,7 +106,7 @@ class CareerHistoryController extends Controller
         }
         $referees = $refereesQuery->get(['id', 'name', 'email']);
 
-        $canArchiveAll = $this->isSuperAdmin();
+        $canArchiveAll = $this->isSuperAdmin($currentUser);
 
         return view('admin.career-history.archive-form', compact('currentYear', 'stats', 'referees', 'canArchiveAll'));
     }
@@ -155,16 +125,17 @@ class CareerHistoryController extends Controller
         $year = (int) $request->year;
         $userId = $request->user_id;
         $clearData = $request->boolean('clear_data', false);
+        $currentUser = auth()->user();
 
         // Only super_admin can clear data
-        if ($clearData && ! $this->isSuperAdmin()) {
+        if ($clearData && !$this->isSuperAdmin($currentUser)) {
             return redirect()
                 ->back()
                 ->with('error', 'Solo il super admin puo svuotare le tabelle');
         }
 
         // If not super_admin, must specify a user (can't archive all)
-        if (! $this->isSuperAdmin() && ! $userId) {
+        if (!$this->isSuperAdmin($currentUser) && !$userId) {
             return redirect()
                 ->back()
                 ->with('error', 'Devi selezionare un arbitro specifico');
@@ -173,7 +144,7 @@ class CareerHistoryController extends Controller
         // If user specified, check zone access
         if ($userId) {
             $targetUser = User::find($userId);
-            if (! $this->canAccessUser($targetUser)) {
+            if (!$this->isSuperAdmin($currentUser) && $targetUser->zone_id !== $this->getUserZoneId($currentUser)) {
                 abort(403, 'Non hai accesso a questo arbitro');
             }
         }
@@ -225,7 +196,8 @@ class CareerHistoryController extends Controller
     public function editYear(User $user, int $year)
     {
         // Check zone access
-        if (! $this->canAccessUser($user)) {
+        $currentUser = auth()->user();
+        if (!$this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 
@@ -264,7 +236,8 @@ class CareerHistoryController extends Controller
     public function addTournament(Request $request, User $user)
     {
         // Check zone access
-        if (! $this->canAccessUser($user)) {
+        $currentUser = auth()->user();
+        if (!$this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 
@@ -320,7 +293,8 @@ class CareerHistoryController extends Controller
     public function addMultipleTournaments(Request $request, User $user)
     {
         // Check zone access
-        if (! $this->canAccessUser($user)) {
+        $currentUser = auth()->user();
+        if (!$this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 
@@ -392,7 +366,8 @@ class CareerHistoryController extends Controller
     public function removeTournament(Request $request, User $user)
     {
         // Check zone access
-        if (! $this->canAccessUser($user)) {
+        $currentUser = auth()->user();
+        if (!$this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 
@@ -432,8 +407,9 @@ class CareerHistoryController extends Controller
      */
     public function previewYear(Request $request)
     {
+        $currentUser = auth()->user();
         $year = $request->get('year', now()->year);
-        $zoneRestriction = $this->getZoneRestriction();
+        $zoneRestriction = $this->getUserZoneId($currentUser);
 
         $stats = $this->getYearStats($year, $zoneRestriction);
 
