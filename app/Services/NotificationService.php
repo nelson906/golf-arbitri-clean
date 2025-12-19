@@ -54,12 +54,14 @@ class NotificationService
         try {
             // Genera convocazione
             $convocationData = $this->documentService->generateConvocationForTournament(
-                $tournament, $notification
+                $tournament,
+                $notification
             );
 
             // Genera lettera circolo
             $clubLetterData = $this->documentService->generateClubDocument(
-                $tournament, $notification
+                $tournament,
+                $notification
             );
 
             // Salva riferimenti documenti

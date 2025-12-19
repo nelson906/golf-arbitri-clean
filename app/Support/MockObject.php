@@ -58,7 +58,7 @@ class MockObject implements Authenticatable
 
             // Se è int e non è 'id', converti in oggetto
             if (is_int($value) && $prop !== 'id') {
-                $obj = new MockObject;
+                $obj = new MockObject();
                 $obj->id = $value;
                 $obj->name = ucfirst($prop).' Mock';
                 $this->$prop = $obj;
@@ -87,7 +87,7 @@ class MockObject implements Authenticatable
 
             // Blocco int
             if (is_int($value) && $name !== 'id') {
-                $obj = new MockObject;
+                $obj = new MockObject();
                 $obj->id = $value;
                 $obj->name = ucfirst($name).' Mock';
                 $this->$name = $obj;
@@ -119,7 +119,7 @@ class MockObject implements Authenticatable
 
         // Blocca int per non-id
         if (is_int($value) && $name !== 'id') {
-            $obj = new MockObject;
+            $obj = new MockObject();
             $obj->id = $value;
             $obj->name = ucfirst($name).' Mock';
             $this->$name = $obj;
@@ -151,7 +151,7 @@ class MockObject implements Authenticatable
         ];
 
         if (in_array($name, $relations)) {
-            $obj = new MockObject;
+            $obj = new MockObject();
             $obj->id = rand(1, 999);
             $obj->name = ucfirst($name).' Mock';
 
@@ -175,7 +175,7 @@ class MockObject implements Authenticatable
         // ... altri valori semplici
 
         // ⚠️ DEFAULT FINALE: SEMPRE oggetto, MAI null
-        $obj = new MockObject;
+        $obj = new MockObject();
         $obj->id = rand(1, 999);
         $obj->name = ucfirst($name).' Mock';
 
@@ -201,8 +201,7 @@ class MockObject implements Authenticatable
         // Metodi che ritornano QueryBuilder
         if (in_array($method, ['assignments', 'users', 'referees', 'where', 'orderBy'])) {
             // Ritorna un QueryBuilder mock
-            return new class extends MockObject
-            {
+            return new class () extends MockObject {
                 public function with(...$relations)
                 {
                     return $this;
@@ -225,20 +224,20 @@ class MockObject implements Authenticatable
 
                 public function get()
                 {
-                    $item = new MockObject;
+                    $item = new MockObject();
                     $item->id = 1;
                     $item->role = 'Direttore di Torneo';
                     $item->tournament_id = 1;
                     $item->user_id = 1;
 
-                    $user = new MockObject;
+                    $user = new MockObject();
                     $user->id = 1;
                     $user->name = 'Mock User';
                     $user->email = 'user@example.com';
                     $user->user_type = 'referee';
                     $user->level = 'nazionale';
 
-                    $referee = new MockObject;
+                    $referee = new MockObject();
                     $referee->id = 1;
                     $referee->referee_code = 'REF001';
                     $referee->level_label = 'Nazionale';

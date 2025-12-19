@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class NotificationClause extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
         'code',
@@ -25,7 +26,7 @@ class NotificationClause extends Model
         'sort_order' => 'integer',
     ];
 
-    const CATEGORIES = [
+    public const CATEGORIES = [
         'spese' => 'Spese e Rimborsi',
         'logistica' => 'Logistica e Servizi',
         'responsabilita' => 'Responsabilità e Assicurazioni',
@@ -33,7 +34,7 @@ class NotificationClause extends Model
         'altro' => 'Altro',
     ];
 
-    const APPLIES_TO = [
+    public const APPLIES_TO = [
         'club' => 'Circolo',
         'referee' => 'Arbitri',
         'institutional' => 'Istituzionali',

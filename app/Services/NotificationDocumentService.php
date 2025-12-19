@@ -16,7 +16,8 @@ class NotificationDocumentService
 {
     public function __construct(
         private DocumentGenerationService $documentService
-    ) {}
+    ) {
+    }
 
     /**
      * Genera i documenti iniziali per una notifica

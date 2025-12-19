@@ -122,7 +122,8 @@ class TournamentTypeController extends Controller
             'is_active' => ! $tournamentType->is_active,
         ]);
 
-        return back()->with('success',
+        return back()->with(
+            'success',
             $tournamentType->is_active ?
                 'Tipo di torneo attivato.' :
                 'Tipo di torneo disattivato.'

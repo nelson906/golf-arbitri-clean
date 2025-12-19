@@ -102,7 +102,7 @@ class FedergolfController extends Controller
             }
 
             $data = $response->json();
-            $oggi = new \DateTime;
+            $oggi = new \DateTime();
             $gare = [];
 
             foreach ($data['data'] ?? [] as $gara) {

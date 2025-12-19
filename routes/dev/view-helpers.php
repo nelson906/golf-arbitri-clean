@@ -49,12 +49,12 @@ if (! class_exists('MockCollection')) {
     {
         public function links($view = null, $data = [])
         {
-            return new MockPaginatorView;
+            return new MockPaginatorView();
         }
 
         public function render($view = null, $data = [])
         {
-            return new MockPaginatorView;
+            return new MockPaginatorView();
         }
 
         public function withQueryString()
@@ -110,7 +110,9 @@ if (! class_exists('UniversalValue')) {
             return null;
         }
 
-        public function setRememberToken($value) {}
+        public function setRememberToken($value)
+        {
+        }
 
         public function getRememberTokenName()
         {
@@ -203,7 +205,7 @@ if (! class_exists('UniversalValue')) {
                     return true;
                 }
                 if ($method === 'where') {
-                    return new MockCollection([new UniversalValue]);
+                    return new MockCollection([new UniversalValue()]);
                 }
 
                 return new MockCollection(['mock']);
@@ -218,7 +220,7 @@ if (! class_exists('UniversalValue')) {
                     return true;
                 }
 
-                return new MockPaginatorView;
+                return new MockPaginatorView();
             }
 
             // ⚠️ AGGIUNGI: Metodi che ritornano oggetti
@@ -241,7 +243,7 @@ if (! class_exists('UniversalValue')) {
                 return new UniversalValue(['id' => 1]);
             }
             if (in_array($method, ['get', 'all'])) {
-                return new MockCollection([new UniversalValue]);
+                return new MockCollection([new UniversalValue()]);
             }
 
             // ⚠️ Default: ritorna $this per method chaining
@@ -294,7 +296,7 @@ if (! class_exists('UniversalValue')) {
 
             // ⚠️ Collection/Array properties
             if (in_array($name, ['items', 'data', 'results', 'records'])) {
-                return new MockCollection([new UniversalValue]);
+                return new MockCollection([new UniversalValue()]);
             }
 
             // ⚠️ Default: SEMPRE ritorna UniversalValue (mai null!)

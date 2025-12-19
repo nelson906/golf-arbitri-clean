@@ -160,7 +160,8 @@ class InstitutionalEmailController extends Controller
     {
         $institutionalEmail->update(['is_active' => ! $institutionalEmail->is_active]);
 
-        return back()->with('success',
+        return back()->with(
+            'success',
             $institutionalEmail->is_active ?
                 'Email istituzionale attivata.' :
                 'Email istituzionale disattivata.'

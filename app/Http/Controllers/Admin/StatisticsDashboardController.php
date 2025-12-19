@@ -894,11 +894,19 @@ class StatisticsDashboardController extends Controller
         return [];
     }
 
-    private function exportTournamentsCSV($handle, $user, $isNationalAdmin) {}
+    private function exportTournamentsCSV($handle, $user, $isNationalAdmin)
+    {
+    }
 
-    private function exportRefereesCSV($handle, $user, $isNationalAdmin) {}
+    private function exportRefereesCSV($handle, $user, $isNationalAdmin)
+    {
+    }
 
-    private function exportAssignmentsCSV($handle, $user, $isNationalAdmin) {}
+    private function exportAssignmentsCSV($handle, $user, $isNationalAdmin)
+    {
+    }
 
-    private function exportGeneralCSV($handle, $user, $isNationalAdmin) {}
+    private function exportGeneralCSV($handle, $user, $isNationalAdmin)
+    {
+    }
 }

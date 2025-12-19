@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 class CareerHistoryController extends Controller
 {
     use HasZoneVisibility;
-    
+
     protected CareerHistoryService $careerService;
 
     public function __construct(CareerHistoryService $careerService)
@@ -444,8 +444,8 @@ class CareerHistoryController extends Controller
             'year' => $year,
             'zone_id' => $zoneId,
             'referees_with_assignments' => (clone $assignmentsQuery)
-                ->distinct($userField)
-                ->count($userField),
+                ->distinct('user_id')
+                ->count('user_id'),
             'total_assignments' => (clone $assignmentsQuery)->count(),
             'referees_with_availabilities' => (clone $availabilitiesQuery)
                 ->distinct('user_id')

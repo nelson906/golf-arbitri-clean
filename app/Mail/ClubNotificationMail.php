@@ -16,7 +16,9 @@ class ClubNotificationMail extends Mailable
 
     public $attachmentPaths;
 
-    public $sortedAssignments; // AGGIUNGI QUESTO
+    public $sortedAssignments;
+
+    public $content;
 
     /**
      * Create a new message instance.
@@ -109,7 +111,7 @@ class ClubNotificationMail extends Mailable
                 $mailAttachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path)
                     ->as($name);
             } else {
-                Log::warning('Attachment file not found', [
+                \Illuminate\Support\Facades\Log::warning('Attachment file not found', [
                     'path' => $path,
                     'name' => $name,
                 ]);

@@ -58,17 +58,17 @@ class Tournament extends Model
     /**
      * Tournament statuses
      */
-    const STATUS_DRAFT = 'draft';
+    public const STATUS_DRAFT = 'draft';
 
-    const STATUS_OPEN = 'open';
+    public const STATUS_OPEN = 'open';
 
-    const STATUS_CLOSED = 'closed';
+    public const STATUS_CLOSED = 'closed';
 
-    const STATUS_ASSIGNED = 'assigned';
+    public const STATUS_ASSIGNED = 'assigned';
 
-    const STATUS_COMPLETED = 'completed';
+    public const STATUS_COMPLETED = 'completed';
 
-    const STATUSES = [
+    public const STATUSES = [
         self::STATUS_DRAFT => 'Bozza',
         self::STATUS_OPEN => 'Aperto',
         self::STATUS_CLOSED => 'Chiuso',

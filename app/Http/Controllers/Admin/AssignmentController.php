@@ -256,9 +256,9 @@ class AssignmentController extends Controller
         ]);
 
         // Verifica che il nuovo arbitro non sia già assegnato allo stesso torneo
-        if ($validated[$userField] != $assignment->{$userField}) {
+        if ($validated['user_id'] != $assignment->user_id) {
             $exists = Assignment::where('tournament_id', $assignment->tournament_id)
-                ->where($userField, $validated[$userField])
+                ->where('user_id', $validated['user_id'])
                 ->where('id', '!=', $assignment->id)
                 ->exists();
 

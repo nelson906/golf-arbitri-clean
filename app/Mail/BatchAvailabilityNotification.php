@@ -15,7 +15,8 @@ class BatchAvailabilityNotification extends Mailable
         public $user,
         public $addedTournaments,
         public $removedTournaments
-    ) {}
+    ) {
+    }
 
     public function envelope(): Envelope
     {

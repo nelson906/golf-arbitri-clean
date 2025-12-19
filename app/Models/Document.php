@@ -85,17 +85,17 @@ class Document extends Model
     ];
 
     // Document categories
-    const CATEGORY_GENERAL = 'general';
+    public const CATEGORY_GENERAL = 'general';
 
-    const CATEGORY_TOURNAMENT = 'tournament';
+    public const CATEGORY_TOURNAMENT = 'tournament';
 
-    const CATEGORY_REGULATION = 'regulation';
+    public const CATEGORY_REGULATION = 'regulation';
 
-    const CATEGORY_FORM = 'form';
+    public const CATEGORY_FORM = 'form';
 
-    const CATEGORY_TEMPLATE = 'template';
+    public const CATEGORY_TEMPLATE = 'template';
 
-    const CATEGORIES = [
+    public const CATEGORIES = [
         self::CATEGORY_GENERAL => 'Generale',
         self::CATEGORY_TOURNAMENT => 'Torneo',
         self::CATEGORY_REGULATION => 'Regolamento',
@@ -104,19 +104,19 @@ class Document extends Model
     ];
 
     // Document types
-    const TYPE_PDF = 'pdf';
+    public const TYPE_PDF = 'pdf';
 
-    const TYPE_DOCUMENT = 'document';
+    public const TYPE_DOCUMENT = 'document';
 
-    const TYPE_SPREADSHEET = 'spreadsheet';
+    public const TYPE_SPREADSHEET = 'spreadsheet';
 
-    const TYPE_IMAGE = 'image';
+    public const TYPE_IMAGE = 'image';
 
-    const TYPE_TEXT = 'text';
+    public const TYPE_TEXT = 'text';
 
-    const TYPE_OTHER = 'other';
+    public const TYPE_OTHER = 'other';
 
-    const TYPES = [
+    public const TYPES = [
         self::TYPE_PDF => 'PDF',
         self::TYPE_DOCUMENT => 'Documento',
         self::TYPE_SPREADSHEET => 'Foglio di calcolo',

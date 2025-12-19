@@ -484,7 +484,7 @@ class NotificationCycleTest extends TestCase
             $this->generatedFiles[] = $result['path'];
 
             // DOCX è un file ZIP - verifica che sia apribile come ZIP
-            $zip = new \ZipArchive;
+            $zip = new \ZipArchive();
             $opened = $zip->open($result['path']);
 
             $this->assertTrue($opened === true, 'Il file DOCX non è un ZIP valido');

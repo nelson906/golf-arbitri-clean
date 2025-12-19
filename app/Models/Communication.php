@@ -54,15 +54,15 @@ class Communication extends Model
     ];
 
     // Communication types
-    const TYPE_ANNOUNCEMENT = 'announcement';
+    public const TYPE_ANNOUNCEMENT = 'announcement';
 
-    const TYPE_ALERT = 'alert';
+    public const TYPE_ALERT = 'alert';
 
-    const TYPE_MAINTENANCE = 'maintenance';
+    public const TYPE_MAINTENANCE = 'maintenance';
 
-    const TYPE_INFO = 'info';
+    public const TYPE_INFO = 'info';
 
-    const TYPES = [
+    public const TYPES = [
         self::TYPE_ANNOUNCEMENT => 'Annuncio',
         self::TYPE_ALERT => 'Avviso Importante',
         self::TYPE_MAINTENANCE => 'Manutenzione',
@@ -70,28 +70,28 @@ class Communication extends Model
     ];
 
     // Communication statuses
-    const STATUS_DRAFT = 'draft';
+    public const STATUS_DRAFT = 'draft';
 
-    const STATUS_PUBLISHED = 'published';
+    public const STATUS_PUBLISHED = 'published';
 
-    const STATUS_EXPIRED = 'expired';
+    public const STATUS_EXPIRED = 'expired';
 
-    const STATUSES = [
+    public const STATUSES = [
         self::STATUS_DRAFT => 'Bozza',
         self::STATUS_PUBLISHED => 'Pubblicato',
         self::STATUS_EXPIRED => 'Scaduto',
     ];
 
     // Priority levels
-    const PRIORITY_LOW = 'low';
+    public const PRIORITY_LOW = 'low';
 
-    const PRIORITY_NORMAL = 'normal';
+    public const PRIORITY_NORMAL = 'normal';
 
-    const PRIORITY_HIGH = 'high';
+    public const PRIORITY_HIGH = 'high';
 
-    const PRIORITY_URGENT = 'urgent';
+    public const PRIORITY_URGENT = 'urgent';
 
-    const PRIORITIES = [
+    public const PRIORITIES = [
         self::PRIORITY_LOW => 'Bassa',
         self::PRIORITY_NORMAL => 'Normale',
         self::PRIORITY_HIGH => 'Alta',

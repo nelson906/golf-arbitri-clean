@@ -7,7 +7,7 @@ class RefereeRoleHelper
     /**
      * Ordine gerarchico dei ruoli
      */
-    const ROLE_HIERARCHY = [
+    public const ROLE_HIERARCHY = [
         'Direttore di Torneo' => 1,
         'Arbitro' => 2,
         'Osservatore' => 3,

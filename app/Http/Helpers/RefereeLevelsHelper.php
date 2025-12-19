@@ -14,7 +14,7 @@ class RefereeLevelsHelper
     /**
      * Valori ENUM del database (chiavi = valori DB, valori = label utente)
      */
-    const DB_ENUM_VALUES = [
+    public const DB_ENUM_VALUES = [
         'Aspirante' => 'Aspirante',
         '1_livello' => 'Primo Livello',
         'Regionale' => 'Regionale',
@@ -26,7 +26,7 @@ class RefereeLevelsHelper
     /**
      * Mapping da tutte le varianti (lowercase) ai valori ENUM database
      */
-    const VARIANTS_MAP = [
+    public const VARIANTS_MAP = [
         // Aspirante
         'aspirante' => 'Aspirante',
         'asp' => 'Aspirante',
@@ -92,7 +92,7 @@ class RefereeLevelsHelper
         }
 
         // Se non trovato, log warning e restituisci originale
-        \Log::warning('RefereeLevelsHelper: Unknown level variant', [
+        \Illuminate\Support\Facades\Log::warning('RefereeLevelsHelper: Unknown level variant', [
             'input_level' => $level,
             'lowercase' => $levelLower,
         ]);

@@ -120,7 +120,7 @@ class DocumentGenerationService
     {
         try {
             // Crea documento PHPWord
-            $phpWord = new PhpWord;
+            $phpWord = new PhpWord();
 
             // Impostazioni lingua e font di default
             $language = new \PhpOffice\PhpWord\Style\Language(\PhpOffice\PhpWord\Style\Language::IT_IT);

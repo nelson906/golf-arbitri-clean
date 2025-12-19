@@ -12,7 +12,8 @@ use Illuminate\Queue\SerializesModels;
 
 class RefereeAssignmentMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable;
+    use SerializesModels;
 
     /**
      * L'assegnazione dell'arbitro

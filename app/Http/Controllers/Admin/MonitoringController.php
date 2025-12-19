@@ -582,7 +582,9 @@ class MonitoringController extends Controller
 
         switch ($last) {
             case 'g': $limit *= 1024;
+                // no break
             case 'm': $limit *= 1024;
+                // no break
             case 'k': $limit *= 1024;
         }
 

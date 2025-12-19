@@ -25,7 +25,8 @@ class NotificationController extends Controller
         private NotificationPreparationService $preparationService,
         private NotificationDocumentService $documentService,
         private NotificationTransactionService $transactionService
-    ) {}
+    ) {
+    }
 
     /**
      * Lista notifiche con gestione documenti

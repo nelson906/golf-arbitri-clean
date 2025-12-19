@@ -36,7 +36,7 @@ Route::get('/dev/view-test-all', function () {
         try {
             ob_start();
 
-            $data = ['errors' => new \Illuminate\Support\ViewErrorBag];
+            $data = ['errors' => new \Illuminate\Support\ViewErrorBag()];
             $allVars = @analyzeViewRecursive($viewName);
 
             foreach ($allVars as $var) {

