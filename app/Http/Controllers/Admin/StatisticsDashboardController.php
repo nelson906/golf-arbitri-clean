@@ -333,13 +333,13 @@ class StatisticsDashboardController extends Controller
 
     private function getPeriodStats($user, $startDate): array
     {
-        $tournamentQuery = Tournament::where('created_at', '>=', $startDate);
+        $tournamentQuery = Tournament::query()->where('created_at', '>=', $startDate);
         $this->applyTournamentVisibility($tournamentQuery, $user);
 
-        $assignmentQuery = Assignment::where('created_at', '>=', $startDate);
+        $assignmentQuery = Assignment::query()->where('created_at', '>=', $startDate);
         $this->applyTournamentRelationVisibility($assignmentQuery, $user);
 
-        $availabilityQuery = Availability::where('created_at', '>=', $startDate);
+        $availabilityQuery = Availability::query()->where('created_at', '>=', $startDate);
         $this->applyTournamentRelationVisibility($availabilityQuery, $user);
 
         return [
