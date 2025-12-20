@@ -54,12 +54,12 @@ class ClubController extends Controller
         $clubs = $query
             ->withCount('tournaments')
             ->orderBy('is_active', 'desc')
-            ->orderBy('name')
+            ->orderBy('name', 'asc')
             ->paginate(20)
             ->withQueryString();
 
         // Zone per filtro
-        $zones = Zone::orderBy('name')->get();
+        $zones = Zone::orderBy('name', 'asc')->get();
 
         return view('admin.clubs.index', compact('clubs', 'zones', 'isNationalAdmin'));
     }
@@ -103,7 +103,7 @@ class ClubController extends Controller
         $isNationalAdmin = $this->isNationalAdmin($user);
 
         // Zone disponibili (filtrate per ruolo)
-        $zones = Zone::orderBy('name');
+        $zones = Zone::orderBy('name', 'asc');
         if (! $isNationalAdmin && $user && $user->zone_id) {
             $zones = $zones->where('id', $user->zone_id);
         }
@@ -159,7 +159,7 @@ class ClubController extends Controller
         }
 
         // Zone disponibili (filtrate per ruolo)
-        $zones = Zone::orderBy('name');
+        $zones = Zone::orderBy('name', 'asc');
         if (! $isNationalAdmin && $user && $user->zone_id) {
             $zones = $zones->where('id', $user->zone_id);
         }
@@ -296,7 +296,7 @@ class ClubController extends Controller
             $query->where('zone_id', $request->zone_id);
         }
 
-        $clubs = $query->orderBy('name')->get();
+        $clubs = $query->orderBy('name', 'asc')->get();
 
         // Genera CSV
         $headers = [
