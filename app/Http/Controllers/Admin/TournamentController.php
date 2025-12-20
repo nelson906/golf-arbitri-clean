@@ -78,6 +78,11 @@ class TournamentController extends Controller
             });
         }
 
+        // Club filter
+        if ($request->filled('club_id')) {
+            $query->where('club_id', $request->club_id);
+        }
+
         // Order by start date descending and paginate
         $tournaments = $query->orderBy('start_date', 'desc')->paginate(20);
 

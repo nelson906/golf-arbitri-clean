@@ -49,12 +49,12 @@ class Club extends Model
         'phone',
         'email',
         'website',
-        'active',
+        'is_active',
         'notes',
     ];
 
     protected $casts = [
-        'active' => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     /**
@@ -75,11 +75,7 @@ class Club extends Model
      */
     public function scopeActive($query)
     {
-        if (Schema::hasColumn($this->getTable(), 'active')) {
-            return $query->where('active', true);
-        }
-
-        return $query;
+        return $query->where('is_active', true);
     }
 
     /**
