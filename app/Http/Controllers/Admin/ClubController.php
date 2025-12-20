@@ -213,8 +213,15 @@ class ClubController extends Controller
         }
 
         // Verifica se ha tornei associati
-        if ($club->tournaments()->exists()) {
-            return back()->with('error', 'Impossibile eliminare: il circolo ha tornei associati');
+        $tournaments = $club->tournaments()->get(['id', 'name', 'start_date', 'status']);
+        if ($tournaments->isNotEmpty()) {
+            $tournamentList = $tournaments->map(function ($t) {
+                $date = $t->start_date ? $t->start_date->format('d/m/Y') : 'N/A';
+
+                return "- {$t->name} ({$date}) [{$t->status}]";
+            })->implode("\n");
+
+            return back()->with('error', "Impossibile eliminare: il circolo ha {$tournaments->count()} tornei associati:\n{$tournamentList}");
         }
 
         $club->delete();
@@ -243,6 +250,24 @@ class ClubController extends Controller
         $status = $club->is_active ? 'attivato' : 'disattivato';
 
         return back()->with('success', "Circolo {$status} con successo");
+    }
+
+    /**
+     * Disattiva circolo
+     */
+    public function deactivate(Club $club)
+    {
+        $user = auth()->user();
+
+        // Verifica permessi tramite trait
+        if (! $this->isNationalAdmin($user) && $club->zone_id != $this->getUserZoneId($user)) {
+            abort(403, 'Non autorizzato');
+        }
+
+        $club->is_active = false;
+        $club->save();
+
+        return back()->with('success', 'Circolo disattivato con successo');
     }
 
     /**
