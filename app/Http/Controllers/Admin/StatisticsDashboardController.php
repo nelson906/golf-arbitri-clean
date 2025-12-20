@@ -279,7 +279,7 @@ class StatisticsDashboardController extends Controller
         $type = $request->get('type', 'general');
         $user = auth()->user();
 
-        $filename = "statistiche_{$type}_" . Carbon::now()->format('Y-m-d') . '.csv';
+        $filename = "statistiche_{$type}_".Carbon::now()->format('Y-m-d').'.csv';
 
         $headers = [
             'Content-Type' => 'text/csv',
@@ -373,15 +373,15 @@ class StatisticsDashboardController extends Controller
     private function applyDateFilters($query, ?string $dateFrom, ?string $dateTo, ?string $month = null): void
     {
         if ($dateFrom) {
-            $query->whereHas('tournament', fn($q) => $q->where('start_date', '>=', $dateFrom));
+            $query->whereHas('tournament', fn ($q) => $q->where('start_date', '>=', $dateFrom));
         }
 
         if ($dateTo) {
-            $query->whereHas('tournament', fn($q) => $q->where('start_date', '<=', $dateTo));
+            $query->whereHas('tournament', fn ($q) => $q->where('start_date', '<=', $dateTo));
         }
 
         if ($month) {
-            $query->whereHas('tournament', fn($q) => $q->whereMonth('start_date', $month));
+            $query->whereHas('tournament', fn ($q) => $q->whereMonth('start_date', $month));
         }
     }
 

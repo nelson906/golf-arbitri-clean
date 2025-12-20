@@ -107,7 +107,7 @@ class TournamentStatsService
             12 => 'Dicembre',
         ];
 
-        return $monthlyData->mapWithKeys(fn($count, $monthNum) => [$monthNames[$monthNum] => $count]);
+        return $monthlyData->mapWithKeys(fn ($count, $monthNum) => [$monthNames[$monthNum] => $count]);
     }
 
     /**
