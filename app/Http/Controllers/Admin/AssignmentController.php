@@ -103,9 +103,10 @@ class AssignmentController extends Controller
         $otherReferees = collect();
 
         if ($request->has('tournament_id')) {
+            /** @var Tournament|null $tournament */
             $tournament = Tournament::with(['assignments.user', 'availabilities.user'])->find($request->tournament_id);
 
-            if ($tournament) {
+            if ($tournament instanceof Tournament) {
                 // IDs arbitri già assegnati a questo torneo
                 $assignedRefereeIds = $tournament->assignments()->pluck('user_id')->toArray();
 

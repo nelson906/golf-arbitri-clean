@@ -87,7 +87,7 @@ class ZoneHelper
     {
         $pattern = config('golf.zones.default_email_pattern', 'szr{zone_id}@federgolf.it');
 
-        return str_replace('{zone_id}', $zoneId, $pattern);
+        return str_replace('{zone_id}', (string) $zoneId, $pattern);
     }
 
     /**

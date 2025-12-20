@@ -145,7 +145,7 @@ class QuadrantiController extends Controller
         try {
             // Converti la data dal formato italiano (potrebbe arrivare con / o -)
             $dateParts = preg_split('/[\/\-]/', $date);
-            if (count($dateParts) !== 3) {
+            if ($dateParts === false || count($dateParts) !== 3) {
                 throw new \Exception('Invalid date format: '.$date);
             }
 

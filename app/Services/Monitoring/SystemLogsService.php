@@ -73,6 +73,9 @@ class SystemLogsService
         }
 
         $content = file_get_contents($logFile);
+        if ($content === false) {
+            return [];
+        }
         $logLines = array_slice(explode("\n", $content), -$lines);
 
         return array_filter($logLines);

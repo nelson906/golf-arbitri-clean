@@ -163,12 +163,15 @@ class SystemMetricsService
     {
         $totalSpace = disk_total_space('/');
         $freeSpace = disk_free_space('/');
-        $usedSpace = $totalSpace - $freeSpace;
+        if ($totalSpace === false || $freeSpace === false) {
+            return ['used' => 'N/A', 'total' => 'N/A', 'percentage' => 0];
+        }
+        $usedSpace = (int) ($totalSpace - $freeSpace);
         $percentage = round(($usedSpace / $totalSpace) * 100, 2);
 
         return [
             'used' => $this->formatBytes($usedSpace),
-            'total' => $this->formatBytes($totalSpace),
+            'total' => $this->formatBytes((int) $totalSpace),
             'percentage' => $percentage,
         ];
     }

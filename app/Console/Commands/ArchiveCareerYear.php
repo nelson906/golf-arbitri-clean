@@ -38,10 +38,10 @@ class ArchiveCareerYear extends Command
      */
     public function handle(): int
     {
-        $year = $this->argument('year') ?? now()->year;
-        $userId = $this->option('user');
-        $clearData = $this->option('clear');
-        $dryRun = $this->option('dry-run');
+        $year = (int) ($this->argument('year') ?? now()->year);
+        $userId = $this->option('user') ? (int) $this->option('user') : null;
+        $clearData = (bool) $this->option('clear');
+        $dryRun = (bool) $this->option('dry-run');
 
         $this->info("=== Archiviazione Career History - Anno {$year} ===");
         $this->newLine();

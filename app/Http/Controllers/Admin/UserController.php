@@ -220,7 +220,7 @@ class UserController extends Controller
         if (empty($validated['referee_code'])) {
             $lastUser = User::orderBy('id', 'desc')->first();
             $nextId = $lastUser ? $lastUser->id + 1 : 1;
-            $validated['referee_code'] = 'REF'.str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            $validated['referee_code'] = 'REF'.str_pad((string) $nextId, 4, '0', STR_PAD_LEFT);
         }
 
         // Crea utente

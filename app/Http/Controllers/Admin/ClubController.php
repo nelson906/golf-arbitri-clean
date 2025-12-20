@@ -305,6 +305,9 @@ class ClubController extends Controller
 
         $callback = function () use ($clubs) {
             $file = fopen('php://output', 'w');
+            if ($file === false) {
+                return;
+            }
 
             // Headers CSV
             fputcsv($file, ['ID', 'Nome', 'Zona', 'Città', 'Email', 'Telefono', 'N° Tornei']);

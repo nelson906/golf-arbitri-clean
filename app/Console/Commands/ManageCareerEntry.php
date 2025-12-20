@@ -109,7 +109,7 @@ class ManageCareerEntry extends Command
 
         $this->newLine();
         $this->info('Career Stats:');
-        $this->line(json_encode($history->career_stats, JSON_PRETTY_PRINT));
+        $this->line(json_encode($history->career_stats, JSON_PRETTY_PRINT) ?: '{}');
     }
 
     private function showYearDetails(RefereeCareerHistory $history, int $year): void

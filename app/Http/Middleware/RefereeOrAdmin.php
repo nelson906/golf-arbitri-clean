@@ -144,25 +144,26 @@ class RefereeOrAdmin
         $modelClass = $refereeOwnResources[$parameterName];
 
         try {
+            /** @var \Illuminate\Database\Eloquent\Model|null $resource */
             $resource = $modelClass::find($resourceId);
 
-            if (! $resource) {
+            if (! $resource instanceof \Illuminate\Database\Eloquent\Model) {
                 return false; // Resource not found, let the controller handle it
             }
 
             // Check ownership based on resource type
             switch ($parameterName) {
                 case 'referee':
-                    return $resource->id !== $user->id;
+                    return $resource->getAttribute('id') !== $user->id;
 
                 case 'availability':
-                    return $resource->referee_id !== $user->id;
+                    return $resource->getAttribute('referee_id') !== $user->id;
 
                 case 'assignment':
-                    return $resource->referee_id !== $user->id;
+                    return $resource->getAttribute('referee_id') !== $user->id;
 
                 case 'application':
-                    return $resource->referee_id !== $user->id;
+                    return $resource->getAttribute('referee_id') !== $user->id;
 
                 default:
                     return false;
@@ -199,26 +200,24 @@ class RefereeOrAdmin
         $modelClass = $zoneRestrictedResources[$parameterName];
 
         try {
+            /** @var \Illuminate\Database\Eloquent\Model|null $resource */
             $resource = $modelClass::find($resourceId);
 
-            if (! $resource) {
+            if (! $resource instanceof \Illuminate\Database\Eloquent\Model) {
                 return false; // Resource not found, let the controller handle it
             }
 
             // Check if resource belongs to user's zone
-            if (isset($resource->zone_id) && $resource->zone_id !== $user->zone_id) {
+            $resourceZoneId = $resource->getAttribute('zone_id');
+            if ($resourceZoneId !== null && $resourceZoneId !== $user->zone_id) {
                 // Allow access to global resources (zone_id = null) for all admins
-                if ($resource->zone_id === null) {
-                    return false;
-                }
-
                 return true; // Access violation
             }
 
             // Special handling for users (referees)
             if ($parameterName === 'referee' &&
-                $resource->user_type === 'referee' &&
-                $resource->zone_id !== $user->zone_id) {
+                $resource->getAttribute('user_type') === 'referee' &&
+                $resource->getAttribute('zone_id') !== $user->zone_id) {
                 return true;
             }
 
