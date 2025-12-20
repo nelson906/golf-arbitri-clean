@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $expires_at
  * @property string|null $error_message
  * @property int $retry_count
- * @property int $priority
+ * @property string $priority
  * @property array<array-key, mixed>|null $attachments
  * @property array<array-key, mixed>|null $metadata
  * @property \Illuminate\Support\Carbon|null $created_at
@@ -285,7 +285,7 @@ class Notification extends Model
             self::PRIORITY_HIGH => 'Alta',
             self::PRIORITY_NORMAL => 'Normale',
             self::PRIORITY_LOW => 'Bassa',
-            default => ucfirst($this->priority),
+            default => ucfirst((string) $this->priority),
         };
     }
 
