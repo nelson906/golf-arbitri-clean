@@ -104,10 +104,10 @@
             📈 Report
         </x-nav-link> --}}
 
-        {{-- ✅ MONITORING MENU - AGGIUNTO --}}
-        {{-- <x-nav-link :href="route('admin.monitoring.dashboard')" :active="request()->routeIs('admin.monitoring.*')">
+        {{-- ✅ MONITORING MENU --}}
+        <x-nav-link :href="route('admin.monitoring.dashboard')" :active="request()->routeIs('admin.monitoring.*')">
             🖥️ Monitoraggio
-        </x-nav-link> --}}
+        </x-nav-link>
 
         {{-- Documents --}}
         <x-nav-link :href="route('admin.documents.index')" :active="request()->routeIs('admin.documents.*')">
@@ -151,6 +151,9 @@
             </x-dropdown-link>
             <x-dropdown-link :href="route('admin.statistics.dashboard')">
                 📊 Statistiche
+            </x-dropdown-link>
+            <x-dropdown-link :href="route('admin.monitoring.dashboard')">
+                🖥️ Monitoraggio
             </x-dropdown-link>
         </x-slot>
     </x-dropdown>
@@ -351,10 +354,10 @@
                     📈 Report
                 </x-responsive-nav-link> --}}
 
-                {{-- ✅ MONITORING MOBILE MENU - AGGIUNTO --}}
-                {{-- <x-responsive-nav-link :href="route('admin.monitoring.dashboard')" :active="request()->routeIs('admin.monitoring.*')">
+                {{-- ✅ MONITORING MOBILE MENU --}}
+                <x-responsive-nav-link :href="route('admin.monitoring.dashboard')" :active="request()->routeIs('admin.monitoring.*')">
                     🖥️ Monitoraggio
-                </x-responsive-nav-link> --}}
+                </x-responsive-nav-link>
 
                 <x-responsive-nav-link :href="route('admin.documents.index')" :active="request()->routeIs('admin.documents.*')">
                     📁 Documenti
