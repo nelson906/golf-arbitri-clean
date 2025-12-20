@@ -9,8 +9,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 /**
  * @property int $id
@@ -21,7 +19,6 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
  * @property string|null $description
  * @property bool|null $is_national
  * @property bool|null $is_active
- *
  * @property-read Collection<int, Club> $clubs
  * @property-read Collection<int, User> $users
  * @property-read Collection<int, User> $referees

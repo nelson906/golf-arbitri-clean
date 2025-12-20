@@ -13,6 +13,7 @@ use Illuminate\View\View;
 class RefereeCareerController extends Controller
 {
     use HasZoneVisibility;
+
     protected RefereeCareerService $careerService;
 
     public function __construct(RefereeCareerService $careerService)
@@ -35,7 +36,7 @@ class RefereeCareerController extends Controller
         $zone = $request->get('zone');
 
         // Se non è specificata una zona e l'utente è admin zonale, usa la sua zona
-        if (!$request->has('zone') && $this->isZoneAdmin($user)) {
+        if (! $request->has('zone') && $this->isZoneAdmin($user)) {
             $zone = $this->getUserZoneId($user);
         }
 

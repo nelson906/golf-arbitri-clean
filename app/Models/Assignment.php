@@ -9,7 +9,6 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property int $id
@@ -24,7 +23,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property bool $is_confirmed
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- *
  * @property-read Tournament|null $tournament
  * @property-read User|null $user
  * @property-read User|null $referee

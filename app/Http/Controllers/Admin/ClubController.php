@@ -222,7 +222,7 @@ class ClubController extends Controller
             })->implode("\n");
 
             return back()->with('error', "Impossibile eliminare: il circolo ha {$tournaments->count()} tornei associati:\n{$tournamentList}");
-                }
+        }
 
         $club->delete();
 
@@ -251,7 +251,6 @@ class ClubController extends Controller
 
         return back()->with('success', "Circolo {$status} con successo");
     }
-
 
     /**
      * Disattiva circolo

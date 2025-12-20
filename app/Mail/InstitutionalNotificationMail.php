@@ -12,8 +12,7 @@ class InstitutionalNotificationMail extends Mailable
     public function __construct(
         public Tournament $tournament,
         public string $notificationType
-    ) {
-    }
+    ) {}
 
     public function envelope(): Envelope
     {

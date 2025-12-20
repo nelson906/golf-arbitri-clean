@@ -78,7 +78,7 @@ class CareerHistoryController extends Controller
     {
         // Check zone access
         $currentUser = auth()->user();
-        if (!$this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
+        if (! $this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 
@@ -128,14 +128,14 @@ class CareerHistoryController extends Controller
         $currentUser = auth()->user();
 
         // Only super_admin can clear data
-        if ($clearData && !$this->isSuperAdmin($currentUser)) {
+        if ($clearData && ! $this->isSuperAdmin($currentUser)) {
             return redirect()
                 ->back()
                 ->with('error', 'Solo il super admin puo svuotare le tabelle');
         }
 
         // If not super_admin, must specify a user (can't archive all)
-        if (!$this->isSuperAdmin($currentUser) && !$userId) {
+        if (! $this->isSuperAdmin($currentUser) && ! $userId) {
             return redirect()
                 ->back()
                 ->with('error', 'Devi selezionare un arbitro specifico');
@@ -144,7 +144,7 @@ class CareerHistoryController extends Controller
         // If user specified, check zone access
         if ($userId) {
             $targetUser = User::find($userId);
-            if ($targetUser && !$this->isSuperAdmin($currentUser) && $targetUser->zone_id !== $this->getUserZoneId($currentUser)) {
+            if ($targetUser && ! $this->isSuperAdmin($currentUser) && $targetUser->zone_id !== $this->getUserZoneId($currentUser)) {
                 abort(403, 'Non hai accesso a questo arbitro');
             }
         }
@@ -152,7 +152,7 @@ class CareerHistoryController extends Controller
         try {
             if ($userId) {
                 // Archivia solo per un utente
-            $result = $this->careerService->archiveYearForUser($userId, $year);
+                $result = $this->careerService->archiveYearForUser($userId, $year);
                 $targetUser = User::find($userId);
 
                 return redirect()
@@ -197,7 +197,7 @@ class CareerHistoryController extends Controller
     {
         // Check zone access
         $currentUser = auth()->user();
-        if (!$this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
+        if (! $this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 
@@ -237,7 +237,7 @@ class CareerHistoryController extends Controller
     {
         // Check zone access
         $currentUser = auth()->user();
-        if (!$this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
+        if (! $this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 
@@ -249,7 +249,7 @@ class CareerHistoryController extends Controller
 
         $tournament = Tournament::with('club')->find($request->tournament_id);
 
-        if (!$tournament) {
+        if (! $tournament) {
             return redirect()
                 ->back()
                 ->with('error', 'Torneo non trovato');
@@ -302,7 +302,7 @@ class CareerHistoryController extends Controller
     {
         // Check zone access
         $currentUser = auth()->user();
-        if (!$this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
+        if (! $this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 
@@ -377,7 +377,7 @@ class CareerHistoryController extends Controller
     {
         // Check zone access
         $currentUser = auth()->user();
-        if (!$this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
+        if (! $this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 

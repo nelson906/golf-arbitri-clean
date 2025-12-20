@@ -168,8 +168,6 @@ class UserController extends Controller
         // Circoli disponibili (tutti, anche fuori zona)
         $clubs = \App\Models\Club::orderBy('name')->get();
 
-
-
         // Tipi utente che può creare
         $userTypes = ['referee' => 'Arbitro'];
         if ($isNationalAdmin) {
@@ -210,8 +208,7 @@ class UserController extends Controller
         $validated['password'] = Hash::make('password123');
 
         // Genera automaticamente il campo 'name' concatenando first_name e last_name
-        $validated['name'] = trim($validated['first_name'] . ' ' . $validated['last_name']);
-
+        $validated['name'] = trim($validated['first_name'].' '.$validated['last_name']);
 
         // Imposta tipo utente predefinito (referee)
         $validated['user_type'] = 'referee';
@@ -219,12 +216,11 @@ class UserController extends Controller
         // Gestisci il campo is_active (checkbox)
         $validated['is_active'] = $request->has('is_active');
 
-
         // Genera codice arbitro se non è fornito
         if (empty($validated['referee_code'])) {
             $lastUser = User::orderBy('id', 'desc')->first();
             $nextId = $lastUser ? $lastUser->id + 1 : 1;
-            $validated['referee_code'] = 'REF' . str_pad($nextId, 4, '0', STR_PAD_LEFT);
+            $validated['referee_code'] = 'REF'.str_pad($nextId, 4, '0', STR_PAD_LEFT);
         }
 
         // Crea utente
@@ -291,10 +287,10 @@ class UserController extends Controller
         $rules = [
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'user_type' => 'required|in:referee,admin' . ($isNationalAdmin ? ',national_admin,super_admin' : ''),
+            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
+            'user_type' => 'required|in:referee,admin'.($isNationalAdmin ? ',national_admin,super_admin' : ''),
             'zone_id' => 'required|exists:zones,id',
-            'referee_code' => 'nullable|string|max:20|unique:users,referee_code,' . $user->id,
+            'referee_code' => 'nullable|string|max:20|unique:users,referee_code,'.$user->id,
             'level' => 'nullable|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio',
             'phone' => 'nullable|string|max:20',
             'gender' => 'nullable|in:male,female,mixed',
@@ -314,8 +310,7 @@ class UserController extends Controller
         }
 
         // Genera automaticamente il campo 'name' concatenando first_name e last_name
-        $validated['name'] = trim($validated['first_name'] . ' ' . $validated['last_name']);
-
+        $validated['name'] = trim($validated['first_name'].' '.$validated['last_name']);
 
         // Gestisci il campo is_active (checkbox)
         $validated['is_active'] = $request->has('is_active');

@@ -3,7 +3,6 @@
 namespace App\Services\Statistics;
 
 use App\Models\Assignment;
-use App\Models\Availability;
 use App\Models\User;
 use App\Models\Zone;
 use App\Traits\HasZoneVisibility;

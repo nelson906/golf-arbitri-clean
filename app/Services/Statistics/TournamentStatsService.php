@@ -7,7 +7,6 @@ use App\Models\Tournament;
 use App\Models\User;
 use App\Traits\HasZoneVisibility;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class TournamentStatsService
 {
@@ -108,7 +107,7 @@ class TournamentStatsService
             12 => 'Dicembre',
         ];
 
-        return $monthlyData->mapWithKeys(fn($count, $monthNum) => [$monthNames[$monthNum] => $count]);
+        return $monthlyData->mapWithKeys(fn ($count, $monthNum) => [$monthNames[$monthNum] => $count]);
     }
 
     /**

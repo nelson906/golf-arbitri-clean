@@ -14,8 +14,7 @@ class NotificationTransactionService
     public function __construct(
         private NotificationService $notificationService,
         private NotificationDocumentService $documentService
-    ) {
-    }
+    ) {}
 
     /**
      * Invia una notifica con gestione transazionale

@@ -160,7 +160,7 @@ class QuadrantiController extends Controller
             }
 
             // Crea un oggetto DateTime
-            $dateTime = new \DateTime();
+            $dateTime = new \DateTime;
             $dateTime->setDate($anno, $mese, $giorno);
             $dateTime->setTime(12, 0, 0);
 

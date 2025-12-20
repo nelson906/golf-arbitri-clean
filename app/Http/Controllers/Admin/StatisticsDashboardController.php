@@ -279,7 +279,7 @@ class StatisticsDashboardController extends Controller
         $type = $request->get('type', 'general');
         $user = auth()->user();
 
-        $filename = "statistiche_{$type}_" . Carbon::now()->format('Y-m-d') . '.csv';
+        $filename = "statistiche_{$type}_".Carbon::now()->format('Y-m-d').'.csv';
 
         $headers = [
             'Content-Type' => 'text/csv',
@@ -306,6 +306,7 @@ class StatisticsDashboardController extends Controller
     public function apiStats(Request $request, $type)
     {
         $user = auth()->user();
+
         return match ($type) {
             'dashboard' => response()->json($this->getGeneralStats($user)),
             'charts' => response()->json($this->getChartData()),
@@ -340,7 +341,6 @@ class StatisticsDashboardController extends Controller
         $assignmentQuery = Assignment::where('created_at', '>=', $startDate);
         $this->applyTournamentRelationVisibility($assignmentQuery, $user);
 
-
         $availabilityQuery = Availability::where('created_at', '>=', $startDate);
         $this->applyTournamentRelationVisibility($availabilityQuery, $user);
 
@@ -373,19 +373,17 @@ class StatisticsDashboardController extends Controller
     private function applyDateFilters($query, ?string $dateFrom, ?string $dateTo, ?string $month = null): void
     {
         if ($dateFrom) {
-            $query->whereHas('tournament', fn($q) => $q->where('start_date', '>=', $dateFrom));
+            $query->whereHas('tournament', fn ($q) => $q->where('start_date', '>=', $dateFrom));
         }
 
         if ($dateTo) {
-            $query->whereHas('tournament', fn($q) => $q->where('start_date', '<=', $dateTo));
+            $query->whereHas('tournament', fn ($q) => $q->where('start_date', '<=', $dateTo));
         }
 
         if ($month) {
-            $query->whereHas('tournament', fn($q) => $q->whereMonth('start_date', $month));
+            $query->whereHas('tournament', fn ($q) => $q->whereMonth('start_date', $month));
         }
     }
-
-
 
     private function applyStatusFilter($query, ?string $status): void
     {
@@ -400,6 +398,7 @@ class StatisticsDashboardController extends Controller
     private function exportTournamentsCSV($handle, $user): void {}
 
     private function exportRefereesCSV($handle, $user): void {}
+
     private function exportAssignmentsCSV($handle, $user): void {}
 
     private function exportGeneralCSV($handle, $user): void {}

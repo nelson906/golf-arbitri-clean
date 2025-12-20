@@ -7,7 +7,6 @@ use App\Models\Tournament;
 use App\Models\User;
 use App\Traits\HasZoneVisibility;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class AssignmentStatsService
 {

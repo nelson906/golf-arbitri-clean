@@ -49,7 +49,7 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
     try {
         $allVariables = analyzeViewRecursive($viewName);
 
-        $data = ['errors' => new \Illuminate\Support\ViewErrorBag()];
+        $data = ['errors' => new \Illuminate\Support\ViewErrorBag];
         foreach ($allVariables as $varName) {
             if (! isset($data[$varName])) {
                 $data[$varName] = generateValue($varName);

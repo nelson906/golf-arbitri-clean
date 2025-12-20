@@ -312,7 +312,7 @@ class DocumentController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             abort(403, 'Autenticazione richiesta.');
         }
 

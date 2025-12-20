@@ -9,7 +9,6 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -22,7 +21,6 @@ use Illuminate\Support\Facades\Schema;
  * @property bool $is_available
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- *
  * @property-read Tournament|null $tournament
  * @property-read User|null $user
  * @property-read User|null $referee
