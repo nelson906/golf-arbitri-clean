@@ -67,13 +67,13 @@ class TournamentStatsService
 
         // Solo per admin nazionali/super admin
         if (! $this->isNationalAdmin($user)) {
-            return [];
+            return Collection::make([]);
         }
 
         return Tournament::query()
             ->join('zones', 'tournaments.zone_id', '=', 'zones.id')
             ->selectRaw('zones.name, COUNT(*) as totale')
-            ->orderBy('zones.name')
+            ->orderBy('zones.name', 'asc')
             ->groupBy('zones.name')
             ->pluck('totale', 'name');
     }
@@ -107,7 +107,7 @@ class TournamentStatsService
             12 => 'Dicembre',
         ];
 
-        return $monthlyData->mapWithKeys(fn ($count, $monthNum) => [$monthNames[$monthNum] => $count]);
+        return $monthlyData->mapWithKeys(fn($count, $monthNum) => [$monthNames[$monthNum] => $count]);
     }
 
     /**
@@ -136,7 +136,7 @@ class TournamentStatsService
      */
     public function getWithNotifications(?User $user = null): int
     {
-        return Notification::distinct('tournament_id')->count();
+        return Notification::query()->distinct()->count('tournament_id');
     }
 
     /**

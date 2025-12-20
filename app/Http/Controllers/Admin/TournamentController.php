@@ -71,9 +71,9 @@ class TournamentController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', '%'.$search.'%')
+                $q->where('name', 'like', '%' . $search . '%')
                     ->orWhereHas('club', function ($clubQuery) use ($search) {
-                        $clubQuery->where('name', 'like', '%'.$search.'%');
+                        $clubQuery->where('name', 'like', '%' . $search . '%');
                     });
             });
         }
@@ -87,7 +87,7 @@ class TournamentController extends Controller
         $tournaments = $query->orderBy('start_date', 'desc')->paginate(20);
 
         // Get data for filters
-        $zones = $this->isNationalAdmin($user) ? Zone::orderBy('name')->get() : collect();
+        $zones = $this->isNationalAdmin($user) ? Zone::orderBy('name', 'asc')->get() : collect();
         $tournamentTypes = TournamentType::active()->ordered()->get();
         $statuses = Tournament::STATUSES;
 
@@ -112,8 +112,8 @@ class TournamentController extends Controller
 
         // Get zones for filter
         $zones = $this->isNationalAdmin($user)
-            ? Zone::orderBy('name')->get()
-            : Zone::where('id', $user->zone_id)->get();
+            ? Zone::orderBy('name', 'asc')->get()
+            : Zone::where('id', '=', $user->zone_id)->get();
 
         // Prepara dati calendario tramite servizio
         $calendarData = $this->calendarService->prepareFullCalendarData(
@@ -162,8 +162,8 @@ class TournamentController extends Controller
 
         // Get zones con visibilità
         $zones = $this->isNationalAdmin($user)
-            ? Zone::orderBy('name')->get()
-            : Zone::where('id', $user->zone_id)->get();
+            ? Zone::orderBy('name', 'asc')->get()
+            : Zone::where('id', '=', $user->zone_id)->get();
 
         // Get clubs con visibilità
         $clubsQuery = Club::active();
@@ -194,8 +194,8 @@ class TournamentController extends Controller
 
         // Get zones con visibilità
         $zones = $this->isNationalAdmin($user)
-            ? Zone::orderBy('name')->get()
-            : Zone::where('id', $user->zone_id)->get();
+            ? Zone::orderBy('name', 'asc')->get()
+            : Zone::where('id', '=', $user->zone_id)->get();
 
         // Get clubs della zona del torneo
         $clubs = Club::active()
@@ -339,7 +339,7 @@ class TournamentController extends Controller
         $this->checkTournamentAccess($tournament);
 
         $request->validate([
-            'status' => ['required', 'in:'.implode(',', array_keys(Tournament::STATUSES))],
+            'status' => ['required', 'in:' . implode(',', array_keys(Tournament::STATUSES))],
         ]);
 
         $newStatus = $request->status;
@@ -390,7 +390,7 @@ class TournamentController extends Controller
         $this->checkTournamentAccess($tournament);
 
         $request->validate([
-            'status' => ['required', 'in:'.implode(',', array_keys(Tournament::STATUSES))],
+            'status' => ['required', 'in:' . implode(',', array_keys(Tournament::STATUSES))],
         ]);
 
         $oldStatus = $tournament->status;
@@ -421,7 +421,7 @@ class TournamentController extends Controller
 
         return redirect()
             ->back()
-            ->with('success', "Stato torneo cambiato da '".Tournament::STATUSES[$oldStatus]."' a '".Tournament::STATUSES[$newStatus]."'.");
+            ->with('success', "Stato torneo cambiato da '" . Tournament::STATUSES[$oldStatus] . "' a '" . Tournament::STATUSES[$newStatus] . "'.");
     }
 
     /**
@@ -443,18 +443,18 @@ class TournamentController extends Controller
             ->sortBy('user.name');
 
         // Get all eligible referees who haven't declared availability
-        $eligibleReferees = \App\Models\User::where('user_type', 'referee')
-            ->where('is_active', true)
+        $eligibleReferees = \App\Models\User::where('user_type', '=', 'referee')
+            ->where('is_active', '=', true)
+
             // ✅ FIXED: Use tournamentType relationship
             ->when($tournament->tournamentType->is_national, function ($q) {
                 $q->whereIn('level', ['nazionale', 'internazionale']);
             }, function ($q) use ($tournament) {
-                $q->where('zone_id', $tournament->zone_id);
+                $q->where('zone_id', '=', $tournament->zone_id);
             })
             ->whereNotIn('id', $tournament->availabilities()->pluck('user_id'))
             ->whereNotIn('id', $tournament->assignments()->pluck('user_id'))
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name', 'asc')->get();
 
         return view('admin.tournaments.availabilities', compact(
             'tournament',

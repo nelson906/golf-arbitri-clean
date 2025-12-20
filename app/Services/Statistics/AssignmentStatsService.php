@@ -58,14 +58,14 @@ class AssignmentStatsService
 
         // Solo per admin nazionali/super admin
         if (! $this->isNationalAdmin($user)) {
-            return [];
+            return Collection::make([]);
         }
 
         return Assignment::query()
             ->join('tournaments', 'assignments.tournament_id', '=', 'tournaments.id')
             ->join('zones', 'tournaments.zone_id', '=', 'zones.id')
             ->selectRaw('zones.name, COUNT(*) as totale')
-            ->orderBy('zones.name')
+            ->orderBy('zones.name', 'asc')
             ->groupBy('zones.name')
             ->pluck('totale', 'name');
     }
@@ -90,7 +90,7 @@ class AssignmentStatsService
     public function getTournamentsWithAssignments(?User $user = null): int
     {
         $user = $user ?? auth()->user();
-        $query = Tournament::has('assignments');
+        $query = Tournament::query()->has('assignments');
 
         return $this->applyTournamentVisibility($query, $user)->count();
     }
@@ -126,8 +126,9 @@ class AssignmentStatsService
     {
         $user = $user ?? auth()->user();
 
-        $refereesQuery = User::where('user_type', 'referee')
-            ->where('is_active', true)
+        $refereesQuery = User::query()
+            ->where('user_type', '=', 'referee')
+            ->where('is_active', '=', true)
             ->withCount('assignments');
 
         $this->applyUserVisibility($refereesQuery, $user);

@@ -49,14 +49,14 @@ class RefereeStatsService
 
         // Solo per admin nazionali/super admin
         if (! $this->isNationalAdmin($user)) {
-            return [];
+            return Collection::make([]);
         }
 
-        return User::where('user_type', 'referee')
+        return User::query()->where('user_type', '=', 'referee')
             ->where('level', '<>', 'Archivio')
             ->join('zones', 'users.zone_id', '=', 'zones.id')
             ->selectRaw('zones.name, COUNT(*) as totale')
-            ->orderBy('zones.name')
+            ->orderBy('zones.name', 'asc')
             ->groupBy('zones.name')
             ->pluck('totale', 'name');
     }
@@ -174,7 +174,7 @@ class RefereeStatsService
     protected function baseQuery(?User $user = null)
     {
         $user = $user ?? auth()->user();
-        $query = User::where('user_type', 'referee');
+        $query = User::query()->where('user_type', '=', 'referee');
 
         return $this->applyUserVisibility($query, $user);
     }

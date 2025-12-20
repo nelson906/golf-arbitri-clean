@@ -194,14 +194,14 @@ class StatisticsDashboardController extends Controller
         $zone = $request->get('zone');
 
         // Query arbitri con filtri
-        $query = User::where('user_type', 'referee')->with(['zone']);
+        $query = User::where('user_type', '=', 'referee')->with(['zone']);
         $this->applyUserVisibility($query, $user);
 
         if ($level) {
-            $query->where('level', $level);
+            $query->where('level', '=', $level);
         }
         if ($zone) {
-            $query->where('zone_id', $zone);
+            $query->where('zone_id', '=', $zone);
         }
 
         $referees = $query->paginate(50);
@@ -209,7 +209,7 @@ class StatisticsDashboardController extends Controller
         // Statistiche via Service
         $stats = $this->refereeStats->getFullStats($user);
         $stats['total'] = $query->count();
-        $stats['active'] = $query->clone()->where('is_active', true)->count();
+        $stats['active'] = $query->clone()->where('is_active', '=', true)->count();
         $stats['by_level'] = $this->refereeStats->getByLevel($user);
         $stats['by_zone'] = $this->refereeStats->getByZone($user);
 
@@ -279,7 +279,7 @@ class StatisticsDashboardController extends Controller
         $type = $request->get('type', 'general');
         $user = auth()->user();
 
-        $filename = "statistiche_{$type}_".Carbon::now()->format('Y-m-d').'.csv';
+        $filename = "statistiche_{$type}_" . Carbon::now()->format('Y-m-d') . '.csv';
 
         $headers = [
             'Content-Type' => 'text/csv',
@@ -335,13 +335,13 @@ class StatisticsDashboardController extends Controller
 
     private function getPeriodStats($user, $startDate): array
     {
-        $tournamentQuery = Tournament::where('created_at', '>=', $startDate);
+        $tournamentQuery = Tournament::query()->where('created_at', '>=', $startDate);
         $this->applyTournamentVisibility($tournamentQuery, $user);
 
-        $assignmentQuery = Assignment::where('created_at', '>=', $startDate);
+        $assignmentQuery = Assignment::query()->where('created_at', '>=', $startDate);
         $this->applyTournamentRelationVisibility($assignmentQuery, $user);
 
-        $availabilityQuery = Availability::where('created_at', '>=', $startDate);
+        $availabilityQuery = Availability::query()->where('created_at', '>=', $startDate);
         $this->applyTournamentRelationVisibility($availabilityQuery, $user);
 
         return [
@@ -373,15 +373,15 @@ class StatisticsDashboardController extends Controller
     private function applyDateFilters($query, ?string $dateFrom, ?string $dateTo, ?string $month = null): void
     {
         if ($dateFrom) {
-            $query->whereHas('tournament', fn ($q) => $q->where('start_date', '>=', $dateFrom));
+            $query->whereHas('tournament', fn($q) => $q->where('start_date', '>=', $dateFrom));
         }
 
         if ($dateTo) {
-            $query->whereHas('tournament', fn ($q) => $q->where('start_date', '<=', $dateTo));
+            $query->whereHas('tournament', fn($q) => $q->where('start_date', '<=', $dateTo));
         }
 
         if ($month) {
-            $query->whereHas('tournament', fn ($q) => $q->whereMonth('start_date', $month));
+            $query->whereHas('tournament', fn($q) => $q->whereMonth('start_date', $month));
         }
     }
 
