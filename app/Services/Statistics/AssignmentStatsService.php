@@ -6,6 +6,7 @@ use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Models\User;
 use App\Traits\HasZoneVisibility;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class AssignmentStatsService
@@ -38,7 +39,7 @@ class AssignmentStatsService
     /**
      * Ottiene assegnazioni per ruolo.
      */
-    public function getByRole(?User $user = null): array
+    public function getByRole(?User $user = null): Collection
     {
         $user = $user ?? auth()->user();
         $query = $this->baseQuery($user);
@@ -46,20 +47,19 @@ class AssignmentStatsService
         return $query->selectRaw('role, COUNT(*) as totale')
             ->orderByRaw('FIELD(role, "Direttore di Torneo", "Arbitro", "Osservatore")')
             ->groupBy('role')
-            ->pluck('totale', 'role')
-            ->toArray();
+            ->pluck('totale', 'role');
     }
 
     /**
      * Ottiene assegnazioni per zona.
      */
-    public function getByZone(?User $user = null): array
+    public function getByZone(?User $user = null): Collection
     {
         $user = $user ?? auth()->user();
 
         // Solo per admin nazionali/super admin
         if (! $this->isNationalAdmin($user)) {
-            return [];
+            return collect([]);
         }
 
         return Assignment::query()
@@ -68,14 +68,13 @@ class AssignmentStatsService
             ->selectRaw('zones.name, COUNT(*) as totale')
             ->orderBy('zones.name')
             ->groupBy('zones.name')
-            ->pluck('totale', 'name')
-            ->toArray();
+            ->pluck('totale', 'name');
     }
 
     /**
      * Ottiene assegnazioni per livello arbitro.
      */
-    public function getByLevel(?User $user = null): array
+    public function getByLevel(?User $user = null): Collection
     {
         $user = $user ?? auth()->user();
         $query = $this->baseQuery($user);
@@ -83,8 +82,7 @@ class AssignmentStatsService
         return $query->join('users', 'assignments.user_id', '=', 'users.id')
             ->selectRaw('users.level, COUNT(*) as totale')
             ->groupBy('users.level')
-            ->pluck('totale', 'level')
-            ->toArray();
+            ->pluck('totale', 'level');
     }
 
     /**

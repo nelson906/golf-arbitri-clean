@@ -6,6 +6,7 @@ use App\Models\Notification;
 use App\Models\Tournament;
 use App\Models\User;
 use App\Traits\HasZoneVisibility;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class TournamentStatsService
@@ -30,7 +31,7 @@ class TournamentStatsService
     /**
      * Ottiene tornei per tipo.
      */
-    public function getByType(?User $user = null): array
+    public function getByType(?User $user = null): Collection
     {
         $user = $user ?? auth()->user();
 
@@ -42,34 +43,32 @@ class TournamentStatsService
         return $query->selectRaw('tournament_types.name, COUNT(*) as totale')
             ->orderBy('tournament_types.name')
             ->groupBy('tournament_types.name')
-            ->pluck('totale', 'name')
-            ->toArray();
+            ->pluck('totale', 'name');
     }
 
     /**
      * Ottiene tornei per stato.
      */
-    public function getByStatus(?User $user = null): array
+    public function getByStatus(?User $user = null): Collection
     {
         $user = $user ?? auth()->user();
         $query = $this->baseQuery($user);
 
         return $query->selectRaw('status, COUNT(*) as totale')
             ->groupBy('status')
-            ->pluck('totale', 'status')
-            ->toArray();
+            ->pluck('totale', 'status');
     }
 
     /**
      * Ottiene tornei per zona.
      */
-    public function getByZone(?User $user = null): array
+    public function getByZone(?User $user = null): Collection
     {
         $user = $user ?? auth()->user();
 
         // Solo per admin nazionali/super admin
         if (! $this->isNationalAdmin($user)) {
-            return [];
+            return collect([]);
         }
 
         return Tournament::query()
@@ -77,14 +76,13 @@ class TournamentStatsService
             ->selectRaw('zones.name, COUNT(*) as totale')
             ->orderBy('zones.name')
             ->groupBy('zones.name')
-            ->pluck('totale', 'name')
-            ->toArray();
+            ->pluck('totale', 'name');
     }
 
     /**
      * Ottiene tornei per mese (anno corrente).
      */
-    public function getByMonth(?User $user = null): array
+    public function getByMonth(?User $user = null): Collection
     {
         $user = $user ?? auth()->user();
         $query = $this->baseQuery($user);
@@ -101,12 +99,7 @@ class TournamentStatsService
             9 => 'Settembre', 10 => 'Ottobre', 11 => 'Novembre', 12 => 'Dicembre',
         ];
 
-        $result = [];
-        foreach ($monthlyData as $monthNum => $count) {
-            $result[$monthNames[$monthNum]] = $count;
-        }
-
-        return $result;
+        return $monthlyData->mapWithKeys(fn ($count, $monthNum) => [$monthNames[$monthNum] => $count]);
     }
 
     /**

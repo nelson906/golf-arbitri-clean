@@ -4,6 +4,7 @@ namespace App\Services\Statistics;
 
 use App\Models\User;
 use App\Traits\HasZoneVisibility;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class RefereeStatsService
@@ -28,7 +29,7 @@ class RefereeStatsService
     /**
      * Ottiene arbitri per livello.
      */
-    public function getByLevel(?User $user = null): array
+    public function getByLevel(?User $user = null): Collection
     {
         $user = $user ?? auth()->user();
         $query = $this->baseQuery($user);
@@ -37,20 +38,19 @@ class RefereeStatsService
             ->selectRaw('level, COUNT(*) as totale')
             ->orderByRaw('FIELD(level, "Aspirante", "1_livello", "Regionale", "Nazionale", "Internazionale")')
             ->groupBy('level')
-            ->pluck('totale', 'level')
-            ->toArray();
+            ->pluck('totale', 'level');
     }
 
     /**
      * Ottiene arbitri per zona.
      */
-    public function getByZone(?User $user = null): array
+    public function getByZone(?User $user = null): Collection
     {
         $user = $user ?? auth()->user();
 
         // Solo per admin nazionali/super admin
         if (! $this->isNationalAdmin($user)) {
-            return [];
+            return collect([]);
         }
 
         return User::where('user_type', 'referee')
@@ -59,8 +59,7 @@ class RefereeStatsService
             ->selectRaw('zones.name, COUNT(*) as totale')
             ->orderBy('zones.name')
             ->groupBy('zones.name')
-            ->pluck('totale', 'name')
-            ->toArray();
+            ->pluck('totale', 'name');
     }
 
     /**

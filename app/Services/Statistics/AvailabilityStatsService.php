@@ -5,6 +5,7 @@ namespace App\Services\Statistics;
 use App\Models\Availability;
 use App\Models\User;
 use App\Traits\HasZoneVisibility;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class AvailabilityStatsService
@@ -37,13 +38,13 @@ class AvailabilityStatsService
     /**
      * Ottiene disponibilità per zona.
      */
-    public function getByZone(?string $month = null, ?User $user = null): array
+    public function getByZone(?string $month = null, ?User $user = null): Collection
     {
         $user = $user ?? auth()->user();
 
         // Solo per admin nazionali/super admin
         if (! $this->isNationalAdmin($user)) {
-            return [];
+            return collect([]);
         }
 
         $query = Availability::query()
@@ -57,14 +58,13 @@ class AvailabilityStatsService
         return $query->selectRaw('zones.name, COUNT(*) as totale')
             ->orderBy('zones.name')
             ->groupBy('zones.name')
-            ->pluck('totale', 'name')
-            ->toArray();
+            ->pluck('totale', 'name');
     }
 
     /**
      * Ottiene disponibilità per livello arbitro.
      */
-    public function getByLevel(?string $month = null, ?User $user = null): array
+    public function getByLevel(?string $month = null, ?User $user = null): Collection
     {
         $user = $user ?? auth()->user();
 
@@ -76,20 +76,18 @@ class AvailabilityStatsService
 
         return $query->select('level', DB::raw('count(*) as count'))
             ->groupBy('level')
-            ->pluck('count', 'level')
-            ->toArray();
+            ->pluck('count', 'level');
     }
 
     /**
      * Ottiene disponibilità per mese (anno corrente).
      */
-    public function getByMonth(?User $user = null): array
+    public function getByMonth(?User $user = null): Collection
     {
         return Availability::selectRaw('MONTH(created_at) as mese, COUNT(*) as totale')
             ->whereYear('created_at', date('Y'))
             ->groupBy('mese')
-            ->pluck('totale', 'mese')
-            ->toArray();
+            ->pluck('totale', 'mese');
     }
 
     /**
