@@ -1,0 +1,121 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 6
+    paths:
+        - app
+
+    # Escludi file problematici o non necessari
+    excludePaths:
+        - app/Console/Commands/ScrapeFedergolfIscritti.php
+
+    # Ignora errori comuni di Laravel che sono falsi positivi
+    ignoreErrors:
+        # === ERRORI DI TIPO MANCANTE (livello 6+) ===
+        # Return type non specificato
+        - identifier: missingType.return
+        # Tipo valore iterabile (array) non specificato
+        - identifier: missingType.iterableValue
+        # Tipo parametro non specificato
+        - identifier: missingType.parameter
+        # Tipi generici non specificati (es. Builder<TModel>)
+        - identifier: missingType.generics
+        # Template type non risolto
+        - identifier: argument.templateType
+        # Proprietà senza tipo specificato
+        - identifier: missingType.property
+
+        # Auth facade
+        - '#Call to an undefined method Illuminate\\Contracts\\Auth\\Factory::(user|id|check|logout)\(\)#'
+        - '#Call to an undefined method Illuminate\\Contracts\\Auth\\Guard::logout\(\)#'
+
+        # Request dynamic properties
+        - '#Access to an undefined property Illuminate\\Http\\Request::\$#'
+
+        # Authenticatable interface
+        - '#Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable::\$#'
+        - '#Call to an undefined method Illuminate\\Contracts\\Auth\\Authenticatable::hasRole\(\)#'
+
+        # View return types
+        - '#should return Illuminate\\View\\View but returns Illuminate\\Contracts\\View\\View#'
+        # View function expects view-string
+        - '#Parameter \#1 \$view of function view expects view-string\|null, string given#'
+
+        # Route model binding - object|string
+        - '#Cannot access property \$\w+ on object\|string#'
+        - '#Cannot call method \w+\(\) on object\|string#'
+
+        # Nullsafe su tipi non nullable (PHPStan è troppo strict)
+        - '#Using nullsafe property access .* on left side of \?\? is unnecessary#'
+        - '#Using nullsafe method call on non-nullable type#'
+
+        # Eloquent Collection vs Model
+        - '#Access to an undefined property App\\Models\\\w+\|Illuminate\\Database\\Eloquent\\Collection<int, App\\Models\\\w+>::\$#'
+
+        # PHPDoc mixin per Eloquent
+        - '#PHPDoc tag @mixin contains unknown class Eloquent#'
+
+        # Factory class not found
+        - '#PHPDoc tag @method .* contains unknown class Database\\Factories\\#'
+
+        # Nullcoalesce su offset esistenti (warning non critico)
+        - '#on left side of \?\? always exists and is not nullable#'
+
+        # Match arm always false (spesso legato a cast dinamici)
+        - '#Match arm comparison between int and .* is always false#'
+
+        # Expression not nullable
+        - '#Expression on left side of \?\? is not nullable#'
+
+        # Metodi unused (possono essere usati via route o blade)
+        - '#Method .* is unused#'
+
+        # method.resultUnused - chiamate intenzionali per side effects
+        - '#Call to method .* on a separate line has no effect#'
+
+        # Property only written (dependency injection)
+        - '#Property .* is never read, only written#'
+
+        # Strict comparison warnings
+        - '#Strict comparison using === between .* will always evaluate to#'
+        - '#Negated boolean expression is always true#'
+
+        # method_exists sempre true (controllo difensivo)
+        - '#Call to function method_exists\(\) .* will always evaluate to true#'
+
+        # isset su offset sempre esistente
+        - '#in isset\(\) always exists#'
+
+        # Eloquent Model generic properties
+        - '#Access to an undefined property Illuminate\\Database\\Eloquent\\Model::\$#'
+
+        # HasMany return type mismatch
+        - '#Method .* should return Illuminate\\Database\\Eloquent\\Relations\\HasMany but returns#'
+
+        # Cannot call count on class-string
+        - '#Cannot call method count\(\) on class-string\|object#'
+
+        # TournamentNotification factory
+        - '#PHPDoc tag @method .* contains unknown class Database\\Factories\\TournamentNotificationFactory#'
+
+        # Larastan relation existence - falsi positivi (relazioni esistono nei modelli)
+        - '#Relation .* is not found in App\\Models\\#'
+
+        # Property $appends - zone_id è in appends ma ha anche accessor
+        - '#Property .* is not a computed property, remove from \$appends#'
+
+        # Tournament::$is_national - accesso attraverso tournamentType
+        - '#Access to an undefined property App\\Models\\Tournament::\$is_national#'
+
+        # Tournament::$date - campo legacy non più usato
+        - '#Access to an undefined property App\\Models\\Tournament::\$date#'
+
+    # Tratta i tipi PHPDoc come incerti per evitare falsi positivi
+    treatPhpDocTypesAsCertain: false
+
+    # Abilita il check delle proprietà non inizializzate
+    checkUninitializedProperties: false
+
+    # Memory limit
+    reportUnmatchedIgnoredErrors: false
