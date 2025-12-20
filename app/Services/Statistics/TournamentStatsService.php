@@ -38,7 +38,7 @@ class TournamentStatsService
         $query = Tournament::query()
             ->join('tournament_types', 'tournaments.tournament_type_id', '=', 'tournament_types.id');
 
-        $this->applyTournamentVisibility($query->getQuery(), $user);
+        $this->applyTournamentVisibility($query, $user);
 
         return $query->selectRaw('tournament_types.name, COUNT(*) as totale')
             ->orderBy('tournament_types.name')
