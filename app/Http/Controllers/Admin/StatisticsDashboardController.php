@@ -41,7 +41,10 @@ class StatisticsDashboardController extends Controller
         $generalStats = $this->getGeneralStats($user);
         $periodStats = $this->getPeriodStats($user, $startDate);
         $zoneStats = $this->zoneStats->getZonesSummary($user);
-        $refereeStats = $this->refereeStats->getGeneralStats($user);
+        $refereeStats = [
+            'by_level' => $this->refereeStats->getByLevel($user),
+            'active_percentage' => $this->refereeStats->getActivePercentage($user),
+        ];
         $tournamentStats = $this->tournamentStats->getGeneralStats($user);
         $chartData = $this->getChartData();
         $performanceMetrics = $this->getPerformanceMetrics();
