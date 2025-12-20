@@ -81,7 +81,8 @@ class ZoneStatsService
      */
     public function getZoneAvailabilityRate(int $zoneId): float
     {
-        $totalReferees = User::where('user_type', '=', 'referee')
+        $totalReferees = User::query()
+            ->where('user_type', '=', 'referee')
             ->where('zone_id', '=', $zoneId)
             ->where('is_active', '=', true)
             ->count();
@@ -90,7 +91,8 @@ class ZoneStatsService
             return 0;
         }
 
-        $refereesWithAvailability = User::where('user_type', '=', 'referee')
+        $refereesWithAvailability = User::query()
+            ->where('user_type', '=', 'referee')
             ->where('zone_id', '=', $zoneId)
             ->where('is_active', '=', true)
             ->has('availabilities')
@@ -104,7 +106,8 @@ class ZoneStatsService
      */
     public function getZoneActivityScore(int $zoneId): float
     {
-        $referees = User::where('user_type', '=', 'referee')
+        $referees = User::query()
+            ->where('user_type', '=', 'referee')
             ->where('zone_id', '=', $zoneId)
             ->where('is_active', '=', true)
             ->withCount(['assignments', 'availabilities'])

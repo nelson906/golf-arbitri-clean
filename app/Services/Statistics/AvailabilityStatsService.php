@@ -68,7 +68,8 @@ class AvailabilityStatsService
     {
         $user = $user ?? auth()->user();
 
-        $query = User::where('user_type', '=', 'referee')
+        $query = User::query()
+            ->where('user_type', '=', 'referee')
             ->where('is_active', '=', true)
             ->withCount('availabilities');
 
@@ -129,7 +130,8 @@ class AvailabilityStatsService
     ): \Illuminate\Database\Eloquent\Collection {
         $user = $user ?? auth()->user();
 
-        $query = User::where('user_type', '=', 'referee')
+        $query = User::query()
+            ->where('user_type', '=', 'referee')
             ->where('is_active', '=', true)
             ->with(['zone'])
             ->withCount(['availabilities', 'assignments']);
@@ -148,7 +150,8 @@ class AvailabilityStatsService
     {
         $user = $user ?? auth()->user();
 
-        $query = User::where('user_type', '=', 'referee')
+        $query = User::query()
+            ->where('user_type', '=', 'referee')
             ->where('is_active', '=', true)
             ->withCount('availabilities')
             ->orderBy('availabilities_count', 'desc')

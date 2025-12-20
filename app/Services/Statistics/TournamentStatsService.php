@@ -68,13 +68,13 @@ class TournamentStatsService
 
         // Solo per admin nazionali/super admin
         if (! $this->isNationalAdmin($user)) {
-            return collect([]);
+            return Collection::make([]);
         }
 
         return Tournament::query()
             ->join('zones', 'tournaments.zone_id', '=', 'zones.id')
             ->selectRaw('zones.name, COUNT(*) as totale')
-            ->orderBy('zones.name')
+            ->orderBy('zones.name', 'asc')
             ->groupBy('zones.name')
             ->pluck('totale', 'name');
     }
