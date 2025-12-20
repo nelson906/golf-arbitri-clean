@@ -91,7 +91,7 @@ class AssignmentStatsService
     public function getTournamentsWithAssignments(?User $user = null): int
     {
         $user = $user ?? auth()->user();
-        $query = Tournament::has('assignments');
+        $query = Tournament::query()->has('assignments');
 
         return $this->applyTournamentVisibility($query, $user)->count();
     }
@@ -127,8 +127,8 @@ class AssignmentStatsService
     {
         $user = $user ?? auth()->user();
 
-        $refereesQuery = User::where('user_type', 'referee')
-            ->where('is_active', true)
+        $refereesQuery = User::where('user_type', '=', 'referee')
+            ->where('is_active', '=', true)
             ->withCount('assignments');
 
         $this->applyUserVisibility($refereesQuery, $user);

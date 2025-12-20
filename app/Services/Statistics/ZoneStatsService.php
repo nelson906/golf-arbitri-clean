@@ -63,10 +63,10 @@ class ZoneStatsService
 
         return [
             'zone' => $zone,
-            'referees' => $zone->users()->where('user_type', 'referee')->count(),
+            'referees' => $zone->users()->where('user_type', '=', 'referee')->count(),
             'active_referees' => $zone->users()
-                ->where('user_type', 'referee')
-                ->where('is_active', true)
+                ->where('user_type', '=', 'referee')
+                ->where('is_active', '=', true)
                 ->count(),
             'clubs' => $zone->clubs()->count(),
             'tournaments' => $tournamentsQuery->count(),
@@ -81,18 +81,18 @@ class ZoneStatsService
      */
     public function getZoneAvailabilityRate(int $zoneId): float
     {
-        $totalReferees = User::where('user_type', 'referee')
-            ->where('zone_id', $zoneId)
-            ->where('is_active', true)
+        $totalReferees = User::where('user_type', '=', 'referee')
+            ->where('zone_id', '=', $zoneId)
+            ->where('is_active', '=', true)
             ->count();
 
         if ($totalReferees === 0) {
             return 0;
         }
 
-        $refereesWithAvailability = User::where('user_type', 'referee')
-            ->where('zone_id', $zoneId)
-            ->where('is_active', true)
+        $refereesWithAvailability = User::where('user_type', '=', 'referee')
+            ->where('zone_id', '=', $zoneId)
+            ->where('is_active', '=', true)
             ->has('availabilities')
             ->count();
 
@@ -104,9 +104,9 @@ class ZoneStatsService
      */
     public function getZoneActivityScore(int $zoneId): float
     {
-        $referees = User::where('user_type', 'referee')
-            ->where('zone_id', $zoneId)
-            ->where('is_active', true)
+        $referees = User::where('user_type', '=', 'referee')
+            ->where('zone_id', '=', $zoneId)
+            ->where('is_active', '=', true)
             ->withCount(['assignments', 'availabilities'])
             ->get();
 
@@ -139,10 +139,10 @@ class ZoneStatsService
                 return [
                     'name' => $zone->name,
                     'tournaments' => $zone->tournaments->count(),
-                    'referees' => $zone->users()->where('user_type', 'referee')->count(),
+                    'referees' => $zone->users()->where('user_type', '=', 'referee')->count(),
                     'active_referees' => $zone->users()
-                        ->where('user_type', 'referee')
-                        ->where('is_active', true)
+                        ->where('user_type', '=', 'referee')
+                        ->where('is_active', '=', true)
                         ->count(),
                 ];
             })

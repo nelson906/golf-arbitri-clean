@@ -191,14 +191,14 @@ class StatisticsDashboardController extends Controller
         $zone = $request->get('zone');
 
         // Query arbitri con filtri
-        $query = User::where('user_type', 'referee')->with(['zone']);
+        $query = User::where('user_type', '=', 'referee')->with(['zone']);
         $this->applyUserVisibility($query, $user);
 
         if ($level) {
-            $query->where('level', $level);
+            $query->where('level', '=', $level);
         }
         if ($zone) {
-            $query->where('zone_id', $zone);
+            $query->where('zone_id', '=', $zone);
         }
 
         $referees = $query->paginate(50);
@@ -206,7 +206,7 @@ class StatisticsDashboardController extends Controller
         // Statistiche via Service
         $stats = $this->refereeStats->getFullStats($user);
         $stats['total'] = $query->count();
-        $stats['active'] = $query->clone()->where('is_active', true)->count();
+        $stats['active'] = $query->clone()->where('is_active', '=', true)->count();
         $stats['by_level'] = $this->refereeStats->getByLevel($user);
         $stats['by_zone'] = $this->refereeStats->getByZone($user);
 

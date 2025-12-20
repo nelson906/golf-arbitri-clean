@@ -128,7 +128,7 @@ class TournamentStatsService
      */
     public function getWithNotifications(?User $user = null): int
     {
-        return Notification::distinct('tournament_id')->count();
+        return Notification::query()->distinct()->count('tournament_id');
     }
 
     /**

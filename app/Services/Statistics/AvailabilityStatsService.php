@@ -22,8 +22,8 @@ class AvailabilityStatsService
 
         return [
             'total' => $query->count(),
-            'referees_with_availability' => Availability::distinct('user_id')->count(),
-            'tournaments_with_availability' => Availability::distinct('tournament_id')->count(),
+            'referees_with_availability' => Availability::query()->distinct()->count('user_id'),
+            'tournaments_with_availability' => Availability::query()->distinct()->count('tournament_id'),
         ];
     }
 
@@ -68,8 +68,8 @@ class AvailabilityStatsService
     {
         $user = $user ?? auth()->user();
 
-        $query = User::where('user_type', 'referee')
-            ->where('is_active', true)
+        $query = User::where('user_type', '=', 'referee')
+            ->where('is_active', '=', true)
             ->withCount('availabilities');
 
         $this->applyUserVisibility($query, $user);
@@ -129,8 +129,8 @@ class AvailabilityStatsService
     ): \Illuminate\Database\Eloquent\Collection {
         $user = $user ?? auth()->user();
 
-        $query = User::where('user_type', 'referee')
-            ->where('is_active', true)
+        $query = User::where('user_type', '=', 'referee')
+            ->where('is_active', '=', true)
             ->with(['zone'])
             ->withCount(['availabilities', 'assignments']);
 
@@ -148,8 +148,8 @@ class AvailabilityStatsService
     {
         $user = $user ?? auth()->user();
 
-        $query = User::where('user_type', 'referee')
-            ->where('is_active', true)
+        $query = User::where('user_type', '=', 'referee')
+            ->where('is_active', '=', true)
             ->withCount('availabilities')
             ->orderBy('availabilities_count', 'desc')
             ->limit($limit);
