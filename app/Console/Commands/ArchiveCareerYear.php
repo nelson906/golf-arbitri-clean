@@ -63,13 +63,14 @@ class ArchiveCareerYear extends Command
         try {
             if ($userId) {
                 // Archivia solo per un utente specifico
-                $this->info("Archiviazione per utente ID: {$userId}");
+                $userIdInt = (int) $userId;
+                $this->info("Archiviazione per utente ID: {$userIdInt}");
 
                 if ($dryRun) {
-                    $this->showUserPreview($userId, $year);
+                    $this->showUserPreview($userIdInt, $year);
                 } else {
-                    $result = $this->careerService->archiveYearForUser($userId, $year);
-                    $this->displayUserResult($userId, $result);
+                    $result = $this->careerService->archiveYearForUser($userIdInt, $year);
+                    $this->displayUserResult($userIdInt, $result);
                 }
             } else {
                 // Archivia per tutti gli arbitri

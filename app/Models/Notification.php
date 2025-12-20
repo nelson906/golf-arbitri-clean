@@ -285,7 +285,7 @@ class Notification extends Model
             self::PRIORITY_HIGH => 'Alta',
             self::PRIORITY_NORMAL => 'Normale',
             self::PRIORITY_LOW => 'Bassa',
-            default => ucfirst($this->priority),
+            default => ucfirst((string) $this->priority),
         };
     }
 
