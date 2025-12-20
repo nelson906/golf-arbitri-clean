@@ -1,0 +1,24 @@
+phUML generated statistics
+==========================
+
+General statistics
+------------------
+
+Classes:    98
+Interfaces: 0
+
+Attributes: 81 (27 are typed)
+    * private:   7
+    * protected: 53
+    * public:    21
+
+Functions:  682
+    * private:   151
+    * protected: 32
+    * public:    499
+
+Average statistics
+------------------
+
+Attributes per class: 0.83
+Functions per class:  6.96
