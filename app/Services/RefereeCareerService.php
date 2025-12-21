@@ -237,7 +237,6 @@ class RefereeCareerService
         }
 
         return $query->get()->map(function ($history) use ($year) {
-            /** @var \App\Models\User|null $user */
             $user = $history->user;
             if (! $user instanceof \App\Models\User) {
                 return null;

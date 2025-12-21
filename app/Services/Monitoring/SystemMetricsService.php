@@ -163,6 +163,7 @@ class SystemMetricsService
     {
         $totalSpace = disk_total_space('/');
         $freeSpace = disk_free_space('/');
+        // @phpstan-ignore booleanOr.alwaysFalse
         if ($totalSpace === false || $freeSpace === false) {
             return ['used' => 'N/A', 'total' => 'N/A', 'percentage' => 0];
         }
