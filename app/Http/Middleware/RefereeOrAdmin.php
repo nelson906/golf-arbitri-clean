@@ -220,7 +220,7 @@ class RefereeOrAdmin
                 $resource->getAttribute('user_type') === 'referee' &&
                 $resource->getAttribute('zone_id') !== $user->zone_id) {
 
-                    return true;
+                return true;
             }
         } catch (\Exception $e) {
             Log::error('Error checking zone access', [

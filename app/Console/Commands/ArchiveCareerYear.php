@@ -90,7 +90,7 @@ class ArchiveCareerYear extends Command
 
             return self::SUCCESS;
         } catch (\Exception $e) {
-            $this->error('Errore durante l\'archiviazione: ' . $e->getMessage());
+            $this->error('Errore durante l\'archiviazione: '.$e->getMessage());
 
             return self::FAILURE;
         }
