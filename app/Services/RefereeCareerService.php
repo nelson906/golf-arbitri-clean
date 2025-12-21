@@ -237,10 +237,8 @@ class RefereeCareerService
         }
 
         return $query->get()->map(function ($history) use ($year) {
+            /** @var \App\Models\User $user */
             $user = $history->user;
-            if (! $user instanceof \App\Models\User) {
-                return null;
-            }
             $data = $this->getCareerData($user, $year);
 
             return [
@@ -248,7 +246,7 @@ class RefereeCareerService
                 'stats' => $data['career_summary'] ?? null,
                 'year_data' => $year ? ($data['year_summary'] ?? null) : null,
             ];
-        })->filter();
+        });
     }
 
     public function archiveYear(int $year): void
