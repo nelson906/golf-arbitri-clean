@@ -22,7 +22,8 @@ class TournamentTypeRequest extends FormRequest
      */
     public function rules(): array
     {
-        $tournamentTypeId = $this->route('tournament_type')?->id ?? $this->route('tournamentType')?->id;
+        $tournamentType = $this->route('tournament_type') ?? $this->route('tournamentType');
+        $tournamentTypeId = $tournamentType instanceof \App\Models\TournamentType ? $tournamentType->id : null;
 
         return [
             'name' => [

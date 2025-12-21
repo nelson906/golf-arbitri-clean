@@ -184,6 +184,9 @@ class InstitutionalEmailController extends Controller
 
         $callback = function () use ($emails) {
             $file = fopen('php://output', 'w');
+            if ($file === false) {
+                return;
+            }
 
             // Header CSV
             fputcsv($file, [

@@ -45,8 +45,8 @@ class SystemMetricsService
     public function getRealtimeStats(): array
     {
         return [
-            'requests_per_minute' => Cache::remember('requests_per_minute', 60, fn () => rand(45, 85)),
-            'active_sessions' => Cache::remember('active_sessions', 300, fn () => rand(15, 45)),
+            'requests_per_minute' => Cache::remember('requests_per_minute', 60, fn() => rand(45, 85)),
+            'active_sessions' => Cache::remember('active_sessions', 300, fn() => rand(15, 45)),
             'queue_size' => $this->getQueueSize(),
             'error_rate' => $this->getCurrentErrorRate(),
         ];
@@ -172,7 +172,10 @@ class SystemMetricsService
             ];
         }
 
-        $usedSpace = $totalSpace - $freeSpace;
+        if ($totalSpace === false || $freeSpace === false) {
+            return ['used' => 'N/A', 'total' => 'N/A', 'percentage' => 0];
+        }
+        $usedSpace = (int) ($totalSpace - $freeSpace);
         $percentage = round(($usedSpace / $totalSpace) * 100, 2);
 
         return [
@@ -228,7 +231,7 @@ class SystemMetricsService
      */
     public function getAverageResponseTime(): int
     {
-        return Cache::remember('avg_response_time', 300, fn () => rand(150, 350));
+        return Cache::remember('avg_response_time', 300, fn() => rand(150, 350));
     }
 
     /**
@@ -260,7 +263,7 @@ class SystemMetricsService
      */
     public function getCurrentErrorRate(): int
     {
-        return Cache::remember('current_error_rate', 300, fn () => rand(0, 3));
+        return Cache::remember('current_error_rate', 300, fn() => rand(0, 3));
     }
 
     /**
@@ -268,7 +271,7 @@ class SystemMetricsService
      */
     public function getThroughput(): int
     {
-        return Cache::remember('throughput', 300, fn () => rand(50, 120));
+        return Cache::remember('throughput', 300, fn() => rand(50, 120));
     }
 
     /**
@@ -329,11 +332,14 @@ class SystemMetricsService
         $limit = (int) $limit;
 
         switch ($last) {
-            case 'g': $limit *= 1024;
+            case 'g':
+                $limit *= 1024;
                 // no break
-            case 'm': $limit *= 1024;
+            case 'm':
+                $limit *= 1024;
                 // no break
-            case 'k': $limit *= 1024;
+            case 'k':
+                $limit *= 1024;
         }
 
         return $limit;
@@ -350,7 +356,7 @@ class SystemMetricsService
             $bytes /= 1024;
         }
 
-        return round($bytes, $precision).' '.$units[$i];
+        return round($bytes, $precision) . ' ' . $units[$i];
     }
 
     /**

@@ -156,7 +156,7 @@ class DocumentGenerationService
             ]);
 
             $phpWord->addParagraphStyle('ComitatoStyle', [
-                'tabs' => [new \PhpOffice\PhpWord\Style\Tab('left', \PhpOffice\PhpWord\Shared\Converter::cmToTwip(6))],
+                'tabs' => [new \PhpOffice\PhpWord\Style\Tab('left', (int) \PhpOffice\PhpWord\Shared\Converter::cmToTwip(6))],
                 'lineHeight' => 1,
                 'spacing' => 60,
             ]);

@@ -83,7 +83,7 @@ class DocumentController extends Controller
     /**
      * Store a newly created document
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): JsonResponse|RedirectResponse
     {
         return $this->upload($request);
     }

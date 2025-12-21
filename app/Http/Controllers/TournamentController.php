@@ -268,7 +268,8 @@ class TournamentController extends Controller
 
     private function calculateStats($tournaments): array
     {
-        if (method_exists($tournaments, 'getCollection')) {
+        if (is_object($tournaments) && method_exists($tournaments, 'getCollection')) {
+            /** @var \Illuminate\Pagination\LengthAwarePaginator $tournaments */
             $collection = $tournaments->getCollection();
             $total = $tournaments->count();
         } else {

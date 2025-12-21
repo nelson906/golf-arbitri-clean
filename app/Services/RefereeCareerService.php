@@ -124,7 +124,8 @@ class RefereeCareerService
                 return $assignment->tournament && $assignment->tournament->start_date;
             })
             ->map(function ($assignment) {
-                $year = date('Y', strtotime($assignment->tournament->start_date));
+                $timestamp = strtotime($assignment->tournament->start_date);
+                $year = date('Y', $timestamp !== false ? $timestamp : time());
 
                 return [
                     'id' => $assignment->id,
@@ -239,10 +240,14 @@ class RefereeCareerService
             if (! $history->user instanceof User) {
                 return null;
             }
-            $data = $this->getCareerData($history->user, $year);
+            $user = $history->user;
+            if (! $user instanceof User) {
+                return null;
+            }
+            $data = $this->getCareerData($user, $year);
 
             return [
-                'user' => $history->user,
+                'user' => $user,
                 'stats' => $data['career_summary'] ?? null,
                 'year_data' => $year ? ($data['year_summary'] ?? null) : null,
             ];

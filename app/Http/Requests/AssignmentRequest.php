@@ -48,8 +48,9 @@ class AssignmentRequest extends FormRequest
                 'required',
                 'exists:tournaments,id',
                 function ($attribute, $value, $fail) {
+                    /** @var Tournament|null $tournament */
                     $tournament = Tournament::find($value);
-                    if (! $tournament) {
+                    if (! $tournament instanceof Tournament) {
                         return;
                     }
 
@@ -59,7 +60,8 @@ class AssignmentRequest extends FormRequest
                     }
 
                     // Check if tournament has reached max referees
-                    if ($tournament->assignments()->count() >= $tournament->max_referees) {
+                    $maxReferees = $tournament->tournamentType?->max_referees ?? 4;
+                    if ($tournament->assignments()->count() >= $maxReferees) {
                         $fail('Il torneo ha già raggiunto il numero massimo di arbitri.');
                     }
                 },
@@ -87,7 +89,8 @@ class AssignmentRequest extends FormRequest
                     $tournament = Tournament::find($this->tournament_id);
                     if ($tournament && Assignment::where('tournament_id', $tournament->id)
                         ->where('user_id', $user->id)
-                        ->exists()) {
+                        ->exists()
+                    ) {
                         $fail('Questo arbitro è già stato assegnato a questo torneo.');
                     }
 

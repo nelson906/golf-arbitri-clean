@@ -118,6 +118,7 @@ class AvailabilityController extends Controller
         ]);
 
         $user = auth()->user();
+        /** @var Tournament $tournament */
         $tournament = Tournament::findOrFail($request->tournament_id);
 
         // Verifica che l'utente possa dichiarare disponibilità per questo torneo

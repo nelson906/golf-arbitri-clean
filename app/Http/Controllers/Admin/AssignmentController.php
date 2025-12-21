@@ -103,9 +103,10 @@ class AssignmentController extends Controller
         $otherReferees = collect();
 
         if ($request->has('tournament_id')) {
+            /** @var Tournament|null $tournament */
             $tournament = Tournament::with(['assignments.user', 'availabilities.user'])->find($request->tournament_id);
 
-            if ($tournament) {
+            if ($tournament instanceof Tournament) {
                 // IDs arbitri già assegnati a questo torneo
                 $assignedRefereeIds = $tournament->assignments()->pluck('user_id')->toArray();
 
@@ -123,7 +124,7 @@ class AssignmentController extends Controller
                 $otherReferees = User::where('user_type', 'referee')
                     ->whereNotIn('id', $availableRefereeIds)
                     ->whereNotIn('id', $assignedRefereeIds)
-                    ->when($zoneId, fn ($q) => $q->where('zone_id', $zoneId))
+                    ->when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
                     ->get();
             }
         }
@@ -164,7 +165,6 @@ class AssignmentController extends Controller
         if (empty($validated['role'])) {
 
             $validated['role'] = 'Arbitro';
-
         }
 
         Assignment::create(array_merge($validated, [
@@ -283,7 +283,7 @@ class AssignmentController extends Controller
 
             return back()
                 ->withInput()
-                ->with('error', 'Errore durante l\'aggiornamento: '.$e->getMessage());
+                ->with('error', 'Errore durante l\'aggiornamento: ' . $e->getMessage());
         }
     }
 
@@ -315,7 +315,7 @@ class AssignmentController extends Controller
             ]);
 
             return redirect()->back()
-                ->with('error', 'Errore durante la conferma dell\'assegnazione: '.$e->getMessage());
+                ->with('error', 'Errore durante la conferma dell\'assegnazione: ' . $e->getMessage());
         }
     }
 
@@ -563,7 +563,7 @@ class AssignmentController extends Controller
             DB::rollback();
 
             return back()
-                ->with('error', 'Errore durante l\'assegnazione: '.$e->getMessage());
+                ->with('error', 'Errore durante l\'assegnazione: ' . $e->getMessage());
         }
     }
 
@@ -634,7 +634,7 @@ class AssignmentController extends Controller
                 ->route('admin.tournaments.show', $tournamentId)
                 ->with('success', "Assegnazione di {$refereeName} rimossa dal torneo {$tournamentName}");
         } catch (\Exception $e) {
-            return back()->with('error', 'Errore durante la rimozione: '.$e->getMessage());
+            return back()->with('error', 'Errore durante la rimozione: ' . $e->getMessage());
         }
     }
 
@@ -653,16 +653,16 @@ class AssignmentController extends Controller
         // Ottieni statistiche aggiuntive
         $stats = [
             'total_assignments' => Assignment::when($zoneId, function ($q) use ($zoneId) {
-                $q->whereHas('tournament', fn ($tq) => $tq->where('zone_id', $zoneId));
+                $q->whereHas('tournament', fn($tq) => $tq->where('zone_id', $zoneId));
             })->count(),
 
             'active_tournaments' => Tournament::whereIn('status', ['open', 'closed'])
-                ->when($zoneId, fn ($q) => $q->where('zone_id', $zoneId))
+                ->when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
                 ->count(),
 
             'active_referees' => User::where('user_type', 'referee')
                 ->where('is_active', true)
-                ->when($zoneId, fn ($q) => $q->where('zone_id', $zoneId))
+                ->when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
                 ->count(),
         ];
 
@@ -835,7 +835,7 @@ class AssignmentController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('admin.assignment-validation.conflicts')
-                ->with('error', 'Errore durante la risoluzione automatica: '.$e->getMessage());
+                ->with('error', 'Errore durante la risoluzione automatica: ' . $e->getMessage());
         }
     }
 

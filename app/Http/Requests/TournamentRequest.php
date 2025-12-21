@@ -23,8 +23,8 @@ class TournamentRequest extends FormRequest
         }
 
         // For updates, check zone access
-        if ($this->route('tournament')) {
-            $tournament = $this->route('tournament');
+        $tournament = $this->route('tournament');
+        if ($tournament instanceof \App\Models\Tournament) {
 
             if ($user->user_type === 'admin' && $tournament->zone_id !== $user->zone_id) {
                 return false;
@@ -54,14 +54,18 @@ class TournamentRequest extends FormRequest
                 'required',
                 'exists:tournament_types,id',
                 function ($attribute, $value, $fail) {
+                    /** @var TournamentType|null $category */
                     $category = TournamentType::find($value);
-                    if ($category && ! $category->is_active) {
+                    if (! $category instanceof TournamentType) {
+                        return;
+                    }
+                    if (! $category->is_active) {
                         $fail('La categoria selezionata non è attiva.');
                     }
 
                     // Check if category is available for user's zone
                     $user = $this->user();
-                    if ($user->user_type === 'admin' && ! $category->isAvailableForZone($user->zone_id)) {
+                    if ($user && $user->user_type === 'admin' && ! $category->isAvailableForZone($user->zone_id)) {
                         $fail('Questa categoria non è disponibile per la tua zona.');
                     }
                 },

@@ -288,6 +288,9 @@ class StatisticsDashboardController extends Controller
 
         return response()->stream(function () use ($type, $user) {
             $handle = fopen('php://output', 'w');
+            if ($handle === false) {
+                return;
+            }
 
             match ($type) {
                 'tornei' => $this->exportTournamentsCSV($handle, $user),

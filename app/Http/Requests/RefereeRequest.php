@@ -14,7 +14,8 @@ class RefereeRequest extends FormRequest
 
     public function rules(): array
     {
-        $refereeId = $this->route('referee')?->id;
+        $referee = $this->route('referee');
+        $refereeId = $referee instanceof \App\Models\User ? $referee->id : null;
 
         return [
             'name' => 'required|string|max:255',
