@@ -97,7 +97,7 @@ class AssignmentRequest extends FormRequest
                     // Check referee level - FIX: Use User::LEVELS instead of TournamentType::REFEREE_LEVELS
                     if ($tournament && $tournament->tournamentType) {
                         $requiredLevel = $tournament->tournamentType->required_level;
-                        $levels = array_keys(\App\Models\User::LEVELS);
+                        $levels = array_keys(User::LEVELS);
                         $requiredIndex = array_search($requiredLevel, $levels);
                         $userIndex = array_search($user->level, $levels);
 

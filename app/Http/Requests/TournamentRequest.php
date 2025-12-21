@@ -24,7 +24,7 @@ class TournamentRequest extends FormRequest
 
         // For updates, check zone access
         $tournament = $this->route('tournament');
-        if ($tournament instanceof \App\Models\Tournament) {
+        if ($tournament instanceof Tournament) {
 
             if ($user->user_type === 'admin' && $tournament->zone_id !== $user->zone_id) {
                 return false;
