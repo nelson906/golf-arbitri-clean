@@ -10,8 +10,8 @@ class CoreDataSeeder extends Seeder
     public function run(): void
     {
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-        // $this->seedZones();
-        // $this->seedTournamentTypes();
+        $this->seedZones();
+        $this->seedTournamentTypes();
         $this->seedInstitutionalMails();
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
     }
