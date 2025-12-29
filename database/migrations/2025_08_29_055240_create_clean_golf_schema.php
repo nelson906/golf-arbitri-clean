@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -32,6 +32,7 @@ return new class extends Migration
             $table->boolean('is_national')->default(false);
             $table->enum('level', ['zonale', 'nazionale'])->default('zonale');
             $table->enum('required_level', ['aspirante', '1_livello', 'regionale', 'nazionale', 'internazionale'])->default('aspirante');
+            $table->text('calendar_color')->nullable();
             $table->integer('min_referees')->default(1);
             $table->integer('max_referees')->default(2);
             $table->integer('sort_order')->default(0);
@@ -46,12 +47,12 @@ return new class extends Migration
         Schema::create('clubs', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('code', 20)->unique();
+            $table->string('code', 50)->unique();
             $table->string('email');
             $table->string('phone')->nullable();
             $table->text('address')->nullable();
-            $table->string('city');
-            $table->string('province', 2);
+            $table->string('city')->nullable();
+            $table->string('province', 2)->nullable();
             $table->foreignId('zone_id')->constrained()->onDelete('cascade');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
@@ -79,6 +80,7 @@ return new class extends Migration
             $table->enum('gender', ['male', 'female', 'mixed'])->default('mixed');
             $table->date('certified_date')->nullable();
             $table->foreignId('zone_id')->nullable()->constrained()->onDelete('set null');
+            $table->string('club_member')->nullable();
 
             $table->string('phone')->nullable();
             $table->string('city')->nullable();
@@ -104,6 +106,7 @@ return new class extends Migration
 
             $table->timestamp('last_login_at')->nullable();
             $table->timestamp('profile_completed_at')->nullable();
+            $table->text('notes')->nullable();
             $table->timestamps();
             $table->softDeletes();
 
@@ -159,6 +162,9 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('tournament_id')->constrained()->onDelete('cascade');
             $table->enum('role', ['Direttore di Torneo', 'Arbitro', 'Osservatore']);
+            $table->string('status', 50)->default('assigned');
+            $table->boolean('is_confirmed')->default(false);
+            $table->timestamp('confirmed_at')->nullable();
             $table->text('notes')->nullable();
             $table->foreignId('assigned_by')->constrained('users');
             $table->timestamp('assigned_at');
@@ -183,26 +189,34 @@ return new class extends Migration
 
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tournament_id')->constrained()->onDelete('cascade');
-            $table->enum('type', ['availability_confirmation', 'assignment_notification', 'assignment_with_convocation']);
-
-            // Destinatari
-            $table->json('recipients'); // [{type: 'referee', email: '...', name: '...'}, ...]
-            $table->json('institutional_recipients')->nullable(); // Indirizzi istituzionali
-
-            // Contenuto
+            $table->foreignId('assignment_id')->nullable()->constrained()->onDelete('cascade');
+            $table->foreignId('tournament_id')->nullable()->constrained()->onDelete('cascade');
+            $table->enum('recipient_type', ['referee', 'club', 'institutional']);
+            $table->string('recipient_email')->nullable();
+            $table->string('recipient_name')->nullable();
             $table->string('subject');
-            $table->text('message');
-            $table->json('attachments')->nullable(); // PDF generati
-
-            // Invio
-            $table->enum('status', ['pending', 'sent', 'failed'])->default('pending');
-            $table->timestamp('sent_at')->nullable();
-            $table->integer('total_recipients')->default(0);
+            $table->text('body')->nullable();
+            $table->string('template_used')->nullable();
+            $table->enum('status', ['pending', 'sent', 'failed', 'cancelled'])->default('pending');
+            $table->timestamp(column: 'sent_at')->nullable();
+            $table->timestamp('scheduled_at')->nullable();
+            $table->timestamp('expires_at')->nullable();
             $table->text('error_message')->nullable();
-
-            $table->foreignId('sent_by')->constrained('users');
+            $table->integer('retry_count')->default(0);
+            $table->integer('priority')->default(0);
+            $table->foreignId('sender_id')->nullable()->constrained('users');
+            $table->json('attachments')->nullable();
+            $table->json('metadata')->nullable();
             $table->timestamps();
+
+            $table->index(['assignment_id', 'recipient_type']);
+            $table->index(['status', 'created_at']);
+            $table->index(['recipient_email', 'status']);
+            $table->index(['tournament_id', 'recipient_type']);
+            $table->index(['status', 'sent_at']);
+
+            // $table->index(['status', 'priority', 'created_at'], 'idx_notifications_queue');
+            // $table->index(['recipient_type', 'created_at'], 'idx_notifications_type_date');
         });
 
         Schema::create('notification_recipients', function (Blueprint $table) {
@@ -217,15 +231,154 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('institutional_addresses', function (Blueprint $table) {
+        Schema::create('institutional_emails', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('email');
             $table->string('category'); // FIG, Regionale, etc.
+            $table->text(column: 'description')->nullable();
             $table->boolean('is_global')->default(false); // Per tutte le zone o specifica
             $table->foreignId('zone_id')->nullable()->constrained();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+        });
+
+        Schema::create('documents', function (Blueprint $table) {
+            $table->id();
+
+            // Informazioni documento
+            $table->string('name')->comment('Nome visualizzato');
+            $table->string('original_name')->comment('Nome file originale');
+
+            // Storage
+            $table->string('file_path')->comment('Path nel storage');
+            $table->bigInteger('file_size')->comment('Dimensione in bytes');
+            $table->string('mime_type')->comment('Tipo MIME del file');
+
+            // Classificazione
+            $table->enum('category', ['general', 'tournament', 'regulation', 'form', 'template'])
+                ->default('general')
+                ->comment('Categoria del documento');
+
+            $table->enum('type', ['pdf', 'document', 'spreadsheet', 'image', 'text', 'other'])
+                ->default('other')
+                ->comment('Tipo di file dedotto dal MIME');
+
+            // Metadati
+            $table->text('description')
+                ->nullable()
+                ->comment('Descrizione opzionale');
+
+            // Relazioni
+            $table->foreignId('tournament_id')
+                ->nullable()
+                ->constrained('tournaments')
+                ->onDelete('cascade')
+                ->comment('Torneo associato (opzionale)');
+
+            $table->foreignId('zone_id')
+                ->nullable()
+                ->constrained('zones')
+                ->onDelete('cascade')
+                ->comment('Zona di appartenenza (null = globale)');
+
+            $table->foreignId('uploader_id')
+                ->constrained('users')
+                ->onDelete('cascade')
+                ->comment('Utente che ha caricato il file');
+
+            // Permissions e stats
+            $table->boolean('is_public')
+                ->default(false)
+                ->comment('Visibile a tutti gli utenti');
+
+            $table->integer('download_count')
+                ->default(0)
+                ->comment('Numero di download');
+
+            $table->timestamps();
+
+            // Indici per performance
+            $table->index(['category', 'type'], 'idx_documents_category_type');
+            $table->index(['zone_id', 'is_public'], 'idx_documents_zone_public');
+            $table->index('uploader_id', 'idx_documents_uploader');
+            $table->index('tournament_id', 'idx_documents_tournament');
+            $table->index(['created_at', 'category'], 'idx_documents_date_category');
+            $table->index('file_size', 'idx_documents_size');
+        });
+
+        Schema::create('communications', function (Blueprint $table) {
+            $table->id();
+
+            // Contenuto principale
+            $table->string('title');
+            $table->text('content');
+
+            // Tipologia e classificazione
+            $table->enum('type', ['announcement', 'alert', 'maintenance', 'info'])
+                ->default('info')
+                ->comment('Tipo di comunicazione');
+
+            $table->enum('status', ['draft', 'published', 'expired'])
+                ->default('draft')
+                ->comment('Stato della comunicazione');
+
+            $table->enum('priority', ['low', 'normal', 'high', 'urgent'])
+                ->default('normal')
+                ->comment('Priorità della comunicazione');
+
+            // Relazioni
+            $table->foreignId('zone_id')
+                ->nullable()
+                ->constrained('zones')
+                ->onDelete('cascade')
+                ->comment('Zona specifica (null = globale)');
+
+            $table->foreignId('author_id')
+                ->constrained('users')
+                ->onDelete('cascade')
+                ->comment('Autore della comunicazione');
+
+            // Programmazione temporale
+            $table->timestamp('scheduled_at')
+                ->nullable()
+                ->comment('Quando pubblicare (null = subito)');
+
+            $table->timestamp('expires_at')
+                ->nullable()
+                ->comment('Quando far scadere (null = mai)');
+
+            $table->timestamp('published_at')
+                ->nullable()
+                ->comment('Quando è stata effettivamente pubblicata');
+
+            $table->timestamps();
+
+            // Indici per performance
+            $table->index(['status', 'type'], 'idx_communications_status_type');
+            $table->index(['zone_id', 'status'], 'idx_communications_zone_status');
+            $table->index('scheduled_at', 'idx_communications_scheduled');
+            $table->index(['expires_at', 'status'], 'idx_communications_expires_status');
+            $table->index('author_id', 'idx_communications_author');
+        });
+
+        Schema::create('tournament_notifications', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('tournament_id')->constrained()->onDelete('cascade');
+            $table->enum('status', ['sent', 'partial', 'failed', 'pending'])->default('pending');
+            $table->integer('total_recipients')->default(0);
+            $table->text('referee_list')->nullable();
+            $table->timestamp('sent_at')->nullable();
+            $table->foreignId('sent_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->json('details')->nullable();
+            $table->json('templates_used')->nullable();
+            $table->text('error_message')->nullable();
+            $table->json('attachments')->nullable();
+            $table->timestamps();
+
+            $table->index(['tournament_id', 'status']);
+            $table->index(['sent_at']);
+            $table->index(['status']);
         });
 
         $this->seedBasicData();
@@ -242,66 +395,37 @@ return new class extends Migration
         Schema::dropIfExists('tournament_types');
         Schema::dropIfExists('notifications');
         Schema::dropIfExists('notification_recipients');
-        Schema::dropIfExists('institutional_addresses');}
+        Schema::dropIfExists('institutional_emails');
+        Schema::dropIfExists('documents');
+        Schema::dropIfExists('communications');
+        Schema::dropIfExists('tournament_notifications');
+    }
 
     private function seedBasicData(): void
     {
         DB::table('zones')->insert([
-            ['code' => 'SZR1', 'name' => 'Sezione Zonale Regole 1', 'is_national' => false, 'is_active' => true],
-            ['code' => 'SZR2', 'name' => 'Sezione Zonale Regole 2', 'is_national' => false, 'is_active' => true],
-            ['code' => 'SZR3', 'name' => 'Sezione Zonale Regole 3', 'is_national' => false, 'is_active' => true],
-            ['code' => 'SZR4', 'name' => 'Sezione Zonale Regole 4', 'is_national' => false, 'is_active' => true],
-            ['code' => 'SZR5', 'name' => 'Sezione Zonale Regole 5', 'is_national' => false, 'is_active' => true],
-            ['code' => 'SZR6', 'name' => 'Sezione Zonale Regole 6', 'is_national' => false, 'is_active' => true],
-            ['code' => 'SZR7', 'name' => 'Sezione Zonale Regole 7', 'is_national' => false, 'is_active' => true],
-            ['code' => 'CRC', 'name' => 'Central Referee Committee', 'is_national' => true, 'is_active' => true],
+            ['code' => 'SZR1', 'name' => 'Sezione Zonale Regole 1', 'description' => 'Piemonte-Valle d\'Aosta-Liguria', 'is_national' => false],
+            ['code' => 'SZR2', 'name' => 'Sezione Zonale Regole 2', 'description' => 'Lombardia', 'is_national' => false],
+            ['code' => 'SZR3', 'name' => 'Sezione Zonale Regole 3', 'description' => 'Veneto-Trentino-Friuli', 'is_national' => false],
+            ['code' => 'SZR4', 'name' => 'Sezione Zonale Regole 4', 'description' => 'Emilia-Romagna', 'is_national' => false],
+            ['code' => 'SZR5', 'name' => 'Sezione Zonale Regole 5', 'description' => 'Toscana-Umbria', 'is_national' => false],
+            ['code' => 'SZR6', 'name' => 'Sezione Zonale Regole 6', 'description' => 'Lazio-Abruzzo-Molise', 'is_national' => false],
+            ['code' => 'SZR7', 'name' => 'Sezione Zonale Regole 7', 'description' => 'Sud Italia-Sicilia-Sardegna', 'is_national' => false],
+            ['code' => 'CRC', 'name' => 'Comitato Regole Campionati', 'description' => 'Comitato Regole e Campionati', 'is_national' => true],
         ]);
 
-        DB::table('tournament_types')->insert([
-            [
-                'name' => 'Torneo 18 buche',
-                'short_name' => 'T18',
-                'is_national' => false,
-                'level' => 'zonale',
-                'required_level' => '1_livello',
-                'min_referees' => 1,
-                'max_referees' => 2,
-                'sort_order' => 10,
-                'is_active' => true
-            ],
-            [
-                'name' => 'Gara Giovanile',
-                'short_name' => 'GIOV',
-                'is_national' => false,
-                'level' => 'zonale',
-                'required_level' => 'aspirante',
-                'min_referees' => 1,
-                'max_referees' => 2,
-                'sort_order' => 5,
-                'is_active' => true
-            ],
-            [
-                'name' => 'Gara Nazionale 72 buche',
-                'short_name' => 'GN-72',
-                'is_national' => true,
-                'level' => 'nazionale',
-                'required_level' => 'nazionale',
-                'min_referees' => 3,
-                'max_referees' => 5,
-                'sort_order' => 30,
-                'is_active' => true
-            ],
-            [
-                'name' => 'Campionato Italiano',
-                'short_name' => 'CI',
-                'is_national' => true,
-                'level' => 'nazionale',
-                'required_level' => 'nazionale',
-                'min_referees' => 3,
-                'max_referees' => 6,
-                'sort_order' => 40,
-                'is_active' => true
-            ]
+        DB::table('institutional_emails')->insert([
+            // FIG
+            ['name' => 'Federazione Italiana Golf - Segreteria', 'email' => 'segreteria@federgolf.it', 'category' => 'FIG', 'is_global' => true, 'zone_id' => null, 'is_active' => true],
+            ['name' => 'FIG - Direzione Tecnica', 'email' => 'tecnica@federgolf.it', 'category' => 'FIG', 'is_global' => true, 'zone_id' => null, 'is_active' => true],
+            ['name' => 'FIG - Comitato Regole', 'email' => 'regole@federgolf.it', 'category' => 'FIG', 'is_global' => true, 'zone_id' => null, 'is_active' => true],
+
+            // Regionali (esempi)
+            ['name' => 'Comitato Regionale Lombardia', 'email' => 'lombardia@federgolf.it', 'category' => 'Regionale', 'is_global' => false, 'zone_id' => 1, 'is_active' => true],
+            ['name' => 'Comitato Regionale Lazio', 'email' => 'lazio@federgolf.it', 'category' => 'Regionale', 'is_global' => false, 'zone_id' => 2, 'is_active' => true],
+
+            // Altri enti
+            ['name' => 'European Golf Association', 'email' => 'info@ega-golf.ch', 'category' => 'Internazionale', 'is_global' => true, 'zone_id' => null, 'is_active' => true],
         ]);
     }
 };

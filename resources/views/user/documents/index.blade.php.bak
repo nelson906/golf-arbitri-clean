@@ -1,0 +1,171 @@
+@extends('layouts.app')
+
+@section('content')
+<div class="container">
+    <h1>I Miei Documenti</h1>
+    
+    {{-- DEBUG --}}
+    <div class="bg-red-100 p-4">
+        <p>Documents count: {{ $documents->count() ?? 'null' }}</p>
+        <p>Total: {{ $documents->total() ?? 'null' }}</p>
+        <p>Stats: {{ json_encode($stats ?? []) }}</p>
+    </div>
+
+    <div class="py-12">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            {{-- Statistiche --}}
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+                    <div class="text-gray-900">
+                        <div class="text-2xl font-bold">{{ $documents->total() }}</div>
+                        <div class="text-sm text-gray-600">Documenti Totali</div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Filtri --}}
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 mb-6">
+                <form method="GET" action="{{ route('user.documents.index') }}" class="flex flex-wrap gap-4">
+                    <div class="flex-1 min-w-[200px]">
+                        <input type="text" 
+                               name="search" 
+                               value="{{ request('search') }}"
+                               placeholder="Cerca per nome..."
+                               class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+
+                    <div>
+                        <select name="category" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="">Tutte le categorie</option>
+                            <option value="general" {{ request('category') == 'general' ? 'selected' : '' }}>Generale</option>
+                            <option value="tournament" {{ request('category') == 'tournament' ? 'selected' : '' }}>Torneo</option>
+                            <option value="regulation" {{ request('category') == 'regulation' ? 'selected' : '' }}>Regolamento</option>
+                            <option value="form" {{ request('category') == 'form' ? 'selected' : '' }}>Modulo</option>
+                            <option value="template" {{ request('category') == 'template' ? 'selected' : '' }}>Template</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <select name="type" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="">Tutti i tipi</option>
+                            <option value="pdf" {{ request('type') == 'pdf' ? 'selected' : '' }}>PDF</option>
+                            <option value="document" {{ request('type') == 'document' ? 'selected' : '' }}>Documento</option>
+                            <option value="spreadsheet" {{ request('type') == 'spreadsheet' ? 'selected' : '' }}>Foglio di calcolo</option>
+                            <option value="image" {{ request('type') == 'image' ? 'selected' : '' }}>Immagine</option>
+                            <option value="text" {{ request('type') == 'text' ? 'selected' : '' }}>Testo</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                        🔍 Cerca
+                    </button>
+
+                    @if(request()->hasAny(['search', 'category', 'type']))
+                        <a href="{{ route('user.documents.index') }}" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                            ✖ Reset
+                        </a>
+                    @endif
+                </form>
+            </div>
+
+            {{-- Lista documenti --}}
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6 text-gray-900">
+                    @if($documents->count() > 0)
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Nome
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Categoria
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Tipo
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Dimensione
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Caricato da
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Data
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Azioni
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @foreach($documents as $document)
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="flex items-center">
+                                                    <div>
+                                                        <div class="text-sm font-medium text-gray-900">
+                                                            {{ $document->name }}
+                                                        </div>
+                                                        @if($document->description)
+                                                            <div class="text-sm text-gray-500">
+                                                                {{ Str::limit($document->description, 50) }}
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                                    @switch($document->category)
+                                                        @case('general') bg-gray-100 text-gray-800 @break
+                                                        @case('tournament') bg-blue-100 text-blue-800 @break
+                                                        @case('regulation') bg-purple-100 text-purple-800 @break
+                                                        @case('form') bg-green-100 text-green-800 @break
+                                                        @case('template') bg-yellow-100 text-yellow-800 @break
+                                                    @endswitch">
+                                                    {{ ucfirst($document->category) }}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {{ strtoupper($document->type) }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {{ number_format($document->file_size / 1024, 2) }} KB
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                @if($document->uploader_id == auth()->id())
+                                                    <span class="text-green-600 font-medium">Tu</span>
+                                                @else
+                                                    {{ $document->uploader->name ?? 'N/A' }}
+                                                @endif
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {{ $document->created_at->format('d/m/Y H:i') }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <a href="{{ route('user.documents.download', $document) }}" 
+                                                   class="text-indigo-600 hover:text-indigo-900 mr-3"
+                                                   title="Download">
+                                                    📥 Download
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        {{-- Paginazione --}}
+        <div class="mt-6">
+            {{ $documents->links() }}
+        </div>
+    @else
+        <div class="text-center py-12">
+            <div class="text-gray-400 text-6xl mb-4">📁</div>
+            <p class="text-gray-500">Nessun documento trovato</p>
+        </div>
+    @endif
+</div>
+@endsection

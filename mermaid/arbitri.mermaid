@@ -1,0 +1,8 @@
+graph TD
+    A("Menu Arbitri") --> B("UnifiedUserController")
+    B --> C("users/index.blade")
+    C --> D("Create") & E("Edit") & F("Show") & G("Curriculum")
+    D --> H("users/create.blade")
+    E --> I("users/edit.blade")
+    F --> J("users/show.blade")
+    G --> K("referees/curriculum.blade")

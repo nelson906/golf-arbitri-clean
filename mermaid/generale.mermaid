@@ -1,0 +1,71 @@
+graph TD
+    %% Core Areas
+    TORNEI(("TORNEI"))
+    ARBITRI(("ARBITRI"))
+    CIRCOLI(("CIRCOLI"))
+    NOTIFICHE(("NOTIFICHE"))
+    DOCS(("DOCUMENTI"))
+    STATS(("STATISTICHE"))
+
+    %% Tournament Management
+    TORNEI --> TC("TournamentController")
+    TC --> TTC("TournamentTypeController")
+    TC --> AC("AssignmentController")
+    TC --> NC("NotificationController")
+
+    %% Referee Management
+    ARBITRI --> UC("UnifiedUserController")
+    UC --> RC("RefereeCareerController")
+    UC --> AC
+
+    %% Club Management
+    CIRCOLI --> CC("ClubController")
+    CC --> TC
+
+    %% Notification System
+    NOTIFICHE --> NC
+    NC --> DC("DocumentController")
+    NC --> AC
+    NC --> TC
+
+    %% Document Generation
+    DOCS --> DC
+    DC --> TC
+    DC --> CC
+    DC --> UC
+
+    %% Statistics & Monitoring
+    STATS --> SDC("StatisticsDashboardController")
+    SDC --> TC
+    SDC --> AC
+    SDC --> UC
+    SDC --> MC("MonitoringController")
+
+    %% Support Controllers
+    COM("CommunicationController") --> NC
+    COM --> UC
+
+    %% Views Connections
+    TC --> TCV("tournaments/*.blade")
+    UC --> UCV("users/*.blade")
+    CC --> CCV("clubs/*.blade")
+    NC --> NCV("notifications/*.blade")
+    DC --> DCV("documents/*.blade")
+    SDC --> SCV("statistics/*.blade")
+
+    %% Special Features
+    AC --> ACV("assignments/*.blade")
+    RC --> RCV("referees/curriculum.blade")
+    MC --> MCV("monitoring/*.blade")
+
+    %% Shared Services
+    SRV("Services") --> DC
+    SRV --> NC
+    SRV --> AC
+
+    style TORNEI fill:#f9f,stroke:#333
+    style ARBITRI fill:#bbf,stroke:#333
+    style CIRCOLI fill:#bfb,stroke:#333
+    style NOTIFICHE fill:#fbf,stroke:#333
+    style DOCS fill:#ff9,stroke:#333
+    style STATS fill:#9ff,stroke:#333

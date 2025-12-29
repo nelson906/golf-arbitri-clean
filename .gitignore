@@ -21,3 +21,9 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+.DS_Store
+.gitignore
+_ide_helper_models.php
+.scannerwork/.sonar_lock
+.scannerwork/report-task.txt
+phpstan.neon

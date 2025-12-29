@@ -1,0 +1,9 @@
+graph TD
+    A("Menu Tornei") --> B("TournamentController")
+    B --> C("tournaments/index.blade")
+    C --> D("Create") & E("Edit") & F("Show") & G("Assegna")
+    D --> H("tournaments/create.blade")
+    E --> I("tournaments/edit.blade")
+    F --> J("tournaments/show.blade")
+    G --> K("AssignmentController")
+    K --> L("assignments/assign-referees.blade")
