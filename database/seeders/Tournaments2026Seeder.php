@@ -19,7 +19,9 @@ class Tournaments2026Seeder extends Seeder
      *
      * IMPORTANTE: Questo seeder:
      * - NON cancella i tornei 2025 (preserva storico per referee_history)
-     * - Cancella SOLO tornei con start_date >= '2026-01-01'
+     * - PRESERVA assignments e availabilities esistenti per tornei 2026
+     * - Aggiorna tornei 2026 esistenti invece di cancellarli
+     * - Crea solo nuovi tornei se non esistono
      * - Crea circoli mancanti se necessario
      * - Crea/verifica tournament_types
      * - Salta tornei con circolo T.B.A. (To Be Assigned)
@@ -36,8 +38,8 @@ class Tournaments2026Seeder extends Seeder
             return;
         }
 
-        // Step 1: Cancella SOLO tornei 2026 esistenti
-        $this->deleteTournaments2026();
+        // Step 1: Verifica tornei 2026 con dati collegati
+        $this->checkExistingData();
 
         // Step 2: Crea/verifica tournament types
         $this->ensureTournamentTypes();
@@ -45,7 +47,7 @@ class Tournaments2026Seeder extends Seeder
         // Step 3: Crea circoli mancanti
         $this->ensureClubs();
 
-        // Step 4: Importa tornei dal CSV
+        // Step 4: Importa/aggiorna tornei dal CSV
         $this->importTournaments($superAdmin->id);
 
         $this->command->info('');
@@ -53,30 +55,40 @@ class Tournaments2026Seeder extends Seeder
     }
 
     /**
-     * Cancella SOLO i tornei 2026 (preserva 2025 e precedenti)
+     * Verifica tornei 2026 esistenti e mostra eventuali dati collegati
      */
-    private function deleteTournaments2026(): void
+    private function checkExistingData(): void
     {
-        $this->command->warn('🗑️  Cancellazione tornei 2026 esistenti...');
+        $this->command->warn('🔍 Verifica dati esistenti 2026...');
 
-        $count = Tournament::where('start_date', '>=', '2026-01-01')
+        $tournaments2026 = Tournament::where('start_date', '>=', '2026-01-01')
             ->where('start_date', '<', '2027-01-01')
-            ->count();
+            ->withCount(['assignments', 'availabilities'])
+            ->get();
 
-        if ($count > 0) {
-            $this->command->info("   Trovati {$count} tornei 2026 da cancellare");
-
-            // Cancella anche availabilities e assignments associati (cascade)
-            Tournament::where('start_date', '>=', '2026-01-01')
-                ->where('start_date', '<', '2027-01-01')
-                ->delete();
-
-            $this->command->info("   ✓ {$count} tornei 2026 cancellati");
-        } else {
+        if ($tournaments2026->isEmpty()) {
             $this->command->info('   Nessun torneo 2026 esistente');
+            return;
         }
 
-        // Verifica tornei 2025 preservati
+        $total = $tournaments2026->count();
+        $withAssignments = $tournaments2026->where('assignments_count', '>', 0)->count();
+        $withAvailabilities = $tournaments2026->where('availabilities_count', '>', 0)->count();
+
+        $this->command->info("   Tornei 2026 esistenti: {$total}");
+        if ($withAssignments > 0) {
+            $this->command->warn("   ⚠️  Tornei con assignments: {$withAssignments}");
+        }
+        if ($withAvailabilities > 0) {
+            $this->command->warn("   ⚠️  Tornei con availabilities: {$withAvailabilities}");
+        }
+
+        if ($withAssignments > 0 || $withAvailabilities > 0) {
+            $this->command->info('   ✓ I dati esistenti saranno PRESERVATI');
+            $this->command->info('   ℹ️  I tornei saranno aggiornati invece di cancellati');
+        }
+
+        // Verifica tornei 2025
         $count2025 = Tournament::where('start_date', '>=', '2025-01-01')
             ->where('start_date', '<', '2026-01-01')
             ->count();
@@ -191,7 +203,7 @@ class Tournaments2026Seeder extends Seeder
     }
 
     /**
-     * Importa tornei dal CSV
+     * Importa/aggiorna tornei dal CSV preservando assignments e availabilities
      */
     private function importTournaments(int $createdBy): void
     {
@@ -203,6 +215,7 @@ class Tournaments2026Seeder extends Seeder
         $header = fgetcsv($file);
 
         $imported = 0;
+        $updated = 0;
         $skipped = 0;
         $errors = 0;
 
@@ -243,34 +256,41 @@ class Tournaments2026Seeder extends Seeder
                 $endDate = Carbon::parse($data['data_fine']);
                 $availabilityDeadline = $startDate->copy()->subWeeks(3)->setTime(23, 59, 59);
 
-                // Verifica duplicato
+                // Cerca torneo esistente
                 $existing = Tournament::where('name', $data['nome_gara'])
                     ->where('club_id', $club->id)
                     ->where('start_date', $startDate)
                     ->first();
 
                 if ($existing) {
-                    $skipped++;
-                    continue;
+                    // AGGIORNA invece di cancellare (preserva assignments/availabilities)
+                    $existing->update([
+                        'end_date' => $endDate,
+                        'tournament_type_id' => $tournamentType->id,
+                        'zone_id' => $club->zone_id,
+                        'availability_deadline' => $availabilityDeadline,
+                        // NON aggiorniamo status se era già assigned/completed
+                        // 'status' => Tournament::STATUS_OPEN,
+                    ]);
+                    $updated++;
+                } else {
+                    // Crea nuovo torneo
+                    Tournament::create([
+                        'name' => $data['nome_gara'],
+                        'club_id' => $club->id,
+                        'tournament_type_id' => $tournamentType->id,
+                        'zone_id' => $club->zone_id,
+                        'start_date' => $startDate,
+                        'end_date' => $endDate,
+                        'availability_deadline' => $availabilityDeadline,
+                        'status' => Tournament::STATUS_OPEN,
+                        'created_by' => $createdBy,
+                    ]);
+                    $imported++;
                 }
 
-                // Crea torneo
-                Tournament::create([
-                    'name' => $data['nome_gara'],
-                    'club_id' => $club->id,
-                    'tournament_type_id' => $tournamentType->id,
-                    'zone_id' => $club->zone_id, // Sempre dalla relazione club
-                    'start_date' => $startDate,
-                    'end_date' => $endDate,
-                    'availability_deadline' => $availabilityDeadline,
-                    'status' => Tournament::STATUS_OPEN,
-                    'created_by' => $createdBy,
-                ]);
-
-                $imported++;
-
-                if ($imported % 50 === 0) {
-                    $this->command->info("   ... {$imported} tornei importati");
+                if (($imported + $updated) % 50 === 0) {
+                    $this->command->info("   ... {$imported} nuovi, {$updated} aggiornati");
                 }
 
             } catch (\Exception $e) {
@@ -286,7 +306,8 @@ class Tournaments2026Seeder extends Seeder
         fclose($file);
 
         $this->command->info('');
-        $this->command->info("   ✓ Importati: {$imported}");
+        $this->command->info("   ✓ Nuovi: {$imported}");
+        $this->command->info("   ↻ Aggiornati: {$updated}");
         $this->command->info("   ⊘ Saltati: {$skipped}");
         if ($errors > 0) {
             $this->command->warn("   ❌ Errori: {$errors}");
