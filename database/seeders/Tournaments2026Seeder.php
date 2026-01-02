@@ -139,105 +139,47 @@ class Tournaments2026Seeder extends Seeder
     }
 
     /**
-     * Cerca un circolo nel DB per CODE (il code corrisponde al nome CSV)
+     * Mapping CSV -> CODE del database
+     */
+    private function getCsvToCodeMapping(): array
+    {
+        return [
+            'GOLF NAZIONALE' => 'NAZIONALE',
+            'RIVIERA GOLF' => 'RIVIERA',
+            'CONTINENTAL VERBANIA' => 'VERBANIA',
+            'TOLCINASCO' => 'CASTELLO TOLCINASCO',
+            'VILLA PARADISO' => 'VILLA PARADISO SSD',
+            'RIVA TOSCANA' => 'RIVA TOSCANA GOLF RESORT',
+            'MONTECCHIA GOLF' => 'MONTECCHIA',
+            'MADONNA CAMPIGLIO' => 'MADONNA DI CAMPIGLIO',
+            'SANTO STEFANO GOLF' => 'SANTO STEFANO',
+            'OASI DI MAGLIANO-FIORDALISI' => 'FIORDALISI',
+        ];
+    }
+
+    /**
+     * Cerca un circolo nel DB per CODE
      */
     private function findClub(string $csvName): ?Club
     {
-        return Club::where('code', $csvName)->first();
+        // Controlla mapping
+        $mapping = $this->getCsvToCodeMapping();
+        $code = $mapping[$csvName] ?? $csvName;
+
+        return Club::where('code', $code)->first();
     }
 
     /**
-     * Genera codice unico per il circolo
-     */
-    private function generateUniqueCode(string $circoloName): string
-    {
-        // Rimuovi caratteri speciali e prendi prime lettere significative
-        $clean = strtoupper(str_replace([' ', '-', "'", '.'], '', $circoloName));
-
-        // Prendi i primi 10 caratteri
-        $code = substr($clean, 0, 10);
-
-        // Se esiste già, aggiungi suffisso numerico
-        $counter = 1;
-        $originalCode = $code;
-        while (Club::where('code', $code)->exists()) {
-            $code = substr($originalCode, 0, 8) . sprintf('%02d', $counter);
-            $counter++;
-        }
-
-        return $code;
-    }
-
-    /**
-     * Crea circoli mancanti dal CSV
+     * Verifica circoli (NON crea nulla)
      */
     private function ensureClubs(): void
     {
         $this->command->info('');
         $this->command->info('🏌️ Verifica Circoli...');
 
-        $csvPath = database_path('../calendari_2026_consolidato.csv');
-        if (!file_exists($csvPath)) {
-            $this->command->error("   ❌ File CSV non trovato: {$csvPath}");
-            return;
-        }
-
-        $file = fopen($csvPath, 'r');
-        $header = fgetcsv($file);
-
-        $circoli = [];
-
-        while (($row = fgetcsv($file)) !== false) {
-            $data = array_combine($header, $row);
-            $circoloName = $data['circolo'];
-            $zonaCircolo = $data['zona_circolo'];
-
-            // Salta T.B.A. e duplicati
-            if ($circoloName === 'T.B.A.' || $zonaCircolo === 'N/D' || isset($circoli[$circoloName])) {
-                continue;
-            }
-
-            $circoli[$circoloName] = $zonaCircolo;
-        }
-        fclose($file);
-
-        $created = 0;
-        $existing = 0;
-
-        foreach ($circoli as $circoloName => $zonaId) {
-            // Usa ricerca intelligente
-            $club = $this->findClub($circoloName);
-
-            if (!$club) {
-                // Genera codice unico breve
-                $code = $this->generateUniqueCode($circoloName);
-
-                try {
-                    $club = Club::create([
-                        'name' => ucwords(strtolower($circoloName)),
-                        'code' => $code,
-                        'zone_id' => $zonaId,
-                        'email' => strtolower(substr($code, 0, 20)) . '@golf.it',
-                        'is_active' => true,
-                    ]);
-                    $created++;
-                    $this->command->info("   + Creato: {$circoloName} (Zona {$zonaId})");
-                } catch (\Illuminate\Database\QueryException $e) {
-                    // Se esiste già (errore duplicato), cercalo e usalo
-                    $club = Club::where('code', $code)->first();
-                    if ($club) {
-                        $existing++;
-                        $this->command->warn("   ⚠ Trovato esistente con code: {$circoloName}");
-                    } else {
-                        throw $e;
-                    }
-                }
-            } else {
-                $existing++;
-            }
-        }
-
-        $this->command->info("   ✓ {$existing} esistenti, {$created} creati");
+        $totalClubs = Club::count();
+        $this->command->info("   ✓ Circoli nel database: {$totalClubs}");
+        $this->command->info("   ℹ️  Nessun circolo verrà creato (solo ricerca)");
     }
 
     /**
