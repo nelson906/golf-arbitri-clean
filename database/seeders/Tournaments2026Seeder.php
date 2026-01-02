@@ -139,6 +139,79 @@ class Tournaments2026Seeder extends Seeder
     }
 
     /**
+     * Mapping esplicito dei nomi circoli CSV -> DB per evitare duplicati
+     */
+    private function getClubNameMapping(): array
+    {
+        return [
+            // Zona 1
+            'TORINO' => 'Golf Club Torino',
+            'ROYAL PARK ROVERI' => 'Royal Park I Roveri',
+            'RAPALLO' => 'Circolo Golf e Tennis Rapallo',
+
+            // Zona 2
+            'MILANO' => 'Golf Milano',
+            'BERGAMO ALBENZA' => 'L\'Albenza Golf Club',
+            'FRANCIACORTA' => 'Franciacorta Golf Club',
+
+            // Zona 3
+            'VENEZIA' => 'Golf Club Venezia',
+            'ASOLO' => 'Golf Club Asolo',
+
+            // Zona 4
+            'BOLOGNA' => 'Bologna Golf Club',
+            'MODENA' => 'Modena Golf & Country Club',
+
+            // Zona 5
+            'FIRENZE UGOLINO' => 'Circolo Golf Ugolino',
+            'PUNTA ALA' => 'Golf Club Punta Ala',
+
+            // Zona 6
+            'OLGIATA' => 'Olgiata Golf Club',
+            'MARCO SIMONE' => 'Marco Simone Golf & Country Club',
+            'FIORANELLO' => 'Circolo Golf Mirasole',
+
+            // Zona 7
+            'IS MOLAS' => 'Is Molas Golf Club',
+            'VILLA AIROLDI' => 'Villa Airoldi Golf Club',
+            'PEVERO' => 'Pevero Golf Club',
+            'ACAYA' => 'Acaya Golf Club',
+        ];
+    }
+
+    /**
+     * Cerca un circolo nel DB usando mapping intelligente
+     */
+    private function findClub(string $csvName): ?Club
+    {
+        // 1. Controlla mapping esplicito
+        $mapping = $this->getClubNameMapping();
+        if (isset($mapping[$csvName])) {
+            return Club::where('name', $mapping[$csvName])->first();
+        }
+
+        // 2. Cerca match parziale normalizzato (rimuove parole comuni)
+        $normalized = $this->normalizeClubName($csvName);
+
+        $club = Club::where(function($query) use ($normalized, $csvName) {
+            $query->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($normalized) . '%'])
+                  ->orWhereRaw('LOWER(name) LIKE ?', ['%' . strtolower($csvName) . '%']);
+        })->first();
+
+        return $club;
+    }
+
+    /**
+     * Normalizza nome circolo rimuovendo parole comuni
+     */
+    private function normalizeClubName(string $name): string
+    {
+        $remove = ['GOLF', 'CLUB', 'CIRCOLO', 'ASD', 'SSD', 'A.S.D.', 'S.S.D.'];
+        $normalized = str_replace($remove, '', strtoupper($name));
+        return trim(preg_replace('/\s+/', ' ', $normalized));
+    }
+
+    /**
      * Crea circoli mancanti dal CSV
      */
     private function ensureClubs(): void
@@ -155,7 +228,6 @@ class Tournaments2026Seeder extends Seeder
         $file = fopen($csvPath, 'r');
         $header = fgetcsv($file);
 
-        $clubsToCreate = [];
         $circoli = [];
 
         while (($row = fgetcsv($file)) !== false) {
@@ -176,20 +248,17 @@ class Tournaments2026Seeder extends Seeder
         $existing = 0;
 
         foreach ($circoli as $circoloName => $zonaId) {
-            // Cerca circolo esistente per nome o code normalizzato
-            $code = strtoupper(str_replace(' ', '_', $circoloName));
-
-            $club = Club::where('name', 'LIKE', "%{$circoloName}%")
-                ->orWhere('code', $code)
-                ->first();
+            // Usa ricerca intelligente
+            $club = $this->findClub($circoloName);
 
             if (!$club) {
                 // Crea nuovo circolo
+                $code = strtoupper(str_replace([' ', '-', "'"], '_', $circoloName));
                 $club = Club::create([
                     'name' => ucwords(strtolower($circoloName)),
-                    'code' => $code,
+                    'code' => substr($code, 0, 10),
                     'zone_id' => $zonaId,
-                    'email' => strtolower($code) . '@golf.it',
+                    'email' => strtolower(substr($code, 0, 20)) . '@golf.it',
                     'is_active' => true,
                 ]);
                 $created++;
