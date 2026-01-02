@@ -83,10 +83,9 @@ class TournamentController extends Controller
             $query->where('club_id', $request->club_id);
         }
 
-        // Filtra per tornei futuri o recenti (ultimi 30 giorni + futuri) - solo se non ci sono altri filtri
+        // Filtra per tornei futuri - solo se non ci sono altri filtri
         if (!$request->filled('month') && !$request->filled('search')) {
-            $dateThreshold = Carbon::now()->subDays(30);
-            $query->where('start_date', '>=', $dateThreshold);
+            $query->where('start_date', '>=', Carbon::now()->startOfDay());
         }
 
         // Order by start date ascending (più vicini per primi)
