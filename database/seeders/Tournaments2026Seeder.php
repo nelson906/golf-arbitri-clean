@@ -212,6 +212,28 @@ class Tournaments2026Seeder extends Seeder
     }
 
     /**
+     * Genera codice unico per il circolo
+     */
+    private function generateUniqueCode(string $circoloName): string
+    {
+        // Rimuovi caratteri speciali e prendi prime lettere significative
+        $clean = strtoupper(str_replace([' ', '-', "'", '.'], '', $circoloName));
+
+        // Prendi i primi 10 caratteri
+        $code = substr($clean, 0, 10);
+
+        // Se esiste già, aggiungi suffisso numerico
+        $counter = 1;
+        $originalCode = $code;
+        while (Club::where('code', $code)->exists()) {
+            $code = substr($originalCode, 0, 8) . sprintf('%02d', $counter);
+            $counter++;
+        }
+
+        return $code;
+    }
+
+    /**
      * Crea circoli mancanti dal CSV
      */
     private function ensureClubs(): void
@@ -252,17 +274,29 @@ class Tournaments2026Seeder extends Seeder
             $club = $this->findClub($circoloName);
 
             if (!$club) {
-                // Crea nuovo circolo
-                $code = strtoupper(str_replace([' ', '-', "'"], '_', $circoloName));
-                $club = Club::create([
-                    'name' => ucwords(strtolower($circoloName)),
-                    'code' => substr($code, 0, 10),
-                    'zone_id' => $zonaId,
-                    'email' => strtolower(substr($code, 0, 20)) . '@golf.it',
-                    'is_active' => true,
-                ]);
-                $created++;
-                $this->command->info("   + Creato: {$circoloName} (Zona {$zonaId})");
+                // Genera codice unico breve
+                $code = $this->generateUniqueCode($circoloName);
+
+                try {
+                    $club = Club::create([
+                        'name' => ucwords(strtolower($circoloName)),
+                        'code' => $code,
+                        'zone_id' => $zonaId,
+                        'email' => strtolower(substr($code, 0, 20)) . '@golf.it',
+                        'is_active' => true,
+                    ]);
+                    $created++;
+                    $this->command->info("   + Creato: {$circoloName} (Zona {$zonaId})");
+                } catch (\Illuminate\Database\QueryException $e) {
+                    // Se esiste già (errore duplicato), cercalo e usalo
+                    $club = Club::where('code', $code)->first();
+                    if ($club) {
+                        $existing++;
+                        $this->command->warn("   ⚠ Trovato esistente con code: {$circoloName}");
+                    } else {
+                        throw $e;
+                    }
+                }
             } else {
                 $existing++;
             }
@@ -298,13 +332,9 @@ class Tournaments2026Seeder extends Seeder
                     continue;
                 }
 
-                // Trova circolo
+                // Trova circolo usando ricerca intelligente
                 $circoloName = $data['circolo'];
-                $code = strtoupper(str_replace(' ', '_', $circoloName));
-
-                $club = Club::where('name', 'LIKE', "%{$circoloName}%")
-                    ->orWhere('code', $code)
-                    ->first();
+                $club = $this->findClub($circoloName);
 
                 if (!$club) {
                     $this->command->warn("   ⚠ Circolo non trovato: {$circoloName}");
