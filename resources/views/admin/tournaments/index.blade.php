@@ -177,13 +177,13 @@
                                 <div class="text-sm text-gray-500">
                                     Scadenza:
                                     {{ Carbon\Carbon::parse($tournament->availability_deadline)->format('d/m/Y') }}
-                                    @if ($tournament->days_until_deadline >= 0)
+                                    @if ($tournament->days_until_deadline < 0)
+                                        <span class="text-xs text-gray-500">(scaduta)</span>
+                                    @elseif ($tournament->days_until_deadline <= 60)
                                         <span
                                             class="text-xs {{ $tournament->days_until_deadline <= 3 ? 'text-red-600 font-semibold' : 'text-gray-500' }}">
                                             ({{ $tournament->days_until_deadline }} giorni)
                                         </span>
-                                    @else
-                                        <span class="text-xs text-gray-500">(scaduta)</span>
                                     @endif
                                 </div>
                             </td>

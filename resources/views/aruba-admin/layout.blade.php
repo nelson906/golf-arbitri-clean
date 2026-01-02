@@ -36,6 +36,13 @@
             <!-- Sidebar -->
             <aside class="w-full md:w-64 bg-white rounded-lg shadow-md p-4">
                 <nav class="space-y-2">
+                    <!-- Link torna all'applicazione -->
+                    <a href="{{ route('admin.dashboard') }}"
+                        class="flex items-center space-x-3 p-3 rounded bg-gray-100 hover:bg-gray-200 border-b-2 border-gray-300 mb-4">
+                        <i class="fas fa-arrow-left w-5 text-gray-700"></i>
+                        <span class="font-semibold text-gray-700">← Torna all'App</span>
+                    </a>
+
                     <a href="{{ route('aruba.admin.dashboard') }}"
                         class="flex items-center space-x-3 p-3 rounded hover:bg-blue-50 {{ request()->routeIs('aruba.admin.dashboard') ? 'bg-blue-100 text-blue-600' : '' }}">
                         <i class="fas fa-tachometer-alt w-5"></i>
