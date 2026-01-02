@@ -83,14 +83,21 @@ class TournamentController extends Controller
             $query->where('club_id', $request->club_id);
         }
 
-        // Order by start date ascending (centrato sulla data corrente)
+        // Filtra per tornei futuri o recenti (ultimi 30 giorni + futuri) - solo se non ci sono altri filtri
+        if (!$request->filled('month') && !$request->filled('search')) {
+            $dateThreshold = Carbon::now()->subDays(30);
+            $query->where('start_date', '>=', $dateThreshold);
+        }
+
+        // Order by start date ascending (più vicini per primi)
         $tournaments = $query->orderBy('start_date', 'asc')->paginate(20);
 
         // Calcola days_until_deadline per ogni torneo
         $tournaments->getCollection()->transform(function ($tournament) {
             $now = Carbon::now();
             $deadline = Carbon::parse($tournament->availability_deadline);
-            $tournament->days_until_deadline = $now->diffInDays($deadline, false);
+            // Cast a int per evitare decimali (267.58907249284 -> 267)
+            $tournament->days_until_deadline = (int) $now->diffInDays($deadline, false);
             return $tournament;
         });
 
