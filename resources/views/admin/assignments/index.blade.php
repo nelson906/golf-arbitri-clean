@@ -27,7 +27,7 @@
 {{-- Filters - Versione compatta --}}
 <div class="bg-white shadow rounded-lg p-4 mb-6">
     <form method="GET" action="{{ route('admin.assignments.index') }}"
-        class="grid grid-cols-1 md:grid-cols-6 gap-3">
+        class="grid grid-cols-6 md:grid-cols-4 gap-3">
 
         {{-- Tournament Filter --}}
         <div class="md:col-span-2">

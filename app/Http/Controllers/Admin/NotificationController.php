@@ -62,7 +62,7 @@ class NotificationController extends Controller
         // Verifica che il torneo abbia assegnazioni
         if ($tournament->assignments->isEmpty()) {
             return redirect()->back()
-                ->with('error', 'Il torneo non ha arbitri assegnati. Completare prima le assegnazioni tramite <strong>Gestione Torneo</strong>.');
+                ->with('error', 'Il torneo non ha arbitri assegnati. Completare prima le assegnazioni tramite <strong>Setup e Arbitri</strong>.');
         }
 
         // Prepara o recupera la notifica
