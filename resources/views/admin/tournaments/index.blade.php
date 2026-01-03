@@ -334,16 +334,16 @@
     </div>
 
     {{-- Modal per conferma assegnazioni mancanti --}}
-    <div id="noAssignmentsModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div class="mt-3">
-                <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100">
-                    <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div id="noAssignmentsModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="relative mx-auto p-4 border w-full max-w-md shadow-lg rounded-lg bg-white">
+            <div class="mt-2">
+                <div class="mx-auto flex items-center justify-center h-10 w-10 rounded-full bg-yellow-100">
+                    <svg class="h-5 w-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                     </svg>
                 </div>
-                <h3 class="text-lg leading-6 font-medium text-gray-900 text-center mt-5">Nessun Arbitro Assegnato</h3>
-                <div class="mt-2 px-7 py-3">
+                <h3 class="text-base leading-6 font-medium text-gray-900 text-center mt-3">Nessun Arbitro Assegnato</h3>
+                <div class="mt-2 px-4 py-2">
                     <p class="text-sm text-gray-500 text-center">
                         Il torneo "<span id="modalTournamentName" class="font-semibold"></span>" non ha ancora arbitri assegnati.
                     </p>
@@ -351,13 +351,13 @@
                         Vuoi procedere alla pagina di gestione del torneo per effettuare le assegnazioni?
                     </p>
                 </div>
-                <div class="items-center px-4 py-3">
+                <div class="items-center px-4 pb-2">
                     <button id="goToSetupBtn"
-                        class="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        class="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         Vai a Setup e Arbitri
                     </button>
                     <button id="cancelModalBtn"
-                        class="mt-3 px-4 py-2 bg-gray-300 text-gray-800 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                        class="mt-2 px-4 py-1.5 bg-gray-300 text-gray-800 text-sm font-medium rounded-md w-full shadow-sm hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300">
                         Annulla
                     </button>
                 </div>
