@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Services\Monitoring\SystemHealthService;
@@ -28,7 +28,7 @@ class MonitoringController extends Controller
         $period = $request->get('period', '24h');
         $autoRefresh = $request->get('auto_refresh', true);
 
-        return view('admin.monitoring.dashboard', compact(
+        return view('super-admin.monitoring.dashboard', compact(
             'metrics',
             'healthStatus',
             'realtimeStats',
@@ -54,7 +54,7 @@ class MonitoringController extends Controller
             return response()->json($response, $overallHealth ? 200 : 503);
         }
 
-        return view('admin.monitoring.health', compact('response', 'overallHealth', 'checks'));
+        return view('super-admin.monitoring.health', compact('response', 'overallHealth', 'checks'));
     }
 
     /**
@@ -68,7 +68,7 @@ class MonitoringController extends Controller
             return response()->json($metrics);
         }
 
-        return view('admin.monitoring.metrics', compact('metrics'));
+        return view('super-admin.monitoring.metrics', compact('metrics'));
     }
 
     /**
@@ -82,7 +82,7 @@ class MonitoringController extends Controller
         $historicalData = $this->metricsService->getHistoricalData($period, $metric);
         $trends = $this->metricsService->calculateTrends($historicalData);
 
-        return view('admin.monitoring.history', compact(
+        return view('super-admin.monitoring.history', compact(
             'historicalData',
             'trends',
             'period',
@@ -99,7 +99,7 @@ class MonitoringController extends Controller
 
         $metrics = $this->metricsService->getDetailedPerformanceMetrics($timeframe);
 
-        return view('admin.monitoring.performance', compact('metrics', 'timeframe'));
+        return view('super-admin.monitoring.performance', compact('metrics', 'timeframe'));
     }
 
     /**

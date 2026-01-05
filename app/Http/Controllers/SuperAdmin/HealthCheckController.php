@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Services\Monitoring\SystemHealthService;
@@ -25,7 +25,7 @@ class HealthCheckController extends Controller
             return response()->json($response, $overallHealth ? 200 : 503);
         }
 
-        return view('admin.monitoring.health', compact('response', 'overallHealth', 'checks'));
+        return view('super-admin.monitoring.health', compact('response', 'overallHealth', 'checks'));
     }
 
     /**
@@ -60,7 +60,7 @@ class HealthCheckController extends Controller
             return response()->json($status);
         }
 
-        return view('admin.monitoring.status', compact('status'));
+        return view('super-admin.monitoring.status', compact('status'));
     }
 
     /**
