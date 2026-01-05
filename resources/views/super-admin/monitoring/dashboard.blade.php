@@ -18,7 +18,7 @@
             <button id="refresh-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                 🔄 Aggiorna
             </button>
-            <a href="{{ route('admin.monitoring.health') }}"
+            <a href="{{ route('super-admin.monitoring.health') }}"
                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                 🏥 Health Check
             </a>
@@ -254,7 +254,7 @@
                     </div>
                 </button>
 
-                <a href="{{ route('admin.monitoring.logs') }}"
+                <a href="{{ route('super-admin.monitoring.logs') }}"
                    class="bg-purple-50 hover:bg-purple-100 p-4 rounded-lg border border-purple-200 transition-colors">
                     <div class="flex items-center">
                         <span class="text-2xl mr-3">📋</span>
@@ -265,7 +265,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('admin.monitoring.performance') }}"
+                <a href="{{ route('super-admin.monitoring.performance') }}"
                    class="bg-yellow-50 hover:bg-yellow-100 p-4 rounded-lg border border-yellow-200 transition-colors">
                     <div class="flex items-center">
                         <span class="text-2xl mr-3">📈</span>
@@ -363,7 +363,7 @@ window.onload = function() {
 
 function clearCache() {
     if (confirm('Pulire la cache?')) {
-        fetch('{{ route("admin.monitoring.clear-cache") }}', {
+        fetch('{{ route("super-admin.monitoring.clear-cache") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -381,7 +381,7 @@ function clearCache() {
 
 function optimizeSystem() {
     if (confirm('Ottimizzare il sistema?')) {
-        fetch('{{ route("admin.monitoring.optimize") }}', {
+        fetch('{{ route("super-admin.monitoring.optimize") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

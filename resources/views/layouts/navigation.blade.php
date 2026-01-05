@@ -42,8 +42,8 @@
         </x-nav-link>
 
         {{-- System Monitoring --}}
-        <x-nav-link :href="route('super-admin.system.logs')" :active="request()->routeIs('super-admin.system.*')">
-            📊 Monitoraggio Sistema
+        <x-nav-link :href="route('super-admin.monitoring.dashboard')" :active="request()->routeIs('super-admin.monitoring.*')">
+            🖥️ Monitoraggio Sistema
         </x-nav-link>
 @endif
 
@@ -104,10 +104,7 @@
             📈 Report
         </x-nav-link> --}}
 
-        {{-- ✅ MONITORING MENU - AGGIUNTO  --}}
-         <x-nav-link :href="route('admin.monitoring.dashboard')" :active="request()->routeIs('admin.monitoring.*')">
-            🖥️ Monitoraggio
-        </x-nav-link>
+        {{-- Monitoring spostato in Super Admin --}}
 
         {{-- Documents --}}
         <x-nav-link :href="route('admin.documents.index')" :active="request()->routeIs('admin.documents.*')">
@@ -351,10 +348,7 @@
                     📈 Report
                 </x-responsive-nav-link> --}}
 
-                {{-- ✅ MONITORING MOBILE MENU - AGGIUNTO --}}
-                <x-responsive-nav-link :href="route('admin.monitoring.dashboard')" :active="request()->routeIs('admin.monitoring.*')">
-                    🖥️ Monitoraggio
-                </x-responsive-nav-link>
+                {{-- Monitoring spostato in Super Admin --}}
 
                 <x-responsive-nav-link :href="route('admin.documents.index')" :active="request()->routeIs('admin.documents.*')">
                     📁 Documenti
