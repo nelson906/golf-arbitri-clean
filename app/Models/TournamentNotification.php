@@ -61,6 +61,7 @@ class TournamentNotification extends Model
 
     protected $fillable = [
         'tournament_id',
+        'notification_type', // null = zonale, 'crc_referees' = CRC nazionale, 'zone_observers' = ZONA nazionale
         'recipients',    // JSON: { club: true, referees: [ids], institutional: [ids] }
         'content',       // JSON: { subject, message }
         'documents',     // JSON: { convocation: filename, club_letter: filename }
@@ -69,6 +70,7 @@ class TournamentNotification extends Model
         'sent_by',
         'sent_at',
         'is_prepared',
+        'referee_list',
     ];
 
     protected $casts = [

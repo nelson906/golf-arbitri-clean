@@ -17,10 +17,16 @@
                     @endif
                 </p>
             </div>
-            <a href="{{ route('admin.assignments.index') }}"
-               class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">
-                ← Torna alle Assegnazioni
-            </a>
+            <div class="flex space-x-2">
+                <a href="{{ route('admin.tournaments.index') }}"
+                   class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">
+                    ← Tornei
+                </a>
+                <a href="{{ route('admin.assignments.index') }}"
+                   class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">
+                    ← Assegnazioni
+                </a>
+            </div>
         </div>
     </div>
 
@@ -326,6 +332,53 @@ window.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('input[name="referee_ids[]"]').forEach(cb => {
         cb.addEventListener('change', updateCounter);
     });
+
+    // Modal prossimo passo (se presente)
+    @if(session('show_next_step_modal'))
+    showNextStepModal();
+    @endif
 });
+
+function showNextStepModal() {
+    // Crea overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'nextStepModal';
+    overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    overlay.innerHTML = `
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <div class="text-center mb-6">
+                <div class="text-4xl mb-3">✅</div>
+                <h3 class="text-xl font-bold text-gray-900">Assegnazione completata!</h3>
+                <p class="text-gray-600 mt-2">{{ session('success') }}</p>
+            </div>
+            <div class="space-y-3">
+                <a href="{{ route('admin.tournaments.show-assignment-form', $tournament) }}"
+                   class="block w-full bg-indigo-600 hover:bg-indigo-700 text-white text-center px-4 py-3 rounded-lg font-medium transition-colors">
+                    📧 Procedi con la Notifica
+                </a>
+                <a href="{{ route('admin.tournaments.index') }}"
+                   class="block w-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-center px-4 py-3 rounded-lg font-medium transition-colors">
+                    🏌️ Torna ai Tornei
+                </a>
+                <a href="{{ route('admin.assignments.index') }}"
+                   class="block w-full bg-gray-100 hover:bg-gray-200 text-gray-800 text-center px-4 py-3 rounded-lg font-medium transition-colors">
+                    📋 Torna alle Assegnazioni
+                </a>
+            </div>
+            <button onclick="document.getElementById('nextStepModal').remove()"
+                    class="mt-4 w-full text-gray-500 hover:text-gray-700 text-sm">
+                Chiudi e resta qui
+            </button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Chiudi cliccando fuori
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) {
+            overlay.remove();
+        }
+    });
+}
 </script>
 @endsection

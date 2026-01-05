@@ -37,25 +37,52 @@
                 </div>
             @endif
 
-            {{-- Info flow banner --}}
-            <div class="mb-4 p-4 bg-blue-50 border-l-4 border-blue-400 rounded">
-                <div class="flex items-start">
-                    <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd"
-                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM9 7a1 1 0 112 0v4a1 1 0 01-2 0V7zm1 8a1 1 0 100-2 1 1 0 000 2z"
-                            clip-rule="evenodd" />
-                    </svg>
-                    <div class="text-sm text-blue-800">
-                        <p class="font-medium">Prepara e invia la notifica di assegnazione.</p>
-                        <ul class="list-disc ml-5 mt-1 space-y-1">
-                            <li><strong>Gestisci Documenti:</strong> Scarica, modifica e ricarica i DOCX allegati.</li>
-                            <li><strong>Anteprima:</strong> Visualizza l'email prima dell'invio.</li>
-                            <li><strong>Salva Bozza:</strong> Salva senza inviare (potrai inviare dopo).</li>
-                            <li><strong>Invia Ora:</strong> Salva e invia immediatamente a tutti i destinatari.</li>
-                        </ul>
+            {{-- Info flow banner - differenziato per tipo gara --}}
+            @if($tournament->tournamentType?->is_national ?? false)
+                {{-- Banner per gare nazionali --}}
+                <div class="mb-4 p-4 bg-purple-50 border-l-4 border-purple-400 rounded">
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-purple-400 mt-0.5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM9 7a1 1 0 112 0v4a1 1 0 01-2 0V7zm1 8a1 1 0 100-2 1 1 0 000 2z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        <div class="text-sm text-purple-800">
+                            <p class="font-medium">Notifica Gara Nazionale</p>
+                            <ul class="list-disc ml-5 mt-1 space-y-1">
+                                @if(auth()->user()->isNationalAdmin())
+                                    <li>Comunica i nominativi degli <strong>arbitri designati</strong> al Comitato Campionati.</li>
+                                    <li>La zona di competenza e gli arbitri riceveranno copia della notifica.</li>
+                                @else
+                                    <li>Comunica i nominativi degli <strong>osservatori</strong> al Comitato Campionati.</li>
+                                    <li>Il CRC e gli osservatori riceveranno copia della notifica.</li>
+                                @endif
+                                <li><strong>Nessun allegato:</strong> Le notifiche nazionali non includono documenti DOCX.</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
-            </div>
+            @else
+                {{-- Banner per gare zonali --}}
+                <div class="mb-4 p-4 bg-blue-50 border-l-4 border-blue-400 rounded">
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-blue-400 mt-0.5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM9 7a1 1 0 112 0v4a1 1 0 01-2 0V7zm1 8a1 1 0 100-2 1 1 0 000 2z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        <div class="text-sm text-blue-800">
+                            <p class="font-medium">Prepara e invia la notifica di assegnazione.</p>
+                            <ul class="list-disc ml-5 mt-1 space-y-1">
+                                <li><strong>Gestisci Documenti:</strong> Scarica, modifica e ricarica i DOCX allegati.</li>
+                                <li><strong>Anteprima:</strong> Visualizza l'email prima dell'invio.</li>
+                                <li><strong>Salva Bozza:</strong> Salva senza inviare (potrai inviare dopo).</li>
+                                <li><strong>Invia Ora:</strong> Salva e invia immediatamente a tutti i destinatari.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
@@ -98,7 +125,8 @@
                         </div>
                     </div>
 
-                    {{-- Document Status --}}
+                    {{-- Document Status - Solo per gare zonali --}}
+                    @if(!($tournament->tournamentType?->is_national ?? false))
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                         <div class="p-6">
                             <h4 class="text-md font-medium text-gray-900 mb-4">📎 Documenti Disponibili</h4>
@@ -163,6 +191,20 @@
                             </button>
                         </div>
                     </div>
+                    @else
+                    {{-- Info per gare nazionali --}}
+                    <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+                        <div class="flex items-start">
+                            <svg class="w-5 h-5 text-purple-500 mt-0.5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                            </svg>
+                            <div class="text-sm text-purple-800">
+                                <p class="font-medium">Gara Nazionale</p>
+                                <p class="mt-1">Le notifiche per gare nazionali non includono allegati (convocazione/lettera circolo).</p>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
 
                     {{-- Assignments Summary --}}
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -207,6 +249,23 @@
 
                 {{-- Main Content: Form --}}
                 <div class="lg:col-span-2">
+                    @php
+                        $isNationalTournament = $tournament->tournamentType?->is_national ?? false;
+                        $isNationalAdmin = auth()->user()->isNationalAdmin();
+                    @endphp
+
+                    {{-- Switch tra form nazionale e zonale --}}
+                    @if($isNationalTournament)
+                        {{-- GARA NAZIONALE: form semplificato senza allegati --}}
+                        @if($isNationalAdmin)
+                            {{-- CRC_ADMIN: notifica arbitri designati --}}
+                            @include('admin.notifications._national_crc_form')
+                        @else
+                            {{-- ADMIN ZONA: notifica osservatori --}}
+                            @include('admin.notifications._national_zone_form')
+                        @endif
+                    @else
+                        {{-- GARA ZONALE: form completo con allegati (esistente) --}}
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="p-6">
 
@@ -699,14 +758,11 @@
                             </form>
                         </div>
                     </div>
+                    @endif
+                    {{-- Fine switch gara nazionale/zonale --}}
                 </div>
             </div>
         </div>
-    </div>
-    </div>
-    </div>
-    </div>
-    </div>
     </div>
 
     @include('admin.tournament-notifications._document_manager_modal')
@@ -980,5 +1036,102 @@ async function saveClauses() {
                 }
             });
         });
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // FUNZIONI PER NOTIFICHE GARE NAZIONALI
+        // ═══════════════════════════════════════════════════════════════════════
+
+        // Conferma invio notifica nazionale
+        function confirmNationalSend() {
+            const type = document.querySelector('input[name="notification_type"]')?.value;
+            const typeLabel = type === 'crc_referees' ? 'arbitri designati' : 'osservatori';
+
+            // Conta destinatari CC selezionati
+            let ccCount = 0;
+            document.querySelectorAll('input[name^="cc_"]:checked').forEach(() => ccCount++);
+
+            const sendToCampionati = document.getElementById('send_to_campionati')?.checked;
+            const totalRecipients = (sendToCampionati ? 1 : 0) + ccCount;
+
+            if (totalRecipients === 0) {
+                alert('Seleziona almeno un destinatario.');
+                return false;
+            }
+
+            return confirm(
+                `Stai per inviare la notifica ${typeLabel} a ${totalRecipients} destinatari.\n\nVuoi procedere con l'invio?`
+            );
+        }
+
+        // Mostra anteprima notifica nazionale
+        function showNationalPreview(type) {
+            const subject = document.getElementById('subject').value || 'Nessun oggetto';
+            const message = document.getElementById('message').value || 'Nessun messaggio';
+            const typeLabel = type === 'crc' ? 'Designazione Arbitri (CRC)' : 'Designazione Osservatori (Zona)';
+
+            // Raccogli destinatari TO
+            const sendToCampionati = document.getElementById('send_to_campionati')?.checked;
+
+            // Raccogli destinatari CC
+            const ccRecipients = [];
+            document.querySelectorAll('input[name^="cc_"]:checked').forEach(cb => {
+                const label = cb.closest('.flex')?.querySelector('label');
+                if (label) {
+                    ccRecipients.push(label.textContent.trim());
+                }
+            });
+
+            // Costruisci HTML preview
+            let html = `
+                <div class="space-y-4">
+                    <div class="bg-purple-50 p-3 rounded-lg">
+                        <p class="text-sm font-medium text-purple-800">${typeLabel}</p>
+                    </div>
+
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-700 mb-2">Oggetto:</h4>
+                        <p class="text-gray-900">${escapeHtml(subject)}</p>
+                    </div>
+
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-700 mb-2">Messaggio:</h4>
+                        <p class="text-gray-900 whitespace-pre-wrap">${escapeHtml(message)}</p>
+                    </div>
+
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-green-700 mb-2">Destinatario Principale (TO):</h4>
+                        <ul class="text-sm text-gray-700">
+            `;
+
+            if (sendToCampionati) {
+                html += `<li class="flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>Comitato Campionati (campionati@federgolf.it)</li>`;
+            }
+
+            html += `
+                        </ul>
+                    </div>
+
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-blue-700 mb-2">In Copia (CC) - ${ccRecipients.length} destinatari:</h4>
+                        <ul class="text-sm text-gray-700 space-y-1 max-h-32 overflow-y-auto">
+            `;
+
+            ccRecipients.forEach(rec => {
+                html += `<li class="flex items-center"><span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>${escapeHtml(rec)}</li>`;
+            });
+
+            html += `
+                        </ul>
+                    </div>
+
+                    <div class="bg-gray-100 p-4 rounded-lg">
+                        <p class="text-sm text-gray-600"><strong>Allegati:</strong> Nessuno</p>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('preview-content').innerHTML = html;
+            document.getElementById('preview-modal').classList.remove('hidden');
+        }
     </script>
 @endsection

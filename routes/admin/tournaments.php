@@ -28,13 +28,14 @@ Route::prefix('tournaments')->name('tournaments.')->group(function () {
 
         // Availability management (only index exists)
         Route::get('/availabilities', [TournamentController::class, 'availabilities'])->name('availabilities.index');
-        // Notification form route
-        Route::get('/assignment-form', [NotificationController::class, 'showAssignmentForm'])
-            ->name('show-assignment-form');
 
         // Notification form route
         Route::get('/assignment-form', [NotificationController::class, 'showAssignmentForm'])
             ->name('show-assignment-form');
+
+        // Route per notifiche gare nazionali (senza allegati)
+        Route::post('/send-national-notification', [NotificationController::class, 'sendNationalNotification'])
+            ->name('send-national-notification');
     });
 });
 

@@ -29,6 +29,7 @@ class NotificationController extends Controller
 
     /**
      * Lista notifiche con gestione documenti
+     * Per gare nazionali, raggruppa CRC e Zona in una singola riga
      */
     public function index(Request $request)
     {
@@ -44,12 +45,46 @@ class NotificationController extends Controller
         $this->applyTournamentRelationVisibility($query, $user, 'tournament');
 
         $query->orderBy('sent_at', 'desc');
-        $tournamentNotifications = $query->paginate(20);
+        $allNotifications = $query->get();
 
         // Aggiorna info destinatari per ogni notifica
-        foreach ($tournamentNotifications as $notification) {
+        foreach ($allNotifications as $notification) {
             $this->preparationService->updateRecipientInfo($notification);
         }
+
+        // Raggruppa per tournament_id: gare nazionali hanno CRC + Zona nella stessa riga
+        $grouped = $allNotifications->groupBy('tournament_id')->map(function ($notifications) {
+            $first = $notifications->first();
+            return (object) [
+                'tournament' => $first->tournament,
+                'notifications' => $notifications,
+                // Notifica principale (CRC per nazionali, o l'unica per zonali)
+                'primary' => $notifications->firstWhere('notification_type', 'crc_referees') ?? $first,
+                // Notifica CRC (se esiste)
+                'crc' => $notifications->firstWhere('notification_type', 'crc_referees'),
+                // Notifica Zona (se esiste)
+                'zone' => $notifications->firstWhere('notification_type', 'zone_observers'),
+                // Per tornei zonali (notification_type null)
+                'zonal' => $notifications->whereNull('notification_type')->first(),
+                // Data più recente tra tutte le notifiche
+                'created_at' => $notifications->max('created_at'),
+                'sent_at' => $notifications->max('sent_at'),
+            ];
+        })->sortByDesc('sent_at');
+
+        // Paginazione manuale
+        $page = $request->get('page', 1);
+        $perPage = 20;
+        $total = $grouped->count();
+        $items = $grouped->forPage($page, $perPage)->values();
+
+        $tournamentNotifications = new \Illuminate\Pagination\LengthAwarePaginator(
+            $items,
+            $total,
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
 
         return view('admin.tournament-notifications.index', compact('tournamentNotifications'));
     }
@@ -245,6 +280,19 @@ class NotificationController extends Controller
     public function resend(TournamentNotification $notification)
     {
         try {
+            // Verifica se è una notifica nazionale (salvata nei metadata)
+            $metadata = is_string($notification->metadata)
+                ? json_decode($notification->metadata, true)
+                : ($notification->metadata ?? []);
+
+            $isNational = $metadata['is_national'] ?? false;
+
+            if ($isNational) {
+                // Reinvio per gare nazionali: usa i destinatari salvati nei metadata
+                return $this->resendNationalNotification($notification, $metadata);
+            }
+
+            // Reinvio standard per gare zonali
             $this->transactionService->sendWithTransaction($notification, true);
 
             return redirect()->route('admin.tournament-notifications.index')
@@ -252,6 +300,148 @@ class NotificationController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Errore nel reinvio delle notifiche: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Reinvia notifica per gare nazionali
+     */
+    private function resendNationalNotification(TournamentNotification $notification, array $metadata)
+    {
+        $tournament = $notification->tournament;
+        $notificationType = $metadata['type'] ?? 'crc_referees';
+        $isCrcNotification = $notificationType === 'crc_referees';
+
+        // Prepara destinatari
+        $toRecipients = [];
+        $ccRecipients = [];
+
+        // TO: Comitato Campionati (sempre per gare nazionali)
+        $toRecipients[] = [
+            'email' => config('golf.emails.ufficio_campionati', 'campionati@federgolf.it'),
+            'name' => 'Comitato Campionati',
+        ];
+
+        if ($isCrcNotification) {
+            // CRC: CC a zona del torneo
+            if ($tournament->club->zone?->email) {
+                $ccRecipients[] = [
+                    'email' => $tournament->club->zone->email,
+                    'name' => $tournament->club->zone->name,
+                ];
+            }
+
+            // CC Admin zonali della zona del torneo
+            $zoneAdmins = \App\Models\User::where('user_type', 'admin')
+                ->where('zone_id', $tournament->club->zone_id)
+                ->where('is_active', true)
+                ->get();
+            foreach ($zoneAdmins as $admin) {
+                $ccRecipients[] = ['email' => $admin->email, 'name' => $admin->name];
+            }
+
+            // CC Arbitri designati (tutti gli assegnati attuali)
+            $referees = $tournament->assignments()->with('user')->get();
+            foreach ($referees as $assignment) {
+                if ($assignment->user) {
+                    $ccRecipients[] = ['email' => $assignment->user->email, 'name' => $assignment->user->name];
+                }
+            }
+        } else {
+            // ZONA: CC a CRC
+            $ccRecipients[] = [
+                'email' => config('golf.emails.crc', 'crc@federgolf.it'),
+                'name' => 'CRC',
+            ];
+
+            // CC Admin nazionali
+            $nationalAdmins = \App\Models\User::where('user_type', 'national_admin')
+                ->where('is_active', true)
+                ->get();
+            foreach ($nationalAdmins as $admin) {
+                $ccRecipients[] = ['email' => $admin->email, 'name' => $admin->name];
+            }
+
+            // CC Osservatori (solo ruolo Osservatore)
+            $observers = $tournament->assignments()
+                ->where('role', 'Osservatore')
+                ->with('user')
+                ->get();
+            foreach ($observers as $assignment) {
+                if ($assignment->user) {
+                    $ccRecipients[] = ['email' => $assignment->user->email, 'name' => $assignment->user->name];
+                }
+            }
+        }
+
+        // Prepara array CC
+        $ccArray = [];
+        foreach ($ccRecipients as $cc) {
+            $ccArray[$cc['email']] = $cc['name'];
+        }
+
+        $subject = $metadata['subject'] ?? 'Designazione Arbitri - ' . $tournament->name;
+        $message = $metadata['message'] ?? '';
+
+        $successCount = 0;
+        $errorCount = 0;
+
+        // Invia email
+        foreach ($toRecipients as $recipient) {
+            try {
+                \Illuminate\Support\Facades\Mail::raw($message, function ($mail) use ($recipient, $subject, $ccArray) {
+                    $mail->to($recipient['email'], $recipient['name'])
+                        ->subject($subject);
+
+                    if (!empty($ccArray)) {
+                        $mail->cc($ccArray);
+                    }
+                });
+                $successCount++;
+            } catch (\Exception $e) {
+                Log::error('Errore reinvio email nazionale', [
+                    'recipient' => $recipient['email'],
+                    'error' => $e->getMessage(),
+                ]);
+                $errorCount++;
+            }
+        }
+
+        // Prepara lista nomi destinatari per visualizzazione
+        $allRecipientNames = [];
+        foreach ($toRecipients as $r) {
+            $allRecipientNames[] = $r['name'];
+        }
+        foreach ($ccRecipients as $r) {
+            $allRecipientNames[] = $r['name'];
+        }
+        $refereeList = implode(', ', $allRecipientNames);
+        $totalRecipients = count($toRecipients) + count($ccRecipients);
+
+        // Aggiorna notifica
+        $notification->update([
+            'status' => $errorCount === 0 ? 'sent' : 'partial',
+            'sent_at' => now(),
+            'sent_by' => auth()->id(),
+            'referee_list' => $refereeList,
+            'total_recipients' => $totalRecipients,
+            'metadata' => array_merge($metadata, [
+                'success_count' => $successCount,
+                'error_count' => $errorCount,
+                'resent_at' => now()->toIso8601String(),
+                'resent_by' => auth()->user()->name,
+            ]),
+        ]);
+
+        $typeLabel = $isCrcNotification ? 'arbitri designati' : 'osservatori';
+        $totalSent = $successCount + count($ccArray);
+
+        if ($errorCount === 0) {
+            return redirect()->route('admin.tournament-notifications.index')
+                ->with('success', "Notifica {$typeLabel} reinviata con successo a {$totalSent} destinatari.");
+        } else {
+            return redirect()->route('admin.tournament-notifications.index')
+                ->with('warning', "Notifica {$typeLabel} reinviata con {$errorCount} errori su {$totalSent} destinatari.");
         }
     }
 
@@ -454,6 +644,213 @@ class NotificationController extends Controller
                 'success' => false,
                 'message' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * Invia notifica per gare nazionali (senza allegati)
+     * Gestisce sia CRC (arbitri designati) che Admin Zona (osservatori)
+     */
+    public function sendNationalNotification(Request $request, Tournament $tournament)
+    {
+        $validated = $request->validate([
+            'notification_type' => 'required|string|in:crc_referees,zone_observers',
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string',
+        ]);
+
+        $notificationType = $validated['notification_type'];
+        $isCrcNotification = $notificationType === 'crc_referees';
+
+        try {
+            // Prepara destinatari
+            $toRecipients = [];
+            $ccRecipients = [];
+
+            // TO: Comitato Campionati (checkbox checked = presente nella request)
+            if ($request->has('send_to_campionati')) {
+                $toRecipients[] = [
+                    'email' => config('golf.emails.ufficio_campionati', 'campionati@federgolf.it'),
+                    'name' => 'Comitato Campionati',
+                ];
+            }
+
+            if ($isCrcNotification) {
+                // CRC: CC a zona del torneo e arbitri designati
+                if ($request->has('send_to_zone') && $tournament->club->zone?->email) {
+                    $ccRecipients[] = [
+                        'email' => $tournament->club->zone->email,
+                        'name' => $tournament->club->zone->name,
+                    ];
+                }
+
+                // CC Admin zonali
+                $ccZoneAdmins = $request->input('cc_zone_admins', []);
+                if (!empty($ccZoneAdmins)) {
+                    $zoneAdmins = \App\Models\User::whereIn('id', $ccZoneAdmins)->get();
+                    foreach ($zoneAdmins as $admin) {
+                        $ccRecipients[] = ['email' => $admin->email, 'name' => $admin->name];
+                    }
+                }
+
+                // CC Arbitri designati
+                $ccReferees = $request->input('cc_referees', []);
+                if (!empty($ccReferees)) {
+                    $referees = \App\Models\User::whereIn('id', $ccReferees)->get();
+                    foreach ($referees as $referee) {
+                        $ccRecipients[] = ['email' => $referee->email, 'name' => $referee->name];
+                    }
+                }
+            } else {
+                // ZONA: CC a CRC e osservatori
+                if ($request->has('send_to_crc')) {
+                    $ccRecipients[] = [
+                        'email' => config('golf.emails.crc', 'crc@federgolf.it'),
+                        'name' => 'CRC',
+                    ];
+                }
+
+                // CC Admin nazionali
+                $ccNationalAdmins = $request->input('cc_national_admins', []);
+                if (!empty($ccNationalAdmins)) {
+                    $nationalAdmins = \App\Models\User::whereIn('id', $ccNationalAdmins)->get();
+                    foreach ($nationalAdmins as $admin) {
+                        $ccRecipients[] = ['email' => $admin->email, 'name' => $admin->name];
+                    }
+                }
+
+                // CC Osservatori
+                $ccObservers = $request->input('cc_observers', []);
+                if (!empty($ccObservers)) {
+                    $observers = \App\Models\User::whereIn('id', $ccObservers)->get();
+                    foreach ($observers as $observer) {
+                        $ccRecipients[] = ['email' => $observer->email, 'name' => $observer->name];
+                    }
+                }
+            }
+
+            // Verifica che ci siano destinatari
+            if (empty($toRecipients) && empty($ccRecipients)) {
+                return redirect()->back()->with('error', 'Nessun destinatario selezionato.');
+            }
+
+            // Invia email
+            $successCount = 0;
+            $errorCount = 0;
+
+            // Prepara array CC nel formato corretto per Laravel Mail
+            $ccArray = [];
+            foreach ($ccRecipients as $cc) {
+                $ccArray[$cc['email']] = $cc['name'];
+            }
+
+            // Invia email con CC
+            foreach ($toRecipients as $recipient) {
+                try {
+                    \Illuminate\Support\Facades\Mail::raw($validated['message'], function ($mail) use ($recipient, $validated, $ccArray) {
+                        $mail->to($recipient['email'], $recipient['name'])
+                            ->subject($validated['subject']);
+
+                        if (!empty($ccArray)) {
+                            $mail->cc($ccArray);
+                        }
+                    });
+                    $successCount++;
+                } catch (\Exception $e) {
+                    Log::error('Errore invio email', [
+                        'recipient' => $recipient['email'],
+                        'error' => $e->getMessage(),
+                    ]);
+                    $errorCount++;
+                }
+            }
+
+            // Se non ci sono TO ma solo CC, usa il primo CC come TO
+            if (empty($toRecipients) && !empty($ccRecipients)) {
+                $firstCc = array_shift($ccRecipients);
+                $remainingCc = [];
+                foreach ($ccRecipients as $cc) {
+                    $remainingCc[$cc['email']] = $cc['name'];
+                }
+                try {
+                    \Illuminate\Support\Facades\Mail::raw($validated['message'], function ($mail) use ($firstCc, $validated, $remainingCc) {
+                        $mail->to($firstCc['email'], $firstCc['name'])
+                            ->subject($validated['subject']);
+                        if (!empty($remainingCc)) {
+                            $mail->cc($remainingCc);
+                        }
+                    });
+                    $successCount++;
+                } catch (\Exception $e) {
+                    Log::error('Errore invio email (solo CC)', ['error' => $e->getMessage()]);
+                    $errorCount++;
+                }
+            }
+
+            // Prepara lista nomi destinatari per visualizzazione
+            $allRecipientNames = [];
+            foreach ($toRecipients as $r) {
+                $allRecipientNames[] = $r['name'];
+            }
+            foreach ($ccRecipients as $r) {
+                $allRecipientNames[] = $r['name'];
+            }
+            $refereeList = implode(', ', $allRecipientNames);
+            $totalRecipients = count($toRecipients) + count($ccRecipients);
+
+            // Elimina la notifica "bozza" (notification_type = null) per evitare duplicati
+            // Questo record viene creato automaticamente da prepareNotification() ma non serve per gare nazionali
+            TournamentNotification::where('tournament_id', $tournament->id)
+                ->whereNull('notification_type')
+                ->whereNull('sent_at')
+                ->delete();
+
+            // Salva record della notifica - usa notification_type come chiave
+            // per permettere DUE notifiche separate (CRC + ZONA) per tornei nazionali
+            $notification = TournamentNotification::updateOrCreate(
+                [
+                    'tournament_id' => $tournament->id,
+                    'notification_type' => $notificationType, // 'crc_referees' o 'zone_observers'
+                ],
+                [
+                    'status' => $errorCount === 0 ? 'sent' : 'partial',
+                    'sent_at' => now(),
+                    'sent_by' => auth()->id(),
+                    'referee_list' => $refereeList,
+                    'total_recipients' => $totalRecipients,
+                    'is_prepared' => true,
+                    'metadata' => [
+                        'type' => $notificationType,
+                        'subject' => $validated['subject'],
+                        'message' => $validated['message'],
+                        'to_recipients' => $toRecipients,
+                        'cc_recipients' => $ccRecipients,
+                        'success_count' => $successCount,
+                        'error_count' => $errorCount,
+                        'sent_by' => auth()->user()->name,
+                        'is_national' => true,
+                    ],
+                ]
+            );
+
+            $typeLabel = $isCrcNotification ? 'arbitri designati' : 'osservatori';
+            $totalSent = $successCount + count($ccRecipients);
+
+            if ($errorCount === 0) {
+                return redirect()->route('admin.tournament-notifications.index')
+                    ->with('success', "Notifica {$typeLabel} inviata con successo a {$totalSent} destinatari.");
+            } else {
+                return redirect()->route('admin.tournament-notifications.index')
+                    ->with('warning', "Notifica {$typeLabel} inviata con {$errorCount} errori su {$totalSent} destinatari.");
+            }
+        } catch (\Exception $e) {
+            Log::error('Errore invio notifica nazionale', [
+                'tournament_id' => $tournament->id,
+                'type' => $notificationType,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', 'Errore nell\'invio della notifica: '.$e->getMessage());
         }
     }
 }

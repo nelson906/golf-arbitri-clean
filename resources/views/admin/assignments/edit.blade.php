@@ -46,7 +46,7 @@
             </h4>
             <p class="text-yellow-800">
                 Arbitro suggerito: <strong>{{ $suggestedReferee->name }}</strong>
-                ({{ $suggestedReferee->referee->level_label ?? 'N/A' }})
+                ({{ $suggestedReferee->level_label ?? 'N/A' }})
             </p>
         </div>
     @endif
@@ -79,7 +79,7 @@
                             {{ old(\App\Models\Assignment::getUserField(), $assignment->{\App\Models\Assignment::getUserField()}) == $referee->id ? 'selected' : '' }}
                             {{ $suggestedReferee && $suggestedReferee->id == $referee->id ? 'class=bg-yellow-100' : '' }}>
                             {{ $referee->last_name }} {{ $referee->first_name }}
-                            ({{ $referee->referee->referee_code ?? 'N/A' }} - {{ $referee->referee->level_label ?? 'N/A' }})
+                            ({{ $referee->referee_code ?? 'N/A' }} - {{ $referee->level_label ?? 'N/A' }})
                             @if($suggestedReferee && $suggestedReferee->id == $referee->id)
                                 ⭐ SUGGERITO
                             @endif

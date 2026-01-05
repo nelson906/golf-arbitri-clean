@@ -101,6 +101,8 @@ class AssignmentController extends Controller
         $tournament = null;
         $availableReferees = collect();
         $otherReferees = collect();
+        $user = auth()->user();
+        $isNationalAdmin = $this->isNationalAdmin();
 
         if ($request->has('tournament_id')) {
             /** @var Tournament|null $tournament */
@@ -113,18 +115,23 @@ class AssignmentController extends Controller
                 // Arbitri che hanno dato disponibilità per questo torneo
                 $availableRefereeIds = $tournament->availabilities()->pluck('user_id')->toArray();
                 $availableReferees = User::where('user_type', 'referee')
+                    ->where('is_active', true)
                     ->whereIn('id', $availableRefereeIds)
                     ->whereNotIn('id', $assignedRefereeIds)
+                    ->when($isNationalAdmin, fn ($q) => $q->whereIn('level', ['Nazionale', 'Internazionale']))
+                    ->orderBy('name')
                     ->get();
 
-                // Altri arbitri della zona (non hanno dato disponibilità ma sono nella stessa zona)
-                $user = auth()->user();
-                $zoneId = ($user && $user->user_type === 'admin') ? $user->zone_id : null;
+                // Altri arbitri
+                $zoneId = (!$isNationalAdmin && $user && $user->user_type === 'admin') ? $user->zone_id : null;
 
                 $otherReferees = User::where('user_type', 'referee')
+                    ->where('is_active', true)
                     ->whereNotIn('id', $availableRefereeIds)
                     ->whereNotIn('id', $assignedRefereeIds)
+                    ->when($isNationalAdmin, fn ($q) => $q->whereIn('level', ['Nazionale', 'Internazionale']))
                     ->when($zoneId, fn ($q) => $q->where('zone_id', $zoneId))
+                    ->orderBy('name')
                     ->get();
             }
         }
@@ -404,6 +411,11 @@ class AssignmentController extends Controller
         // Filtra solo arbitri attivi
         $query->where('is_active', true);
 
+        // CRC admin: mostra solo arbitri nazionali/internazionali
+        if ($this->isNationalAdmin()) {
+            $query->whereIn('level', ['Nazionale', 'Internazionale']);
+        }
+
         // Escludi già assegnati
         if (! empty($excludeIds)) {
             $query->whereNotIn('id', $excludeIds);
@@ -417,6 +429,11 @@ class AssignmentController extends Controller
      */
     private function getPossibleReferees($tournament, $excludeIds = [])
     {
+        // CRC admin: non mostra arbitri "possibili" zonali, solo nazionali nella sezione dedicata
+        if ($this->isNationalAdmin()) {
+            return collect();
+        }
+
         $query = User::with('zone')
             ->where('user_type', 'referee');
 
@@ -446,9 +463,12 @@ class AssignmentController extends Controller
      */
     private function getNationalReferees($tournament, $excludeIds = [], $availableReferees = null, $possibleReferees = null)
     {
-        // Se il torneo non è nazionale, ritorna collezione vuota
-        if (! isset($tournament->tournamentType) || ! $tournament->tournamentType->is_national) {
-            return collect();
+        // CRC admin: mostra sempre arbitri nazionali (che non hanno dato disponibilità)
+        // Per admin zonali: mostra solo se il torneo è nazionale
+        if (!$this->isNationalAdmin()) {
+            if (! isset($tournament->tournamentType) || ! $tournament->tournamentType->is_national) {
+                return collect();
+            }
         }
 
         $query = User::with('zone')
@@ -465,12 +485,9 @@ class AssignmentController extends Controller
             $query->whereNotIn('id', $excludeIds);
         }
 
-        // Escludi quelli già nelle altre liste
-        if ($availableReferees) {
+        // Escludi quelli già nelle altre liste (disponibili)
+        if ($availableReferees && $availableReferees->count() > 0) {
             $query->whereNotIn('id', $availableReferees->pluck('id'));
-        }
-        if ($possibleReferees) {
-            $query->whereNotIn('id', $possibleReferees->pluck('id'));
         }
 
         return $query->orderBy('name')->get();
@@ -556,9 +573,11 @@ class AssignmentController extends Controller
                 $message .= " {$skipped} erano già assegnati.";
             }
 
+            // Torna alla stessa pagina con parametro per mostrare modal di scelta
             return redirect()
-                ->route('admin.assignments.index')
-                ->with('success', $message);
+                ->route('admin.assignments.assign-referees', $tournament)
+                ->with('success', $message)
+                ->with('show_next_step_modal', true);
         } catch (\Exception $e) {
             DB::rollback();
 
