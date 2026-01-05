@@ -33,11 +33,6 @@ Route::prefix('super-admin')->name('super-admin.')->middleware(['auth', 'super_a
         return view('admin.placeholder', ['title' => 'Impostazioni Sistema']);
     })->name('settings.index');
 
-    // System Logs
-    Route::get('/system/logs', function () {
-        return view('admin.placeholder', ['title' => 'Logs Sistema']);
-    })->name('system.logs');
-
     // Notification Clauses
     Route::controller(\App\Http\Controllers\SuperAdmin\NotificationClauseController::class)->group(function () {
         Route::get('clauses', 'index')->name('clauses.index');
@@ -50,4 +45,7 @@ Route::prefix('super-admin')->name('super-admin.')->middleware(['auth', 'super_a
         Route::post('clauses/reorder', 'reorder')->name('clauses.reorder');
         Route::get('clauses/{clause}/preview', 'preview')->name('clauses.preview');
     });
+
+    // ===== MODULAR SUPER ADMIN ROUTES =====
+    require __DIR__.'/super-admin/monitoring.php';
 });

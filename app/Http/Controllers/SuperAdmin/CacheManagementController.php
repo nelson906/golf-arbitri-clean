@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Services\Monitoring\CacheService;
@@ -72,7 +72,7 @@ class CacheManagementController extends Controller
             return response()->json($stats);
         }
 
-        return view('admin.monitoring.cache-stats', compact('stats'));
+        return view('super-admin.monitoring.cache-stats', compact('stats'));
     }
 
     /**

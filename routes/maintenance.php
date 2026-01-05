@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Admin\ArubaToolsController;
+use App\Http\Controllers\SuperAdmin\ArubaToolsController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
