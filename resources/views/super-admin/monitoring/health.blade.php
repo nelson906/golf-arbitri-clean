@@ -13,7 +13,7 @@
                     class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                 🔄 Aggiorna
             </button>
-            <a href="{{ route('admin.monitoring.dashboard') }}"
+            <a href="{{ route('super-admin.monitoring.dashboard') }}"
                class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                 ← Torna al Dashboard
             </a>
@@ -187,7 +187,7 @@
                     </div>
                 </button>
 
-                <a href="{{ route('admin.monitoring.logs') }}"
+                <a href="{{ route('super-admin.monitoring.logs') }}"
                    class="bg-purple-50 hover:bg-purple-100 p-4 rounded-lg border border-purple-200 transition-colors">
                     <div class="flex items-center">
                         <span class="text-2xl mr-3">📋</span>
@@ -198,7 +198,7 @@
                     </div>
                 </a>
 
-                <a href="{{ route('admin.monitoring.dashboard') }}"
+                <a href="{{ route('super-admin.monitoring.dashboard') }}"
                    class="bg-green-50 hover:bg-green-100 p-4 rounded-lg border border-green-200 transition-colors">
                     <div class="flex items-center">
                         <span class="text-2xl mr-3">📊</span>

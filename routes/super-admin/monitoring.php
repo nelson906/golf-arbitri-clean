@@ -34,8 +34,8 @@ Route::prefix('monitoring')->name('monitoring.')->group(function () {
     Route::get('/logs/errors/count', [SystemLogsController::class, 'errorCount'])->name('logs.error-count');
 
     // Cache Management
-    Route::post('/cache/clear', [CacheManagementController::class, 'clear'])->name('cache.clear');
-    Route::post('/cache/optimize', [CacheManagementController::class, 'optimize'])->name('cache.optimize');
+    Route::post('/clear-cache', [CacheManagementController::class, 'clear'])->name('clear-cache');
+    Route::post('/optimize', [CacheManagementController::class, 'optimize'])->name('optimize');
     Route::get('/cache/stats', [CacheManagementController::class, 'stats'])->name('cache.stats');
     Route::post('/cache/clear-application', [CacheManagementController::class, 'clearApplication'])->name('cache.clear-application');
     Route::post('/cache/clear-views', [CacheManagementController::class, 'clearViews'])->name('cache.clear-views');
