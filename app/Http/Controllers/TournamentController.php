@@ -33,9 +33,8 @@ class TournamentController extends Controller
 
     /**
      * Lista tornei unificata
-     * - Limitata a 60 giorni nel passato
+     * - Solo tornei futuri (se non ci sono filtri month/search)
      * - Ordinata in ASC (dal più vicino al più lontano)
-     * - Raggruppa per data con giorni mancanti
      */
     public function index(Request $request): View
     {
@@ -51,52 +50,30 @@ class TournamentController extends Controller
             $query->whereIn('status', ['open', 'closed', 'assigned', 'completed']);
         }
 
-        // Limita a 60 giorni nel passato (non mostrare tornei troppo vecchi)
-        $sixtyDaysAgo = Carbon::now()->subDays(60)->startOfDay();
-        $query->where('start_date', '>=', $sixtyDaysAgo);
-
         // Filtri aggiuntivi da request
         $this->applyFilters($query, $request);
 
-        // Ordina in modo ascendente (dal più vicino al più lontano)
-        $tournaments = $query->orderBy('start_date', 'asc')->get();
-
-        // Raggruppa i tornei per data di inizio
-        $tournamentsByDate = $tournaments->groupBy(function ($tournament) {
-            return $tournament->start_date->format('Y-m-d');
-        });
-
-        // Genera tutti i giorni dal primo al ultimo torneo (con giorni mancanti)
-        $allDates = collect();
-        $today = Carbon::today();
-
-        if ($tournaments->isNotEmpty()) {
-            // Trova range date: da oggi (o primo torneo se nel futuro) fino all'ultimo
-            $firstTournamentDate = $tournaments->first()->start_date;
-            $lastTournamentDate = $tournaments->last()->start_date;
-
-            // Inizia da oggi o dal primo torneo (quello che viene prima)
-            $startDate = $firstTournamentDate->lt($today) ? $sixtyDaysAgo : $firstTournamentDate;
-
-            // Limita a 120 giorni nel futuro per non generare troppi giorni
-            $maxEndDate = Carbon::now()->addDays(120);
-            $endDate = $lastTournamentDate->gt($maxEndDate) ? $maxEndDate : $lastTournamentDate;
-
-            $currentDate = $startDate->copy();
-            while ($currentDate->lte($endDate)) {
-                $dateKey = $currentDate->format('Y-m-d');
-                $allDates[$dateKey] = $tournamentsByDate->get($dateKey, collect());
-                $currentDate->addDay();
-            }
+        // Filtra per tornei futuri - solo se non ci sono altri filtri
+        if (! $request->filled('month') && ! $request->filled('search')) {
+            $query->where('start_date', '>=', Carbon::now()->startOfDay());
         }
+
+        // Ordina ASC (più vicini per primi) e pagina
+        $tournaments = $query->orderBy('start_date', 'asc')->paginate(20);
+
+        // Calcola days_until_deadline per ogni torneo
+        $tournaments->getCollection()->transform(function ($tournament) {
+            $now = Carbon::now();
+            $deadline = Carbon::parse($tournament->availability_deadline);
+            $tournament->days_until_deadline = (int) $now->diffInDays($deadline, false);
+            return $tournament;
+        });
 
         // Statistiche per admin
         $stats = $this->isAdmin($user) ? $this->calculateStats($tournaments) : [];
 
         return view('tournaments.index', [
             'tournaments' => $tournaments,
-            'tournamentsByDate' => $allDates,
-            'today' => $today,
             'isAdmin' => $this->isAdmin($user),
             'stats' => $stats,
             'isNationalAdmin' => $this->isNationalAdmin($user),
