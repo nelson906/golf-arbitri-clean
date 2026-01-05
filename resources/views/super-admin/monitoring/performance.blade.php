@@ -5,7 +5,7 @@
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             📈 Metriche Performance
         </h2>
-        <a href="{{ route('admin.monitoring.dashboard') }}"
+        <a href="{{ route('super-admin.monitoring.dashboard') }}"
             class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
             ← Torna al Dashboard
         </a>

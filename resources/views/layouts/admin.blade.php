@@ -67,10 +67,10 @@
                     </li>
 
                     <li>
-                        <a href="{{ route('admin.monitoring.dashboard') }}"
-                            class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.monitoring.*') ? 'bg-blue-900' : '' }}">
-                            <span class="mr-3">🔧</span>
-                            🖥️ Monitoraggio
+                        <a href="{{ route('super-admin.monitoring.dashboard') }}"
+                            class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('super-admin.monitoring.*') ? 'bg-blue-900' : '' }}">
+                            <span class="mr-3">🖥️</span>
+                            Monitoraggio Sistema
                         </a>
                     </li>
 
