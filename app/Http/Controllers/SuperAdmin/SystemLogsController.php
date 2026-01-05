@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Services\Monitoring\SystemLogsService;
@@ -25,7 +25,7 @@ class SystemLogsController extends Controller
         $logs = $this->logsService->getLogs($level, $date, $search);
         $logStats = $this->logsService->getLogStats($date);
 
-        return view('admin.monitoring.logs', compact(
+        return view('super-admin.monitoring.logs', compact(
             'logs',
             'logStats',
             'level',
@@ -48,7 +48,7 @@ class SystemLogsController extends Controller
             return response()->json($logs);
         }
 
-        return view('admin.monitoring.logs-level', compact('logs', 'level', 'date'));
+        return view('super-admin.monitoring.logs-level', compact('logs', 'level', 'date'));
     }
 
     /**
@@ -77,6 +77,6 @@ class SystemLogsController extends Controller
             return response()->json($stats);
         }
 
-        return view('admin.monitoring.logs-stats', compact('stats', 'date'));
+        return view('super-admin.monitoring.logs-stats', compact('stats', 'date'));
     }
 }
