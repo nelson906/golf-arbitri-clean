@@ -203,10 +203,35 @@ class Tournament extends Model
         return $this->hasMany(TournamentNotification::class);
     }
 
-    // Ultima notifica (relazione comoda)
+    // Ultima notifica (relazione comoda) - per gare zonali
     public function notification()
     {
         return $this->hasOne(TournamentNotification::class)->latestOfMany();
+    }
+
+    // Notifica CRC per gare nazionali (arbitri designati)
+    public function crcNotification()
+    {
+        return $this->hasOne(TournamentNotification::class)
+            ->where('notification_type', 'crc_referees')
+            ->latestOfMany();
+    }
+
+    // Notifica ZONA per gare nazionali (osservatori)
+    public function zoneNotification()
+    {
+        return $this->hasOne(TournamentNotification::class)
+            ->where('notification_type', 'zone_observers')
+            ->latestOfMany();
+    }
+
+    // Verifica se ha notifiche nazionali inviate
+    public function hasNationalNotifications(): bool
+    {
+        return $this->notifications()
+            ->whereIn('notification_type', ['crc_referees', 'zone_observers'])
+            ->where('status', 'sent')
+            ->exists();
     }
 
     /**

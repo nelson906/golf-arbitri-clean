@@ -38,13 +38,13 @@
         👥 Comitato di Gara Assegnato ({{ $tournament->assignments()->count() }})
     </h3>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        @foreach($tournament->assignments()->with('user.referee')->get() as $assignment)
+        @foreach($tournament->assignments()->with('user')->get() as $assignment)
         <div class="bg-white p-3 rounded border border-green-200 flex justify-between items-center">
             <div>
                 <p class="font-medium text-gray-900">{{ $assignment->user->name }}</p>
                 <p class="text-sm text-gray-600">
-                    {{ $assignment->user->referee->referee_code ?? 'N/A' }} -
-                    {{ $assignment->user->referee->level_label ?? 'N/A' }}
+                    {{ $assignment->user->referee_code ?? 'N/A' }} -
+                    {{ $assignment->user->level_label ?? 'N/A' }}
                 </p>
                 <p class="text-sm font-medium text-green-600">{{ $assignment->role }}</p>
             </div>
@@ -93,19 +93,40 @@
                         </div>
                     </div>
                 @else
-<select name="tournament_id" id="tournament_id"
-        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-        required>
-    <option value="">Seleziona un torneo</option>
-    @foreach($tournaments as $tournament)
-        <option value="{{ $tournament->id }}">
-            {{ $tournament->name }} - {{ $tournament->start_date->format('d/m/Y') }}
-            @if($tournament->club)
-                ({{ $tournament->club->code ?? $tournament->club->name }})
-            @endif
-        </option>
-    @endforeach
-</select>
+<div class="relative">
+    <input type="hidden" name="tournament_id" id="tournament_id_hidden" value="{{ old('tournament_id') }}">
+    <input type="text"
+           id="tournament_search"
+           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+           placeholder="Cerca torneo per nome..."
+           autocomplete="off">
+    <div id="tournament_results"
+         class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto hidden">
+    </div>
+    <div id="tournament_selected" class="hidden mt-2 p-3 bg-green-50 rounded-md border border-green-200">
+        <div class="flex justify-between items-start">
+            <div>
+                <div class="text-sm font-medium text-gray-900" id="selected_tournament_name"></div>
+                <div class="text-sm text-gray-500" id="selected_tournament_info"></div>
+            </div>
+            <button type="button" id="clear_tournament" class="text-red-500 hover:text-red-700 text-sm">
+                ✕ Rimuovi
+            </button>
+        </div>
+    </div>
+</div>
+@php
+    $tournamentsForSearch = $tournaments->map(fn($t) => [
+        'id' => $t->id,
+        'name' => $t->name,
+        'date' => $t->start_date->format('d/m/Y'),
+        'club' => $t->club ? ($t->club->code ?? $t->club->name) : '',
+        'searchText' => strtolower($t->name . ' ' . ($t->club ? $t->club->name : ''))
+    ])->values();
+@endphp
+<script>
+    const tournamentsData = @json($tournamentsForSearch);
+</script>
                 @endif
                 @error('tournament_id')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -125,8 +146,8 @@
                 @foreach($availableReferees as $referee)
                     <option value="{{ $referee->id }}" style="color: green; font-weight: bold;">
                         ✅ {{ $referee->name }}
-                        @if($referee->referee)
-                            ({{ $referee->referee->referee_code }}) - {{ $referee->referee->level_label }}
+                        @if($referee->referee_code)
+                            ({{ $referee->referee_code }}) - {{ $referee->level_label ?? 'N/A' }}
                         @endif
                     </option>
                 @endforeach
@@ -138,8 +159,8 @@
                 @foreach($otherReferees as $referee)
                     <option value="{{ $referee->id }}" style="color: #666;">
                         {{ $referee->name }}
-                        @if($referee->referee)
-                            ({{ $referee->referee->referee_code }}) - {{ $referee->referee->level_label }}
+                        @if($referee->referee_code)
+                            ({{ $referee->referee_code }}) - {{ $referee->level_label ?? 'N/A' }}
                         @endif
                     </option>
                 @endforeach
@@ -200,19 +221,135 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const tournamentSelect = document.getElementById('tournament_id');
-    const refereeSelect = document.getElementById('user_id');
+    const searchInput = document.getElementById('tournament_search');
+    const resultsDiv = document.getElementById('tournament_results');
+    const hiddenInput = document.getElementById('tournament_id_hidden');
+    const selectedDiv = document.getElementById('tournament_selected');
+    const selectedName = document.getElementById('selected_tournament_name');
+    const selectedInfo = document.getElementById('selected_tournament_info');
+    const clearBtn = document.getElementById('clear_tournament');
 
-    if (tournamentSelect && refereeSelect) {
-        tournamentSelect.addEventListener('change', function() {
-            if (this.value) {
-                // Ricarica la pagina con il torneo selezionato per aggiornare arbitri
-                const url = new URL(window.location);
-                url.searchParams.set('tournament_id', this.value);
-                window.location.href = url.toString();
-            }
+    if (!searchInput) return; // Torneo già selezionato
+
+    let debounceTimer;
+
+    // Funzione per cercare tornei
+    function searchTournaments(query) {
+        if (!query || query.length < 2) {
+            resultsDiv.classList.add('hidden');
+            return;
+        }
+
+        const searchTerms = query.toLowerCase().split(' ').filter(t => t.length > 0);
+        const matches = tournamentsData.filter(t => {
+            return searchTerms.every(term => t.searchText.includes(term));
+        }).slice(0, 10); // Max 10 risultati
+
+        if (matches.length === 0) {
+            resultsDiv.innerHTML = '<div class="p-3 text-gray-500 text-sm">Nessun torneo trovato</div>';
+        } else {
+            resultsDiv.innerHTML = matches.map(t => `
+                <div class="tournament-option p-3 hover:bg-indigo-50 cursor-pointer border-b border-gray-100 last:border-0"
+                     data-id="${t.id}"
+                     data-name="${t.name}"
+                     data-date="${t.date}"
+                     data-club="${t.club}">
+                    <div class="text-sm font-medium text-gray-900">${highlightMatch(t.name, searchTerms)}</div>
+                    <div class="text-xs text-gray-500">${t.date} ${t.club ? '- ' + t.club : ''}</div>
+                </div>
+            `).join('');
+
+            // Aggiungi event listeners ai risultati
+            resultsDiv.querySelectorAll('.tournament-option').forEach(opt => {
+                opt.addEventListener('click', function() {
+                    selectTournament(this.dataset);
+                });
+            });
+        }
+        resultsDiv.classList.remove('hidden');
+    }
+
+    // Evidenzia i termini di ricerca
+    function highlightMatch(text, terms) {
+        let result = text;
+        terms.forEach(term => {
+            const regex = new RegExp(`(${term})`, 'gi');
+            result = result.replace(regex, '<span class="bg-yellow-200">$1</span>');
+        });
+        return result;
+    }
+
+    // Seleziona un torneo
+    function selectTournament(data) {
+        hiddenInput.value = data.id;
+        selectedName.textContent = data.name;
+        selectedInfo.textContent = `${data.date} ${data.club ? '- ' + data.club : ''}`;
+        selectedDiv.classList.remove('hidden');
+        searchInput.value = '';
+        searchInput.classList.add('hidden');
+        resultsDiv.classList.add('hidden');
+
+        // Ricarica la pagina per aggiornare gli arbitri disponibili
+        const url = new URL(window.location);
+        url.searchParams.set('tournament_id', data.id);
+        window.location.href = url.toString();
+    }
+
+    // Pulisci selezione
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            hiddenInput.value = '';
+            selectedDiv.classList.add('hidden');
+            searchInput.classList.remove('hidden');
+            searchInput.focus();
         });
     }
+
+    // Event listener per la ricerca con debounce
+    searchInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            searchTournaments(this.value);
+        }, 200);
+    });
+
+    // Chiudi risultati quando si clicca fuori
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+            resultsDiv.classList.add('hidden');
+        }
+    });
+
+    // Navigazione con tastiera
+    searchInput.addEventListener('keydown', function(e) {
+        const options = resultsDiv.querySelectorAll('.tournament-option');
+        const current = resultsDiv.querySelector('.tournament-option.bg-indigo-100');
+        let index = Array.from(options).indexOf(current);
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (current) current.classList.remove('bg-indigo-100');
+            index = (index + 1) % options.length;
+            if (options[index]) options[index].classList.add('bg-indigo-100');
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (current) current.classList.remove('bg-indigo-100');
+            index = index <= 0 ? options.length - 1 : index - 1;
+            if (options[index]) options[index].classList.add('bg-indigo-100');
+        } else if (e.key === 'Enter' && current) {
+            e.preventDefault();
+            selectTournament(current.dataset);
+        } else if (e.key === 'Escape') {
+            resultsDiv.classList.add('hidden');
+        }
+    });
+
+    // Focus mostra risultati se c'è già testo
+    searchInput.addEventListener('focus', function() {
+        if (this.value.length >= 2) {
+            searchTournaments(this.value);
+        }
+    });
 });
 </script>
 @endpush

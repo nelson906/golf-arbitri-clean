@@ -27,11 +27,6 @@ class DocumentGenerationService
      */
     public function generateConvocationForTournament(Tournament $tournament, ?TournamentNotification $notification = null): array
     {
-        Log::info('Starting convocation generation for tournament', [
-            'tournament_id' => $tournament->id,
-            'tournament_name' => $tournament->name,
-            'zone_id' => $tournament->zone_id,
-        ]);
         try {
             $tournament->load([
                 'club',
@@ -54,10 +49,6 @@ class DocumentGenerationService
             // Carica template dalla zona
             $templatePath = $this->getZoneTemplatePath($tournament->zone_id);
 
-            Log::info('Selected template path', [
-                'template_path' => $templatePath,
-            ]);
-
             // Prepara variabili per sostituzione
             // Prepara le clausole dal database (usando la notifica specifica se presente)
             $selectedClauses = [];
@@ -75,8 +66,6 @@ class DocumentGenerationService
                     })
                     ->toArray();
             }
-
-            Log::info('Selected clauses', ['clauses' => $selectedClauses]);
 
             $variables = [
                 'tournament_name' => ucwords(strtolower($tournament->name)), // ✅ Prima lettera maiuscola
@@ -339,9 +328,6 @@ class DocumentGenerationService
      */
     protected function getZoneTemplatePath($zoneId): string
     {
-        Log::info('Getting zone template path', [
-            'zone_id' => $zoneId,
-        ]);
         $zoneCode = $this->getZoneCode($zoneId);
         // Check if storage directory exists
         $storageDir = storage_path('lettere_intestate');
@@ -399,14 +385,6 @@ class DocumentGenerationService
 
         $templateProcessor = new TemplateProcessor($templatePath);
 
-        // Log variabili disponibili nel template
-        try {
-            $templateVars = $templateProcessor->getVariables();
-            Log::info('Template variables found (with referees):', ['variables' => $templateVars]);
-        } catch (\Throwable $e) {
-            Log::warning('Could not read template variables (with referees): '.$e->getMessage());
-        }
-
         // Sostituisci variabili base
         // TemplateProcessor usa ${variable}, NON {{variable}}
         foreach ($variables as $key => $value) {
@@ -454,7 +432,6 @@ class DocumentGenerationService
             }
         } catch (\Exception $e) {
             // Se tutto fallisce, procedi solo con le variabili base
-            Log::info('Template without referee loops, proceeding with basic variables', ['error' => $e->getMessage()]);
         }
 
         // Crea directory se non esiste
@@ -563,27 +540,12 @@ class DocumentGenerationService
                     // Rimuovi i marcatori di apertura e chiusura del blocco
                     $templateProcessor->setValue($blockName, '');
                     $templateProcessor->setValue('/'.$blockName, '');
-
-                    Log::debug('Clause block filled', [
-                        'block' => $blockName,
-                        'placeholder' => $placeholderCode,
-                        'content_length' => strlen($clauses[$placeholderCode]['content']),
-                    ]);
                 } else {
                     // Clausola non selezionata: rimuovi completamente il blocco (0 cloni)
                     $templateProcessor->cloneBlock($blockName, 0, true, true);
-
-                    Log::debug('Clause block removed (no selection)', [
-                        'block' => $blockName,
-                        'placeholder' => $placeholderCode,
-                    ]);
                 }
             } catch (\Exception $e) {
                 // Se il blocco non esiste nel template, prova con setValue semplice
-                Log::debug("Block {$blockName} not found in template, trying simple setValue", [
-                    'error' => $e->getMessage(),
-                ]);
-
                 if (isset($clauses[$placeholderCode]) && ! empty($clauses[$placeholderCode]['content'])) {
                     try {
                         $templateProcessor->setValue($placeholderCode, $clauses[$placeholderCode]['content']);
