@@ -196,6 +196,8 @@
             📢 Comunicazioni
         </x-nav-link>
 @endif
+            </div>
+            <!-- END Navigation Links -->
 
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ml-6">
