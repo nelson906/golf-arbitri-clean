@@ -196,6 +196,8 @@
             📢 Comunicazioni
         </x-nav-link>
 @endif
+            </div>
+            <!-- END Navigation Links -->
 
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ml-6">
@@ -262,7 +264,7 @@
 {{-- ============================================
      📱 RESPONSIVE NAVIGATION MENU (Mobile)
      ============================================ --}}
-<div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
+<div :class="{'block': open, 'hidden': !open}" class="sm:hidden">
     <div class="pt-2 pb-3 space-y-1">
 
         {{-- Universal Dashboard Link --}}
