@@ -62,6 +62,7 @@ class InstitutionalEmail extends Model
      */
     public const NOTIFICATION_TYPES = [
         'assignment' => 'Assegnazioni',
+        'availability' => 'Disponibilità Arbitri',
         'convocation' => 'Convocazioni',
         'club' => 'Comunicazioni Circoli',
         'institutional' => 'Comunicazioni Istituzionali',

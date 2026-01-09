@@ -457,6 +457,7 @@ class AvailabilityController extends Controller
             // 1b. Recupera email istituzionali federazione/comitati (no zone_id = nazionali)
             $institutionalEmails = InstitutionalEmail::active()
                 ->whereNull('zone_id')  // Email nazionali (CRC, federazione)
+                ->forNotificationType('availability')  // Filtra solo email abilitate per disponibilità
                 ->pluck('email')
                 ->toArray();
             $emails = array_merge($emails, $institutionalEmails);
@@ -485,6 +486,7 @@ class AvailabilityController extends Controller
             // 2b. Recupera email istituzionali della zona (configurate nel DB)
             $zoneInstitutionalEmails = InstitutionalEmail::active()
                 ->where('zone_id', $tournamentZoneId)
+                ->forNotificationType('availability')  // Filtra solo email abilitate per disponibilità
                 ->pluck('email')
                 ->toArray();
             $emails = array_merge($emails, $zoneInstitutionalEmails);
