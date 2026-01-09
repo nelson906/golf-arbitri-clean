@@ -77,7 +77,7 @@ class InstitutionalEmail extends Model
         'zone_id',
         'category',
         'receive_all_notifications',
-        'notification_types',
+        // notification_types: gestito manualmente nel controller
     ];
 
     protected $casts = [
