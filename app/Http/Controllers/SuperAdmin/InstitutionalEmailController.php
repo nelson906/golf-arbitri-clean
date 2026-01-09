@@ -72,15 +72,7 @@ class InstitutionalEmailController extends Controller
             'zone_id' => 'nullable|exists:zones,id',
             'category' => 'required|in:'.implode(',', array_keys(InstitutionalEmail::CATEGORIES)),
             'is_active' => 'boolean',
-            'receive_all_notifications' => 'boolean',
-            'notification_types' => 'nullable|array',
-            'notification_types.*' => 'in:'.implode(',', array_keys(InstitutionalEmail::NOTIFICATION_TYPES)),
         ]);
-
-        // Se receive_all_notifications è true, non serve specificare i tipi
-        if ($validated['receive_all_notifications'] ?? false) {
-            $validated['notification_types'] = [];
-        }
 
         // Valori di default
         $validated['is_active'] = $validated['is_active'] ?? true;
@@ -89,16 +81,6 @@ class InstitutionalEmailController extends Controller
 
         return redirect()->route('super-admin.institutional-emails.index')
             ->with('success', 'Email istituzionale creata con successo.');
-    }
-
-    /**
-     * Display the specified institutional email.
-     */
-    public function show(InstitutionalEmail $institutionalEmail)
-    {
-        $institutionalEmail->load('zone');
-
-        return view('super-admin.institutional-emails.show', compact('institutionalEmail'));
     }
 
     /**
@@ -124,15 +106,7 @@ class InstitutionalEmailController extends Controller
             'zone_id' => 'nullable|exists:zones,id',
             'category' => 'required|in:'.implode(',', array_keys(InstitutionalEmail::CATEGORIES)),
             'is_active' => 'boolean',
-            'receive_all_notifications' => 'boolean',
-            'notification_types' => 'nullable|array',
-            'notification_types.*' => 'in:'.implode(',', array_keys(InstitutionalEmail::NOTIFICATION_TYPES)),
         ]);
-
-        // Se receive_all_notifications è true, non serve specificare i tipi
-        if ($validated['receive_all_notifications'] ?? false) {
-            $validated['notification_types'] = [];
-        }
 
         $validated['is_active'] = $validated['is_active'] ?? false;
 

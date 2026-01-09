@@ -407,29 +407,22 @@ class AvailabilityController extends Controller
     /**
      * Recupera gli indirizzi email degli admin da notificare per una disponibilità.
      *
-     * LOGICA DI NOTIFICA:
+     * LOGICA DI NOTIFICA DISPONIBILITÀ:
      * ┌─────────────────────────────────────────────────────────────────────────┐
      * │ TIPO TORNEO              │ DESTINATARI                                  │
      * ├─────────────────────────────────────────────────────────────────────────┤
-     * │ Torneo NAZIONALE         │ 1. National admin (user_type = national_admin)│
-     * │ (is_national = true)     │ 2. Email istituzionali CRC (da DB)           │
-     * │                          │ 3. Zone admin della zona del torneo          │
+     * │ Torneo NAZIONALE         │ 1. National admin (CRC)                      │
+     * │ (is_national = true)     │ 2. Zone admin della zona del torneo          │
      * ├─────────────────────────────────────────────────────────────────────────┤
      * │ Torneo ZONALE            │ 1. Zone admin della zona del torneo          │
-     * │ (is_national = false)    │ 2. Email istituzionali della zona (da DB)    │
+     * │ (is_national = false)    │                                              │
      * └─────────────────────────────────────────────────────────────────────────┘
+     *
+     * NOTA: Le email istituzionali NON vengono incluse per le notifiche di
+     * disponibilità. Vanno solo agli admin utenti (zone admin / national admin).
      *
      * @param  Tournament  $tournament  Il torneo per cui è stata dichiarata disponibilità
      * @return array Lista di email uniche degli admin da notificare
-     *
-     * @example
-     * // Per torneo nazionale:
-     * // - Notifica national_admin + CRC + zone admin
-     * $emails = $this->getAdminEmailsForNotification($nationalTournament);
-     * @example
-     * // Per torneo zonale:
-     * // - Notifica solo zone admin della zona del torneo
-     * $emails = $this->getAdminEmailsForNotification($zonalTournament);
      */
     private function getAdminEmailsForNotification(Tournament $tournament): array
     {
@@ -442,11 +435,9 @@ class AvailabilityController extends Controller
         $isNationalTournament = $tournament->tournamentType?->is_national ?? false;
 
         // ═══════════════════════════════════════════════════════════════════════
-        // CASO 1: TORNEO NAZIONALE
-        // Notifica: national_admin + email istituzionali federazione + zone admin
+        // CASO 1: TORNEO NAZIONALE - Notifica national_admin (CRC)
         // ═══════════════════════════════════════════════════════════════════════
         if ($isNationalTournament) {
-            // 1a. Recupera tutti i national_admin attivi
             $nationalAdmins = User::where('user_type', 'national_admin')
                 ->where('is_active', true)
                 ->whereNotNull('email')
@@ -454,26 +445,16 @@ class AvailabilityController extends Controller
                 ->toArray();
             $emails = array_merge($emails, $nationalAdmins);
 
-            // 1b. Recupera email istituzionali federazione/comitati (no zone_id = nazionali)
-            $institutionalEmails = InstitutionalEmail::active()
-                ->whereNull('zone_id')  // Email nazionali (CRC, federazione)
-                ->pluck('email')
-                ->toArray();
-            $emails = array_merge($emails, $institutionalEmails);
-
             Log::debug('Notifica torneo nazionale', [
                 'tournament_id' => $tournament->id,
                 'national_admins' => count($nationalAdmins),
-                'institutional_emails' => count($institutionalEmails),
             ]);
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // CASO 2: SEMPRE - Admin della zona del torneo
-        // Notifica: zone admin + email istituzionali della zona
+        // CASO 2: SEMPRE - Zone admin della zona del torneo
         // ═══════════════════════════════════════════════════════════════════════
         if ($tournamentZoneId) {
-            // 2a. Recupera gli admin della zona del torneo
             $zoneAdmins = User::where('zone_id', $tournamentZoneId)
                 ->where('user_type', 'admin')
                 ->where('is_active', true)
@@ -482,18 +463,10 @@ class AvailabilityController extends Controller
                 ->toArray();
             $emails = array_merge($emails, $zoneAdmins);
 
-            // 2b. Recupera email istituzionali della zona (configurate nel DB)
-            $zoneInstitutionalEmails = InstitutionalEmail::active()
-                ->where('zone_id', $tournamentZoneId)
-                ->pluck('email')
-                ->toArray();
-            $emails = array_merge($emails, $zoneInstitutionalEmails);
-
             Log::debug('Notifica zona torneo', [
                 'tournament_id' => $tournament->id,
                 'zone_id' => $tournamentZoneId,
                 'zone_admins' => count($zoneAdmins),
-                'zone_institutional' => count($zoneInstitutionalEmails),
             ]);
         }
 
