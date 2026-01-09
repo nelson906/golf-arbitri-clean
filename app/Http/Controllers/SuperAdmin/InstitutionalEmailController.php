@@ -72,28 +72,12 @@ class InstitutionalEmailController extends Controller
             'zone_id' => 'nullable|exists:zones,id',
             'category' => 'required|in:'.implode(',', array_keys(InstitutionalEmail::CATEGORIES)),
             'is_active' => 'boolean',
-            'receive_all_notifications' => 'boolean',
-            'notification_types' => 'nullable|array',
-            'notification_types.*' => 'in:'.implode(',', array_keys(InstitutionalEmail::NOTIFICATION_TYPES)),
         ]);
 
         // Valori di default
         $validated['is_active'] = $validated['is_active'] ?? true;
 
-        // Estrai notification_types dall'array validato (non è fillable)
-        $notificationTypes = $validated['notification_types'] ?? null;
-        unset($validated['notification_types']);
-
-        // Crea l'email istituzionale
-        $institutionalEmail = InstitutionalEmail::create($validated);
-
-        // Gestisci notification_types manualmente DOPO la creazione
-        if ($validated['receive_all_notifications'] ?? false) {
-            $institutionalEmail->notification_types = null;
-        } else {
-            $institutionalEmail->notification_types = $notificationTypes;
-        }
-        $institutionalEmail->save();
+        InstitutionalEmail::create($validated);
 
         return redirect()->route('super-admin.institutional-emails.index')
             ->with('success', 'Email istituzionale creata con successo.');
@@ -122,27 +106,11 @@ class InstitutionalEmailController extends Controller
             'zone_id' => 'nullable|exists:zones,id',
             'category' => 'required|in:'.implode(',', array_keys(InstitutionalEmail::CATEGORIES)),
             'is_active' => 'boolean',
-            'receive_all_notifications' => 'boolean',
-            'notification_types' => 'nullable|array',
-            'notification_types.*' => 'in:'.implode(',', array_keys(InstitutionalEmail::NOTIFICATION_TYPES)),
         ]);
 
         $validated['is_active'] = $validated['is_active'] ?? false;
 
-        // Estrai notification_types dall'array validato (non è fillable)
-        $notificationTypes = $validated['notification_types'] ?? null;
-        unset($validated['notification_types']);
-
-        // Aggiorna l'email istituzionale
         $institutionalEmail->update($validated);
-
-        // Gestisci notification_types manualmente DOPO l'update
-        if ($validated['receive_all_notifications'] ?? false) {
-            $institutionalEmail->notification_types = null;
-        } else {
-            $institutionalEmail->notification_types = $notificationTypes;
-        }
-        $institutionalEmail->save();
 
         return redirect()->route('super-admin.institutional-emails.index')
             ->with('success', 'Email istituzionale aggiornata con successo.');

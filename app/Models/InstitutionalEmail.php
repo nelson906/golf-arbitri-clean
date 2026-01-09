@@ -57,18 +57,6 @@ class InstitutionalEmail extends Model
         'altro' => 'Altro',
     ];
 
-    /**
-     * Available notification types
-     */
-    public const NOTIFICATION_TYPES = [
-        'assignment' => 'Assegnazioni',
-        'convocation' => 'Convocazioni',
-        'club' => 'Comunicazioni Circoli',
-        'institutional' => 'Comunicazioni Istituzionali',
-        'tournament_updates' => 'Aggiornamenti Tornei',
-        'system' => 'Notifiche Sistema',
-    ];
-
     protected $fillable = [
         'name',
         'email',
@@ -76,47 +64,12 @@ class InstitutionalEmail extends Model
         'is_active',
         'zone_id',
         'category',
-        'receive_all_notifications',
-        // notification_types: gestito manualmente nel controller
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'is_default' => 'boolean',
-        'receive_all_notifications' => 'boolean',
-        // notification_types: gestito manualmente con accessor/mutator
     ];
-
-    /**
-     * Get notification_types as array
-     */
-    public function getNotificationTypesAttribute($value)
-    {
-        if (is_null($value) || $value === '') {
-            return [];
-        }
-
-        if (is_array($value)) {
-            return $value;
-        }
-
-        return json_decode($value, true) ?? [];
-    }
-
-    /**
-     * Set notification_types as JSON string
-     */
-    public function setNotificationTypesAttribute($value)
-    {
-        if (is_null($value)) {
-            $this->attributes['notification_types'] = null;
-        } elseif (is_array($value)) {
-            $this->attributes['notification_types'] = json_encode($value);
-        } else {
-            // Già una stringa JSON
-            $this->attributes['notification_types'] = $value;
-        }
-    }
 
     /**
      * Relationship with Zone
@@ -157,16 +110,6 @@ class InstitutionalEmail extends Model
         return $query->where('category', $category);
     }
 
-    /**
-     * Scope for notification type
-     */
-    public function scopeForNotificationType($query, $type)
-    {
-        return $query->where(function ($q) use ($type) {
-            $q->where('receive_all_notifications', true)
-                ->orWhereJsonContains('notification_types', $type);
-        });
-    }
 
     /**
      * Get category badge color
@@ -198,51 +141,4 @@ class InstitutionalEmail extends Model
         return self::CATEGORIES;
     }
 
-    /**
-     * Get all available notification types
-     */
-    public static function getNotificationTypes(): array
-    {
-        return self::NOTIFICATION_TYPES;
-    }
-
-    /**
-     * Check if should receive notification type
-     */
-    public function shouldReceiveNotificationType(string $type): bool
-    {
-        if (! $this->is_active) {
-            return false;
-        }
-
-        if ($this->receive_all_notifications) {
-            return true;
-        }
-
-        $types = $this->notification_types ?? [];
-
-        return in_array($type, $types);
-    }
-
-    /**
-     * Add notification type
-     */
-    public function addNotificationType(string $type): void
-    {
-        $types = $this->notification_types ?? [];
-        if (! in_array($type, $types)) {
-            $types[] = $type;
-            $this->update(['notification_types' => json_encode($types)]);
-        }
-    }
-
-    /**
-     * Remove notification type
-     */
-    public function removeNotificationType(string $type): void
-    {
-        $types = $this->notification_types ?? [];
-        $types = array_filter($types, fn ($t) => $t !== $type);
-        $this->update(['notification_types' => json_encode(array_values($types))]);
-    }
 }
