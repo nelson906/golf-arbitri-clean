@@ -22,7 +22,8 @@ Route::prefix('super-admin')->name('super-admin.')->middleware(['auth', 'super_a
         ->name('tournament-types.toggle-active');
 
     // Institutional Emails
-    Route::resource('institutional-emails', \App\Http\Controllers\SuperAdmin\InstitutionalEmailController::class);
+    Route::resource('institutional-emails', \App\Http\Controllers\SuperAdmin\InstitutionalEmailController::class)
+        ->except(['show']);  // Show view non necessaria per gestione email
     Route::patch('institutional-emails/{institutionalEmail}/toggle-active', [\App\Http\Controllers\SuperAdmin\InstitutionalEmailController::class, 'toggleActive'])
         ->name('institutional-emails.toggle-active');
     Route::get('institutional-emails-export', [\App\Http\Controllers\SuperAdmin\InstitutionalEmailController::class, 'export'])
