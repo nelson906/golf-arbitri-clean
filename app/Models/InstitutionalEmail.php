@@ -104,6 +104,21 @@ class InstitutionalEmail extends Model
     }
 
     /**
+     * Set notification_types as JSON string
+     */
+    public function setNotificationTypesAttribute($value)
+    {
+        if (is_null($value)) {
+            $this->attributes['notification_types'] = null;
+        } elseif (is_array($value)) {
+            $this->attributes['notification_types'] = json_encode($value);
+        } else {
+            // Già una stringa JSON
+            $this->attributes['notification_types'] = $value;
+        }
+    }
+
+    /**
      * Relationship with Zone
      */
     public function zone(): BelongsTo

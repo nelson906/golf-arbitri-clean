@@ -80,11 +80,6 @@ class InstitutionalEmailController extends Controller
         // Se receive_all_notifications è true, non serve specificare i tipi
         if ($validated['receive_all_notifications'] ?? false) {
             $validated['notification_types'] = null;
-        } elseif (isset($validated['notification_types'])) {
-            // Converti esplicitamente l'array in JSON per evitare problemi di cast
-            $validated['notification_types'] = json_encode($validated['notification_types']);
-        } else {
-            $validated['notification_types'] = null;
         }
 
         // Valori di default
@@ -112,11 +107,6 @@ class InstitutionalEmailController extends Controller
      */
     public function update(Request $request, InstitutionalEmail $institutionalEmail)
     {
-        // TEMP: Reset OPcache per forzare ricaricamento codice
-        if (function_exists('opcache_reset')) {
-            opcache_reset();
-        }
-
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:institutional_emails,email,'.$institutionalEmail->id,
@@ -131,11 +121,6 @@ class InstitutionalEmailController extends Controller
 
         // Se receive_all_notifications è true, non serve specificare i tipi
         if ($validated['receive_all_notifications'] ?? false) {
-            $validated['notification_types'] = null;
-        } elseif (isset($validated['notification_types'])) {
-            // Converti esplicitamente l'array in JSON per evitare problemi di cast
-            $validated['notification_types'] = json_encode($validated['notification_types']);
-        } else {
             $validated['notification_types'] = null;
         }
 
