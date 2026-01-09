@@ -92,16 +92,6 @@ class InstitutionalEmailController extends Controller
     }
 
     /**
-     * Display the specified institutional email.
-     */
-    public function show(InstitutionalEmail $institutionalEmail)
-    {
-        $institutionalEmail->load('zone');
-
-        return view('super-admin.institutional-emails.show', compact('institutionalEmail'));
-    }
-
-    /**
      * Show the form for editing the institutional email.
      */
     public function edit(InstitutionalEmail $institutionalEmail)
