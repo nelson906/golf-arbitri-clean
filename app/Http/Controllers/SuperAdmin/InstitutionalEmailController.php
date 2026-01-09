@@ -112,6 +112,11 @@ class InstitutionalEmailController extends Controller
      */
     public function update(Request $request, InstitutionalEmail $institutionalEmail)
     {
+        // TEMP: Reset OPcache per forzare ricaricamento codice
+        if (function_exists('opcache_reset')) {
+            opcache_reset();
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:institutional_emails,email,'.$institutionalEmail->id,
