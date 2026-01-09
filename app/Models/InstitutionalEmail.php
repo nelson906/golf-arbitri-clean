@@ -84,8 +84,24 @@ class InstitutionalEmail extends Model
         'is_active' => 'boolean',
         'is_default' => 'boolean',
         'receive_all_notifications' => 'boolean',
-        'notification_types' => 'array',
+        // notification_types: gestito manualmente con accessor/mutator
     ];
+
+    /**
+     * Get notification_types as array
+     */
+    public function getNotificationTypesAttribute($value)
+    {
+        if (is_null($value) || $value === '') {
+            return [];
+        }
+
+        if (is_array($value)) {
+            return $value;
+        }
+
+        return json_decode($value, true) ?? [];
+    }
 
     /**
      * Relationship with Zone
@@ -201,7 +217,7 @@ class InstitutionalEmail extends Model
         $types = $this->notification_types ?? [];
         if (! in_array($type, $types)) {
             $types[] = $type;
-            $this->update(['notification_types' => $types]);
+            $this->update(['notification_types' => json_encode($types)]);
         }
     }
 
@@ -212,6 +228,6 @@ class InstitutionalEmail extends Model
     {
         $types = $this->notification_types ?? [];
         $types = array_filter($types, fn ($t) => $t !== $type);
-        $this->update(['notification_types' => array_values($types)]);
+        $this->update(['notification_types' => json_encode(array_values($types))]);
     }
 }

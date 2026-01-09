@@ -79,7 +79,12 @@ class InstitutionalEmailController extends Controller
 
         // Se receive_all_notifications è true, non serve specificare i tipi
         if ($validated['receive_all_notifications'] ?? false) {
-            $validated['notification_types'] = [];
+            $validated['notification_types'] = null;
+        } elseif (isset($validated['notification_types'])) {
+            // Converti esplicitamente l'array in JSON per evitare problemi di cast
+            $validated['notification_types'] = json_encode($validated['notification_types']);
+        } else {
+            $validated['notification_types'] = null;
         }
 
         // Valori di default
@@ -121,7 +126,12 @@ class InstitutionalEmailController extends Controller
 
         // Se receive_all_notifications è true, non serve specificare i tipi
         if ($validated['receive_all_notifications'] ?? false) {
-            $validated['notification_types'] = [];
+            $validated['notification_types'] = null;
+        } elseif (isset($validated['notification_types'])) {
+            // Converti esplicitamente l'array in JSON per evitare problemi di cast
+            $validated['notification_types'] = json_encode($validated['notification_types']);
+        } else {
+            $validated['notification_types'] = null;
         }
 
         $validated['is_active'] = $validated['is_active'] ?? false;
