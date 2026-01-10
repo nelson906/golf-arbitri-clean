@@ -122,4 +122,14 @@ Route::prefix('aruba-admin')
         // Composer Diagnostic
         Route::post('/composer/diagnostic', [ArubaToolsController::class, 'composerDiagnostic'])
             ->name('composer.diagnostic');
+
+        // Storage Link Management
+        Route::get('/storage-link', [ArubaToolsController::class, 'storageLinkIndex'])
+            ->name('storage-link.index');
+        Route::post('/storage-link/create', [ArubaToolsController::class, 'createStorageLink'])
+            ->name('storage-link.create');
+        Route::post('/storage-link/remove', [ArubaToolsController::class, 'removeStorageLink'])
+            ->name('storage-link.remove');
+        Route::post('/storage-link/test', [ArubaToolsController::class, 'testStorageLink'])
+            ->name('storage-link.test');
     });
