@@ -18,7 +18,9 @@
                     <i class="fas fa-tools text-2xl"></i>
                     <span class="text-xl font-bold">Aruba Admin Tools</span>
                 </div>
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-6">
+                    <!-- Link Home/Dashboard Principale -->
+
                     <span class="text-sm">{{ auth()->user()->name }}</span>
                     <form method="POST" action="{{ route('logout') }}" class="inline">
                         @csrf
@@ -36,12 +38,7 @@
             <!-- Sidebar -->
             <aside class="w-full md:w-64 bg-white rounded-lg shadow-md p-4">
                 <nav class="space-y-2">
-                    <!-- Link torna all'applicazione -->
-                    <a href="{{ route('admin.dashboard') }}"
-                        class="flex items-center space-x-3 p-3 rounded bg-gray-100 hover:bg-gray-200 border-b-2 border-gray-300 mb-4">
-                        <i class="fas fa-arrow-left w-5 text-gray-700"></i>
-                        <span class="font-semibold text-gray-700">← Torna all'App</span>
-                    </a>
+                    <!-- Link Torna alla Home -->
 
                     <a href="{{ route('aruba.admin.dashboard') }}"
                         class="flex items-center space-x-3 p-3 rounded hover:bg-blue-50 {{ request()->routeIs('aruba.admin.dashboard') ? 'bg-blue-100 text-blue-600' : '' }}">
@@ -82,7 +79,7 @@
                     <a href="{{ route('aruba.admin.permissions') }}"
                         class="flex items-center space-x-3 p-3 rounded hover:bg-blue-50 {{ request()->routeIs('aruba.admin.permissions') ? 'bg-blue-100 text-blue-600' : '' }}">
                         <i class="fas fa-lock w-5"></i>
-                        <span>Permessi</span>
+                        <span>Permessi & Storage</span>
                     </a>
 
                     <a href="{{ route('aruba.admin.logs') }}"
@@ -90,6 +87,8 @@
                         <i class="fas fa-file-alt w-5"></i>
                         <span>Logs</span>
                     </a>
+
+                    <div class="border-t border-gray-200 my-3"></div>
 
                     <a href="{{ route('aruba.admin.phpinfo') }}"
                         class="flex items-center space-x-3 p-3 rounded hover:bg-blue-50 {{ request()->routeIs('aruba.admin.phpinfo') ? 'bg-blue-100 text-blue-600' : '' }}">

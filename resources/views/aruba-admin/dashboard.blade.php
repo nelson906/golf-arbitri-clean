@@ -114,9 +114,45 @@
                 </tbody>
             </table>
         </div>
-        <div class="mt-4">
+        <div class="mt-4 flex gap-3">
             <a href="{{ route('aruba.admin.permissions') }}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
                 <i class="fas fa-wrench"></i> Gestisci Permessi
+            </a>
+        </div>
+    </div>
+
+    <!-- Storage Link Status -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">
+            <i class="fas fa-link text-purple-600"></i> Stato Storage Link
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <p class="text-gray-600 text-sm">Symlink Presente</p>
+                <p class="text-lg font-semibold {{ ($linkStatus['exists'] && $linkStatus['is_link'] && $linkStatus['is_valid']) ? 'text-green-600' : 'text-red-600' }}">
+                    @if($linkStatus['exists'] && $linkStatus['is_link'] && $linkStatus['is_valid'])
+                        ✅ Attivo
+                    @elseif($linkStatus['exists'] && !$linkStatus['is_link'])
+                        ⚠️ Directory normale
+                    @else
+                        ❌ Non presente
+                    @endif
+                </p>
+            </div>
+            <div>
+                <p class="text-gray-600 text-sm">Target</p>
+                <p class="text-lg font-semibold {{ $linkStatus['target_exists'] ? 'text-green-600' : 'text-red-600' }}">
+                    {{ $linkStatus['target_exists'] ? '✅ Esiste' : '❌ Mancante' }}
+                </p>
+            </div>
+            <div>
+                <p class="text-gray-600 text-sm">File Accessibili</p>
+                <p class="text-lg font-semibold text-gray-800">{{ $linkStatus['files_count'] }}</p>
+            </div>
+        </div>
+        <div class="mt-4">
+            <a href="{{ route('aruba.admin.permissions') }}#storage-link" class="text-blue-600 hover:text-blue-800 text-sm">
+                <i class="fas fa-arrow-right"></i> Gestisci Storage Link
             </a>
         </div>
     </div>

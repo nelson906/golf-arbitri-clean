@@ -20,6 +20,7 @@ class ArubaToolsController extends Controller
             'system_info' => SystemInfo::get(),
             'database_stats' => SystemInfo::getDatabaseStats(),
             'permissions' => SystemInfo::checkPermissions(),
+            'linkStatus' => $this->checkStorageLinkStatus(),
         ];
 
         return view('aruba-admin.dashboard', $data);
@@ -143,8 +144,10 @@ class ArubaToolsController extends Controller
     public function permissions()
     {
         $permissions = SystemInfo::checkPermissions();
+        $linkStatus = $this->checkStorageLinkStatus();
+        $artisanAvailable = $this->isArtisanAvailable();
 
-        return view('aruba-admin.permissions', compact('permissions'));
+        return view('aruba-admin.permissions', compact('permissions', 'linkStatus', 'artisanAvailable'));
     }
 
     /**
@@ -324,5 +327,215 @@ class ArubaToolsController extends Controller
         $suspiciousFiles = SystemOperations::scanForSuspiciousFiles();
 
         return view('aruba-admin.security', compact('sensitiveFiles', 'suspiciousFiles'));
+    }
+
+    // ================================
+    // STORAGE LINK MANAGEMENT
+    // ================================
+
+    /**
+     * Visualizza pagina gestione storage link (redirect a permissions)
+     */
+    public function storageLinkIndex()
+    {
+        return redirect()->route('aruba.admin.permissions');
+    }
+
+    /**
+     * Test se Artisan è disponibile
+     */
+    private function isArtisanAvailable()
+    {
+        try {
+            // Tenta di eseguire un comando innocuo
+            Artisan::call('list');
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Verifica stato storage link
+     */
+    private function checkStorageLinkStatus()
+    {
+        $publicStoragePath = public_path('storage');
+        $targetPath = storage_path('app/public');
+
+        $status = [
+            'exists' => false,
+            'is_link' => false,
+            'is_valid' => false,
+            'target' => null,
+            'target_exists' => File::exists($targetPath),
+            'public_path' => $publicStoragePath,
+            'expected_target' => $targetPath,
+            'writable' => false,
+            'files_count' => 0,
+        ];
+
+        if (File::exists($publicStoragePath)) {
+            $status['exists'] = true;
+            $status['is_link'] = is_link($publicStoragePath);
+
+            if ($status['is_link']) {
+                $status['target'] = readlink($publicStoragePath);
+                $status['is_valid'] = ($status['target'] === $targetPath);
+            } else {
+                // È una cartella normale, non un symlink
+                $status['is_directory'] = is_dir($publicStoragePath);
+            }
+
+            if (is_writable($publicStoragePath)) {
+                $status['writable'] = true;
+
+                try {
+                    $files = File::allFiles($publicStoragePath);
+                    $status['files_count'] = count($files);
+                } catch (\Exception $e) {
+                    $status['files_count'] = 0;
+                }
+            }
+        }
+
+        return $status;
+    }
+
+    /**
+     * Crea storage link
+     */
+    public function createStorageLink()
+    {
+        try {
+            $publicStoragePath = public_path('storage');
+
+            // Se esiste già come directory normale, fai backup
+            if (File::exists($publicStoragePath) && ! is_link($publicStoragePath)) {
+                $backupPath = public_path('storage_backup_'.date('Y-m-d_His'));
+                File::move($publicStoragePath, $backupPath);
+
+                $message = "⚠️ Cartella esistente spostata in: {$backupPath}<br>";
+            } else {
+                $message = '';
+            }
+
+            // Rimuovi symlink esistente se presente
+            if (is_link($publicStoragePath)) {
+                File::delete($publicStoragePath);
+            }
+
+            // Crea il link usando Artisan
+            Artisan::call('storage:link');
+            $output = Artisan::output();
+
+            return back()->with('success', $message.'✅ Storage link creato:<br><pre>'.htmlspecialchars($output).'</pre>');
+        } catch (\Exception $e) {
+            return back()->with('error', '❌ Errore durante creazione storage link: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Rimuovi storage link
+     */
+    public function removeStorageLink()
+    {
+        try {
+            $publicStoragePath = public_path('storage');
+
+            if (! File::exists($publicStoragePath)) {
+                return back()->with('warning', '⚠️ Storage link non esiste');
+            }
+
+            if (is_link($publicStoragePath)) {
+                File::delete($publicStoragePath);
+
+                return back()->with('success', '✅ Storage link rimosso');
+            } else {
+                return back()->with('warning', '⚠️ public/storage esiste ma non è un symlink. Rimuovilo manualmente se necessario.');
+            }
+        } catch (\Exception $e) {
+            return back()->with('error', '❌ Errore: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Test storage link
+     */
+    public function testStorageLink()
+    {
+        $results = [];
+
+        // 1. Verifica directory storage/app/public esiste
+        $storagePath = storage_path('app/public');
+        $results[] = [
+            'test' => 'Directory storage/app/public esiste',
+            'status' => File::exists($storagePath),
+            'details' => $storagePath,
+        ];
+
+        // 2. Verifica directory storage/app/public è scrivibile
+        $results[] = [
+            'test' => 'Directory storage/app/public è scrivibile',
+            'status' => File::exists($storagePath) && is_writable($storagePath),
+            'details' => File::exists($storagePath) ? (is_writable($storagePath) ? 'Writable' : 'Not writable') : 'Not found',
+        ];
+
+        // 3. Verifica symlink esiste
+        $publicStoragePath = public_path('storage');
+        $results[] = [
+            'test' => 'Symlink public/storage esiste',
+            'status' => File::exists($publicStoragePath),
+            'details' => $publicStoragePath,
+        ];
+
+        // 4. Verifica symlink è valido
+        $isValidLink = is_link($publicStoragePath) && readlink($publicStoragePath) === $storagePath;
+        $results[] = [
+            'test' => 'Symlink punta a storage/app/public',
+            'status' => $isValidLink,
+            'details' => is_link($publicStoragePath) ? readlink($publicStoragePath) : 'Not a symlink',
+        ];
+
+        // 5. Test scrittura file
+        $testFileName = 'test_'.time().'.txt';
+        $testContent = 'Test storage link - '.now();
+        try {
+            File::put($storagePath.'/'.$testFileName, $testContent);
+
+            $fileExistsViaLink = File::exists($publicStoragePath.'/'.$testFileName);
+            $results[] = [
+                'test' => 'File scritto in storage/app/public è accessibile via public/storage',
+                'status' => $fileExistsViaLink,
+                'details' => $fileExistsViaLink ? 'File accessibile' : 'File non accessibile',
+            ];
+
+            // Pulisci file test
+            File::delete($storagePath.'/'.$testFileName);
+        } catch (\Exception $e) {
+            $results[] = [
+                'test' => 'Test scrittura file',
+                'status' => false,
+                'details' => 'Errore: '.$e->getMessage(),
+            ];
+        }
+
+        // 6. URL accessibile
+        $testUrl = asset('storage/'.$testFileName);
+        $results[] = [
+            'test' => 'URL asset() funziona',
+            'status' => true,
+            'details' => $testUrl,
+        ];
+
+        return response()->json([
+            'success' => true,
+            'results' => $results,
+            'summary' => [
+                'total' => count($results),
+                'passed' => collect($results)->where('status', true)->count(),
+                'failed' => collect($results)->where('status', false)->count(),
+            ],
+        ]);
     }
 }
