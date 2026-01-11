@@ -83,6 +83,8 @@ Route::prefix('aruba-admin')
             ->name('cache.clear');
         Route::post('/optimize', [ArubaToolsController::class, 'optimize'])
             ->name('optimize');
+        Route::post('/assets/clean', [ArubaToolsController::class, 'cleanOldAssets'])
+            ->name('assets.clean');
 
         Route::get('/phpinfo', [ArubaToolsController::class, 'phpinfo'])
             ->name('phpinfo');

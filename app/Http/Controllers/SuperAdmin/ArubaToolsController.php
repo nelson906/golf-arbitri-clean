@@ -101,6 +101,66 @@ class ArubaToolsController extends Controller
     }
 
     /**
+     * Pulisci assets vecchi (non in manifest.json)
+     */
+    public function cleanOldAssets()
+    {
+        try {
+            $buildManifest = public_path('build/manifest.json');
+            $assetsDir = public_path('build/assets');
+
+            if (!File::exists($buildManifest) || !File::isDirectory($assetsDir)) {
+                return back()->with('warning', '⚠️ Build manifest o directory assets non trovati');
+            }
+
+            $manifestContent = File::get($buildManifest);
+            $manifest = json_decode($manifestContent, true);
+
+            if (!$manifest) {
+                return back()->with('error', '❌ Errore lettura manifest.json');
+            }
+
+            // Estrai file referenziati nel manifest
+            $referencedFiles = [];
+            foreach ($manifest as $entry) {
+                if (isset($entry['file'])) {
+                    $referencedFiles[] = basename($entry['file']);
+                }
+                if (isset($entry['css'])) {
+                    foreach ($entry['css'] as $css) {
+                        $referencedFiles[] = basename($css);
+                    }
+                }
+            }
+
+            // Scansiona e rimuovi file vecchi
+            $assetsFiles = File::files($assetsDir);
+            $deletedCount = 0;
+            $deletedFiles = [];
+
+            foreach ($assetsFiles as $file) {
+                $filename = $file->getFilename();
+
+                if (!in_array($filename, $referencedFiles)) {
+                    if (File::delete($file->getPathname())) {
+                        $deletedCount++;
+                        $deletedFiles[] = $filename;
+                    }
+                }
+            }
+
+            if ($deletedCount === 0) {
+                return back()->with('success', '✅ Nessun asset vecchio da rimuovere');
+            }
+
+            $message = "✅ Rimossi {$deletedCount} file assets vecchi";
+            return back()->with('success', $message);
+        } catch (\Exception $e) {
+            return back()->with('error', '❌ Errore: '.$e->getMessage());
+        }
+    }
+
+    /**
      * PHPInfo
      */
     public function phpinfo()

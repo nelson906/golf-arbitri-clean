@@ -189,5 +189,42 @@
             </div>
         </div>
     </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">
+            <i class="fas fa-bolt text-blue-600"></i> Azioni Rapide
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <form method="POST" action="{{ route('aruba.admin.cache.clear') }}">
+                    @csrf
+                    <input type="hidden" name="type" value="all">
+                    <button type="submit" class="w-full bg-red-600 text-white px-4 py-3 rounded hover:bg-red-700 transition-colors">
+                        <i class="fas fa-trash-alt"></i> Pulisci Tutte Cache
+                    </button>
+                </form>
+                <p class="text-gray-600 text-xs mt-2">Pulisce config, route, view e application cache</p>
+            </div>
+            <div>
+                <form method="POST" action="{{ route('aruba.admin.assets.clean') }}">
+                    @csrf
+                    <button type="submit" class="w-full bg-orange-600 text-white px-4 py-3 rounded hover:bg-orange-700 transition-colors">
+                        <i class="fas fa-broom"></i> Pulisci Assets Vecchi
+                    </button>
+                </form>
+                <p class="text-gray-600 text-xs mt-2">Rimuove file JS/CSS non in manifest.json</p>
+            </div>
+            <div>
+                <form method="POST" action="{{ route('aruba.admin.optimize') }}">
+                    @csrf
+                    <button type="submit" class="w-full bg-green-600 text-white px-4 py-3 rounded hover:bg-green-700 transition-colors">
+                        <i class="fas fa-rocket"></i> Ottimizza App
+                    </button>
+                </form>
+                <p class="text-gray-600 text-xs mt-2">Cache config, route e view per performance</p>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection
