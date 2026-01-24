@@ -2,12 +2,12 @@
 
 namespace Database\Seeders;
 
-use App\Models\Tournament;
 use App\Models\Club;
+use App\Models\Tournament;
 use App\Models\TournamentType;
 use App\Models\User;
-use Illuminate\Database\Seeder;
 use Carbon\Carbon;
+use Illuminate\Database\Seeder;
 
 class TournamentsTableSeeder extends Seeder
 {
@@ -20,8 +20,9 @@ class TournamentsTableSeeder extends Seeder
         $admin = User::whereIn('user_type', ['super_admin', 'national_admin', 'admin'])
             ->first();
 
-        if (!$admin) {
+        if (! $admin) {
             $this->command->error('✗ No admin user found. Run UsersTableSeeder first.');
+
             return;
         }
 
@@ -30,6 +31,7 @@ class TournamentsTableSeeder extends Seeder
 
         if ($clubs->isEmpty() || $tournamentTypes->isEmpty()) {
             $this->command->error('✗ No clubs or tournament types found. Run ClubsTableSeeder and CoreDataSeeder first.');
+
             return;
         }
 

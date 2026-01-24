@@ -6,7 +6,6 @@ use App\Models\Club;
 use App\Models\Tournament;
 use App\Models\TournamentType;
 use App\Models\User;
-use App\Models\Zone;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -33,8 +32,9 @@ class Tournaments2026Seeder extends Seeder
 
         // Step 0: Verifica esistenza super_admin per created_by
         $superAdmin = User::where('user_type', 'super_admin')->first();
-        if (!$superAdmin) {
+        if (! $superAdmin) {
             $this->command->error('❌ Nessun super_admin trovato. Creare almeno un utente super_admin prima di eseguire questo seeder.');
+
             return;
         }
 
@@ -68,6 +68,7 @@ class Tournaments2026Seeder extends Seeder
 
         if ($tournaments2026->isEmpty()) {
             $this->command->info('   Nessun torneo 2026 esistente');
+
             return;
         }
 
@@ -179,7 +180,7 @@ class Tournaments2026Seeder extends Seeder
 
         $totalClubs = Club::count();
         $this->command->info("   ✓ Circoli nel database: {$totalClubs}");
-        $this->command->info("   ℹ️  Nessun circolo verrà creato (solo ricerca)");
+        $this->command->info('   ℹ️  Nessun circolo verrà creato (solo ricerca)');
     }
 
     /**
@@ -206,6 +207,7 @@ class Tournaments2026Seeder extends Seeder
                 // Salta T.B.A.
                 if ($data['circolo'] === 'T.B.A.' || $data['zona_circolo'] === 'N/D') {
                     $skipped++;
+
                     continue;
                 }
 
@@ -213,17 +215,19 @@ class Tournaments2026Seeder extends Seeder
                 $circoloName = $data['circolo'];
                 $club = $this->findClub($circoloName);
 
-                if (!$club) {
+                if (! $club) {
                     $this->command->warn("   ⚠ Circolo non trovato: {$circoloName}");
                     $skipped++;
+
                     continue;
                 }
 
                 // Trova tournament type
                 $tournamentType = TournamentType::where('short_name', $data['short_name'])->first();
-                if (!$tournamentType) {
+                if (! $tournamentType) {
                     $this->command->warn("   ⚠ Tournament type non trovato: {$data['short_name']}");
                     $skipped++;
+
                     continue;
                 }
 

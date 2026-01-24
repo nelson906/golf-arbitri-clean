@@ -55,6 +55,7 @@ class NotificationController extends Controller
         // Raggruppa per tournament_id: gare nazionali hanno CRC + Zona nella stessa riga
         $grouped = $allNotifications->groupBy('tournament_id')->map(function ($notifications) {
             $first = $notifications->first();
+
             return (object) [
                 'tournament' => $first->tournament,
                 'notifications' => $notifications,
@@ -380,7 +381,7 @@ class NotificationController extends Controller
             $ccArray[$cc['email']] = $cc['name'];
         }
 
-        $subject = $metadata['subject'] ?? 'Designazione Arbitri - ' . $tournament->name;
+        $subject = $metadata['subject'] ?? 'Designazione Arbitri - '.$tournament->name;
         $message = $metadata['message'] ?? '';
 
         $successCount = 0;
@@ -393,7 +394,7 @@ class NotificationController extends Controller
                     $mail->to($recipient['email'], $recipient['name'])
                         ->subject($subject);
 
-                    if (!empty($ccArray)) {
+                    if (! empty($ccArray)) {
                         $mail->cc($ccArray);
                     }
                 });
@@ -686,7 +687,7 @@ class NotificationController extends Controller
 
                 // CC Admin zonali
                 $ccZoneAdmins = $request->input('cc_zone_admins', []);
-                if (!empty($ccZoneAdmins)) {
+                if (! empty($ccZoneAdmins)) {
                     $zoneAdmins = \App\Models\User::whereIn('id', $ccZoneAdmins)->get();
                     foreach ($zoneAdmins as $admin) {
                         $ccRecipients[] = ['email' => $admin->email, 'name' => $admin->name];
@@ -695,7 +696,7 @@ class NotificationController extends Controller
 
                 // CC Arbitri designati
                 $ccReferees = $request->input('cc_referees', []);
-                if (!empty($ccReferees)) {
+                if (! empty($ccReferees)) {
                     $referees = \App\Models\User::whereIn('id', $ccReferees)->get();
                     foreach ($referees as $referee) {
                         $ccRecipients[] = ['email' => $referee->email, 'name' => $referee->name];
@@ -712,7 +713,7 @@ class NotificationController extends Controller
 
                 // CC Admin nazionali
                 $ccNationalAdmins = $request->input('cc_national_admins', []);
-                if (!empty($ccNationalAdmins)) {
+                if (! empty($ccNationalAdmins)) {
                     $nationalAdmins = \App\Models\User::whereIn('id', $ccNationalAdmins)->get();
                     foreach ($nationalAdmins as $admin) {
                         $ccRecipients[] = ['email' => $admin->email, 'name' => $admin->name];
@@ -721,7 +722,7 @@ class NotificationController extends Controller
 
                 // CC Osservatori
                 $ccObservers = $request->input('cc_observers', []);
-                if (!empty($ccObservers)) {
+                if (! empty($ccObservers)) {
                     $observers = \App\Models\User::whereIn('id', $ccObservers)->get();
                     foreach ($observers as $observer) {
                         $ccRecipients[] = ['email' => $observer->email, 'name' => $observer->name];
@@ -751,7 +752,7 @@ class NotificationController extends Controller
                         $mail->to($recipient['email'], $recipient['name'])
                             ->subject($validated['subject']);
 
-                        if (!empty($ccArray)) {
+                        if (! empty($ccArray)) {
                             $mail->cc($ccArray);
                         }
                     });
@@ -766,7 +767,7 @@ class NotificationController extends Controller
             }
 
             // Se non ci sono TO ma solo CC, usa il primo CC come TO
-            if (empty($toRecipients) && !empty($ccRecipients)) {
+            if (empty($toRecipients) && ! empty($ccRecipients)) {
                 $firstCc = array_shift($ccRecipients);
                 $remainingCc = [];
                 foreach ($ccRecipients as $cc) {
@@ -776,7 +777,7 @@ class NotificationController extends Controller
                     \Illuminate\Support\Facades\Mail::raw($validated['message'], function ($mail) use ($firstCc, $validated, $remainingCc) {
                         $mail->to($firstCc['email'], $firstCc['name'])
                             ->subject($validated['subject']);
-                        if (!empty($remainingCc)) {
+                        if (! empty($remainingCc)) {
                             $mail->cc($remainingCc);
                         }
                     });

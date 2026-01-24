@@ -123,7 +123,7 @@ class AssignmentController extends Controller
                     ->get();
 
                 // Altri arbitri
-                $zoneId = (!$isNationalAdmin && $user && $user->user_type === 'admin') ? $user->zone_id : null;
+                $zoneId = (! $isNationalAdmin && $user && $user->user_type === 'admin') ? $user->zone_id : null;
 
                 $otherReferees = User::where('user_type', 'referee')
                     ->where('is_active', true)
@@ -465,7 +465,7 @@ class AssignmentController extends Controller
     {
         // CRC admin: mostra sempre arbitri nazionali (che non hanno dato disponibilità)
         // Per admin zonali: mostra solo se il torneo è nazionale
-        if (!$this->isNationalAdmin()) {
+        if (! $this->isNationalAdmin()) {
             if (! isset($tournament->tournamentType) || ! $tournament->tournamentType->is_national) {
                 return collect();
             }

@@ -110,7 +110,6 @@ class InstitutionalEmail extends Model
         return $query->where('category', $category);
     }
 
-
     /**
      * Get category badge color
      */
@@ -140,5 +139,4 @@ class InstitutionalEmail extends Model
     {
         return self::CATEGORIES;
     }
-
 }

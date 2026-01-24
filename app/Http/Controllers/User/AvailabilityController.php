@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Mail\BatchAvailabilityAdminNotification;
 use App\Mail\BatchAvailabilityNotification;
 use App\Models\Availability;
-use App\Models\InstitutionalEmail;
 use App\Models\Tournament;
 use App\Models\TournamentType;
 use App\Models\User;

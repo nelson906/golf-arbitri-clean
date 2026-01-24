@@ -3,7 +3,6 @@
 namespace App\Traits;
 
 use App\Models\Club;
-use App\Models\Tournament;
 use App\Models\TournamentType;
 use App\Models\Zone;
 use App\Services\CalendarDataService;
@@ -17,6 +16,7 @@ use Illuminate\Http\Request;
 trait TournamentControllerTrait
 {
     protected TournamentColorService $colorService;
+
     protected CalendarDataService $calendarService;
 
     /**
@@ -69,7 +69,7 @@ trait TournamentControllerTrait
         }
 
         // Filtra per tornei futuri - solo se non ci sono filtri temporali
-        if (!$request->filled('month') && !$request->filled('search')) {
+        if (! $request->filled('month') && ! $request->filled('search')) {
             $query->where('start_date', '>=', Carbon::now()->startOfDay());
         }
     }
@@ -83,6 +83,7 @@ trait TournamentControllerTrait
             $now = Carbon::now();
             $deadline = Carbon::parse($tournament->availability_deadline);
             $tournament->days_until_deadline = (int) $now->diffInDays($deadline, false);
+
             return $tournament;
         });
     }

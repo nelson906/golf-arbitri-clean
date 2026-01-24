@@ -12,20 +12,18 @@ use App\Services\CalendarDataService;
 use App\Services\TournamentColorService;
 use App\Traits\HasZoneVisibility;
 use App\Traits\TournamentControllerTrait;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class TournamentController extends Controller
 {
     use HasZoneVisibility;
-    use TournamentControllerTrait;  // ← AGGIUNTO
+    use TournamentControllerTrait;
 
     public function __construct(TournamentColorService $colorService, CalendarDataService $calendarService)
     {
         $this->initTournamentServices($colorService, $calendarService);  // ← USA METODO TRAIT
     }
-
 
     /**
      * Display a listing of tournaments.
@@ -67,7 +65,6 @@ class TournamentController extends Controller
         ))->with('isNationalAdmin', $this->isNationalAdmin($user));
     }
 
-
     /**
      * Show tournaments calendar view
      */
@@ -99,7 +96,6 @@ class TournamentController extends Controller
 
         return view('admin.tournaments.calendar', compact('calendarData'));
     }
-
 
     /**
      * Get admin roles for permissions
@@ -484,6 +480,4 @@ class TournamentController extends Controller
     {
         $this->checkTournamentAccess($tournament);
     }
-
-
 }

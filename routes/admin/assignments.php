@@ -24,12 +24,6 @@ Route::prefix('assignments')->name('assignments.')->group(function () {
     Route::post('/', [App\Http\Controllers\Admin\AssignmentController::class, 'store'])
         ->name('store');
 
-    Route::get('/export', [App\Http\Controllers\Admin\AssignmentController::class, 'export'])
-        ->name('export');
-
-    Route::post('/bulk-assign', [App\Http\Controllers\Admin\AssignmentController::class, 'bulkAssign'])
-        ->name('bulk-assign');
-
     // Route con prefisso /tournament/ (statiche rispetto a /{assignment})
     Route::get('/tournament/{tournament}/assign-referees', [App\Http\Controllers\Admin\AssignmentController::class, 'assignReferees'])
         ->name('assign-referees');
@@ -55,9 +49,6 @@ Route::prefix('assignments')->name('assignments.')->group(function () {
 
     Route::post('/{assignment}/confirm', [App\Http\Controllers\Admin\AssignmentController::class, 'confirm'])
         ->name('confirm');
-
-    Route::post('/{assignment}/cancel', [App\Http\Controllers\Admin\AssignmentController::class, 'cancel'])
-        ->name('cancel');
 });
 
 // Assignment Validation & Quality Control
@@ -69,4 +60,3 @@ Route::prefix('assignment-validation')->name('assignment-validation.')->group(fu
     Route::get('/underassigned-referees', [AssignmentController::class, 'underassignedReferees'])->name('underassigned');
     Route::post('/fix-conflicts', [AssignmentController::class, 'fixConflicts'])->name('fix-conflicts');
 });
-

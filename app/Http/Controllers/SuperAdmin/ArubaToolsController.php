@@ -109,14 +109,14 @@ class ArubaToolsController extends Controller
             $buildManifest = public_path('build/manifest.json');
             $assetsDir = public_path('build/assets');
 
-            if (!File::exists($buildManifest) || !File::isDirectory($assetsDir)) {
+            if (! File::exists($buildManifest) || ! File::isDirectory($assetsDir)) {
                 return back()->with('warning', '⚠️ Build manifest o directory assets non trovati');
             }
 
             $manifestContent = File::get($buildManifest);
             $manifest = json_decode($manifestContent, true);
 
-            if (!$manifest) {
+            if (! $manifest) {
                 return back()->with('error', '❌ Errore lettura manifest.json');
             }
 
@@ -141,7 +141,7 @@ class ArubaToolsController extends Controller
             foreach ($assetsFiles as $file) {
                 $filename = $file->getFilename();
 
-                if (!in_array($filename, $referencedFiles)) {
+                if (! in_array($filename, $referencedFiles)) {
                     if (File::delete($file->getPathname())) {
                         $deletedCount++;
                         $deletedFiles[] = $filename;
@@ -154,6 +154,7 @@ class ArubaToolsController extends Controller
             }
 
             $message = "✅ Rimossi {$deletedCount} file assets vecchi";
+
             return back()->with('success', $message);
         } catch (\Exception $e) {
             return back()->with('error', '❌ Errore: '.$e->getMessage());
@@ -409,6 +410,7 @@ class ArubaToolsController extends Controller
         try {
             // Tenta di eseguire un comando innocuo
             Artisan::call('list');
+
             return true;
         } catch (\Exception $e) {
             return false;

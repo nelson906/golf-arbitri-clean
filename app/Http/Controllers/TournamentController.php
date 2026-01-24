@@ -2,10 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Club;
 use App\Models\Tournament;
-use App\Models\TournamentType;
-use App\Models\Zone;
 use App\Services\CalendarDataService;
 use App\Services\TournamentColorService;
 use App\Traits\HasZoneVisibility;
@@ -28,7 +25,6 @@ class TournamentController extends Controller
         $this->initTournamentServices($colorService, $calendarService);  // ← USA METODO TRAIT
     }
 
-
     /**
      * Lista tornei unificata
      * - Solo tornei futuri (se non ci sono filtri month/search)
@@ -42,7 +38,7 @@ class TournamentController extends Controller
         $this->applyTournamentVisibility($query, $user);
 
         // Per i non-admin, mostra solo tornei con status visibili
-        if (!$this->isAdmin($user)) {
+        if (! $this->isAdmin($user)) {
             $query->whereIn('status', ['open', 'closed', 'assigned', 'completed']);
         }
 
@@ -63,7 +59,6 @@ class TournamentController extends Controller
             'isNationalAdmin' => $this->isNationalAdmin($user),
         ]);
     }
-
 
     /**
      * Calendario unificato
@@ -87,14 +82,14 @@ class TournamentController extends Controller
 
         $this->applyTournamentVisibility($query, $user);
 
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $query->whereIn('status', ['open', 'closed', 'assigned', 'completed']);
         }
 
         $currentYear = $request->get('year', now()->year);
         $query->whereBetween('start_date', [
             Carbon::create($currentYear, 1, 1)->startOfYear(),
-            Carbon::create($currentYear, 12, 31)->endOfYear()
+            Carbon::create($currentYear, 12, 31)->endOfYear(),
         ]);
 
         $tournaments = $query->orderBy('start_date')->get();
@@ -120,7 +115,6 @@ class TournamentController extends Controller
 
         return view('tournaments.calendar', compact('calendarData'));
     }
-
 
     /**
      * ✅ Dettagli torneo
@@ -190,7 +184,6 @@ class TournamentController extends Controller
     // ===============================================
 
     // Nota: isAdmin, isNationalAdmin, isNationalReferee sono nel trait HasZoneVisibility
-
 
     private function checkTournamentAccess($tournament, $user, $isAdmin): void
     {
