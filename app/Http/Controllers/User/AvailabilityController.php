@@ -112,11 +112,15 @@ class AvailabilityController extends Controller
     {
         $request->validate([
             'tournament_id' => 'required|exists:tournaments,id',
-            'available' => 'required|boolean',
+            'available' => 'sometimes|boolean',
             'notes' => 'nullable|string|max:500',
         ]);
 
         $user = auth()->user();
+
+        if (! $user || ! $user->isReferee()) {
+            abort(403);
+        }
         /** @var Tournament $tournament */
         $tournament = Tournament::findOrFail($request->tournament_id);
 
@@ -137,10 +141,12 @@ class AvailabilityController extends Controller
                 ], 403);
             }
 
-            return back()->with('error', $errorMessage);
+            return back()->withErrors(['availability' => $errorMessage]);
         }
 
-        if ($request->available) {
+        $available = $request->boolean('available', true);
+
+        if ($available) {
             // Aggiungi o aggiorna disponibilità
             Availability::updateOrCreate(
                 [
@@ -176,6 +182,22 @@ class AvailabilityController extends Controller
         }
 
         return back()->with('success', $message);
+    }
+
+    /**
+     * Remove a single availability
+     */
+    public function destroy(Availability $availability)
+    {
+        $user = auth()->user();
+
+        if (! $user || (int) $availability->user_id !== (int) $user->id) {
+            abort(403);
+        }
+
+        $availability->delete();
+
+        return back()->with('success', 'Disponibilità rimossa con successo.');
     }
 
     /**

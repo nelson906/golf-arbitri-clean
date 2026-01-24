@@ -154,7 +154,7 @@ class AssignmentController extends Controller
         $validated = $request->validate([
             'tournament_id' => 'required|exists:tournaments,id',
             'user_id' => 'required|exists:users,id',
-            'role' => 'nullable|string|max:100',
+            'role' => 'nullable|string|in:Direttore di Torneo,Arbitro,Osservatore',
             'notes' => 'nullable|string',
         ]);
 
@@ -233,8 +233,8 @@ class AssignmentController extends Controller
         $this->applyUserVisibility($refereesQuery, $user);
         $referees = $refereesQuery->get();
 
-        // Ruoli disponibili
-        $roles = ['Arbitro', 'Direttore di Torneo', 'Osservatore', 'Starter', 'Segretario'];
+        // Ruoli disponibili (devono corrispondere ai valori enum del database)
+        $roles = ['Arbitro', 'Direttore di Torneo', 'Osservatore'];
 
         // Suggested referee from conflict resolution
         $suggestedRefereeId = $request->query('suggested_referee');
@@ -258,7 +258,7 @@ class AssignmentController extends Controller
 
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
-            'role' => 'required|string|max:100',
+            'role' => 'required|string|in:Direttore di Torneo,Arbitro,Osservatore',
             'notes' => 'nullable|string|max:1000',
         ]);
 

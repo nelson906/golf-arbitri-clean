@@ -294,15 +294,20 @@ class Tournament extends Model
         if ($user->user_type === 'referee') {
             $isNational = in_array($user->level ?? '', ['Nazionale', 'Internazionale']);
 
-            if ($isNational) {
+            if ($isNational && $user->zone_id) {
                 // Nazionale/Internazionale: propria zona + tornei nazionali
                 return $query->where(function ($q) use ($user) {
-                    $q->whereHas('club', fn ($sub) => $sub->where('zone_id', $user->zone_id))
-                        ->orWhereHas('tournamentType', fn ($sub) => $sub->where('is_national', true));
-                });
-            } else {
+                    $q->whereHas('club', fn ($sub) => $sub->where('zone_id', $user->zone_id));
+                })->orWhereHas('tournamentType', fn ($sub) => $sub->where('is_national', true));
+            } elseif ($isNational) {
+                // Nazionale/Internazionale senza zona: solo tornei nazionali
+                return $query->whereHas('tournamentType', fn ($q) => $q->where('is_national', true));
+            } elseif ($user->zone_id) {
                 // 1_livello/Regionale: solo propria zona
                 return $query->whereHas('club', fn ($q) => $q->where('zone_id', $user->zone_id));
+            } else {
+                // Referee senza zona: nessun risultato
+                return $query->whereRaw('1 = 0');
             }
         }
 

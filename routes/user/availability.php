@@ -22,6 +22,9 @@ Route::prefix('availability')->name('availability.')->group(function () {
     // Salva/rimuovi disponibilità singola
     Route::post('/store', [AvailabilityController::class, 'store'])->name('store');
 
+    // Rimuovi disponibilità
+    Route::delete('/{availability}', [AvailabilityController::class, 'destroy'])->name('destroy');
+
     // Salva disponibilità batch
     Route::post('/save-batch', [AvailabilityController::class, 'saveBatch'])->name('saveBatch');
 

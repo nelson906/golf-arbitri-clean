@@ -244,6 +244,8 @@ trait HasZoneVisibility
     {
         $user = $user ?? auth()->user();
 
+        $tournamentZoneId = $tournament->club->zone_id ?? $tournament->zone_id;
+
         // Super admin può tutto
         if ($this->isSuperAdmin($user)) {
             return true;
@@ -256,17 +258,17 @@ trait HasZoneVisibility
 
         // Admin zonale: solo propria zona
         if ($user->user_type === 'admin') {
-            return $tournament->zone_id === $user->zone_id;
+            return $tournamentZoneId === $user->zone_id;
         }
 
         // Referee nazionale: propria zona o torneo nazionale
         if ($user->user_type === 'referee' && $this->isNationalReferee($user)) {
-            return $tournament->zone_id === $user->zone_id
+            return $tournamentZoneId === $user->zone_id
                 || ($tournament->tournamentType?->is_national ?? false);
         }
 
         // Referee zonale: solo propria zona
-        return $tournament->zone_id === $user->zone_id;
+        return $tournamentZoneId === $user->zone_id;
     }
 
     /**
