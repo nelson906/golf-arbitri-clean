@@ -19,7 +19,11 @@
                     <select id="zoneFilter" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="">Tutte le zone</option>
                         @foreach($calendarData['zones'] as $zone)
-                            <option value="{{ $zone->id }}">{{ $zone->name }}</option>
+                            @if(is_array($zone))
+                                <option value="{{ $zone['id'] }}">{{ $zone['name'] }}</option>
+                            @else
+                                <option value="{{ $zone->id }}">{{ $zone->name }}</option>
+                            @endif
                         @endforeach
                     </select>
                 @endif
@@ -29,7 +33,11 @@
                     <select id="typeFilter" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="">Tutti i tipi</option>
                         @foreach($calendarData['tournamentTypes'] as $type)
-                            <option value="{{ $type->id }}">{{ $type->name }}</option>
+                            @if(is_array($type))
+                                <option value="{{ $type['id'] }}">{{ $type['name'] }}</option>
+                            @else
+                                <option value="{{ $type->id }}">{{ $type->name }}</option>
+                            @endif
                         @endforeach
                     </select>
                 @endif
@@ -49,8 +57,13 @@
             @if(isset($calendarData['tournamentTypes']))
                 @foreach($calendarData['tournamentTypes']->take(12) as $type)
                     <div class="flex items-center space-x-2">
-                        <span class="inline-block w-4 h-4 rounded" style="background-color: {{ $type->calendar_color ?? '#3B82F6' }}"></span>
-                        <span class="text-xs">{{ $type->short_name ?? $type->name }}</span>
+                        @if(is_array($type))
+                            <span class="inline-block w-4 h-4 rounded" style="background-color: {{ $type['color'] ?? '#3B82F6' }}"></span>
+                            <span class="text-xs">{{ $type['short_name'] ?? $type['name'] }}</span>
+                        @else
+                            <span class="inline-block w-4 h-4 rounded" style="background-color: {{ $type->calendar_color ?? '#3B82F6' }}"></span>
+                            <span class="text-xs">{{ $type->short_name ?? $type->name }}</span>
+                        @endif
                     </div>
                 @endforeach
             @endif

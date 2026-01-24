@@ -104,8 +104,8 @@
                 </li>
 
                 <li>
-                    <a href="{{ route('tournaments.calendar') }}"
-                        class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('tournaments.calendar') ? 'bg-blue-900' : '' }}">
+                    <a href="{{ route('admin.tournaments.calendar') }}"
+                        class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.tournaments.calendar') ? 'bg-blue-900' : '' }}">
                         <span class="mr-3">📅</span>
                         Calendario
                     </a>

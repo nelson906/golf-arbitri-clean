@@ -14,14 +14,14 @@ use Illuminate\Support\Facades\Route;
 |*/
 
 Route::prefix('tournaments')->name('tournaments.')->group(function () {
+    // Calendar View (must be defined before resource to avoid being caught by /{tournament})
+    Route::get('/calendar', [TournamentController::class, 'calendar'])->name('calendar');
+
     // CRUD Base using resource
     Route::resource('/', TournamentController::class)->parameters(['' => 'tournament']);
 
     // Status Management
     Route::post('/{tournament}/status', [TournamentController::class, 'changeStatus'])->name('change-status');
-
-    // Calendar View
-    Route::get('/calendar', [TournamentController::class, 'calendar'])->name('calendar');
 
     // Tournament-specific sub-routes
     Route::prefix('{tournament}')->group(function () {

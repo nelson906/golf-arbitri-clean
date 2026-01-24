@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Helpers\ZoneHelper;
-use App\Http\Helpers\RefereeRoleHelper;
+use App\Helpers\RefereeRoleHelper;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use Carbon\Carbon;
