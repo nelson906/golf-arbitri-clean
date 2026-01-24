@@ -178,8 +178,8 @@ class AssignmentValidationService
             $query->where('zone_id', $zoneId);
         }
 
-        return $query->having('assignments_count', '>', $threshold)
-            ->orderByDesc('assignments_count')
+        // Filtering after get() for SQLite compatibility (HAVING on subquery count not supported)
+        return $query
             ->with(['zone', 'assignments' => function ($q) {
                 $q->whereHas('tournament', function ($tq) {
                     $tq->whereIn('status', ['open', 'closed'])
@@ -187,6 +187,8 @@ class AssignmentValidationService
                 })->with('tournament');
             }])
             ->get()
+            ->filter(fn ($referee) => $referee->assignments_count > $threshold)
+            ->sortByDesc('assignments_count')
             ->map(function ($referee) use ($threshold) {
                 return [
                     'referee' => $referee,
@@ -215,10 +217,12 @@ class AssignmentValidationService
             $query->where('zone_id', $zoneId);
         }
 
-        return $query->having('assignments_count', '<', $threshold)
-            ->orderBy('assignments_count')
+        // Filtering after get() for SQLite compatibility (HAVING on subquery count not supported)
+        return $query
             ->with(['zone'])
             ->get()
+            ->filter(fn ($referee) => $referee->assignments_count < $threshold)
+            ->sortBy('assignments_count')
             ->map(function ($referee) use ($threshold) {
                 return [
                     'referee' => $referee,
