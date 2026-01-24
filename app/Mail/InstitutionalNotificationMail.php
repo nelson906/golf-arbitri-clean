@@ -32,7 +32,7 @@ class InstitutionalNotificationMail extends Mailable
                 'club_name' => $this->tournament->club->name,
                 'referees' => $this->tournament->assignments->map(function ($assignment) {
                     return [
-                        'name' => $assignment->user->name ?? $assignment->referee->name ?? 'N/D',
+                        'name' => $assignment->user->name ?? 'N/D',
                         'role' => $assignment->role ?? 'Arbitro',
                     ];
                 })->toArray(),

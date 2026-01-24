@@ -12,7 +12,7 @@ use App\Models\Zone;
 use App\Services\DocumentGenerationService;
 use App\Services\NotificationService;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -35,7 +35,7 @@ use Tests\TestCase;
  */
 class NotificationCycleTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     protected DocumentGenerationService $documentService;
 

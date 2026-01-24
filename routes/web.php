@@ -167,8 +167,6 @@ Route::prefix('api')->name('api.')->group(function () {
         require __DIR__.'/api/v1/notifications.php';
     });
 });
-
-require __DIR__.'/dev/view-preview.php';
 if (app()->environment(['local', 'staging'])) {
     require __DIR__.'/dev/view-preview.php';
     require __DIR__.'/dev/view-test-all.php'; // ⚠️ AGGIUNGI

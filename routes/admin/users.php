@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -53,16 +52,7 @@ Route::prefix('admins')->name('admins.')->group(function () {
 });
 
 // User validation & verification
-Route::prefix('validation')->name('validation.')->group(function () {
-    Route::get('/pending', [UserController::class, 'pendingValidation'])->name('pending');
-    Route::post('/approve/{user}', [UserController::class, 'approveUser'])->name('approve');
-    Route::post('/reject/{user}', [UserController::class, 'rejectUser'])->name('reject');
-    Route::get('/documents/{user}', [UserController::class, 'validationDocuments'])->name('documents');
-});
+Route::prefix('validation')->name('validation.')->group(function () {});
 
 // Mass communication to users
-Route::prefix('mass-communication')->name('mass-communication.')->group(function () {
-    Route::get('/', [UserController::class, 'massCommunication'])->name('index');
-    Route::post('/send', [UserController::class, 'sendMassCommunication'])->name('send');
-    Route::get('/templates', [UserController::class, 'communicationTemplates'])->name('templates');
-});
+Route::prefix('mass-communication')->name('mass-communication.')->group(function () {});
