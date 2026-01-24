@@ -2,7 +2,7 @@
 
 // app/helpers.php
 
-use App\Http\Helpers\RefereeLevelsHelper;
+use App\Helpers\RefereeLevelsHelper;
 
 if (! function_exists('referee_levels')) {
     function referee_levels(bool $includeArchived = false): array

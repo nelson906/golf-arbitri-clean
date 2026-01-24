@@ -69,20 +69,4 @@ Route::prefix('assignment-validation')->name('assignment-validation.')->group(fu
     Route::get('/underassigned-referees', [AssignmentController::class, 'underassignedReferees'])->name('underassigned');
     Route::post('/fix-conflicts', [AssignmentController::class, 'fixConflicts'])->name('fix-conflicts');
 });
-// Historical data and archive
-Route::prefix('history')->name('history.')->group(function () {
-    Route::get('/', [AssignmentController::class, 'history'])->name('index');
-    Route::get('/referee/{user}', [AssignmentController::class, 'refereeHistory'])->name('referee');
-    Route::get('/tournament/{tournament}', [AssignmentController::class, 'tournamentHistory'])->name('tournament');
-    Route::get('/changes', [AssignmentController::class, 'changeHistory'])->name('changes');
-    Route::get('/export-history', [AssignmentController::class, 'exportHistory'])->name('export');
-});
 
-// Assignment Templates for recurring patterns
-Route::prefix('templates')->name('templates.')->group(function () {
-    Route::get('/', [AssignmentController::class, 'templates'])->name('index');
-    Route::get('/create', [AssignmentController::class, 'createTemplate'])->name('create');
-    Route::post('/', [AssignmentController::class, 'storeTemplate'])->name('store');
-    Route::post('/{template}/apply', [AssignmentController::class, 'applyTemplate'])->name('apply');
-    Route::delete('/{template}', [AssignmentController::class, 'destroyTemplate'])->name('destroy');
-});

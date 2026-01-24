@@ -9,6 +9,7 @@ use App\Models\Zone;
 use App\Services\CalendarDataService;
 use App\Services\TournamentColorService;
 use App\Traits\HasZoneVisibility;
+use App\Traits\TournamentControllerTrait;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -20,16 +21,13 @@ use Illuminate\View\View;
 class TournamentController extends Controller
 {
     use HasZoneVisibility;
-
-    protected TournamentColorService $colorService;
-
-    protected CalendarDataService $calendarService;
+    use TournamentControllerTrait;
 
     public function __construct(TournamentColorService $colorService, CalendarDataService $calendarService)
     {
-        $this->colorService = $colorService;
-        $this->calendarService = $calendarService;
+        $this->initTournamentServices($colorService, $calendarService);  // ← USA METODO TRAIT
     }
+
 
     /**
      * Lista tornei unificata
@@ -41,36 +39,22 @@ class TournamentController extends Controller
         $user = auth()->user();
 
         $query = Tournament::with(['tournamentType', 'zone', 'club']);
-
-        // Filtro visibilità per zona/ruolo (centralizzato nel trait)
         $this->applyTournamentVisibility($query, $user);
 
         // Per i non-admin, mostra solo tornei con status visibili
-        if (! $this->isAdmin($user)) {
+        if (!$this->isAdmin($user)) {
             $query->whereIn('status', ['open', 'closed', 'assigned', 'completed']);
         }
 
-        // Filtri aggiuntivi da request
-        $this->applyFilters($query, $request);
+        // Usa metodo condiviso dal trait
+        $this->applyCommonFilters($query, $request);
 
-        // Filtra per tornei futuri - solo se non ci sono altri filtri
-        if (! $request->filled('month') && ! $request->filled('search')) {
-            $query->where('start_date', '>=', Carbon::now()->startOfDay());
-        }
-
-        // Ordina ASC (più vicini per primi) e pagina
         $tournaments = $query->orderBy('start_date', 'asc')->paginate(20);
 
-        // Calcola days_until_deadline per ogni torneo
-        $tournaments->getCollection()->transform(function ($tournament) {
-            $now = Carbon::now();
-            $deadline = Carbon::parse($tournament->availability_deadline);
-            $tournament->days_until_deadline = (int) $now->diffInDays($deadline, false);
-            return $tournament;
-        });
+        // Usa metodo condiviso dal trait
+        $this->addDeadlineInfo($tournaments);
 
-        // Statistiche per admin
-        $stats = $this->isAdmin($user) ? $this->calculateStats($tournaments) : [];
+        $stats = $this->isAdmin($user) ? $this->calculateTournamentStats($tournaments) : [];
 
         return view('tournaments.index', [
             'tournaments' => $tournaments,
@@ -80,6 +64,7 @@ class TournamentController extends Controller
         ]);
     }
 
+
     /**
      * Calendario unificato
      * Ora centralizzato tramite CalendarDataService
@@ -87,80 +72,55 @@ class TournamentController extends Controller
     public function calendar(Request $request): View
     {
         $user = auth()->user();
-        // Allow forcing user mode with ?view_as=user parameter
         $forceUserMode = $request->get('view_as') === 'user';
         $isAdmin = $forceUserMode ? false : $this->isAdmin($user);
 
-        // Query base con relazioni ottimizzate
         $query = Tournament::with([
             'tournamentType:id,name,short_name,calendar_color',
             'club:id,name,zone_id',
             'club.zone:id,name',
         ]);
 
-        // Load additional relations based on user type
         if ($isAdmin) {
             $query->withCount(['assignments', 'availabilities']);
         }
 
-        // Filtro visibilità per zona/ruolo
         $this->applyTournamentVisibility($query, $user);
 
-        // Per i non-admin, mostra solo tornei con status visibili
-        if (! $isAdmin) {
+        if (!$isAdmin) {
             $query->whereIn('status', ['open', 'closed', 'assigned', 'completed']);
         }
 
-        // Filtri opzionali
         $currentYear = $request->get('year', now()->year);
-        $startDate = Carbon::create($currentYear, 1, 1)->startOfYear();
-        $endDate = Carbon::create($currentYear, 12, 31)->endOfYear();
-        $query->whereBetween('start_date', [$startDate, $endDate]);
+        $query->whereBetween('start_date', [
+            Carbon::create($currentYear, 1, 1)->startOfYear(),
+            Carbon::create($currentYear, 12, 31)->endOfYear()
+        ]);
 
-        if ($request->filled('zone_id')) {
-            $query->whereHas('club', function ($q) use ($request) {
-                $q->where('zone_id', $request->zone_id);
-            });
-        }
+        $tournaments = $query->orderBy('start_date')->get();
 
-        if ($request->filled('type_id')) {
-            $query->where('tournament_type_id', $request->type_id);
-        }
-
-        $query->orderBy('start_date');
-        $tournaments = $query->get();
-
-        // Get user-specific availability/assignment data
+        // Dati user-specific
         $userAvailabilities = [];
         $userAssignments = [];
-
         if ($user->user_type === 'referee') {
             $userAvailabilities = $user->availabilities()->pluck('tournament_id')->toArray();
             $userAssignments = $user->assignments()->pluck('tournament_id')->toArray();
         }
 
-        // Use CalendarDataService to prepare calendar data
-        $calendarData = $this->calendarService->prepareFullCalendarData(
+        // Usa metodo condiviso dal trait
+        $calendarData = $this->prepareCalendarData(
             $tournaments,
             $user,
             $isAdmin ? 'admin' : 'referee',
             [
-                'zones' => Zone::orderBy('name')->get(),
-                'clubs' => Club::active()->ordered()->get(),
-                'tournamentTypes' => TournamentType::active()->ordered()->get(),
                 'availableTournamentIds' => $userAvailabilities,
                 'assignedTournamentIds' => $userAssignments,
             ]
         );
 
-        // Add UI-specific context fields
-        $calendarData['userRoles'] = [$user->user_type];
-        $calendarData['canModify'] = true;
-        $calendarData['totalTournaments'] = $tournaments->count();
-        $calendarData['lastUpdated'] = now()->toISOString();
-
         return view('tournaments.calendar', compact('calendarData'));
     }
+
 
     /**
      * ✅ Dettagli torneo
@@ -231,43 +191,6 @@ class TournamentController extends Controller
 
     // Nota: isAdmin, isNationalAdmin, isNationalReferee sono nel trait HasZoneVisibility
 
-    private function applyFilters($query, Request $request): void
-    {
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhereHas('club', function ($q2) use ($search) {
-                        $q2->where('name', 'like', "%{$search}%");
-                    });
-            });
-        }
-
-        if ($request->filled('status')) {
-
-        }
-
-        if ($request->filled('zone_id')) {
-            $query->where('zone_id', $request->zone_id);
-        }
-
-        if ($request->filled('tournament_type_id')) {
-            $query->where('tournament_type_id', $request->tournament_type_id);
-        }
-
-        if ($request->filled('month')) {
-            $startOfMonth = Carbon::parse($request->month)->startOfMonth();
-            $endOfMonth = Carbon::parse($request->month)->endOfMonth();
-            $query->where(function ($q) use ($startOfMonth, $endOfMonth) {
-                $q->whereBetween('start_date', [$startOfMonth, $endOfMonth])
-                    ->orWhereBetween('end_date', [$startOfMonth, $endOfMonth])
-                    ->orWhere(function ($q2) use ($startOfMonth, $endOfMonth) {
-                        $q2->where('start_date', '<=', $startOfMonth)
-                            ->where('end_date', '>=', $endOfMonth);
-                    });
-            });
-        }
-    }
 
     private function checkTournamentAccess($tournament, $user, $isAdmin): void
     {
@@ -280,29 +203,6 @@ class TournamentController extends Controller
         if (! $this->canAccessTournament($tournament, $user)) {
             abort(403, 'Non hai accesso a questo torneo.');
         }
-    }
-
-    private function calculateStats($tournaments): array
-    {
-        if (is_object($tournaments) && method_exists($tournaments, 'getCollection')) {
-            /** @var \Illuminate\Pagination\LengthAwarePaginator $tournaments */
-            $collection = $tournaments->getCollection();
-            $total = $tournaments->count();
-        } else {
-            $collection = $tournaments;
-            $total = $tournaments->count();
-        }
-
-        $byStatus = $collection->groupBy('status');
-
-        return [
-            'total' => $total,
-            'draft' => $byStatus->get('draft', collect())->count(),
-            'open' => $byStatus->get('open', collect())->count(),
-            'closed' => $byStatus->get('closed', collect())->count(),
-            'assigned' => $byStatus->get('assigned', collect())->count(),
-            'completed' => $byStatus->get('completed', collect())->count(),
-        ];
     }
 }
 

@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Http\Helpers\RefereeLevelsHelper;
+use App\Helpers\RefereeLevelsHelper;
 use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Models\User;

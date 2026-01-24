@@ -48,7 +48,6 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('tournaments')->name('tournaments.')->group(function () {
         Route::get('/', [TournamentController::class, 'index'])->name('index');
         Route::get('/calendar/view', [TournamentController::class, 'calendar'])->name('calendar');
-        Route::get('/calendar/data', [TournamentController::class, 'calendarData'])->name('calendar-data');
         Route::get('/{tournament}', [TournamentController::class, 'show'])->name('show');
     });
 
@@ -97,12 +96,11 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
         require __DIR__.'/admin/referee-career.php';      // SPOSTATO da inline
         require __DIR__.'/admin/users.php';
         require __DIR__.'/admin/assignments.php';
-        require __DIR__.'/admin/dashboard.php';
         require __DIR__.'/admin/statistics.php';           // RINOMINATO da statistic.php
         // monitoring.php spostato in super-admin/monitoring.php
         require __DIR__.'/admin/clubs.php';
         require __DIR__.'/admin/notifications.php';
-        require __DIR__.'/admin/reports.php';
+        // require __DIR__.'/admin/reports.php';
         require __DIR__.'/admin/documents.php';
         require __DIR__.'/admin/communications.php';       // SPOSTATO da inline
         require __DIR__.'/admin/career-history.php';       // Gestione storico carriera arbitri
