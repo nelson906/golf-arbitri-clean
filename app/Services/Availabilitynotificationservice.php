@@ -18,7 +18,7 @@ class AvailabilityNotificationService
     /**
      * Raggruppa disponibilità per tipo torneo (zonale/nazionale)
      *
-     * @param Collection<Availability> $availabilities
+     * @param  Collection<Availability>  $availabilities
      * @return array{zonal: Collection, national: Collection}
      */
     public function groupByTournamentType(Collection $availabilities): array
@@ -36,8 +36,7 @@ class AvailabilityNotificationService
     /**
      * Determina i destinatari corretti per le notifiche
      *
-     * @param User $referee
-     * @param Collection<Availability> $availabilities
+     * @param  Collection<Availability>  $availabilities
      * @return array{
      *   zone: array{email: string, availabilities: Collection}|null,
      *   crc: array{email: string, availabilities: Collection}|null,
@@ -79,8 +78,7 @@ class AvailabilityNotificationService
     /**
      * Invia notifiche separate a tutti i destinatari
      *
-     * @param User $referee
-     * @param Collection<Availability> $availabilities
+     * @param  Collection<Availability>  $availabilities
      * @return array{zone: bool, crc: bool, referee: bool}
      */
     public function sendSeparatedNotifications(User $referee, Collection $availabilities): array
@@ -135,6 +133,7 @@ class AvailabilityNotificationService
                 $tournaments,
                 collect()
             ));
+
             return true;
         } catch (\Throwable $e) {
             Log::error('Errore invio notifica disponibilità zona', [
@@ -167,6 +166,7 @@ class AvailabilityNotificationService
                 $tournaments,
                 collect()
             ));
+
             return true;
         } catch (\Throwable $e) {
             Log::error('Errore invio notifica disponibilità CRC', [
@@ -199,6 +199,7 @@ class AvailabilityNotificationService
                 $tournaments,
                 collect()
             ));
+
             return true;
         } catch (\Throwable $e) {
             Log::error('Errore invio conferma disponibilità arbitro', [

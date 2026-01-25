@@ -6,7 +6,6 @@ use App\Models\Club;
 use App\Models\Tournament;
 use App\Models\TournamentType;
 use App\Models\User;
-use App\Models\Zone;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -29,7 +28,7 @@ class TournamentFactory extends Factory
         $deadline = (clone $startDate)->subDays(rand(1, 7));
 
         return [
-            'name' => fake()->company() . ' Open',
+            'name' => fake()->company().' Open',
             'start_date' => $startDate,
             'end_date' => $endDate,
             'availability_deadline' => $deadline,

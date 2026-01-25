@@ -21,7 +21,7 @@ class ClubFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => 'Golf Club ' . fake()->city(),
+            'name' => 'Golf Club '.fake()->city(),
             'zone_id' => Zone::inRandomOrder()->first()?->id ?? 1,
             'code' => strtoupper(fake()->unique()->bothify('GC###??')),
             'city' => fake()->city(),

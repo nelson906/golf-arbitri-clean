@@ -3,9 +3,7 @@
 namespace Tests\Unit\Services;
 
 use App\Models\Assignment;
-use App\Models\Tournament;
 use App\Models\TournamentNotification;
-use App\Models\User;
 use App\Services\DocumentGenerationService;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\Mail;
@@ -14,6 +12,7 @@ use Tests\TestCase;
 class NotificationServiceTest extends TestCase
 {
     protected NotificationService $service;
+
     protected DocumentGenerationService $documentService;
 
     protected function setUp(): void
@@ -126,7 +125,7 @@ class NotificationServiceTest extends TestCase
                 'recipients' => [
                     'club' => true,
                     'referees' => [$referee->id],
-                ]
+                ],
             ]),
         ]);
 
@@ -176,7 +175,7 @@ class NotificationServiceTest extends TestCase
                     'club' => false,
                     'referees' => [],
                     'institutional' => [],
-                ]
+                ],
             ]),
             'recipients' => [
                 'club' => false,
@@ -204,7 +203,7 @@ class NotificationServiceTest extends TestCase
      */
     public function test_service_is_instantiable(): void
     {
-        $docService = new DocumentGenerationService();
+        $docService = new DocumentGenerationService;
         $service = new NotificationService($docService);
 
         $this->assertInstanceOf(NotificationService::class, $service);

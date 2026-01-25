@@ -4,7 +4,6 @@ namespace Tests\Unit\Services;
 
 use App\Models\Assignment;
 use App\Models\Tournament;
-use App\Models\User;
 use App\Services\AssignmentValidationService;
 use Carbon\Carbon;
 use Tests\TestCase;
@@ -16,7 +15,7 @@ class AssignmentValidationServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new AssignmentValidationService();
+        $this->service = new AssignmentValidationService;
     }
 
     // ==========================================

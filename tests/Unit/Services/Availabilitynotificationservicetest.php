@@ -3,7 +3,6 @@
 namespace Tests\Unit\Services;
 
 use App\Models\Availability;
-use App\Models\Club;
 use App\Models\Tournament;
 use App\Models\TournamentType;
 use App\Models\User;
@@ -17,7 +16,7 @@ class AvailabilityNotificationServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new AvailabilityNotificationService();
+        $this->service = new AvailabilityNotificationService;
     }
 
     // ==========================================

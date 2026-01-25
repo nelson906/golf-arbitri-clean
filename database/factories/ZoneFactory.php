@@ -26,7 +26,7 @@ class ZoneFactory extends Factory
     {
         return [
             'name' => $this->faker->city(),
-            'code' => 'SZR' . $this->faker->numberBetween(1, 7),
+            'code' => 'SZR'.$this->faker->numberBetween(1, 7),
         ];
     }
 }

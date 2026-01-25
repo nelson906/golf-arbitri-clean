@@ -3,7 +3,6 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Assignment;
-use App\Models\Tournament;
 use App\Models\User;
 use Tests\TestCase;
 

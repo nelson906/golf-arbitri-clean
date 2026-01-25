@@ -3,10 +3,8 @@
 namespace Tests\Unit\Helpers;
 
 use App\Helpers\ZoneHelper;
-use App\Models\Club;
 use App\Models\Tournament;
 use App\Models\TournamentType;
-use App\Models\User;
 use App\Models\Zone;
 use Tests\TestCase;
 
@@ -18,7 +16,7 @@ class ZoneHelperTest extends TestCase
     public function test_get_folder_code_returns_correct_code_for_valid_zone(): void
     {
         $result = ZoneHelper::getFolderCode(1);
-        
+
         $this->assertIsString($result);
         $this->assertStringStartsWith('SZR', $result);
     }
@@ -29,7 +27,7 @@ class ZoneHelperTest extends TestCase
     public function test_get_folder_code_handles_null(): void
     {
         $result = ZoneHelper::getFolderCode(null);
-        
+
         $this->assertEquals('SZR0', $result);
     }
 
@@ -52,14 +50,14 @@ class ZoneHelperTest extends TestCase
     {
         // Crea tipo torneo nazionale
         $nationalType = TournamentType::factory()->national()->create();
-        
+
         // Crea torneo nazionale
         $tournament = Tournament::factory()
             ->ofType($nationalType->id)
             ->create();
 
         $result = ZoneHelper::getFolderCodeForTournament($tournament);
-        
+
         $this->assertEquals('CRC', $result);
     }
 
@@ -70,7 +68,7 @@ class ZoneHelperTest extends TestCase
     {
         // Crea tipo torneo zonale
         $zonalType = TournamentType::factory()->zonal()->create();
-        
+
         // Crea torneo zonale
         $tournament = Tournament::factory()
             ->inZone(1)
@@ -78,7 +76,7 @@ class ZoneHelperTest extends TestCase
             ->create();
 
         $result = ZoneHelper::getFolderCodeForTournament($tournament);
-        
+
         $this->assertStringStartsWith('SZR', $result);
     }
 
@@ -93,7 +91,7 @@ class ZoneHelperTest extends TestCase
             ->create();
 
         $result = ZoneHelper::isTournamentNational($tournament);
-        
+
         $this->assertTrue($result);
     }
 
@@ -108,7 +106,7 @@ class ZoneHelperTest extends TestCase
             ->create();
 
         $result = ZoneHelper::isTournamentNational($tournament);
-        
+
         $this->assertFalse($result);
     }
 
@@ -130,7 +128,7 @@ class ZoneHelperTest extends TestCase
     public function test_get_zone_name_returns_existing_zone_name(): void
     {
         $zone = Zone::first();
-        
+
         if ($zone) {
             $result = ZoneHelper::getZoneName($zone->id);
             $this->assertEquals($zone->name, $result);
@@ -145,7 +143,7 @@ class ZoneHelperTest extends TestCase
     public function test_get_zone_name_handles_null(): void
     {
         $result = ZoneHelper::getZoneName(null);
-        
+
         $this->assertEquals('Zona Non Specificata', $result);
     }
 
@@ -155,7 +153,7 @@ class ZoneHelperTest extends TestCase
     public function test_get_zone_name_handles_non_existent_zone(): void
     {
         $result = ZoneHelper::getZoneName(9999);
-        
+
         $this->assertStringContainsString('9999', $result);
     }
 
@@ -165,7 +163,7 @@ class ZoneHelperTest extends TestCase
     public function test_get_email_pattern_generates_correct_pattern(): void
     {
         $result = ZoneHelper::getEmailPattern(1);
-        
+
         $this->assertIsString($result);
         $this->assertStringContainsString('@', $result);
     }
@@ -209,12 +207,12 @@ class ZoneHelperTest extends TestCase
 
         $this->assertTrue(
             ZoneHelper::userHasAccessToZone($zoneAdmin, 1),
-            "Zone admin should have access to their own zone"
+            'Zone admin should have access to their own zone'
         );
 
         $this->assertFalse(
             ZoneHelper::userHasAccessToZone($zoneAdmin, 2),
-            "Zone admin should not have access to other zones"
+            'Zone admin should not have access to other zones'
         );
     }
 
@@ -227,12 +225,12 @@ class ZoneHelperTest extends TestCase
 
         $this->assertTrue(
             ZoneHelper::userHasAccessToZone($referee, 3),
-            "Referee should have access to their own zone"
+            'Referee should have access to their own zone'
         );
 
         $this->assertFalse(
             ZoneHelper::userHasAccessToZone($referee, 4),
-            "Referee should not have access to other zones"
+            'Referee should not have access to other zones'
         );
     }
 }

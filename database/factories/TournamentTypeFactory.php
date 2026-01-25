@@ -25,7 +25,7 @@ class TournamentTypeFactory extends Factory
 
         return [
             'name' => fake()->words(2, true),
-            'short_name' => 'T' . str_pad($counter, 2, '0', STR_PAD_LEFT),  // T01, T02, etc
+            'short_name' => 'T'.str_pad($counter, 2, '0', STR_PAD_LEFT),  // T01, T02, etc
             'description' => fake()->optional()->sentence(),
             'is_national' => fake()->boolean(30),
             'level' => fake()->randomElement(['zonale', 'nazionale']),
@@ -48,7 +48,7 @@ class TournamentTypeFactory extends Factory
             'level' => 'nazionale',
             'required_level' => 'nazionale',
             'name' => 'Tipo Nazionale',
-            'short_name' => 'TN' . fake()->unique()->numberBetween(10, 99),
+            'short_name' => 'TN'.fake()->unique()->numberBetween(10, 99),
         ]);
     }
 
@@ -62,7 +62,7 @@ class TournamentTypeFactory extends Factory
             'level' => 'zonale',
             'required_level' => '1_livello',
             'name' => 'Tipo Zonale',
-            'short_name' => 'TZ' . fake()->unique()->numberBetween(10, 99),
+            'short_name' => 'TZ'.fake()->unique()->numberBetween(10, 99),
         ]);
     }
 
@@ -76,7 +76,7 @@ class TournamentTypeFactory extends Factory
             'level' => 'zonale',
             'required_level' => 'aspirante',
             'name' => 'Tipo Giovanile',
-            'short_name' => 'TG' . fake()->unique()->numberBetween(10, 99),
+            'short_name' => 'TG'.fake()->unique()->numberBetween(10, 99),
         ]);
     }
 
