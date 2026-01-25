@@ -428,85 +428,7 @@ class AvailabilityController extends Controller
             ]);
         }
     }
-    /**
-     * Recupera gli indirizzi email degli admin da notificare per una disponibilità.
-     *
-     * LOGICA DI NOTIFICA DISPONIBILITÀ:
-     * ┌─────────────────────────────────────────────────────────────────────────┐
-     * │ TIPO TORNEO              │ DESTINATARI                                  │
-     * ├─────────────────────────────────────────────────────────────────────────┤
-     * │ Torneo NAZIONALE         │ 1. National admin (CRC)                      │
-     * │ (is_national = true)     │ 2. Zone admin della zona del torneo          │
-     * ├─────────────────────────────────────────────────────────────────────────┤
-     * │ Torneo ZONALE            │ 1. Zone admin della zona del torneo          │
-     * │ (is_national = false)    │                                              │
-     * └─────────────────────────────────────────────────────────────────────────┘
-     *
-     * NOTA: Le email istituzionali NON vengono incluse per le notifiche di
-     * disponibilità. Vanno solo agli admin utenti (zone admin / national admin).
-     *
-     * @param  Tournament  $tournament  Il torneo per cui è stata dichiarata disponibilità
-     * @return array Lista di email uniche degli admin da notificare
-     */
-    private function getAdminEmailsForNotification(Tournament $tournament): array
-    {
-        $emails = [];
 
-        // Determina la zona del torneo (priorità: club.zone_id > tournament.zone_id)
-        $tournamentZoneId = $tournament->club->zone_id ?? $tournament->zone_id;
-
-        // Verifica se il torneo è nazionale
-        $isNationalTournament = $tournament->tournamentType?->is_national ?? false;
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // CASO 1: TORNEO NAZIONALE - Notifica national_admin (CRC)
-        // ═══════════════════════════════════════════════════════════════════════
-        if ($isNationalTournament) {
-            $nationalAdmins = User::where('user_type', 'national_admin')
-                ->where('is_active', true)
-                ->whereNotNull('email')
-                ->pluck('email')
-                ->toArray();
-            $emails = array_merge($emails, $nationalAdmins);
-
-            Log::debug('Notifica torneo nazionale', [
-                'tournament_id' => $tournament->id,
-                'national_admins' => count($nationalAdmins),
-            ]);
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // CASO 2: SEMPRE - Zone admin della zona del torneo
-        // ═══════════════════════════════════════════════════════════════════════
-        if ($tournamentZoneId) {
-            $zoneAdmins = User::where('zone_id', $tournamentZoneId)
-                ->where('user_type', 'admin')
-                ->where('is_active', true)
-                ->whereNotNull('email')
-                ->pluck('email')
-                ->toArray();
-            $emails = array_merge($emails, $zoneAdmins);
-
-            Log::debug('Notifica zona torneo', [
-                'tournament_id' => $tournament->id,
-                'zone_id' => $tournamentZoneId,
-                'zone_admins' => count($zoneAdmins),
-            ]);
-        }
-
-        // Rimuovi duplicati e valori vuoti
-        $uniqueEmails = array_unique(array_filter($emails));
-
-        Log::info('Email admin per notifica disponibilità', [
-            'tournament_id' => $tournament->id,
-            'is_national' => $isNationalTournament,
-            'total_emails' => count($uniqueEmails),
-        ]);
-
-        return $uniqueEmails;
-    }
-
-    // Metodi colore centralizzati in TournamentColorService
 
     /**
      * Gestisce l'invio delle notifiche per una singola dichiarazione di disponibilità.
@@ -536,16 +458,12 @@ class AvailabilityController extends Controller
                 ));
             }
 
-            // NOTIFICA ADMIN
-            $adminEmails = $this->getAdminEmailsForNotification($tournament);
-
-            if (!empty($adminEmails)) {
-                Mail::to($adminEmails)->send(new BatchAvailabilityAdminNotification(
-                    $user,
-                    $addedTournaments,
-                    $removedTournaments
-                ));
-            }
+            // NOTIFICA ADMIN SEPARATA - Usa stesso metodo del batch
+            $this->sendSeparatedAdminNotifications(
+                $user,
+                $addedTournaments,
+                $removedTournaments
+            );
 
             Log::info('Notifiche disponibilità singola inviate (separate)', [
                 'user_id' => $user->id,
