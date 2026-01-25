@@ -67,8 +67,8 @@ class NotificationService
             // Salva riferimenti documenti
             $notification->update([
                 'documents' => [
-                    'convocation' => basename($convocationData['path']),
-                    'club_letter' => basename($clubLetterData['path']),
+                    'convocation' => isset($convocationData['path']) ? basename($convocationData['path']) : null,
+                    'club_letter' => isset($clubLetterData['path']) ? basename($clubLetterData['path']) : null,
                 ],
             ]);
 

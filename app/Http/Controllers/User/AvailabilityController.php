@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
+use App\Services\AvailabilityNotificationService;
+
 
 class AvailabilityController extends Controller
 {
@@ -27,10 +29,16 @@ class AvailabilityController extends Controller
 
     protected CalendarDataService $calendarService;
 
-    public function __construct(TournamentColorService $colorService, CalendarDataService $calendarService)
-    {
+    protected AvailabilityNotificationService $availabilityNotificationService;
+
+    public function __construct(
+        TournamentColorService $colorService,
+        CalendarDataService $calendarService,
+        AvailabilityNotificationService $availabilityNotificationService
+    ) {
         $this->colorService = $colorService;
         $this->calendarService = $calendarService;
+        $this->availabilityNotificationService = $availabilityNotificationService;
     }
 
     /**
@@ -359,72 +367,67 @@ class AvailabilityController extends Controller
     /**
      * Gestisce l'invio delle notifiche per aggiornamenti batch di disponibilità.
      *
-     * Invia due tipi di notifiche:
-     * 1. MEMO all'arbitro (conferma delle modifiche)
-     * 2. Notifica agli admin (zone admin e/o national admin per tornei nazionali)
+     * NUOVA LOGICA: Separa notifiche zonali e nazionali
+     * - SZR riceve SOLO disponibilità tornei zonali
+     * - CRC riceve SOLO disponibilità tornei nazionali
+     * - Arbitro riceve TUTTE le disponibilità
      *
-     * @param  User  $user  L'arbitro che ha modificato le disponibilità
-     * @param  array  $newAvailabilities  ID tornei con nuova disponibilità
-     * @param  array  $oldAvailabilities  ID tornei con disponibilità precedente
+     * @param User $user L'arbitro che ha modificato le disponibilità
+     * @param array $newAvailabilities ID tornei con nuova disponibilità
+     * @param array $oldAvailabilities ID tornei con disponibilità precedente
      */
     private function handleNotifications($user, $newAvailabilities, $oldAvailabilities)
     {
         $added = array_diff($newAvailabilities, $oldAvailabilities);
         $removed = array_diff($oldAvailabilities, $newAvailabilities);
 
-        if (count($added) > 0 || count($removed) > 0) {
-            try {
-                $addedTournaments = Tournament::with(['club', 'tournamentType'])->whereIn('id', $added)->get();
-                $removedTournaments = Tournament::with(['club', 'tournamentType'])->whereIn('id', $removed)->get();
+        if (count($added) === 0 && count($removed) === 0) {
+            return; // Nessuna modifica, nessuna notifica
+        }
 
-                // ═══════════════════════════════════════════════════════════════
-                // 1. MEMO ALL'ARBITRO - Conferma delle modifiche
-                // ═══════════════════════════════════════════════════════════════
-                if (! empty($user->email)) {
-                    Mail::to($user->email)->send(new BatchAvailabilityNotification(
-                        $user,
-                        $addedTournaments,
-                        $removedTournaments
-                    ));
-                }
+        try {
+            // Carica i tornei con le relazioni necessarie
+            $addedTournaments = Tournament::with(['club', 'tournamentType'])
+                ->whereIn('id', $added)
+                ->get();
 
-                // ═══════════════════════════════════════════════════════════════
-                // 2. NOTIFICA ADMIN - Raccoglie email da tutti i tornei coinvolti
-                // ═══════════════════════════════════════════════════════════════
-                $allTournaments = $addedTournaments->merge($removedTournaments);
-                $adminEmails = [];
+            $removedTournaments = Tournament::with(['club', 'tournamentType'])
+                ->whereIn('id', $removed)
+                ->get();
 
-                foreach ($allTournaments as $tournament) {
-                    $tournamentAdminEmails = $this->getAdminEmailsForNotification($tournament);
-                    $adminEmails = array_merge($adminEmails, $tournamentAdminEmails);
-                }
-
-                // Rimuovi duplicati
-                $adminEmails = array_unique($adminEmails);
-
-                if (! empty($adminEmails)) {
-                    Mail::to($adminEmails)->send(new BatchAvailabilityAdminNotification(
-                        $user,
-                        $addedTournaments,
-                        $removedTournaments
-                    ));
-                }
-
-                Log::info('Notifiche batch disponibilità inviate', [
-                    'user_id' => $user->id,
-                    'added_count' => count($added),
-                    'removed_count' => count($removed),
-                    'admin_emails_count' => count($adminEmails),
-                ]);
-            } catch (\Exception $e) {
-                Log::error('Errore invio notifiche disponibilità batch', [
-                    'user_id' => $user->id,
-                    'error' => $e->getMessage(),
-                ]);
+            // ═══════════════════════════════════════════════════════════════
+            // 1. MEMO ALL'ARBITRO - Tutte le disponibilità (zonali + nazionali)
+            // ═══════════════════════════════════════════════════════════════
+            if (!empty($user->email)) {
+                Mail::to($user->email)->send(new BatchAvailabilityNotification(
+                    $user,
+                    $addedTournaments,
+                    $removedTournaments
+                ));
             }
+
+            // ═══════════════════════════════════════════════════════════════
+            // 2. NOTIFICHE ADMIN SEPARATE - Usa il nuovo servizio
+            // ═══════════════════════════════════════════════════════════════
+            $this->sendSeparatedAdminNotifications(
+                $user,
+                $addedTournaments,
+                $removedTournaments
+            );
+
+            Log::info('Notifiche batch disponibilità inviate (separate)', [
+                'user_id' => $user->id,
+                'added_count' => count($added),
+                'removed_count' => count($removed),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Errore invio notifiche disponibilità batch', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
         }
     }
-
     /**
      * Recupera gli indirizzi email degli admin da notificare per una disponibilità.
      *
@@ -519,17 +522,13 @@ class AvailabilityController extends Controller
     private function handleSingleNotification($user, $tournament, $action)
     {
         try {
-            // Assicurati che il torneo abbia le relazioni caricate
             $tournament->load(['club', 'tournamentType']);
 
-            // Prepara i dati per le notifiche
             $addedTournaments = $action === 'added' ? collect([$tournament]) : collect();
             $removedTournaments = $action === 'removed' ? collect([$tournament]) : collect();
 
-            // ═══════════════════════════════════════════════════════════════════
-            // 1. MEMO ALL'ARBITRO - Conferma della dichiarazione
-            // ═══════════════════════════════════════════════════════════════════
-            if (! empty($user->email)) {
+            // MEMO ALL'ARBITRO
+            if (!empty($user->email)) {
                 Mail::to($user->email)->send(new BatchAvailabilityNotification(
                     $user,
                     $addedTournaments,
@@ -537,12 +536,10 @@ class AvailabilityController extends Controller
                 ));
             }
 
-            // ═══════════════════════════════════════════════════════════════════
-            // 2. NOTIFICA ADMIN - Usa la nuova logica che considera tornei nazionali
-            // ═══════════════════════════════════════════════════════════════════
+            // NOTIFICA ADMIN
             $adminEmails = $this->getAdminEmailsForNotification($tournament);
 
-            if (! empty($adminEmails)) {
+            if (!empty($adminEmails)) {
                 Mail::to($adminEmails)->send(new BatchAvailabilityAdminNotification(
                     $user,
                     $addedTournaments,
@@ -550,22 +547,146 @@ class AvailabilityController extends Controller
                 ));
             }
 
-            // Log per tracciamento
-            Log::info('Notifiche disponibilità singola inviate', [
+            Log::info('Notifiche disponibilità singola inviate (separate)', [
                 'user_id' => $user->id,
                 'tournament_id' => $tournament->id,
                 'is_national' => $tournament->tournamentType?->is_national ?? false,
                 'action' => $action,
-                'admin_emails_count' => count($adminEmails),
             ]);
         } catch (\Exception $e) {
-            // Non bloccare l'operazione se l'invio email fallisce
             Log::error('Errore invio notifica disponibilità singola', [
                 'user_id' => $user->id,
                 'tournament_id' => $tournament->id,
                 'action' => $action,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
         }
+    }
+
+    /**
+     * Invia notifiche separate agli admin in base al tipo di torneo.
+     *
+     * LOGICA SEPARAZIONE:
+     * ┌────────────────────────────────────────────────────────────┐
+     * │ Destinatario │ Riceve                                      │
+     * ├────────────────────────────────────────────────────────────┤
+     * │ SZR (zona)   │ SOLO disponibilità tornei ZONALI           │
+     * │ CRC          │ SOLO disponibilità tornei NAZIONALI        │
+     * │ Arbitro      │ TUTTE le disponibilità (già gestito sopra) │
+     * └────────────────────────────────────────────────────────────┘
+     *
+     * @param User $user
+     * @param \Illuminate\Support\Collection $addedTournaments
+     * @param \Illuminate\Support\Collection $removedTournaments
+     */
+    private function sendSeparatedAdminNotifications($user, $addedTournaments, $removedTournaments)
+    {
+        // Combina tutti i tornei coinvolti
+        $allTournaments = $addedTournaments->merge($removedTournaments);
+
+        // Usa il servizio per raggruppare per tipo
+        $grouped = $this->availabilityNotificationService->groupByTournamentType(
+            $allTournaments->map(function ($tournament) use ($user) {
+                // Crea un oggetto simile ad Availability per compatibilità
+                return (object) [
+                    'tournament' => $tournament,
+                    'user_id' => $user->id,
+                ];
+            })
+        );
+
+        // ═══════════════════════════════════════════════════════════════
+        // NOTIFICHE ZONE (SOLO tornei zonali)
+        // ═══════════════════════════════════════════════════════════════
+        if ($grouped['zonal']->isNotEmpty()) {
+            $zonalTournamentIds = $grouped['zonal']->pluck('tournament.id');
+
+            // Filtra added/removed per includere SOLO zonali
+            $zonalAdded = $addedTournaments->whereIn('id', $zonalTournamentIds);
+            $zonalRemoved = $removedTournaments->whereIn('id', $zonalTournamentIds);
+
+            // Raccogli email zone admin
+            $zoneEmails = $this->collectZoneAdminEmails($zonalAdded->merge($zonalRemoved));
+
+            if (!empty($zoneEmails)) {
+                Mail::to($zoneEmails)->send(new BatchAvailabilityAdminNotification(
+                    $user,
+                    $zonalAdded,
+                    $zonalRemoved
+                ));
+
+                Log::info('Notifica SZR inviata (solo tornei zonali)', [
+                    'user_id' => $user->id,
+                    'zone_emails' => count($zoneEmails),
+                    'tournaments_count' => $zonalAdded->count() + $zonalRemoved->count(),
+                ]);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        // NOTIFICHE CRC (SOLO tornei nazionali)
+        // ═══════════════════════════════════════════════════════════════
+        if ($grouped['national']->isNotEmpty()) {
+            $nationalTournamentIds = $grouped['national']->pluck('tournament.id');
+
+            // Filtra added/removed per includere SOLO nazionali
+            $nationalAdded = $addedTournaments->whereIn('id', $nationalTournamentIds);
+            $nationalRemoved = $removedTournaments->whereIn('id', $nationalTournamentIds);
+
+            // Raccogli email national admin (CRC)
+            $crcEmails = $this->collectNationalAdminEmails();
+
+            if (!empty($crcEmails)) {
+                Mail::to($crcEmails)->send(new BatchAvailabilityAdminNotification(
+                    $user,
+                    $nationalAdded,
+                    $nationalRemoved
+                ));
+
+                Log::info('Notifica CRC inviata (solo tornei nazionali)', [
+                    'user_id' => $user->id,
+                    'crc_emails' => count($crcEmails),
+                    'tournaments_count' => $nationalAdded->count() + $nationalRemoved->count(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Raccoglie email zone admin per i tornei specificati
+     */
+    private function collectZoneAdminEmails($tournaments): array
+    {
+        $emails = [];
+
+        foreach ($tournaments as $tournament) {
+            $zoneId = $tournament->club->zone_id ?? $tournament->zone_id;
+
+            if ($zoneId) {
+                $zoneAdmins = User::where('zone_id', $zoneId)
+                    ->where('user_type', 'admin')
+                    ->where('is_active', true)
+                    ->whereNotNull('email')
+                    ->pluck('email')
+                    ->toArray();
+
+                $emails = array_merge($emails, $zoneAdmins);
+            }
+        }
+
+        return array_unique(array_filter($emails));
+    }
+
+    /**
+     * Raccoglie email national admin (CRC)
+     */
+    private function collectNationalAdminEmails(): array
+    {
+        return User::where('user_type', 'national_admin')
+            ->where('is_active', true)
+            ->whereNotNull('email')
+            ->pluck('email')
+            ->toArray();
     }
 }
