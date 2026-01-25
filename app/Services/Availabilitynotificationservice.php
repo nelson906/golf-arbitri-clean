@@ -2,9 +2,13 @@
 
 namespace App\Services;
 
+use App\Mail\BatchAvailabilityAdminNotification;
+use App\Mail\BatchAvailabilityNotification;
 use App\Models\Availability;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * Service per gestire notifiche di disponibilità separate per zona/nazionale
@@ -116,9 +120,31 @@ class AvailabilityNotificationService
      */
     protected function sendToZone(string $email, User $referee, Collection $availabilities): bool
     {
-        // TODO: Implementa invio email
-        // Mail::to($email)->send(new ZonalAvailabilityNotification($referee, $availabilities));
-        return true;
+        try {
+            if (empty($email)) {
+                return false;
+            }
+
+            $tournaments = $availabilities
+                ->map(fn ($availability) => $availability->tournament ?? null)
+                ->filter()
+                ->values();
+
+            Mail::to($email)->send(new BatchAvailabilityAdminNotification(
+                $referee,
+                $tournaments,
+                collect()
+            ));
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('Errore invio notifica disponibilità zona', [
+                'referee_id' => $referee->id,
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 
     /**
@@ -126,9 +152,31 @@ class AvailabilityNotificationService
      */
     protected function sendToCrc(string $email, User $referee, Collection $availabilities): bool
     {
-        // TODO: Implementa invio email
-        // Mail::to($email)->send(new NationalAvailabilityNotification($referee, $availabilities));
-        return true;
+        try {
+            if (empty($email)) {
+                return false;
+            }
+
+            $tournaments = $availabilities
+                ->map(fn ($availability) => $availability->tournament ?? null)
+                ->filter()
+                ->values();
+
+            Mail::to($email)->send(new BatchAvailabilityAdminNotification(
+                $referee,
+                $tournaments,
+                collect()
+            ));
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('Errore invio notifica disponibilità CRC', [
+                'referee_id' => $referee->id,
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 
     /**
@@ -136,9 +184,31 @@ class AvailabilityNotificationService
      */
     protected function sendToReferee(User $referee, Collection $availabilities): bool
     {
-        // TODO: Implementa invio email
-        // Mail::to($referee->email)->send(new RefereeAvailabilityConfirmation($referee, $availabilities));
-        return true;
+        try {
+            if (empty($referee->email)) {
+                return false;
+            }
+
+            $tournaments = $availabilities
+                ->map(fn ($availability) => $availability->tournament ?? null)
+                ->filter()
+                ->values();
+
+            Mail::to($referee->email)->send(new BatchAvailabilityNotification(
+                $referee,
+                $tournaments,
+                collect()
+            ));
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('Errore invio conferma disponibilità arbitro', [
+                'referee_id' => $referee->id,
+                'email' => $referee->email,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 
     /**
