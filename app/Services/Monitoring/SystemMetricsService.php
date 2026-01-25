@@ -172,9 +172,6 @@ class SystemMetricsService
             ];
         }
 
-        if ($totalSpace === false || $freeSpace === false) {
-            return ['used' => 'N/A', 'total' => 'N/A', 'percentage' => 0];
-        }
         $usedSpace = (int) ($totalSpace - $freeSpace);
         $percentage = round(($usedSpace / $totalSpace) * 100, 2);
 

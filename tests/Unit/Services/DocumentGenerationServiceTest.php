@@ -7,8 +7,8 @@ use App\Models\Tournament;
 use App\Models\TournamentType;
 use App\Models\Zone;
 use App\Services\DocumentGenerationService;
-use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class DocumentGenerationServiceTest extends TestCase
 {
@@ -19,7 +19,7 @@ class DocumentGenerationServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new DocumentGenerationService();
+        $this->service = new DocumentGenerationService;
     }
 
     // ==========================================

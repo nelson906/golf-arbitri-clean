@@ -204,13 +204,13 @@ abstract class TestCase extends BaseTestCase
     protected function createTournament(array $attributes = []): Tournament
     {
         // Se non specificato club, ne crea uno
-        if (!isset($attributes['club_id'])) {
+        if (! isset($attributes['club_id'])) {
             $club = $this->createClub();
             $attributes['club_id'] = $club->id;
         }
 
         // Se non specificato type, usa il primo disponibile
-        if (!isset($attributes['tournament_type_id'])) {
+        if (! isset($attributes['tournament_type_id'])) {
             $attributes['tournament_type_id'] = TournamentType::first()->id;
         }
 
@@ -235,6 +235,7 @@ abstract class TestCase extends BaseTestCase
     protected function actingAsUser(User $user): self
     {
         $this->actingAs($user);
+
         return $this;
     }
 
@@ -245,6 +246,7 @@ abstract class TestCase extends BaseTestCase
     {
         $referee = $this->createReferee($attributes);
         $this->actingAs($referee);
+
         return $this;
     }
 
@@ -255,6 +257,7 @@ abstract class TestCase extends BaseTestCase
     {
         $admin = $this->createZoneAdmin($zoneId, $attributes);
         $this->actingAs($admin);
+
         return $this;
     }
 
@@ -265,6 +268,7 @@ abstract class TestCase extends BaseTestCase
     {
         $admin = $this->createNationalAdmin($attributes);
         $this->actingAs($admin);
+
         return $this;
     }
 
@@ -275,6 +279,7 @@ abstract class TestCase extends BaseTestCase
     {
         $superAdmin = $this->createSuperAdmin($attributes);
         $this->actingAs($superAdmin);
+
         return $this;
     }
 
@@ -289,7 +294,7 @@ abstract class TestCase extends BaseTestCase
     {
         $this->assertTrue(
             method_exists($model, $relation),
-            "Model " . get_class($model) . " does not have '{$relation}' relationship"
+            'Model '.get_class($model)." does not have '{$relation}' relationship"
         );
     }
 

@@ -51,19 +51,19 @@ class RefereeLevelsHelperTest extends TestCase
             'asp' => 'Aspirante',
             'ASPIRANTE' => 'Aspirante',
             'Aspirante' => 'Aspirante',
-            
+
             'primo livello' => '1_livello',
             'primo_livello' => '1_livello',
             'Primo Livello' => '1_livello',
             '1_livello' => '1_livello',
-            
+
             'regionale' => 'Regionale',
             'reg' => 'Regionale',
             'REGIONALE' => 'Regionale',
-            
+
             'nazionale' => 'Nazionale',
             'naz' => 'Nazionale',
-            
+
             'internazionale' => 'Internazionale',
             'int' => 'Internazionale',
         ];
@@ -99,7 +99,7 @@ class RefereeLevelsHelperTest extends TestCase
     {
         $unknown = 'LivelloSconosciuto';
         $result = RefereeLevelsHelper::normalize($unknown);
-        
+
         $this->assertEquals($unknown, $result);
     }
 
@@ -180,7 +180,7 @@ class RefereeLevelsHelperTest extends TestCase
         foreach ($invalidLevels as $level) {
             $this->assertFalse(
                 RefereeLevelsHelper::isValid($level),
-                var_export($level, true) . " should be recognized as invalid"
+                var_export($level, true).' should be recognized as invalid'
             );
         }
     }
@@ -235,7 +235,7 @@ class RefereeLevelsHelperTest extends TestCase
         $this->assertArrayHasKey('label', $debug);
         $this->assertArrayHasKey('is_valid', $debug);
         $this->assertArrayHasKey('can_access_national', $debug);
-        
+
         $this->assertEquals('naz', $debug['original']);
         $this->assertEquals('Nazionale', $debug['normalized']);
         $this->assertTrue($debug['is_valid']);
