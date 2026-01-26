@@ -203,6 +203,7 @@ class CareerHistoryService
 
         if ($updated) {
             $history->tournaments_by_year = $tournaments;
+            $history->career_stats = $history->generateStatsSummary();  // AGGIUNGI QUESTA RIGA
             $history->save();
         }
 
@@ -212,23 +213,33 @@ class CareerHistoryService
     /**
      * Aggiunge un torneo manualmente allo storico di un utente.
      */
-    public function addTournamentEntry(int $userId, int $year, array $tournamentData): bool
+    public function addTournamentEntry(int $userId, int $year, array $tournamentData, ?int $daysCount = null): bool
     {
-        $history = RefereeCareerHistory::firstOrCreate(
-            ['user_id' => $userId],
-            [
+        $history = RefereeCareerHistory::where('user_id', $userId)->first();
+
+        if (! $history) {
+            $history = RefereeCareerHistory::create([
+                'user_id' => $userId,
                 'tournaments_by_year' => [],
                 'assignments_by_year' => [],
                 'availabilities_by_year' => [],
                 'level_changes_by_year' => [],
                 'career_stats' => [],
-            ]
-        );
+            ]);
+        }
+
+        // CRITICAL: Refresh dal DB per evitare dati stale
+        $history->refresh();
 
         $tournaments = $history->tournaments_by_year ?? [];
 
         if (! isset($tournaments[$year])) {
             $tournaments[$year] = [];
+        }
+
+        // Aggiungi days_count se specificato
+        if ($daysCount !== null) {
+            $tournamentData['days_count'] = $daysCount;
         }
 
         $tournaments[$year][] = $tournamentData;
@@ -266,6 +277,133 @@ class CareerHistoryService
         $history->save();
 
         return true;
+    }
+
+    /**
+     * Aggiorna i giorni effettivi di un torneo esistente.
+     */
+    public function updateTournamentDays(int $userId, int $year, int $tournamentId, int $daysCount): bool
+    {
+        $history = RefereeCareerHistory::where('user_id', $userId)->first();
+
+        if (! $history) {
+            return false;
+        }
+
+        $tournaments = $history->tournaments_by_year ?? [];
+
+        if (! isset($tournaments[$year])) {
+            return false;
+        }
+
+        // Trova e aggiorna il torneo
+        $updated = false;
+        foreach ($tournaments[$year] as $key => $tournament) {
+            if ($tournament['id'] == $tournamentId) {
+                $tournaments[$year][$key]['days_count'] = $daysCount;
+                $updated = true;
+                break;
+            }
+        }
+
+        if ($updated) {
+            $history->tournaments_by_year = $tournaments;
+            $history->career_stats = $history->generateStatsSummary();
+            $history->save();
+        }
+
+        return $updated;
+    }
+
+    /**
+     * Aggiunge più tornei in modalità batch.
+     */
+    public function addBatchTournaments(int $userId, int $year, array $tournamentsData): array
+    {
+        $history = RefereeCareerHistory::where('user_id', $userId)->first();
+
+        if (! $history) {
+            $history = RefereeCareerHistory::create([
+                'user_id' => $userId,
+                'tournaments_by_year' => [],
+                'assignments_by_year' => [],
+                'availabilities_by_year' => [],
+                'level_changes_by_year' => [],
+                'career_stats' => [],
+            ]);
+        }
+
+        // CRITICAL: Refresh dal DB
+        $history->refresh();
+
+        $tournaments = $history->tournaments_by_year ?? [];
+        $assignments = $history->assignments_by_year ?? [];
+
+        if (! isset($tournaments[$year])) {
+            $tournaments[$year] = [];
+        }
+
+        if (! isset($assignments[$year])) {
+            $assignments[$year] = [];
+        }
+
+        $added = 0;
+        $errors = [];
+
+        foreach ($tournamentsData as $item) {
+            try {
+                $tournament = Tournament::with('club')->find($item['tournament_id']);
+
+                if (! $tournament) {
+                    $errors[] = "Torneo ID {$item['tournament_id']} non trovato";
+
+                    continue;
+                }
+
+                // Aggiungi torneo
+                $tournamentData = [
+                    'id' => $tournament->id,
+                    'name' => $tournament->name,
+                    'club_id' => $tournament->club_id,
+                    'club_name' => $tournament->club->name ?? null,
+                    'start_date' => $tournament->start_date?->format('Y-m-d') ?? '',
+                    'end_date' => $tournament->end_date?->format('Y-m-d') ?? '',
+                ];
+
+                // Aggiungi days_count se specificato
+                if (isset($item['days_count']) && $item['days_count'] > 0) {
+                    $tournamentData['days_count'] = (int) $item['days_count'];
+                }
+
+                $tournaments[$year][] = $tournamentData;
+
+                // Aggiungi assignment se c'è un ruolo
+                if (! empty($item['role'])) {
+                    $assignments[$year][] = [
+                        'tournament_id' => $tournament->id,
+                        'tournament_name' => $tournament->name,
+                        'role' => $item['role'],
+                        'assigned_at' => null,
+                        'status' => 'completed',
+                    ];
+                }
+
+                $added++;
+            } catch (\Exception $e) {
+                $errors[] = "Errore torneo ID {$item['tournament_id']}: ".$e->getMessage();
+            }
+        }
+
+        // Salva tutto insieme
+        $history->tournaments_by_year = $tournaments;
+        $history->assignments_by_year = $assignments;
+        $history->career_stats = $history->generateStatsSummary();
+        $history->save();
+
+        return [
+            'added' => $added,
+            'errors' => $errors,
+        ];
     }
 
     /**

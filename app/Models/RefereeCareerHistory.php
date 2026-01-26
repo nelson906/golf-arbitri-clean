@@ -66,6 +66,7 @@ class RefereeCareerHistory extends Model
         $assignments = $this->assignments_by_year ?? [];
 
         $totalTournaments = collect($tournaments)->flatten(1)->count();
+        $totalAssignments = collect($assignments)->flatten(1)->count();
         $totalYears = count($tournaments);
 
         $rolesSummary = collect($assignments)
@@ -81,11 +82,18 @@ class RefereeCareerHistory extends Model
             $mostActiveYear = $yearCounts->sortDesc()->keys()->first();
         }
 
+        // Trova il primo anno
+        $allYears = array_merge(array_keys($tournaments), array_keys($assignments));
+        $firstYear = ! empty($allYears) ? min($allYears) : null;
+
         return [
             'total_years' => $totalYears,
             'total_tournaments' => $totalTournaments,
+            'total_assignments' => $totalAssignments,  // Aggiunto
             'avg_tournaments_per_year' => $totalYears > 0 ? round($totalTournaments / $totalYears, 1) : 0,
             'roles_summary' => $rolesSummary,
-            'most_active_year' => $mostActiveYear];
+            'most_active_year' => $mostActiveYear,
+            'first_year' => $firstYear,  // Aggiunto
+        ];
     }
 }

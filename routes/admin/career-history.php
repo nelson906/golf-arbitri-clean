@@ -27,4 +27,10 @@ Route::prefix('career-history')->name('career-history.')->group(function () {
     Route::post('/{user}/add-tournament', [CareerHistoryController::class, 'addTournament'])->name('add-tournament');
     Route::post('/{user}/add-multiple-tournaments', [CareerHistoryController::class, 'addMultipleTournaments'])->name('add-multiple-tournaments');
     Route::post('/{user}/remove-tournament', [CareerHistoryController::class, 'removeTournament'])->name('remove-tournament');
+    Route::post('/{user}/update-days', [CareerHistoryController::class, 'updateTournamentDays'])->name('update-days');
+    Route::post('/{user}/update-tournament', [CareerHistoryController::class, 'updateTournamentComplete'])->name('update-tournament');
+
+    // Batch entry per inserimento multiplo veloce
+    Route::get('/{user}/batch-entry/{year}', [CareerHistoryController::class, 'batchEntryForm'])->name('batch-entry');
+    Route::post('/{user}/batch-save', [CareerHistoryController::class, 'batchSave'])->name('batch-save');
 });
