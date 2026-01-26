@@ -77,11 +77,17 @@ class RefereeCareerService
             ];
         }
 
+        // Assicurati che career_levels abbia sempre l'anno corrente
+        $careerLevels = $historicalData['career_levels'];
+        if (! isset($careerLevels[now()->year])) {
+            $careerLevels[now()->year] = ['level' => $referee->level];
+        }
+
         return [
             'tournaments' => $historicalData['tournaments'],
             'assignments' => $historicalData['assignments'],
             'availability' => $historicalData['availability'],
-            'career_levels' => $historicalData['career_levels'],
+            'career_levels' => $careerLevels,
             'career_summary' => $historicalData['career_summary'] ?: [
                 'total_assignments' => 0,
                 'total_years' => 0,
@@ -102,14 +108,33 @@ class RefereeCareerService
         if ($careerHistory) {
             $yearAssignments = isset($careerHistory->assignments_by_year[$year]) ? $careerHistory->assignments_by_year[$year] : [];
             $yearTournaments = isset($careerHistory->tournaments_by_year[$year]) ? $careerHistory->tournaments_by_year[$year] : [];
+
+            // Cerca il livello storico nei level_changes
+            $levelChanges = $careerHistory->level_changes_by_year ?? [];
+            $historicalLevel = null;
+
+            // Trova l'ultimo cambio di livello prima o durante l'anno richiesto
+            foreach ($levelChanges as $changeYear => $changes) {
+                if ($changeYear <= $year && ! empty($changes)) {
+                    // Prendi l'ultimo cambio di quell'anno
+                    $lastChange = end($changes);
+                    if (isset($lastChange['new_level'])) {
+                        $historicalLevel = $lastChange['new_level'];
+                    }
+                }
+            }
+
+            // Se non c'è livello storico, usa quello attuale
+            $level = $historicalLevel ?? $referee->level;
         } else {
             // Fallback ai dati correnti
             $yearAssignments = $this->getAssignmentsForYear($referee, $year);
             $yearTournaments = $this->getTournamentsForYear($referee, $year);
+            $level = $referee->level;
         }
 
         return [
-            'level' => $referee->level,
+            'level' => $level,
             'total_tournaments' => count($yearTournaments),
             'roles' => array_count_values(array_column($yearAssignments, 'role')),
         ];
