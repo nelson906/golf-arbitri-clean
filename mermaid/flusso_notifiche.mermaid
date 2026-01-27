@@ -1,26 +1,105 @@
-sequenceDiagram
-    participant A as Admin
-    participant T as TournamentController
-    participant DG as DocumentGenerationService
-    participant FS as FileStorageService
-    participant S as Storage
-
-    A->>T: Seleziona Torneo
-    T->>DG: generateConvocationForTournament(tournament)
-    DG->>DG: getZoneTemplatePath
-    DG->>DG: processTemplateWithReferees
-    DG->>S: Salva file temporaneo in app/temp
-    DG->>FS: saveGeneratedFile(tempPath, tournament)
-    FS->>S: storage->put in /convocazioni/SZR{n}/generated/
-
-    T->>DG: generateClubDocument(tournament)
-    DG->>DG: getZoneTemplatePath
-    DG->>DG: processTemplateWithReferees
-    DG->>S: Salva file temporaneo in app/temp
-    DG->>FS: saveGeneratedFile(tempPath, tournament)
-    FS->>S: storage->put in /convocazioni/SZR{n}/generated/
-
-    A->>T: Conferma invio email
-    T->>DG: generateConvocationPDF(tournament)
-    DG->>DG: Genera PDF da DOCX
-    DG->>S: Salva PDF in storage
+flowchart TD
+    Start([Admin: Prepara Notifiche]) --> PrepForm[NotificationController::<br/>showAssignmentForm]
+    
+    PrepForm --> CheckAssign{Torneo ha<br/>Assegnazioni?}
+    CheckAssign -->|No| Error1([Errore: Completare<br/>Setup Arbitri])
+    CheckAssign -->|Si| CheckTournamentType{Tipo Torneo?}
+    
+    CheckTournamentType -->|Nazionale| NationalFlow[FLUSSO NAZIONALE]
+    CheckTournamentType -->|Zonale| ZonalFlow[FLUSSO ZONALE]
+    
+    %% FLUSSO ZONALE
+    ZonalFlow --> PrepNotif[NotificationPreparation<br/>Service::prepareNotification]
+    
+    PrepNotif --> CreateOrLoad{Notifica<br/>Esistente?}
+    CreateOrLoad -->|No| CreateNew[(Crea nuova<br/>tournament_notifications)]
+    CreateOrLoad -->|Si| LoadExisting[Carica Esistente]
+    
+    CreateNew --> GenDocs[NotificationDocument<br/>Service::generateInitial<br/>Documents]
+    LoadExisting --> CheckDocs{Documenti<br/>Esistono?}
+    
+    CheckDocs -->|No| GenDocs
+    CheckDocs -->|Si| LoadDocs[Carica Documenti Esistenti]
+    
+    GenDocs --> DocGen[DocumentGeneration<br/>Service]
+    DocGen --> GenConvocation[1. Genera Convocazione DOCX<br/>da template lettera_intestata_szrN.docx]
+    GenConvocation --> GenClubLetter[2. Genera Lettera Circolo DOCX<br/>programmaticamente con PHPWord]
+    
+    GenClubLetter --> SaveFiles[Salva in Storage:<br/>/convocazioni/SZRN/generated/]
+    SaveFiles --> UpdateNotif[(Aggiorna documents JSON<br/>in tournament_notifications)]
+    
+    LoadDocs --> DisplayForm[Mostra Form Invio Zonale]
+    UpdateNotif --> DisplayForm
+    
+    DisplayForm --> FormElements[Form Contiene:<br/>- Email Arbitri checkbox<br/>- Email Circolo checkbox<br/>- Email Istituzionali checkbox<br/>- Clauses Selezionabili<br/>- Note<br/>- Preview HTML contenuto]
+    
+    FormElements --> UserAction{Azione Admin}
+    
+    UserAction -->|Rigenera| RegenerateBtn[Click Rigenera Documenti]
+    UserAction -->|Invia| SendBtn[Click Invia Notifiche]
+    UserAction -->|Annulla| CancelBtn[Torna a Lista]
+    
+    RegenerateBtn --> ConfirmRegen{Conferma?}
+    ConfirmRegen -->|Si| GenDocs
+    ConfirmRegen -->|No| DisplayForm
+    
+    SendBtn --> ValidateForm{Validazione}
+    ValidateForm -->|❌ Email Mancanti| Error2([Errore: Email Richieste])
+    ValidateForm -->|❌ Documenti Mancanti| Error3([Errore: Rigenera Documenti])
+    ValidateForm -->|✅ OK| Transaction[NotificationTransaction<br/>Service::sendNotifications]
+    
+    Transaction --> BeginTrans[DB::beginTransaction]
+    BeginTrans --> SendEmails[NotificationService::<br/>sendEmails]
+    
+    SendEmails --> EmailReferees[Mail a Arbitri<br/>con DOCX allegati]
+    SendEmails --> EmailClub[Mail a Circolo<br/>con DOCX allegati]
+    SendEmails --> EmailInstitutional[Mail a Indirizzi Istituzionali<br/>selezionati opzionalmente]
+    
+    EmailReferees --> UpdateStatus[(Aggiorna Status:<br/>sent_at = now<br/>status = 'sent')]
+    EmailClub --> UpdateStatus
+    EmailInstitutional --> UpdateStatus
+    
+    UpdateStatus --> CommitTrans[DB::commit]
+    CommitTrans --> Success([Successo: Notifiche Inviate])
+    
+    %% FLUSSO NAZIONALE
+    NationalFlow --> NatForm[Form Invio Nazionale]
+    NatForm --> NatFormElements[Form Contiene:<br/>- Tipo: CRC Referees / Zone Observers<br/>- TO: Ufficio Campionati checkbox<br/>- CC: Zona checkbox<br/>- CC: Admin Zonali select<br/>- CC: Arbitri Designati select<br/>- Subject<br/>- Message textarea]
+    
+    NatFormElements --> NatAction{Azione}
+    NatAction -->|Invia| SendNatBtn[Click Invia]
+    NatAction -->|Annulla| CancelNatBtn[Annulla]
+    
+    SendNatBtn --> ValidateNat{Validazione}
+    ValidateNat -->|❌ Nessun Destinatario| Error4([Errore: Selezionare<br/>almeno un destinatario])
+    ValidateNat -->|✅ OK| SendNational[sendNationalNotification]
+    
+    SendNational --> PrepareRecipients[Prepara TO e CC<br/>secondo selezioni]
+    PrepareRecipients --> SendRawEmail[Mail::raw - Email Testuale<br/>SENZA allegati]
+    SendRawEmail --> SaveNatNotif[(Salva con notification_type:<br/>'crc_referees' o 'zone_observers'<br/>is_national: true)]
+    SaveNatNotif --> SuccessNat([Successo: Email Nazionale Inviata])
+    
+    Success --> RedirectIndex([Redirect a Index<br/>Notifiche])
+    SuccessNat --> RedirectIndex
+    
+    Error1 --> BackToTournament([Back to Tournament])
+    Error2 --> DisplayForm
+    Error3 --> DisplayForm
+    Error4 --> NatForm
+    CancelBtn --> RedirectIndex
+    CancelNatBtn --> RedirectIndex
+    
+    style Start fill:#e1f5ff
+    style CreateNew fill:#fff3cd
+    style UpdateNotif fill:#fff3cd
+    style UpdateStatus fill:#fff3cd
+    style SaveNatNotif fill:#fff3cd
+    style Success fill:#d4edda
+    style SuccessNat fill:#d4edda
+    style Error1 fill:#f8d7da
+    style Error2 fill:#f8d7da
+    style Error3 fill:#f8d7da
+    style Error4 fill:#f8d7da
+    style RedirectIndex fill:#cfe2ff
+    style NationalFlow fill:#ffe6e6
+    style ZonalFlow fill:#e6f3ff

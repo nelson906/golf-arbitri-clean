@@ -1,0 +1,89 @@
+flowchart LR
+    subgraph Tornei["🏆 GESTIONE TORNEI"]
+        T1[Index: Lista Tornei<br/>- Filtri multi-campo<br/>- Paginazione<br/>- Badge status]
+        T2[Create: Form Creazione<br/>- Selezione Club<br/>- Tipo Torneo<br/>- Date e Deadline]
+        T3[Edit: Form Modifica<br/>- Pre-compilato<br/>- Validazione]
+        T4[Show: Dettaglio<br/>- Info complete<br/>- Tab Assegnazioni<br/>- Tab Disponibilità<br/>- Link Setup]
+        T5[Calendar: Vista Calendario<br/>- Eventi colorati<br/>- Filtri interattivi]
+        
+        T1 -->|Crea| T2
+        T1 -->|Modifica| T3
+        T1 -->|Dettaglio| T4
+        T1 -->|Vista| T5
+        T4 -->|Setup| T1
+    end
+    
+    subgraph Assegnazioni["👥 SETUP ARBITRI"]
+        A1[Index: Lista Assegnazioni<br/>- Filtro per Torneo<br/>- Filtro per Arbitro<br/>- Sort cognome]
+        A2[Create: Form Setup<br/>- 2 Colonne<br/>- Disponibili vs Altri<br/>- Batch Selection]
+        A3[Show: Dettaglio Assegnazione<br/>- Info Arbitro<br/>- Info Torneo<br/>- Date]
+        
+        A1 -->|Setup| A2
+        A1 -->|Dettaglio| A3
+        A2 -->|Completa| A1
+    end
+    
+    subgraph Notifiche["📧 NOTIFICHE"]
+        N1[Index: Lista Notifiche<br/>- Raggruppate per Torneo<br/>- Status invio<br/>- Preview documenti]
+        N2[Prepare: Form Invio<br/>- Email destinatari<br/>- Clauses selezionabili<br/>- Preview PDF<br/>- Rigenera opzione]
+        N3[Show: Dettaglio Notifica<br/>- Documenti generati<br/>- Email inviate<br/>- Timestamp]
+        
+        N1 -->|Prepara| N2
+        N1 -->|Dettaglio| N3
+        N2 -->|Invia| N1
+    end
+    
+    subgraph Disponibilita["📅 DISPONIBILITÀ ARBITRI"]
+        D1[Index: Lista Disponibilità<br/>- Filtro per Torneo<br/>- Status badge]
+        D2[Tournaments: Tornei Aperti<br/>- Filtri Zona/Tipo<br/>- Badge già dichiarati<br/>- Batch declaration]
+        D3[Calendar: Vista Calendario<br/>- Disponibilità proprie<br/>- Tornei futuri]
+        
+        D1 -->|Dichiara Nuove| D2
+        D1 -->|Vista| D3
+        D2 -->|Salva| D1
+    end
+    
+    subgraph Arbitri["🎓 GESTIONE ARBITRI"]
+        R1[Index: Lista Arbitri<br/>- Filtri Zona/Livello<br/>- Status attivo<br/>- Sort cognome]
+        R2[Create: Form Creazione<br/>- Dati anagrafici<br/>- Livello iniziale<br/>- Zona]
+        R3[Edit: Form Modifica<br/>- Update dati<br/>- Cambio livello<br/>- Gestione carriera]
+        R4[Show: Profilo Completo<br/>- Curriculum<br/>- Storia carriera<br/>- Assegnazioni<br/>- Statistiche]
+        
+        R1 -->|Crea| R2
+        R1 -->|Modifica| R3
+        R1 -->|Profilo| R4
+    end
+    
+    subgraph Circoli["⛳ GESTIONE CIRCOLI"]
+        C1[Index: Lista Circoli<br/>- Filtro per Zona<br/>- Status attivo<br/>- Sort nome]
+        C2[Create: Form Creazione<br/>- Dati circolo<br/>- Zona appartenenza<br/>- Contatti]
+        C3[Edit: Form Modifica<br/>- Update info<br/>- Status]
+        C4[Show: Dettaglio Circolo<br/>- Info complete<br/>- Tornei ospitati<br/>- Storico]
+        
+        C1 -->|Crea| C2
+        C1 -->|Modifica| C3
+        C1 -->|Dettaglio| C4
+    end
+    
+    subgraph Stats["📊 STATISTICHE"]
+        S1[Dashboard: Overview<br/>- Tornei per zona<br/>- Assegnazioni mese<br/>- Arbitri attivi]
+        S2[Reports: Report Dettagliati<br/>- Export CSV/Excel<br/>- Filtri periodo<br/>- Grafici]
+        S3[Monitoring: System Health<br/>- Performance<br/>- Errori log<br/>- Usage metrics]
+        
+        S1 -->|Approfondisci| S2
+        S1 -->|Sistema| S3
+    end
+    
+    T4 -.Setup Arbitri.-> A2
+    A2 -.Prepara Notifiche.-> N2
+    D2 -.Vista Torneo.-> T4
+    R4 -.Assegnazioni.-> A1
+    C4 -.Tornei.-> T1
+    
+    style T1 fill:#e1f5ff
+    style A1 fill:#d4edda
+    style N1 fill:#fff3cd
+    style D1 fill:#f8d7da
+    style R1 fill:#e7e7ff
+    style C1 fill:#d4edda
+    style S1 fill:#fff3cd

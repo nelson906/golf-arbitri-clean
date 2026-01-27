@@ -1,0 +1,75 @@
+flowchart TD
+    Start([Admin: Setup e Arbitri]) --> SelectTournament[Seleziona Torneo]
+    
+    SelectTournament --> Create[AssignmentController::create]
+    Create --> LoadData[Carica Dati Torneo]
+    
+    LoadData --> GetAssigned[Recupera Arbitri<br/>già Assegnati]
+    GetAssigned --> GetAvailable[Recupera Arbitri<br/>con Disponibilità]
+    GetAvailable --> GetOthers[Recupera Altri Arbitri<br/>della Zona/Livello]
+    
+    GetOthers --> DisplayForm[Mostra Form Setup:<br/>2 Colonne]
+    DisplayForm --> Col1[Colonna 1:<br/>Arbitri Disponibili<br/>Badge VERDE]
+    DisplayForm --> Col2[Colonna 2:<br/>Altri Arbitri<br/>Badge GRIGIO]
+    
+    Col1 --> UserAction{Azione Admin}
+    Col2 --> UserAction
+    
+    UserAction -->|Assegna Singolo| AssignOne[Click Assegna]
+    UserAction -->|Assegna Multipli| AssignBatch[Select + Assegna Selezionati]
+    UserAction -->|Rimuovi| RemoveOne[Click Rimuovi]
+    
+    AssignOne --> Store[store: Salva Assegnazione]
+    AssignBatch --> StoreBatch[storeBatch: Salva Multiple]
+    
+    Store --> ValidateSingle{Validazione<br/>AssignmentValidation<br/>Service}
+    StoreBatch --> ValidateBatch{Validazione Batch}
+    
+    ValidateSingle -->|❌ Conflitto Date| Error1([Errore: Arbitro già<br/>impegnato nelle date])
+    ValidateSingle -->|❌ Duplicato| Error2([Errore: Già assegnato<br/>a questo torneo])
+    ValidateSingle -->|❌ Zona Errata| Error3([Errore: Zona non<br/>compatibile])
+    ValidateSingle -->|✅ OK| SaveDB[(Salva in<br/>assignments)]
+    
+    ValidateBatch -->|Tutti OK| SaveAllDB[(Salva Tutte le<br/>Assegnazioni)]
+    ValidateBatch -->|Alcuni Errori| PartialSave[(Salva Solo Valide)]
+    
+    SaveDB --> UpdateUI[Aggiorna UI:<br/>Sposta in Lista Assegnati]
+    SaveAllDB --> BatchSuccess([Successo: Tutte<br/>le Assegnazioni])
+    PartialSave --> PartialSuccess([Parziale: Lista Errori])
+    
+    UpdateUI --> CheckNotif{Completato<br/>Setup?}
+    BatchSuccess --> CheckNotif
+    PartialSuccess --> CheckNotif
+    
+    CheckNotif -->|No| BackToForm[Continua Assegnazioni]
+    CheckNotif -->|Si| ShowNotifButton[Mostra Button:<br/>Prepara Notifiche]
+    
+    BackToForm --> DisplayForm
+    ShowNotifButton --> NotifAction{Click Button?}
+    NotifAction -->|Si| RedirectNotif([Redirect a<br/>NotificationController])
+    NotifAction -->|No| DisplayForm
+    
+    RemoveOne --> Destroy[destroy: Elimina]
+    Destroy --> CheckSent{Notifica già<br/>Inviata?}
+    CheckSent -->|Si| Error4([Errore: Impossibile<br/>rimuovere dopo invio])
+    CheckSent -->|No| DeleteDB[(Elimina da DB)]
+    DeleteDB --> RemoveUI[Rimuovi da Lista<br/>Assegnati]
+    RemoveUI --> DisplayForm
+    
+    Error1 --> DisplayForm
+    Error2 --> DisplayForm
+    Error3 --> DisplayForm
+    Error4 --> DisplayForm
+    
+    style Start fill:#e1f5ff
+    style SaveDB fill:#fff3cd
+    style SaveAllDB fill:#fff3cd
+    style PartialSave fill:#fff3cd
+    style DeleteDB fill:#fff3cd
+    style BatchSuccess fill:#d4edda
+    style PartialSuccess fill:#fff3cd
+    style Error1 fill:#f8d7da
+    style Error2 fill:#f8d7da
+    style Error3 fill:#f8d7da
+    style Error4 fill:#f8d7da
+    style RedirectNotif fill:#cfe2ff
