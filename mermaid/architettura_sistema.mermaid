@@ -1,0 +1,134 @@
+flowchart TB
+    subgraph UI["🖥️ INTERFACCIA UTENTE (Blade Views)"]
+        AdminUI[Admin Views<br/>tournaments/<br/>assignments/<br/>notifications/]
+        RefereeUI[Referee Views<br/>availabilities/<br/>dashboard/<br/>curriculum/]
+        SuperUI[Super Admin Views<br/>monitoring/<br/>system/]
+    end
+    
+    subgraph Controllers["🎮 CONTROLLERS"]
+        TC[TournamentController<br/>CRUD + Calendar]
+        AC[AssignmentController<br/>Setup Arbitri]
+        NC[NotificationController<br/>Invio Notifiche]
+        AVC[AvailabilityController<br/>Dichiarazioni]
+        UC[UnifiedUserController<br/>Gestione Arbitri]
+        CC[ClubController<br/>Gestione Circoli]
+    end
+    
+    subgraph Services["⚙️ SERVICES LAYER"]
+        direction LR
+        subgraph NotifServices["Notification Services"]
+            NS[NotificationService<br/>Invio Email]
+            NPS[NotificationPreparation<br/>Service<br/>Prepara Dati]
+            NDS[NotificationDocument<br/>Service<br/>Gestione Files]
+            NTS[NotificationTransaction<br/>Service<br/>Gestione Transazioni]
+        end
+        
+        subgraph DocServices["Document Services"]
+            DGS[DocumentGeneration<br/>Service<br/>Genera DOCX/PDF]
+            FSS[FileStorageService<br/>Gestione Storage]
+        end
+        
+        subgraph ValidationServices["Validation Services"]
+            AVS[AssignmentValidation<br/>Service<br/>Conflitti Date]
+            AVNS[AvailabilityNotification<br/>Service<br/>Notifiche Batch]
+        end
+        
+        subgraph CareerServices["Career Services"]
+            RCS[RefereeCareerService<br/>Gestione Livelli]
+            CHS[CareerHistoryService<br/>Storico Carriera]
+        end
+        
+        subgraph UtilityServices["Utility Services"]
+            TCS[TournamentColor<br/>Service<br/>Colori Calendario]
+            CDS[CalendarDataService<br/>Dati Calendario]
+        end
+    end
+    
+    subgraph Models["📦 MODELS (Eloquent)"]
+        Tournament[(Tournament<br/>- dates<br/>- status<br/>- club_id)]
+        Assignment[(Assignment<br/>- tournament_id<br/>- user_id<br/>- effective_days)]
+        Availability[(Availability<br/>- tournament_id<br/>- user_id<br/>- available)]
+        TournamentNotif[(TournamentNotification<br/>- tournament_id<br/>- documents JSON<br/>- sent_at)]
+        User[(User<br/>- user_type<br/>- level<br/>- zone_id)]
+        Club[(Club<br/>- zone_id<br/>- is_active)]
+        CareerHistory[(RefereeCareerHistory<br/>- user_id<br/>- effective_from<br/>- level)]
+    end
+    
+    subgraph Database["💾 DATABASE"]
+        DB[(MySQL<br/>Unified Tables<br/>No Year Separation)]
+    end
+    
+    subgraph Storage["📁 FILE STORAGE"]
+        Templates[DOCX Templates<br/>storage/lettere_intestate/<br/>SZRN/template*.docx]
+        Generated[Generated Files<br/>storage/convocazioni/<br/>SZRN/generated/*.docx]
+        PDFs[PDF Attachments<br/>Temporary + Archived]
+    end
+    
+    subgraph External["🌐 EXTERNAL"]
+        Email[SMTP Server<br/>Email Delivery]
+        Federgolf[Federgolf API<br/>Competition Data]
+    end
+    
+    %% UI to Controllers
+    AdminUI --> TC
+    AdminUI --> AC
+    AdminUI --> NC
+    RefereeUI --> AVC
+    RefereeUI --> UC
+    SuperUI --> UC
+    
+    %% Controllers to Services
+    TC --> TCS
+    TC --> CDS
+    AC --> AVS
+    NC --> NS
+    NC --> NPS
+    NC --> NDS
+    NC --> NTS
+    AVC --> AVNS
+    UC --> RCS
+    UC --> CHS
+    
+    %% Services to Services
+    NPS --> DGS
+    NDS --> DGS
+    DGS --> FSS
+    NS --> NTS
+    
+    %% Services to Models
+    NS --> TournamentNotif
+    NPS --> TournamentNotif
+    TC --> Tournament
+    AC --> Assignment
+    AVC --> Availability
+    UC --> User
+    UC --> CareerHistory
+    CC --> Club
+    AVS --> Assignment
+    
+    %% Models to Database
+    Tournament --> DB
+    Assignment --> DB
+    Availability --> DB
+    TournamentNotif --> DB
+    User --> DB
+    Club --> DB
+    CareerHistory --> DB
+    
+    %% Document Generation Flow
+    DGS --> Templates
+    DGS --> Generated
+    NDS --> Generated
+    NS --> PDFs
+    
+    %% External Integrations
+    NS --> Email
+    UC --> Federgolf
+    
+    style UI fill:#e1f5ff
+    style Controllers fill:#d4edda
+    style Services fill:#fff3cd
+    style Models fill:#f8d7da
+    style Database fill:#e7e7ff
+    style Storage fill:#d4edda
+    style External fill:#ffeeba

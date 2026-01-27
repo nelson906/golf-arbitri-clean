@@ -1,0 +1,73 @@
+flowchart TD
+    Start([Arbitro accede<br/>Dichiarazione Disponibilità]) --> Tournaments[AvailabilityController::tournaments]
+    
+    Tournaments --> LoadTournaments[Carica Tornei Futuri<br/>con Filtri Visibilità]
+    LoadTournaments --> Filter{Applica Filtri<br/>Opzionali}
+    
+    Filter -->|Zona| ZoneF[Filtro Zona]
+    Filter -->|Tipo| TypeF[Filtro Tipo Torneo]
+    Filter -->|Mese| MonthF[Filtro Mese]
+    
+    ZoneF --> CheckAvail[Recupera Disponibilità<br/>già Dichiarate]
+    TypeF --> CheckAvail
+    MonthF --> CheckAvail
+    
+    CheckAvail --> DisplayList[Mostra Lista Tornei<br/>con Badge Stato]
+    DisplayList --> UserAction{Azione Arbitro}
+    
+    UserAction -->|Dichiara SI| DeclareYes[Click Disponibile]
+    UserAction -->|Annulla| DeclareNo[Click Annulla Disponibilità]
+    UserAction -->|Modifica| Modify[Modifica Dichiarazione]
+    
+    DeclareYes --> StoreAvail[store: Salva Disponibilità]
+    DeclareNo --> RemoveAvail[store: Elimina Record]
+    Modify --> StoreUpdate[store: Aggiorna]
+    
+    StoreAvail --> Validate{Validazione}
+    RemoveAvail --> ValidateRemove{Validazione}
+    StoreUpdate --> Validate
+    
+    ValidateRemove -->|❌ Errore| Error4([Errore generico])
+    ValidateRemove -->|✅ OK| DeleteDB[(Elimina da DB)]
+    
+    Validate -->|❌ Deadline Scaduta| Error1([Errore: Termine scaduto])
+    Validate -->|❌ Data Passata| Error2([Errore: Torneo passato])
+    Validate -->|❌ No Autorizzazione| Error3([Errore: Non autorizzato])
+    Validate -->|✅ OK| SaveDB[(Salva/Aggiorna<br/>in availability)]
+    
+    SaveDB --> CheckBatch{Batch Update?}
+    CheckBatch -->|No| SingleSuccess([Messaggio di Successo])
+    CheckBatch -->|Si| BatchProcess[Processa Batch<br/>storeBatch]
+    
+    BatchProcess --> ValidateAll{Valida Tutti}
+    ValidateAll -->|Alcuni Errori| PartialSuccess([Successo Parziale<br/>+ Lista Errori])
+    ValidateAll -->|Tutti OK| SendEmail[Invia Email Notifica]
+    
+    SendEmail --> EmailAdmin[Mail a Admin Zona]
+    EmailAdmin --> EmailReferee[Mail di Conferma<br/>ad Arbitro]
+    EmailReferee --> BatchSuccess([Successo Completo])
+    
+    SingleSuccess --> Refresh[Refresh Lista]
+    PartialSuccess --> Refresh
+    BatchSuccess --> Refresh
+    Refresh --> DisplayList
+    
+    DeleteDB --> Success4([Disponibilità Annullata])
+    Success4 --> Refresh
+    
+    Error1 --> DisplayList
+    Error2 --> DisplayList
+    Error3 --> DisplayList
+    Error4 --> DisplayList
+    
+    style Start fill:#e1f5ff
+    style SaveDB fill:#fff3cd
+    style DeleteDB fill:#fff3cd
+    style SingleSuccess fill:#d4edda
+    style BatchSuccess fill:#d4edda
+    style PartialSuccess fill:#fff3cd
+    style Success4 fill:#d4edda
+    style Error1 fill:#f8d7da
+    style Error2 fill:#f8d7da
+    style Error3 fill:#f8d7da
+    style Error4 fill:#f8d7da

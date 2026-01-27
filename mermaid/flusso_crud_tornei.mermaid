@@ -1,0 +1,56 @@
+flowchart TD
+    Start([Admin accede<br/>Gestione Tornei]) --> Index[TournamentController::index]
+    
+    Index --> Filter{Applica Filtri}
+    Filter -->|Zona| ZoneFilter[Filtro per Zona]
+    Filter -->|Club| ClubFilter[Filtro per Club]
+    Filter -->|Status| StatusFilter[Filtro per Status]
+    Filter -->|Tipo| TypeFilter[Filtro per Tipo Torneo]
+    
+    ZoneFilter --> List[Lista Tornei Paginata]
+    ClubFilter --> List
+    StatusFilter --> List
+    TypeFilter --> List
+    
+    List --> Action{Azione Utente}
+    
+    Action -->|Crea Nuovo| Create[create: Form Creazione]
+    Action -->|Modifica| Edit[edit: Form Modifica]
+    Action -->|Elimina| Delete[destroy: Conferma Eliminazione]
+    Action -->|Visualizza| Show[show: Dettagli Torneo]
+    
+    Create --> CreateForm[Form con:<br/>- Club<br/>- Tipo Torneo<br/>- Date<br/>- Deadline Disponibilità]
+    CreateForm --> Store[store: Salva Torneo]
+    Store --> Validate{TournamentRequest<br/>Validation}
+    Validate -->|❌ Errori| CreateForm
+    Validate -->|✅ OK| SaveDB[(Salva in DB)]
+    SaveDB --> Success1([Redirect a Index<br/>con Messaggio])
+    
+    Edit --> EditForm[Form Pre-compilato]
+    EditForm --> Update[update: Aggiorna Torneo]
+    Update --> Validate2{TournamentRequest<br/>Validation}
+    Validate2 -->|❌ Errori| EditForm
+    Validate2 -->|✅ OK| UpdateDB[(Aggiorna in DB)]
+    UpdateDB --> Success2([Redirect a Index<br/>con Messaggio])
+    
+    Delete --> ConfirmDelete{Conferma?}
+    ConfirmDelete -->|No| List
+    ConfirmDelete -->|Yes| CheckRelations{Ha Assegnazioni<br/>o Notifiche?}
+    CheckRelations -->|Si| ErrorMsg([Errore: Impossibile<br/>eliminare])
+    CheckRelations -->|No| DeleteDB[(Elimina da DB)]
+    DeleteDB --> Success3([Redirect a Index<br/>con Messaggio])
+    
+    Show --> Details[Mostra:<br/>- Info Torneo<br/>- Assegnazioni<br/>- Disponibilità<br/>- Notifiche]
+    Details --> Action2{Azione}
+    Action2 -->|Setup Arbitri| SetupLink[Link a AssignmentController]
+    Action2 -->|Invia Notifiche| NotifLink[Link a NotificationController]
+    Action2 -->|Torna a Lista| List
+    
+    style Start fill:#e1f5ff
+    style Success1 fill:#d4edda
+    style Success2 fill:#d4edda
+    style Success3 fill:#d4edda
+    style ErrorMsg fill:#f8d7da
+    style SaveDB fill:#fff3cd
+    style UpdateDB fill:#fff3cd
+    style DeleteDB fill:#fff3cd

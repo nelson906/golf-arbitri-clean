@@ -1,0 +1,104 @@
+flowchart TD
+    Start([INIZIO STAGIONE]) --> Phase1{FASE 1<br/>CREAZIONE TORNEI}
+    
+    Phase1 --> CreateT[Admin Zona crea Torneo<br/>- Seleziona Club<br/>- Imposta Date<br/>- Deadline Disponibilità]
+    CreateT --> SaveT[(Torneo Salvato<br/>status: 'draft')]
+    SaveT --> PublishT[Admin Pubblica Torneo<br/>status: 'open']
+    
+    PublishT --> Phase2{FASE 2<br/>DISPONIBILITÀ}
+    
+    Phase2 --> RefAccess[Arbitri Accedono<br/>Sezione Disponibilità]
+    RefAccess --> RefDeclare[Arbitri Dichiarano<br/>- Disponibile ✓<br/>- Annulla Disponibilità ✗<br/>- Note opzionali]
+    RefDeclare --> CheckDeadline{Prima della<br/>Deadline?}
+    
+    CheckDeadline -->|No| DeadlineError([❌ Deadline Scaduta])
+    CheckDeadline -->|Si| SaveAvail[(Disponibilità Salvata)]
+    SaveAvail --> EmailConf[🔔 Email Conferma<br/>ad Arbitro + Admin]
+    
+    EmailConf --> WaitDeadline[⏳ Attesa Deadline]
+    WaitDeadline --> Phase3{FASE 3<br/>ASSEGNAZIONI}
+    
+    Phase3 --> AdminReview[Admin Rivede<br/>Disponibilità Dichiarate]
+    AdminReview --> SetupArbitri[Admin: Setup e Arbitri<br/>- Vede lista Disponibili<br/>- Vede lista Altri]
+    
+    SetupArbitri --> AssignProcess[Admin Assegna Arbitri<br/>- Click singolo<br/>- Batch selection]
+    AssignProcess --> ValidateAssign{Validazione}
+    
+    ValidateAssign -->|❌ Conflitto Date| ConflictError([Arbitro già impegnato])
+    ValidateAssign -->|❌ Zona Errata| ZoneError([Zona non compatibile])
+    ValidateAssign -->|✓ OK| SaveAssign[(Assegnazione Salvata)]
+    
+    ConflictError --> SetupArbitri
+    ZoneError --> SetupArbitri
+    SaveAssign --> CheckComplete{Assegnazioni<br/>Complete?}
+    
+    CheckComplete -->|No| SetupArbitri
+    CheckComplete -->|Si| Phase4{FASE 4<br/>NOTIFICHE}
+    
+    Phase4 --> PrepNotif[Admin: Prepara Notifiche<br/>- Click su Torneo]
+    PrepNotif --> GenDocs[Sistema Valuta Tipo Torneo]
+    
+    GenDocs --> CheckType{Tipo<br/>Torneo?}
+    CheckType -->|Nazionale| NationalFlow[FLUSSO NAZIONALE:<br/>Email Testuale]
+    CheckType -->|Zonale| ZonalFlow[FLUSSO ZONALE:<br/>Genera Documenti]
+    
+    NationalFlow --> NatForm[Form Invio Nazionale:<br/>- TO: Ufficio Campionati<br/>- CC: Zona/Arbitri/Admin]
+    ZonalFlow --> GenZonalDocs[Genera 2 Documenti DOCX:<br/>1. Convocazione Arbitri<br/>2. Lettera Circolo]
+    
+    GenZonalDocs --> PrepForm[Form Invio Zonale]
+    
+    PrepForm --> AdminReviews{Revisiona Form}
+    NatForm --> AdminReviewsNat{Revisiona Form<br/>Nazionale}
+    
+    AdminReviews --> ActionsZonal{Azione<br/>Zonale}
+    AdminReviewsNat --> ActionsNat{Azione<br/>Nazionale}
+    
+    ActionsZonal -->|Rigenera| RegenDocs[Rigenera Documenti]
+    ActionsZonal -->|Modifica| EditForm[Modifica Form]
+    ActionsZonal -->|Invia| SendNotifZonal[Invia Notifiche Zonali]
+    
+    ActionsNat -->|Modifica| EditFormNat[Modifica Form]
+    ActionsNat -->|Invia| SendNotifNat[Invia Email Nazionale]
+    
+    RegenDocs --> GenZonalDocs
+    EditForm --> PrepForm
+    EditFormNat --> NatForm
+    
+    SendNotifZonal --> SendEmailsZonal[Invio Email Multiple<br/>- Arbitri con DOCX<br/>- Circolo con DOCX<br/>- Email Istituzionali]
+    SendNotifNat --> SendEmailNat[Invio Email Testuale<br/>TO: Ufficio Campionati<br/>CC: Destinatari selezionati]
+    
+    SendEmailsZonal --> UpdateStatus[(Update Status<br/>status: 'sent'<br/>sent_at: now)]
+    SendEmailNat --> UpdateStatusNat[(Update Status<br/>notification_type: 'crc_referees'<br/>sent_at: now)]
+    UpdateStatus --> Phase5{FASE 5<br/>GESTIONE}
+    UpdateStatusNat --> Phase5
+    
+    Phase5 --> TournamentDay[📅 Giorno Torneo]
+    TournamentDay --> Completed[Torneo Completato]
+    Completed --> UpdateEffective[Admin aggiorna<br/>Giorni Effettivi]
+    UpdateEffective --> SaveStats[(Salva Statistiche)]
+    
+    SaveStats --> UpdateCareer[Sistema Aggiorna<br/>Carriera Arbitri<br/>se necessario]
+    UpdateCareer --> Archive[Archivia Torneo<br/>status: 'completed']
+    
+    Archive --> Phase6{FASE 6<br/>STATISTICHE}
+    
+    Phase6 --> GenReport[Genera Report:<br/>- Tornei per Zona<br/>- Assegnazioni per Arbitro<br/>- Presenza effettiva<br/>- Export Excel]
+    
+    GenReport --> EndSeason([FINE CICLO])
+    
+    DeadlineError -.Riprova.-> RefAccess
+    
+    style Phase1 fill:#e1f5ff,stroke:#333,stroke-width:3px
+    style Phase2 fill:#d4edda,stroke:#333,stroke-width:3px
+    style Phase3 fill:#fff3cd,stroke:#333,stroke-width:3px
+    style Phase4 fill:#f8d7da,stroke:#333,stroke-width:3px
+    style Phase5 fill:#e7e7ff,stroke:#333,stroke-width:3px
+    style Phase6 fill:#d4edda,stroke:#333,stroke-width:3px
+    style DeadlineError fill:#f8d7da
+    style ConflictError fill:#f8d7da
+    style ZoneError fill:#f8d7da
+    style SaveT fill:#fff3cd
+    style SaveAvail fill:#fff3cd
+    style SaveAssign fill:#fff3cd
+    style UpdateStatus fill:#fff3cd
+    style SaveStats fill:#fff3cd
