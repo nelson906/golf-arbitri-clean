@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flussi Sistema Arbitri Golf - Documentazione Completa</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' }
+        });
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.6; color: #333; background: #f5f5f5; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .alert { background: #d4edda; border-left: 4px solid #28a745; padding: 1.5rem; margin: 2rem auto; max-width: 1400px; border-radius: 8px; }
+        .alert h2 { color: #155724; margin-bottom: 1rem; font-size: 1.5rem; }
+        .alert ul { margin-left: 2rem; color: #155724; }
+        .alert li { margin: 0.5rem 0; }
+        nav { background: white; padding: 1rem 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100; }
+        nav ul { list-style: none; display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: center; max-width: 1400px; margin: 0 auto; }
+        nav a { color: #667eea; text-decoration: none; font-weight: 500; padding: 0.5rem 1rem; border-radius: 4px; transition: all 0.3s; }
+        nav a:hover { background: #667eea; color: white; }
+        main { max-width: 1400px; margin: 2rem auto; padding: 0 2rem; }
+        section { background: white; margin-bottom: 3rem; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        section h2 { color: #667eea; font-size: 2rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 3px solid #667eea; }
+        .diagram-container { background: #fafafa; padding: 2rem; border-radius: 8px; margin: 1.5rem 0; overflow-x: auto; }
+        .info-box { background: #e7f3ff; border-left: 4px solid #2196F3; padding: 1rem 1.5rem; margin: 1rem 0; border-radius: 4px; }
+        .warning-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 1rem 1.5rem; margin: 1rem 0; border-radius: 4px; }
+        .success-box { background: #d4edda; border-left: 4px solid #28a745; padding: 1rem 1.5rem; margin: 1rem 0; border-radius: 4px; }
+        .info-box h4, .warning-box h4, .success-box h4 { margin-bottom: 0.5rem; font-size: 1.1rem; }
+        .info-box ul, .warning-box ul, .success-box ul { margin-left: 1.5rem; }
+        footer { background: #333; color: white; text-align: center; padding: 2rem; margin-top: 4rem; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🏌️ Sistema Gestione Arbitri Golf</h1>
+        <p>Documentazione Completa - VERSIONE CORRETTA - arbitrigolf.it</p>
+    </header>
+    
+    <div class="alert">
+        <h2>✅ TUTTI I DIAGRAMMI CORRETTI</h2>
+        <ul>
+            <li>❌ Rimosso: Notifica email nuovo torneo</li>
+            <li>✅ Corretto: "Annulla Disponibilità" (elimina record)</li>
+            <li>❌ Eliminato: Tutti i riferimenti a PDF</li>
+            <li>✅ Aggiunto: Distinzione Tornei Nazionali vs Zonali</li>
+        </ul>
+    </div>
+    
+    <nav>
+        <ul>
+            <li><a href="#architettura">Architettura</a></li>
+            <li><a href="#workflow">Workflow</a></li>
+            <li><a href="#crud-tornei">CRUD Tornei</a></li>
+            <li><a href="#disponibilita">Disponibilità</a></li>
+            <li><a href="#assegnazioni">Assegnazioni</a></li>
+            <li><a href="#notifiche">Notifiche</a></li>
+            <li><a href="#viste">Viste</a></li>
+        </ul>
+    </nav>
+    
+    <main>
+        <section id="architettura">
+            <h2>1. Architettura Sistema</h2>
+            <div class="diagram-container"><div class="mermaid">
+flowchart TB
+    subgraph UI["🖥️ INTERFACCIA UTENTE (Blade Views)"]
+        AdminUI[Admin Views<br/>tournaments/<br/>assignments/<br/>notifications/]
+        RefereeUI[Referee Views<br/>availabilities/<br/>dashboard/<br/>curriculum/]
+        SuperUI[Super Admin Views<br/>monitoring/<br/>system/]
+    end
+    
+    subgraph Controllers["🎮 CONTROLLERS"]
+        TC[TournamentController<br/>CRUD + Calendar]
+        AC[AssignmentController<br/>Setup Arbitri]
+        NC[NotificationController<br/>Invio Notifiche]
+        AVC[AvailabilityController<br/>Dichiarazioni]
+        UC[UnifiedUserController<br/>Gestione Arbitri]
+        CC[ClubController<br/>Gestione Circoli]
+    end
+    
+    subgraph Services["⚙️ SERVICES LAYER"]
+        direction LR
+        subgraph NotifServices["Notification Services"]
+            NS[NotificationService<br/>Invio Email]
+            NPS[NotificationPreparation<br/>Service<br/>Prepara Dati]
+            NDS[NotificationDocument<br/>Service<br/>Gestione Files]
+            NTS[NotificationTransaction<br/>Service<br/>Gestione Transazioni]
+        end
+        
+        subgraph DocServices["Document Services"]
+            DGS[DocumentGeneration<br/>Service<br/>Genera DOCX/PDF]
+            FSS[FileStorageService<br/>Gestione Storage]
+        end
+        
+        subgraph ValidationServices["Validation Services"]
+            AVS[AssignmentValidation<br/>Service<br/>Conflitti Date]
+            AVNS[AvailabilityNotification<br/>Service<br/>Notifiche Batch]
+        end
+        
+        subgraph CareerServices["Career Services"]
+            RCS[RefereeCareerService<br/>Gestione Livelli]
+            CHS[CareerHistoryService<br/>Storico Carriera]
+        end
+        
+        subgraph UtilityServices["Utility Services"]
+            TCS[TournamentColor<br/>Service<br/>Colori Calendario]
+            CDS[CalendarDataService<br/>Dati Calendario]
+        end
+    end
+    
+    subgraph Models["📦 MODELS (Eloquent)"]
+        Tournament[(Tournament<br/>- dates<br/>- status<br/>- club_id)]
+        Assignment[(Assignment<br/>- tournament_id<br/>- user_id<br/>- effective_days)]
+        Availability[(Availability<br/>- tournament_id<br/>- user_id<br/>- available)]
+        TournamentNotif[(TournamentNotification<br/>- tournament_id<br/>- documents JSON<br/>- sent_at)]
+        User[(User<br/>- user_type<br/>- level<br/>- zone_id)]
+        Club[(Club<br/>- zone_id<br/>- is_active)]
+        CareerHistory[(RefereeCareerHistory<br/>- user_id<br/>- effective_from<br/>- level)]
+    end
+    
+    subgraph Database["💾 DATABASE"]
+        DB[(MySQL<br/>Unified Tables<br/>No Year Separation)]
+    end
+    
+    subgraph Storage["📁 FILE STORAGE"]
+        Templates[DOCX Templates<br/>storage/lettere_intestate/<br/>SZRN/template*.docx]
+        Generated[Generated Files<br/>storage/convocazioni/<br/>SZRN/generated/*.docx]
+        PDFs[PDF Attachments<br/>Temporary + Archived]
+    end
+    
+    subgraph External["🌐 EXTERNAL"]
+        Email[SMTP Server<br/>Email Delivery]
+        Federgolf[Federgolf API<br/>Competition Data]
+    end
+    
+    %% UI to Controllers
+    AdminUI --> TC
+    AdminUI --> AC
+    AdminUI --> NC
+    RefereeUI --> AVC
+    RefereeUI --> UC
+    SuperUI --> UC
+    
+    %% Controllers to Services
+    TC --> TCS
+    TC --> CDS
+    AC --> AVS
+    NC --> NS
+    NC --> NPS
+    NC --> NDS
+    NC --> NTS
+    AVC --> AVNS
+    UC --> RCS
+    UC --> CHS
+    
+    %% Services to Services
+    NPS --> DGS
+    NDS --> DGS
+    DGS --> FSS
+    NS --> NTS
+    
+    %% Services to Models
+    NS --> TournamentNotif
+    NPS --> TournamentNotif
+    TC --> Tournament
+    AC --> Assignment
+    AVC --> Availability
+    UC --> User
+    UC --> CareerHistory
+    CC --> Club
+    AVS --> Assignment
+    
+    %% Models to Database
+    Tournament --> DB
+    Assignment --> DB
+    Availability --> DB
+    TournamentNotif --> DB
+    User --> DB
+    Club --> DB
+    CareerHistory --> DB
+    
+    %% Document Generation Flow
+    DGS --> Templates
+    DGS --> Generated
+    NDS --> Generated
+    NS --> PDFs
+    
+    %% External Integrations
+    NS --> Email
+    UC --> Federgolf
+    
+    style UI fill:#e1f5ff
+    style Controllers fill:#d4edda
+    style Services fill:#fff3cd
+    style Models fill:#f8d7da
+    style Database fill:#e7e7ff
+    style Storage fill:#d4edda
+    style External fill:#ffeeba
+            </div></div>
+        </section>
+        
+        <section id="workflow">
+            <h2>2. Workflow Completo</h2>
+            <div class="success-box">
+                <h4>✅ Correzioni:</h4>
+                <ul>
+                    <li>NO notifica email nuovo torneo</li>
+                    <li>"Annulla Disponibilità" elimina record</li>
+                    <li>Nazionale (email testuale) vs Zonale (2 DOCX)</li>
+                </ul>
+            </div>
+            <div class="diagram-container"><div class="mermaid">
+flowchart TD
+    Start([INIZIO STAGIONE]) --> Phase1{FASE 1<br/>CREAZIONE TORNEI}
+    
+    Phase1 --> CreateT[Admin Zona crea Torneo<br/>- Seleziona Club<br/>- Imposta Date<br/>- Deadline Disponibilità]
+    CreateT --> SaveT[(Torneo Salvato<br/>status: 'draft')]
+    SaveT --> PublishT[Admin Pubblica Torneo<br/>status: 'open']
+    
+    PublishT --> Phase2{FASE 2<br/>DISPONIBILITÀ}
+    
+    Phase2 --> RefAccess[Arbitri Accedono<br/>Sezione Disponibilità]
+    RefAccess --> RefDeclare[Arbitri Dichiarano<br/>- Disponibile ✓<br/>- Annulla Disponibilità ✗<br/>- Note opzionali]
+    RefDeclare --> CheckDeadline{Prima della<br/>Deadline?}
+    
+    CheckDeadline -->|No| DeadlineError([❌ Deadline Scaduta])
+    CheckDeadline -->|Si| SaveAvail[(Disponibilità Salvata)]
+    SaveAvail --> EmailConf[🔔 Email Conferma<br/>ad Arbitro + Admin]
+    
+    EmailConf --> WaitDeadline[⏳ Attesa Deadline]
+    WaitDeadline --> Phase3{FASE 3<br/>ASSEGNAZIONI}
+    
+    Phase3 --> AdminReview[Admin Rivede<br/>Disponibilità Dichiarate]
+    AdminReview --> SetupArbitri[Admin: Setup e Arbitri<br/>- Vede lista Disponibili<br/>- Vede lista Altri]
+    
+    SetupArbitri --> AssignProcess[Admin Assegna Arbitri<br/>- Click singolo<br/>- Batch selection]
+    AssignProcess --> ValidateAssign{Validazione}
+    
+    ValidateAssign -->|❌ Conflitto Date| ConflictError([Arbitro già impegnato])
+    ValidateAssign -->|❌ Zona Errata| ZoneError([Zona non compatibile])
+    ValidateAssign -->|✓ OK| SaveAssign[(Assegnazione Salvata)]
+    
+    ConflictError --> SetupArbitri
+    ZoneError --> SetupArbitri
+    SaveAssign --> CheckComplete{Assegnazioni<br/>Complete?}
+    
+    CheckComplete -->|No| SetupArbitri
+    CheckComplete -->|Si| Phase4{FASE 4<br/>NOTIFICHE}
+    
+    Phase4 --> PrepNotif[Admin: Prepara Notifiche<br/>- Click su Torneo]
+    PrepNotif --> GenDocs[Sistema Valuta Tipo Torneo]
+    
+    GenDocs --> CheckType{Tipo<br/>Torneo?}
+    CheckType -->|Nazionale| NationalFlow[FLUSSO NAZIONALE:<br/>Email Testuale]
+    CheckType -->|Zonale| ZonalFlow[FLUSSO ZONALE:<br/>Genera Documenti]
+    
+    NationalFlow --> NatForm[Form Invio Nazionale:<br/>- TO: Ufficio Campionati<br/>- CC: Zona/Arbitri/Admin]
+    ZonalFlow --> GenZonalDocs[Genera 2 Documenti DOCX:<br/>1. Convocazione Arbitri<br/>2. Lettera Circolo]
+    
+    GenZonalDocs --> PrepForm[Form Invio Zonale]
+    
+    PrepForm --> AdminReviews{Revisiona Form}
+    NatForm --> AdminReviewsNat{Revisiona Form<br/>Nazionale}
+    
+    AdminReviews --> ActionsZonal{Azione<br/>Zonale}
+    AdminReviewsNat --> ActionsNat{Azione<br/>Nazionale}
+    
+    ActionsZonal -->|Rigenera| RegenDocs[Rigenera Documenti]
+    ActionsZonal -->|Modifica| EditForm[Modifica Form]
+    ActionsZonal -->|Invia| SendNotifZonal[Invia Notifiche Zonali]
+    
+    ActionsNat -->|Modifica| EditFormNat[Modifica Form]
+    ActionsNat -->|Invia| SendNotifNat[Invia Email Nazionale]
+    
+    RegenDocs --> GenZonalDocs
+    EditForm --> PrepForm
+    EditFormNat --> NatForm
+    
+    SendNotifZonal --> SendEmailsZonal[Invio Email Multiple<br/>- Arbitri con DOCX<br/>- Circolo con DOCX<br/>- Email Istituzionali]
+    SendNotifNat --> SendEmailNat[Invio Email Testuale<br/>TO: Ufficio Campionati<br/>CC: Destinatari selezionati]
+    
+    SendEmailsZonal --> UpdateStatus[(Update Status<br/>status: 'sent'<br/>sent_at: now)]
+    SendEmailNat --> UpdateStatusNat[(Update Status<br/>notification_type: 'crc_referees'<br/>sent_at: now)]
+    UpdateStatus --> Phase5{FASE 5<br/>GESTIONE}
+    UpdateStatusNat --> Phase5
+    
+    Phase5 --> TournamentDay[📅 Giorno Torneo]
+    TournamentDay --> Completed[Torneo Completato]
+    Completed --> UpdateEffective[Admin aggiorna<br/>Giorni Effettivi]
+    UpdateEffective --> SaveStats[(Salva Statistiche)]
+    
+    SaveStats --> UpdateCareer[Sistema Aggiorna<br/>Carriera Arbitri<br/>se necessario]
+    UpdateCareer --> Archive[Archivia Torneo<br/>status: 'completed']
+    
+    Archive --> Phase6{FASE 6<br/>STATISTICHE}
+    
+    Phase6 --> GenReport[Genera Report:<br/>- Tornei per Zona<br/>- Assegnazioni per Arbitro<br/>- Presenza effettiva<br/>- Export Excel]
+    
+    GenReport --> EndSeason([FINE CICLO])
+    
+    DeadlineError -.Riprova.-> RefAccess
+    
+    style Phase1 fill:#e1f5ff,stroke:#333,stroke-width:3px
+    style Phase2 fill:#d4edda,stroke:#333,stroke-width:3px
+    style Phase3 fill:#fff3cd,stroke:#333,stroke-width:3px
+    style Phase4 fill:#f8d7da,stroke:#333,stroke-width:3px
+    style Phase5 fill:#e7e7ff,stroke:#333,stroke-width:3px
+    style Phase6 fill:#d4edda,stroke:#333,stroke-width:3px
+    style DeadlineError fill:#f8d7da
+    style ConflictError fill:#f8d7da
+    style ZoneError fill:#f8d7da
+    style SaveT fill:#fff3cd
+    style SaveAvail fill:#fff3cd
+    style SaveAssign fill:#fff3cd
+    style UpdateStatus fill:#fff3cd
+    style SaveStats fill:#fff3cd
+            </div></div>
+        </section>
+        
+        <section id="crud-tornei">
+            <h2>3. CRUD Tornei</h2>
+            <div class="diagram-container"><div class="mermaid">
+flowchart TD
+    Start([Admin accede<br/>Gestione Tornei]) --> Index[TournamentController::index]
+    
+    Index --> Filter{Applica Filtri}
+    Filter -->|Zona| ZoneFilter[Filtro per Zona]
+    Filter -->|Club| ClubFilter[Filtro per Club]
+    Filter -->|Status| StatusFilter[Filtro per Status]
+    Filter -->|Tipo| TypeFilter[Filtro per Tipo Torneo]
+    
+    ZoneFilter --> List[Lista Tornei Paginata]
+    ClubFilter --> List
+    StatusFilter --> List
+    TypeFilter --> List
+    
+    List --> Action{Azione Utente}
+    
+    Action -->|Crea Nuovo| Create[create: Form Creazione]
+    Action -->|Modifica| Edit[edit: Form Modifica]
+    Action -->|Elimina| Delete[destroy: Conferma Eliminazione]
+    Action -->|Visualizza| Show[show: Dettagli Torneo]
+    
+    Create --> CreateForm[Form con:<br/>- Club<br/>- Tipo Torneo<br/>- Date<br/>- Deadline Disponibilità]
+    CreateForm --> Store[store: Salva Torneo]
+    Store --> Validate{TournamentRequest<br/>Validation}
+    Validate -->|❌ Errori| CreateForm
+    Validate -->|✅ OK| SaveDB[(Salva in DB)]
+    SaveDB --> Success1([Redirect a Index<br/>con Messaggio])
+    
+    Edit --> EditForm[Form Pre-compilato]
+    EditForm --> Update[update: Aggiorna Torneo]
+    Update --> Validate2{TournamentRequest<br/>Validation}
+    Validate2 -->|❌ Errori| EditForm
+    Validate2 -->|✅ OK| UpdateDB[(Aggiorna in DB)]
+    UpdateDB --> Success2([Redirect a Index<br/>con Messaggio])
+    
+    Delete --> ConfirmDelete{Conferma?}
+    ConfirmDelete -->|No| List
+    ConfirmDelete -->|Yes| CheckRelations{Ha Assegnazioni<br/>o Notifiche?}
+    CheckRelations -->|Si| ErrorMsg([Errore: Impossibile<br/>eliminare])
+    CheckRelations -->|No| DeleteDB[(Elimina da DB)]
+    DeleteDB --> Success3([Redirect a Index<br/>con Messaggio])
+    
+    Show --> Details[Mostra:<br/>- Info Torneo<br/>- Assegnazioni<br/>- Disponibilità<br/>- Notifiche]
+    Details --> Action2{Azione}
+    Action2 -->|Setup Arbitri| SetupLink[Link a AssignmentController]
+    Action2 -->|Invia Notifiche| NotifLink[Link a NotificationController]
+    Action2 -->|Torna a Lista| List
+    
+    style Start fill:#e1f5ff
+    style Success1 fill:#d4edda
+    style Success2 fill:#d4edda
+    style Success3 fill:#d4edda
+    style ErrorMsg fill:#f8d7da
+    style SaveDB fill:#fff3cd
+    style UpdateDB fill:#fff3cd
+    style DeleteDB fill:#fff3cd
+            </div></div>
+        </section>
+        
+        <section id="disponibilita">
+            <h2>4. Dichiarazione Disponibilità</h2>
+            <div class="info-box">
+                <h4>📌 IMPORTANTE:</h4>
+                <p>"Annulla Disponibilità" <strong>ELIMINA</strong> il record dal database (non salva un flag)</p>
+            </div>
+            <div class="diagram-container"><div class="mermaid">
+flowchart TD
+    Start([Arbitro accede<br/>Dichiarazione Disponibilità]) --> Tournaments[AvailabilityController::tournaments]
+    
+    Tournaments --> LoadTournaments[Carica Tornei Futuri<br/>con Filtri Visibilità]
+    LoadTournaments --> Filter{Applica Filtri<br/>Opzionali}
+    
+    Filter -->|Zona| ZoneF[Filtro Zona]
+    Filter -->|Tipo| TypeF[Filtro Tipo Torneo]
+    Filter -->|Mese| MonthF[Filtro Mese]
+    
+    ZoneF --> CheckAvail[Recupera Disponibilità<br/>già Dichiarate]
+    TypeF --> CheckAvail
+    MonthF --> CheckAvail
+    
+    CheckAvail --> DisplayList[Mostra Lista Tornei<br/>con Badge Stato]
+    DisplayList --> UserAction{Azione Arbitro}
+    
+    UserAction -->|Dichiara SI| DeclareYes[Click Disponibile]
+    UserAction -->|Annulla| DeclareNo[Click Annulla Disponibilità]
+    UserAction -->|Modifica| Modify[Modifica Dichiarazione]
+    
+    DeclareYes --> StoreAvail[store: Salva Disponibilità]
+    DeclareNo --> RemoveAvail[store: Elimina Record]
+    Modify --> StoreUpdate[store: Aggiorna]
+    
+    StoreAvail --> Validate{Validazione}
+    RemoveAvail --> ValidateRemove{Validazione}
+    StoreUpdate --> Validate
+    
+    ValidateRemove -->|❌ Errore| Error4([Errore generico])
+    ValidateRemove -->|✅ OK| DeleteDB[(Elimina da DB)]
+    
+    Validate -->|❌ Deadline Scaduta| Error1([Errore: Termine scaduto])
+    Validate -->|❌ Data Passata| Error2([Errore: Torneo passato])
+    Validate -->|❌ No Autorizzazione| Error3([Errore: Non autorizzato])
+    Validate -->|✅ OK| SaveDB[(Salva/Aggiorna<br/>in availability)]
+    
+    SaveDB --> CheckBatch{Batch Update?}
+    CheckBatch -->|No| SingleSuccess([Messaggio di Successo])
+    CheckBatch -->|Si| BatchProcess[Processa Batch<br/>storeBatch]
+    
+    BatchProcess --> ValidateAll{Valida Tutti}
+    ValidateAll -->|Alcuni Errori| PartialSuccess([Successo Parziale<br/>+ Lista Errori])
+    ValidateAll -->|Tutti OK| SendEmail[Invia Email Notifica]
+    
+    SendEmail --> EmailAdmin[Mail a Admin Zona]
+    EmailAdmin --> EmailReferee[Mail di Conferma<br/>ad Arbitro]
+    EmailReferee --> BatchSuccess([Successo Completo])
+    
+    SingleSuccess --> Refresh[Refresh Lista]
+    PartialSuccess --> Refresh
+    BatchSuccess --> Refresh
+    Refresh --> DisplayList
+    
+    DeleteDB --> Success4([Disponibilità Annullata])
+    Success4 --> Refresh
+    
+    Error1 --> DisplayList
+    Error2 --> DisplayList
+    Error3 --> DisplayList
+    Error4 --> DisplayList
+    
+    style Start fill:#e1f5ff
+    style SaveDB fill:#fff3cd
+    style DeleteDB fill:#fff3cd
+    style SingleSuccess fill:#d4edda
+    style BatchSuccess fill:#d4edda
+    style PartialSuccess fill:#fff3cd
+    style Success4 fill:#d4edda
+    style Error1 fill:#f8d7da
+    style Error2 fill:#f8d7da
+    style Error3 fill:#f8d7da
+    style Error4 fill:#f8d7da
+            </div></div>
+        </section>
+        
+        <section id="assegnazioni">
+            <h2>5. Assegnazione Arbitri</h2>
+            <div class="diagram-container"><div class="mermaid">
+flowchart TD
+    Start([Admin: Setup e Arbitri]) --> SelectTournament[Seleziona Torneo]
+    
+    SelectTournament --> Create[AssignmentController::create]
+    Create --> LoadData[Carica Dati Torneo]
+    
+    LoadData --> GetAssigned[Recupera Arbitri<br/>già Assegnati]
+    GetAssigned --> GetAvailable[Recupera Arbitri<br/>con Disponibilità]
+    GetAvailable --> GetOthers[Recupera Altri Arbitri<br/>della Zona/Livello]
+    
+    GetOthers --> DisplayForm[Mostra Form Setup:<br/>2 Colonne]
+    DisplayForm --> Col1[Colonna 1:<br/>Arbitri Disponibili<br/>Badge VERDE]
+    DisplayForm --> Col2[Colonna 2:<br/>Altri Arbitri<br/>Badge GRIGIO]
+    
+    Col1 --> UserAction{Azione Admin}
+    Col2 --> UserAction
+    
+    UserAction -->|Assegna Singolo| AssignOne[Click Assegna]
+    UserAction -->|Assegna Multipli| AssignBatch[Select + Assegna Selezionati]
+    UserAction -->|Rimuovi| RemoveOne[Click Rimuovi]
+    
+    AssignOne --> Store[store: Salva Assegnazione]
+    AssignBatch --> StoreBatch[storeBatch: Salva Multiple]
+    
+    Store --> ValidateSingle{Validazione<br/>AssignmentValidation<br/>Service}
+    StoreBatch --> ValidateBatch{Validazione Batch}
+    
+    ValidateSingle -->|❌ Conflitto Date| Error1([Errore: Arbitro già<br/>impegnato nelle date])
+    ValidateSingle -->|❌ Duplicato| Error2([Errore: Già assegnato<br/>a questo torneo])
+    ValidateSingle -->|❌ Zona Errata| Error3([Errore: Zona non<br/>compatibile])
+    ValidateSingle -->|✅ OK| SaveDB[(Salva in<br/>assignments)]
+    
+    ValidateBatch -->|Tutti OK| SaveAllDB[(Salva Tutte le<br/>Assegnazioni)]
+    ValidateBatch -->|Alcuni Errori| PartialSave[(Salva Solo Valide)]
+    
+    SaveDB --> UpdateUI[Aggiorna UI:<br/>Sposta in Lista Assegnati]
+    SaveAllDB --> BatchSuccess([Successo: Tutte<br/>le Assegnazioni])
+    PartialSave --> PartialSuccess([Parziale: Lista Errori])
+    
+    UpdateUI --> CheckNotif{Completato<br/>Setup?}
+    BatchSuccess --> CheckNotif
+    PartialSuccess --> CheckNotif
+    
+    CheckNotif -->|No| BackToForm[Continua Assegnazioni]
+    CheckNotif -->|Si| ShowNotifButton[Mostra Button:<br/>Prepara Notifiche]
+    
+    BackToForm --> DisplayForm
+    ShowNotifButton --> NotifAction{Click Button?}
+    NotifAction -->|Si| RedirectNotif([Redirect a<br/>NotificationController])
+    NotifAction -->|No| DisplayForm
+    
+    RemoveOne --> Destroy[destroy: Elimina]
+    Destroy --> CheckSent{Notifica già<br/>Inviata?}
+    CheckSent -->|Si| Error4([Errore: Impossibile<br/>rimuovere dopo invio])
+    CheckSent -->|No| DeleteDB[(Elimina da DB)]
+    DeleteDB --> RemoveUI[Rimuovi da Lista<br/>Assegnati]
+    RemoveUI --> DisplayForm
+    
+    Error1 --> DisplayForm
+    Error2 --> DisplayForm
+    Error3 --> DisplayForm
+    Error4 --> DisplayForm
+    
+    style Start fill:#e1f5ff
+    style SaveDB fill:#fff3cd
+    style SaveAllDB fill:#fff3cd
+    style PartialSave fill:#fff3cd
+    style DeleteDB fill:#fff3cd
+    style BatchSuccess fill:#d4edda
+    style PartialSuccess fill:#fff3cd
+    style Error1 fill:#f8d7da
+    style Error2 fill:#f8d7da
+    style Error3 fill:#f8d7da
+    style Error4 fill:#f8d7da
+    style RedirectNotif fill:#cfe2ff
+            </div></div>
+        </section>
+        
+        <section id="notifiche">
+            <h2>6. Notifiche</h2>
+            <div class="warning-box">
+                <h4>🔴 DUE FLUSSI DIVERSI:</h4>
+                <p><strong>ZONALI:</strong> 2 DOCX allegati (Convocazione + Lettera Circolo)</p>
+                <p><strong>NAZIONALI:</strong> Email testuale Mail::raw SENZA allegati</p>
+            </div>
+            <div class="diagram-container"><div class="mermaid">
+flowchart TD
+    Start([Admin: Prepara Notifiche]) --> PrepForm[NotificationController::<br/>showAssignmentForm]
+    
+    PrepForm --> CheckAssign{Torneo ha<br/>Assegnazioni?}
+    CheckAssign -->|No| Error1([Errore: Completare<br/>Setup Arbitri])
+    CheckAssign -->|Si| CheckTournamentType{Tipo Torneo?}
+    
+    CheckTournamentType -->|Nazionale| NationalFlow[FLUSSO NAZIONALE]
+    CheckTournamentType -->|Zonale| ZonalFlow[FLUSSO ZONALE]
+    
+    %% FLUSSO ZONALE
+    ZonalFlow --> PrepNotif[NotificationPreparation<br/>Service::prepareNotification]
+    
+    PrepNotif --> CreateOrLoad{Notifica<br/>Esistente?}
+    CreateOrLoad -->|No| CreateNew[(Crea nuova<br/>tournament_notifications)]
+    CreateOrLoad -->|Si| LoadExisting[Carica Esistente]
+    
+    CreateNew --> GenDocs[NotificationDocument<br/>Service::generateInitial<br/>Documents]
+    LoadExisting --> CheckDocs{Documenti<br/>Esistono?}
+    
+    CheckDocs -->|No| GenDocs
+    CheckDocs -->|Si| LoadDocs[Carica Documenti Esistenti]
+    
+    GenDocs --> DocGen[DocumentGeneration<br/>Service]
+    DocGen --> GenConvocation[1. Genera Convocazione DOCX<br/>da template lettera_intestata_szrN.docx]
+    GenConvocation --> GenClubLetter[2. Genera Lettera Circolo DOCX<br/>programmaticamente con PHPWord]
+    
+    GenClubLetter --> SaveFiles[Salva in Storage:<br/>/convocazioni/SZRN/generated/]
+    SaveFiles --> UpdateNotif[(Aggiorna documents JSON<br/>in tournament_notifications)]
+    
+    LoadDocs --> DisplayForm[Mostra Form Invio Zonale]
+    UpdateNotif --> DisplayForm
+    
+    DisplayForm --> FormElements[Form Contiene:<br/>- Email Arbitri checkbox<br/>- Email Circolo checkbox<br/>- Email Istituzionali checkbox<br/>- Clauses Selezionabili<br/>- Note<br/>- Preview HTML contenuto]
+    
+    FormElements --> UserAction{Azione Admin}
+    
+    UserAction -->|Rigenera| RegenerateBtn[Click Rigenera Documenti]
+    UserAction -->|Invia| SendBtn[Click Invia Notifiche]
+    UserAction -->|Annulla| CancelBtn[Torna a Lista]
+    
+    RegenerateBtn --> ConfirmRegen{Conferma?}
+    ConfirmRegen -->|Si| GenDocs
+    ConfirmRegen -->|No| DisplayForm
+    
+    SendBtn --> ValidateForm{Validazione}
+    ValidateForm -->|❌ Email Mancanti| Error2([Errore: Email Richieste])
+    ValidateForm -->|❌ Documenti Mancanti| Error3([Errore: Rigenera Documenti])
+    ValidateForm -->|✅ OK| Transaction[NotificationTransaction<br/>Service::sendNotifications]
+    
+    Transaction --> BeginTrans[DB::beginTransaction]
+    BeginTrans --> SendEmails[NotificationService::<br/>sendEmails]
+    
+    SendEmails --> EmailReferees[Mail a Arbitri<br/>con DOCX allegati]
+    SendEmails --> EmailClub[Mail a Circolo<br/>con DOCX allegati]
+    SendEmails --> EmailInstitutional[Mail a Indirizzi Istituzionali<br/>selezionati opzionalmente]
+    
+    EmailReferees --> UpdateStatus[(Aggiorna Status:<br/>sent_at = now<br/>status = 'sent')]
+    EmailClub --> UpdateStatus
+    EmailInstitutional --> UpdateStatus
+    
+    UpdateStatus --> CommitTrans[DB::commit]
+    CommitTrans --> Success([Successo: Notifiche Inviate])
+    
+    %% FLUSSO NAZIONALE
+    NationalFlow --> NatForm[Form Invio Nazionale]
+    NatForm --> NatFormElements[Form Contiene:<br/>- Tipo: CRC Referees / Zone Observers<br/>- TO: Ufficio Campionati checkbox<br/>- CC: Zona checkbox<br/>- CC: Admin Zonali select<br/>- CC: Arbitri Designati select<br/>- Subject<br/>- Message textarea]
+    
+    NatFormElements --> NatAction{Azione}
+    NatAction -->|Invia| SendNatBtn[Click Invia]
+    NatAction -->|Annulla| CancelNatBtn[Annulla]
+    
+    SendNatBtn --> ValidateNat{Validazione}
+    ValidateNat -->|❌ Nessun Destinatario| Error4([Errore: Selezionare<br/>almeno un destinatario])
+    ValidateNat -->|✅ OK| SendNational[sendNationalNotification]
+    
+    SendNational --> PrepareRecipients[Prepara TO e CC<br/>secondo selezioni]
+    PrepareRecipients --> SendRawEmail[Mail::raw - Email Testuale<br/>SENZA allegati]
+    SendRawEmail --> SaveNatNotif[(Salva con notification_type:<br/>'crc_referees' o 'zone_observers'<br/>is_national: true)]
+    SaveNatNotif --> SuccessNat([Successo: Email Nazionale Inviata])
+    
+    Success --> RedirectIndex([Redirect a Index<br/>Notifiche])
+    SuccessNat --> RedirectIndex
+    
+    Error1 --> BackToTournament([Back to Tournament])
+    Error2 --> DisplayForm
+    Error3 --> DisplayForm
+    Error4 --> NatForm
+    CancelBtn --> RedirectIndex
+    CancelNatBtn --> RedirectIndex
+    
+    style Start fill:#e1f5ff
+    style CreateNew fill:#fff3cd
+    style UpdateNotif fill:#fff3cd
+    style UpdateStatus fill:#fff3cd
+    style SaveNatNotif fill:#fff3cd
+    style Success fill:#d4edda
+    style SuccessNat fill:#d4edda
+    style Error1 fill:#f8d7da
+    style Error2 fill:#f8d7da
+    style Error3 fill:#f8d7da
+    style Error4 fill:#f8d7da
+    style RedirectIndex fill:#cfe2ff
+    style NationalFlow fill:#ffe6e6
+    style ZonalFlow fill:#e6f3ff
+            </div></div>
+        </section>
+        
+        <section id="viste">
+            <h2>7. Viste CRUD</h2>
+            <div class="diagram-container"><div class="mermaid">
+flowchart LR
+    subgraph Tornei["🏆 GESTIONE TORNEI"]
+        T1[Index: Lista Tornei<br/>- Filtri multi-campo<br/>- Paginazione<br/>- Badge status]
+        T2[Create: Form Creazione<br/>- Selezione Club<br/>- Tipo Torneo<br/>- Date e Deadline]
+        T3[Edit: Form Modifica<br/>- Pre-compilato<br/>- Validazione]
+        T4[Show: Dettaglio<br/>- Info complete<br/>- Tab Assegnazioni<br/>- Tab Disponibilità<br/>- Link Setup]
+        T5[Calendar: Vista Calendario<br/>- Eventi colorati<br/>- Filtri interattivi]
+        
+        T1 -->|Crea| T2
+        T1 -->|Modifica| T3
+        T1 -->|Dettaglio| T4
+        T1 -->|Vista| T5
+        T4 -->|Setup| T1
+    end
+    
+    subgraph Assegnazioni["👥 SETUP ARBITRI"]
+        A1[Index: Lista Assegnazioni<br/>- Filtro per Torneo<br/>- Filtro per Arbitro<br/>- Sort cognome]
+        A2[Create: Form Setup<br/>- 2 Colonne<br/>- Disponibili vs Altri<br/>- Batch Selection]
+        A3[Show: Dettaglio Assegnazione<br/>- Info Arbitro<br/>- Info Torneo<br/>- Date]
+        
+        A1 -->|Setup| A2
+        A1 -->|Dettaglio| A3
+        A2 -->|Completa| A1
+    end
+    
+    subgraph Notifiche["📧 NOTIFICHE"]
+        N1[Index: Lista Notifiche<br/>- Raggruppate per Torneo<br/>- Status invio<br/>- Preview documenti]
+        N2[Prepare: Form Invio<br/>- Email destinatari<br/>- Clauses selezionabili<br/>- Preview PDF<br/>- Rigenera opzione]
+        N3[Show: Dettaglio Notifica<br/>- Documenti generati<br/>- Email inviate<br/>- Timestamp]
+        
+        N1 -->|Prepara| N2
+        N1 -->|Dettaglio| N3
+        N2 -->|Invia| N1
+    end
+    
+    subgraph Disponibilita["📅 DISPONIBILITÀ ARBITRI"]
+        D1[Index: Lista Disponibilità<br/>- Filtro per Torneo<br/>- Status badge]
+        D2[Tournaments: Tornei Aperti<br/>- Filtri Zona/Tipo<br/>- Badge già dichiarati<br/>- Batch declaration]
+        D3[Calendar: Vista Calendario<br/>- Disponibilità proprie<br/>- Tornei futuri]
+        
+        D1 -->|Dichiara Nuove| D2
+        D1 -->|Vista| D3
+        D2 -->|Salva| D1
+    end
+    
+    subgraph Arbitri["🎓 GESTIONE ARBITRI"]
+        R1[Index: Lista Arbitri<br/>- Filtri Zona/Livello<br/>- Status attivo<br/>- Sort cognome]
+        R2[Create: Form Creazione<br/>- Dati anagrafici<br/>- Livello iniziale<br/>- Zona]
+        R3[Edit: Form Modifica<br/>- Update dati<br/>- Cambio livello<br/>- Gestione carriera]
+        R4[Show: Profilo Completo<br/>- Curriculum<br/>- Storia carriera<br/>- Assegnazioni<br/>- Statistiche]
+        
+        R1 -->|Crea| R2
+        R1 -->|Modifica| R3
+        R1 -->|Profilo| R4
+    end
+    
+    subgraph Circoli["⛳ GESTIONE CIRCOLI"]
+        C1[Index: Lista Circoli<br/>- Filtro per Zona<br/>- Status attivo<br/>- Sort nome]
+        C2[Create: Form Creazione<br/>- Dati circolo<br/>- Zona appartenenza<br/>- Contatti]
+        C3[Edit: Form Modifica<br/>- Update info<br/>- Status]
+        C4[Show: Dettaglio Circolo<br/>- Info complete<br/>- Tornei ospitati<br/>- Storico]
+        
+        C1 -->|Crea| C2
+        C1 -->|Modifica| C3
+        C1 -->|Dettaglio| C4
+    end
+    
+    subgraph Stats["📊 STATISTICHE"]
+        S1[Dashboard: Overview<br/>- Tornei per zona<br/>- Assegnazioni mese<br/>- Arbitri attivi]
+        S2[Reports: Report Dettagliati<br/>- Export CSV/Excel<br/>- Filtri periodo<br/>- Grafici]
+        S3[Monitoring: System Health<br/>- Performance<br/>- Errori log<br/>- Usage metrics]
+        
+        S1 -->|Approfondisci| S2
+        S1 -->|Sistema| S3
+    end
+    
+    T4 -.Setup Arbitri.-> A2
+    A2 -.Prepara Notifiche.-> N2
+    D2 -.Vista Torneo.-> T4
+    R4 -.Assegnazioni.-> A1
+    C4 -.Tornei.-> T1
+    
+    style T1 fill:#e1f5ff
+    style A1 fill:#d4edda
+    style N1 fill:#fff3cd
+    style D1 fill:#f8d7da
+    style R1 fill:#e7e7ff
+    style C1 fill:#d4edda
+    style S1 fill:#fff3cd
+            </div></div>
+        </section>
+        
+        <section>
+            <h2>Note Tecniche</h2>
+            <div class="success-box">
+                <h4>✅ Punti Chiave:</h4>
+                <ul>
+                    <li><strong>NO PDF:</strong> Sistema usa solo DOCX</li>
+                    <li><strong>Template:</strong> lettera_intestata_szrN.docx (zonali)</li>
+                    <li><strong>Lettera Circolo:</strong> Generata con PHPWord</li>
+                    <li><strong>Email Istituzionali:</strong> Rubrica opzionale</li>
+                    <li><strong>Tornei Nazionali:</strong> is_national = true</li>
+                </ul>
+            </div>
+        </section>
+    </main>
+    
+    <footer>
+        <p>© 2026 Federazione Italiana Golf</p>
+        <p><strong>VERSIONE CORRETTA COMPLETA</strong></p>
+    </footer>
+</body>
+</html>
