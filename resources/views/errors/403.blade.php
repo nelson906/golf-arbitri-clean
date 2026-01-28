@@ -14,7 +14,7 @@
 </head>
 <body>
     <div class="error">
-        <h1>404</h1>
+        <h1>403</h1>
         <p>🔍 Non hai le autorizzazioni per visitare la pagina.</p>
         <a href="/" class="btn">🏠 Vai alla Home</a>
         <button onclick="history.back()" class="btn">⬅️ Indietro</button>
