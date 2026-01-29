@@ -27,3 +27,4 @@ _ide_helper_models.php
 .scannerwork/.sonar_lock
 .scannerwork/report-task.txt
 phpstan.neon
+.scannerwork/*

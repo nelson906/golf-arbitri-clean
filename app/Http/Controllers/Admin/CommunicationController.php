@@ -101,8 +101,6 @@ class CommunicationController extends Controller
             $validated['zone_id'] = $this->getUserZoneId($user);
         }
 
-        $communication = Communication::create($validated);
-
         return redirect()
             ->route('admin.communications.index')
             ->with('success', 'Comunicazione creata con successo!');
