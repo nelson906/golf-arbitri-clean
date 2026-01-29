@@ -70,7 +70,7 @@ class ArchiveCareerYear extends Command
                     $this->showUserPreview($userIdInt, $year);
                 } else {
                     $result = $this->careerService->archiveYearForUser($userIdInt, $year);
-                    $this->displayUserResult($userIdInt, $result);
+                    $this->displayUserResult($result);
                 }
             } else {
                 // Archivia per tutti gli arbitri
@@ -148,7 +148,7 @@ class ArchiveCareerYear extends Command
         );
     }
 
-    private function displayUserResult(int $userId, array $result): void
+    private function displayUserResult(array $result): void
     {
         $this->table(
             ['Metrica', 'Valore'],

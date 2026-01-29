@@ -21,7 +21,6 @@ class NotificationController extends Controller
     use HasZoneVisibility;
 
     public function __construct(
-        private NotificationService $notificationService,
         private NotificationPreparationService $preparationService,
         private NotificationDocumentService $documentService,
         private NotificationTransactionService $transactionService
@@ -156,7 +155,7 @@ class NotificationController extends Controller
     /**
      * Genera/rigenera documento
      */
-    public function generateDocument(Request $request, TournamentNotification $notification, $type)
+    public function generateDocument(TournamentNotification $notification, $type)
     {
         try {
             $fileName = $this->documentService->generateDocument($notification, $type);
@@ -192,7 +191,7 @@ class NotificationController extends Controller
     /**
      * Elimina un documento della notifica (AJAX dal modal)
      */
-    public function deleteDocument(Request $request, TournamentNotification $notification, $type)
+    public function deleteDocument(TournamentNotification $notification, $type)
     {
         try {
             $this->documentService->deleteDocument($notification, $type);
@@ -805,34 +804,6 @@ class NotificationController extends Controller
                 ->whereNull('notification_type')
                 ->whereNull('sent_at')
                 ->delete();
-
-            // Salva record della notifica - usa notification_type come chiave
-            // per permettere DUE notifiche separate (CRC + ZONA) per tornei nazionali
-            $notification = TournamentNotification::updateOrCreate(
-                [
-                    'tournament_id' => $tournament->id,
-                    'notification_type' => $notificationType, // 'crc_referees' o 'zone_observers'
-                ],
-                [
-                    'status' => $errorCount === 0 ? 'sent' : 'partial',
-                    'sent_at' => now(),
-                    'sent_by' => auth()->id(),
-                    'referee_list' => $refereeList,
-                    'total_recipients' => $totalRecipients,
-                    'is_prepared' => true,
-                    'metadata' => [
-                        'type' => $notificationType,
-                        'subject' => $validated['subject'],
-                        'message' => $validated['message'],
-                        'to_recipients' => $toRecipients,
-                        'cc_recipients' => $ccRecipients,
-                        'success_count' => $successCount,
-                        'error_count' => $errorCount,
-                        'sent_by' => auth()->user()->name,
-                        'is_national' => true,
-                    ],
-                ]
-            );
 
             $typeLabel = $isCrcNotification ? 'arbitri designati' : 'osservatori';
             $totalSent = $successCount + count($ccRecipients);

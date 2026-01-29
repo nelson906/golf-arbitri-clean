@@ -11,7 +11,6 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $user = auth()->user();
 
         $stats = [
             'total_users' => User::count(),

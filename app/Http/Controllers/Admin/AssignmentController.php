@@ -118,7 +118,7 @@ class AssignmentController extends Controller
                     ->where('is_active', true)
                     ->whereIn('id', $availableRefereeIds)
                     ->whereNotIn('id', $assignedRefereeIds)
-                    ->when($isNationalAdmin, fn ($q) => $q->whereIn('level', ['Nazionale', 'Internazionale']))
+                    ->when($isNationalAdmin, fn($q) => $q->whereIn('level', ['Nazionale', 'Internazionale']))
                     ->orderBy('name')
                     ->get();
 
@@ -129,8 +129,8 @@ class AssignmentController extends Controller
                     ->where('is_active', true)
                     ->whereNotIn('id', $availableRefereeIds)
                     ->whereNotIn('id', $assignedRefereeIds)
-                    ->when($isNationalAdmin, fn ($q) => $q->whereIn('level', ['Nazionale', 'Internazionale']))
-                    ->when($zoneId, fn ($q) => $q->where('zone_id', $zoneId))
+                    ->when($isNationalAdmin, fn($q) => $q->whereIn('level', ['Nazionale', 'Internazionale']))
+                    ->when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
                     ->orderBy('name')
                     ->get();
             }
@@ -290,7 +290,7 @@ class AssignmentController extends Controller
 
             return back()
                 ->withInput()
-                ->with('error', 'Errore durante l\'aggiornamento: '.$e->getMessage());
+                ->with('error', 'Errore durante l\'aggiornamento: ' . $e->getMessage());
         }
     }
 
@@ -322,7 +322,7 @@ class AssignmentController extends Controller
             ]);
 
             return redirect()->back()
-                ->with('error', 'Errore durante la conferma dell\'assegnazione: '.$e->getMessage());
+                ->with('error', 'Errore durante la conferma dell\'assegnazione: ' . $e->getMessage());
         }
     }
 
@@ -356,7 +356,7 @@ class AssignmentController extends Controller
         $possibleReferees = $this->getPossibleReferees($tournament, $assignedRefereeIds);
 
         // Ottieni arbitri nazionali (per tornei nazionali)
-        $nationalReferees = $this->getNationalReferees($tournament, $assignedRefereeIds, $availableReferees, $possibleReferees);
+        $nationalReferees = $this->getNationalReferees($tournament, $assignedRefereeIds, $availableReferees);
 
         return view('admin.assignments.assign-referees', compact(
             'tournament',
@@ -461,14 +461,12 @@ class AssignmentController extends Controller
     /**
      * Ottieni arbitri nazionali/internazionali per tornei nazionali
      */
-    private function getNationalReferees($tournament, $excludeIds = [], $availableReferees = null, $possibleReferees = null)
+    private function getNationalReferees($tournament, $excludeIds = [], $availableReferees = null)
     {
         // CRC admin: mostra sempre arbitri nazionali (che non hanno dato disponibilità)
         // Per admin zonali: mostra solo se il torneo è nazionale
-        if (! $this->isNationalAdmin()) {
-            if (! isset($tournament->tournamentType) || ! $tournament->tournamentType->is_national) {
-                return collect();
-            }
+        if (! $this->isNationalAdmin() && (! isset($tournament->tournamentType) || ! $tournament->tournamentType->is_national)) {
+            return collect();
         }
 
         $query = User::with('zone')
@@ -582,7 +580,7 @@ class AssignmentController extends Controller
             DB::rollback();
 
             return back()
-                ->with('error', 'Errore durante l\'assegnazione: '.$e->getMessage());
+                ->with('error', 'Errore durante l\'assegnazione: ' . $e->getMessage());
         }
     }
 
@@ -616,6 +614,9 @@ class AssignmentController extends Controller
 
     /**
      * Helper: controlla conflitti di date (placeholder)
+     *
+     * TODO: Implementare logica di controllo conflitti quando necessario
+     * La logica di validazione conflitti è attualmente gestita da ValidationService
      */
     private function checkDateConflicts($referees, $tournament)
     {
@@ -653,7 +654,7 @@ class AssignmentController extends Controller
                 ->route('admin.tournaments.show', $tournamentId)
                 ->with('success', "Assegnazione di {$refereeName} rimossa dal torneo {$tournamentName}");
         } catch (\Exception $e) {
-            return back()->with('error', 'Errore durante la rimozione: '.$e->getMessage());
+            return back()->with('error', 'Errore durante la rimozione: ' . $e->getMessage());
         }
     }
 
@@ -661,7 +662,7 @@ class AssignmentController extends Controller
      * Dashboard principale della validazione
      * GET /admin/assignment-validation
      */
-    public function validation(Request $request): View
+    public function validation(): View
     {
         $user = auth()->user();
         $zoneId = $this->getZoneIdForUser($user);
@@ -672,16 +673,16 @@ class AssignmentController extends Controller
         // Ottieni statistiche aggiuntive
         $stats = [
             'total_assignments' => Assignment::when($zoneId, function ($q) use ($zoneId) {
-                $q->whereHas('tournament', fn ($tq) => $tq->where('zone_id', $zoneId));
+                $q->whereHas('tournament', fn($tq) => $tq->where('zone_id', $zoneId));
             })->count(),
 
             'active_tournaments' => Tournament::whereIn('status', ['open', 'closed'])
-                ->when($zoneId, fn ($q) => $q->where('zone_id', $zoneId))
+                ->when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
                 ->count(),
 
             'active_referees' => User::where('user_type', 'referee')
                 ->where('is_active', true)
-                ->when($zoneId, fn ($q) => $q->where('zone_id', $zoneId))
+                ->when($zoneId, fn($q) => $q->where('zone_id', $zoneId))
                 ->count(),
         ];
 
@@ -701,7 +702,7 @@ class AssignmentController extends Controller
      * Mostra tutti i conflitti di date
      * GET /admin/assignment-validation/conflicts
      */
-    public function validationConflicts(Request $request): View
+    public function validationConflicts(): View
     {
         $user = auth()->user();
         $zoneId = $this->getZoneIdForUser($user);
@@ -732,7 +733,7 @@ class AssignmentController extends Controller
      * Mostra tornei con requisiti mancanti
      * GET /admin/assignment-validation/missing-requirements
      */
-    public function missingRequirements(Request $request): View
+    public function missingRequirements(): View
     {
         $user = auth()->user();
         $zoneId = $this->getZoneIdForUser($user);
@@ -854,7 +855,7 @@ class AssignmentController extends Controller
         } catch (\Exception $e) {
             return redirect()
                 ->route('admin.assignment-validation.conflicts')
-                ->with('error', 'Errore durante la risoluzione automatica: '.$e->getMessage());
+                ->with('error', 'Errore durante la risoluzione automatica: ' . $e->getMessage());
         }
     }
 

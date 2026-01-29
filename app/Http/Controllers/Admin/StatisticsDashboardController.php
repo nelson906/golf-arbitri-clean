@@ -306,7 +306,7 @@ class StatisticsDashboardController extends Controller
     /**
      * API endpoint per statistiche
      */
-    public function apiStats(Request $request, $type)
+    public function apiStats($type)
     {
         $user = auth()->user();
 
