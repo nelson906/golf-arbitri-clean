@@ -765,6 +765,9 @@ class NotificationController extends Controller
                 }
             }
 
+            // Salva la lista completa di CC PRIMA di eventuali modifiche
+            $originalCcRecipients = $ccRecipients;
+
             // Se non ci sono TO ma solo CC, usa il primo CC come TO
             if (empty($toRecipients) && ! empty($ccRecipients)) {
                 $firstCc = array_shift($ccRecipients);
@@ -787,16 +790,16 @@ class NotificationController extends Controller
                 }
             }
 
-            // Prepara lista nomi destinatari per visualizzazione
+            // Prepara lista nomi destinatari per visualizzazione (usa la lista CC originale)
             $allRecipientNames = [];
             foreach ($toRecipients as $r) {
                 $allRecipientNames[] = $r['name'];
             }
-            foreach ($ccRecipients as $r) {
+            foreach ($originalCcRecipients as $r) {
                 $allRecipientNames[] = $r['name'];
             }
             $refereeList = implode(', ', $allRecipientNames);
-            $totalRecipients = count($toRecipients) + count($ccRecipients);
+            $totalRecipients = count($toRecipients) + count($originalCcRecipients);
 
             // Elimina la notifica "bozza" (notification_type = null) per evitare duplicati
             // Questo record viene creato automaticamente da prepareNotification() ma non serve per gare nazionali

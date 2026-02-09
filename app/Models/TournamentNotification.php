@@ -104,8 +104,9 @@ class TournamentNotification extends Model
     {
         return $this->hasMany(Notification::class, 'tournament_id', 'tournament_id')
             ->when($this->sent_at, function ($query) {
-                $query->where('created_at', '>=', $this->sent_at->subMinutes(5))
-                    ->where('created_at', '<=', $this->sent_at->addMinutes(5));
+                $sentAt = $this->sent_at->copy();
+                $query->where('created_at', '>=', $sentAt->subMinutes(5))
+                    ->where('created_at', '<=', $sentAt->addMinutes(10));
             });
     }
 
