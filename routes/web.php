@@ -115,7 +115,7 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
 | Ex-referee routes migrati a user per unificazione
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'referee_or_admin'])->group(function () {
     Route::prefix('user')->name('user.')->group(function () {
         // Redirect root user a availability
         Route::get('/', fn (): RedirectResponse => redirect()->route('user.availability.index'));

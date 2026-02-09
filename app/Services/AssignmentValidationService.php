@@ -20,12 +20,17 @@ class AssignmentValidationService
      */
     public function getValidationSummary(?int $zoneId = null): array
     {
+        $conflicts = $this->getConflictsSummary($zoneId);
+        $missingRequirements = $this->getMissingRequirementsSummary($zoneId);
+        $overassigned = $this->getOverassignedCount($zoneId);
+        $underassigned = $this->getUnderassignedCount($zoneId);
+
         return [
-            'conflicts' => $this->getConflictsSummary($zoneId),
-            'missing_requirements' => $this->getMissingRequirementsSummary($zoneId),
-            'overassigned' => $this->getOverassignedCount($zoneId),
-            'underassigned' => $this->getUnderassignedCount($zoneId),
-            'total_issues' => $this->getTotalIssuesCount($zoneId),
+            'conflicts' => $conflicts,
+            'missing_requirements' => $missingRequirements,
+            'overassigned' => $overassigned,
+            'underassigned' => $underassigned,
+            'total_issues' => $conflicts + $missingRequirements + $overassigned + $underassigned,
         ];
     }
 
@@ -281,33 +286,42 @@ class AssignmentValidationService
         // 1. Risolvi conflitti semplici sostituendo arbitri
         $conflicts = $this->detectDateConflicts($zoneId);
 
-        foreach ($conflicts as $conflict) {
-            if ($conflict['severity'] === 'high') {
-                $alternatives = $this->findAlternativeReferees(
-                    $conflict['assignment2']->tournament,
-                    $conflict['referee']->id
-                );
+        DB::beginTransaction();
 
-                if ($alternatives->count() > 0) {
-                    try {
-                        $conflict['assignment2']->update([
-                            'user_id' => $alternatives->first()->id,
-                        ]);
-                        $fixed[] = [
-                            'type' => 'conflict_resolved',
-                            'tournament' => $conflict['assignment2']->tournament->name,
-                            'old_referee' => $conflict['referee']->name,
-                            'new_referee' => $alternatives->first()->name,
-                        ];
-                    } catch (\Exception $e) {
-                        $failed[] = [
-                            'type' => 'conflict_resolution_failed',
-                            'tournament' => $conflict['assignment2']->tournament->name,
-                            'error' => $e->getMessage(),
-                        ];
+        try {
+            foreach ($conflicts as $conflict) {
+                if ($conflict['severity'] === 'high') {
+                    $alternatives = $this->findAlternativeReferees(
+                        $conflict['assignment2']->tournament,
+                        $conflict['referee']->id
+                    );
+
+                    if ($alternatives->count() > 0) {
+                        try {
+                            $conflict['assignment2']->update([
+                                'user_id' => $alternatives->first()->id,
+                            ]);
+                            $fixed[] = [
+                                'type' => 'conflict_resolved',
+                                'tournament' => $conflict['assignment2']->tournament->name,
+                                'old_referee' => $conflict['referee']->name,
+                                'new_referee' => $alternatives->first()->name,
+                            ];
+                        } catch (\Exception $e) {
+                            $failed[] = [
+                                'type' => 'conflict_resolution_failed',
+                                'tournament' => $conflict['assignment2']->tournament->name,
+                                'error' => $e->getMessage(),
+                            ];
+                        }
                     }
                 }
             }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
         }
 
         return [

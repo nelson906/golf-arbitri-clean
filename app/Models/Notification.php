@@ -298,11 +298,11 @@ class Notification extends Model
     }
 
     /**
-     * Get tournament information through assignment
+     * Get tournament: prefer direct relationship, fallback to assignment
      */
-    public function getTournamentAttribute()
+    public function getResolvedTournamentAttribute()
     {
-        return $this->assignment?->tournament;
+        return $this->getRelationValue('tournament') ?? $this->assignment?->tournament;
     }
 
     /**

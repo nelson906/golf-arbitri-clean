@@ -157,13 +157,10 @@ class RefereeOrAdmin
                     return $resource->getAttribute('id') !== $user->id;
 
                 case 'availability':
-                    return $resource->getAttribute('referee_id') !== $user->id;
+                    return $resource->getAttribute('user_id') !== $user->id;
 
                 case 'assignment':
-                    return $resource->getAttribute('referee_id') !== $user->id;
-
-                case 'application':
-                    return $resource->getAttribute('referee_id') !== $user->id;
+                    return $resource->getAttribute('user_id') !== $user->id;
 
                 default:
                     return false;

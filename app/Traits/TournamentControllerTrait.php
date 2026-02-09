@@ -80,9 +80,13 @@ trait TournamentControllerTrait
     protected function addDeadlineInfo($tournaments): void
     {
         $tournaments->getCollection()->transform(function ($tournament) {
-            $now = Carbon::now();
-            $deadline = Carbon::parse($tournament->availability_deadline);
-            $tournament->days_until_deadline = (int) $now->diffInDays($deadline, false);
+            if ($tournament->availability_deadline) {
+                $now = Carbon::now();
+                $deadline = Carbon::parse($tournament->availability_deadline);
+                $tournament->days_until_deadline = (int) $now->diffInDays($deadline, false);
+            } else {
+                $tournament->days_until_deadline = null;
+            }
 
             return $tournament;
         });
