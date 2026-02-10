@@ -7,7 +7,6 @@ use App\Models\Tournament;
 use App\Models\TournamentType;
 use App\Models\User;
 use App\Models\Zone;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 /**

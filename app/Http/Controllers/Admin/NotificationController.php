@@ -7,7 +7,6 @@ use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Services\NotificationDocumentService;
 use App\Services\NotificationPreparationService;
-use App\Services\NotificationService;
 use App\Services\NotificationTransactionService;
 use App\Traits\HasZoneVisibility;
 use Illuminate\Http\Request;
