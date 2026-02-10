@@ -153,14 +153,14 @@ class TournamentController extends Controller
                 'total_assignments' => $tournament->assignments()->count(),
                 'total_availabilities' => $tournament->availabilities()->count(),
                 'required_referees' => $tournament->required_referees ?? 1,
-                'max_referees' => $tournament->max_referees ?? 4,
+                'max_referees' => $tournament->tournamentType?->max_referees ?? 4,
                 'days_until_deadline' => $tournament->availability_deadline
                     ? Carbon::parse($tournament->availability_deadline)->diffInDays(now(), false)
                     : null,
-                'is_editable' => method_exists($tournament, 'isEditable') ? $tournament->isEditable() : true,
+                'is_editable' => $tournament->isEditable(),
             ];
 
-            $assignedReferees = $tournament->assignedReferees;
+            $assignedReferees = $tournament->assignments()->with('user')->get();
             $availableReferees = $tournament->availabilities()->with('user')->get();
         }
 

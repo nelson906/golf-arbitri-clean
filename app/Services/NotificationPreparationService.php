@@ -20,12 +20,14 @@ class NotificationPreparationService
      */
     public function prepareNotification(Tournament $tournament): TournamentNotification
     {
+        $total = $tournament->assignments->count() + 1;
+
         return TournamentNotification::firstOrCreate(
             ['tournament_id' => $tournament->id],
             [
                 'status' => 'pending',
                 'referee_list' => $tournament->assignments->pluck('user.name')->implode(', '),
-                'total_recipients' => $tournament->assignments->count() + 1,
+                'details' => ['total_recipients' => $total],
                 'sent_by' => auth()->id(),
             ]
         );
@@ -120,10 +122,11 @@ class NotificationPreparationService
         $total = $tournament->assignments->count() + 1; // arbitri + circolo
 
         // Aggiorna solo se necessario
-        if (empty($notification->referee_list) || $notification->total_recipients != $total) {
+        $currentDetails = $notification->details ?? [];
+        if (empty($notification->referee_list) || ($currentDetails['total_recipients'] ?? 0) != $total) {
             $notification->update([
                 'referee_list' => $refereeNames,
-                'total_recipients' => $total,
+                'details' => array_merge($currentDetails, ['total_recipients' => $total]),
             ]);
         }
     }

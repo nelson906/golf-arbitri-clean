@@ -98,15 +98,8 @@ class UserController extends Controller
             'super_admin' => 'Super Admin',
         ];
 
-        // Array dei livelli (se utilizzati)
-        $levels = [
-            'AR' => 'Archivio',
-            'A' => 'Aspirante',
-            '1' => 'Primo Livello',
-            'R' => 'Regionale',
-            'N' => 'Nazionale',
-            'I' => 'Internazionale',
-        ];
+        // Array dei livelli (chiavi = valori DB enum)
+        $levels = User::LEVELS;
 
         return view('admin.users.index', compact(
             'users',

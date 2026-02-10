@@ -111,13 +111,13 @@ class Notification extends Model
     public const STATUS_CANCELLED = 'cancelled';
 
     /**
-     * Notification priorities
+     * Notification priorities (integer values matching DB column)
      */
-    public const PRIORITY_LOW = 'low';
+    public const PRIORITY_LOW = 0;
 
-    public const PRIORITY_NORMAL = 'normal';
+    public const PRIORITY_NORMAL = 1;
 
-    public const PRIORITY_HIGH = 'high';
+    public const PRIORITY_HIGH = 2;
 
     /**
      * Recipient types

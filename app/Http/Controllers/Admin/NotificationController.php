@@ -808,8 +808,27 @@ class NotificationController extends Controller
                 ->whereNull('sent_at')
                 ->delete();
 
+            // Salva il record della notifica nazionale inviata
+            TournamentNotification::updateOrCreate(
+                [
+                    'tournament_id' => $tournament->id,
+                    'notification_type' => $notificationType,
+                ],
+                [
+                    'status' => $errorCount === 0 ? 'sent' : 'partial',
+                    'sent_at' => now(),
+                    'sent_by' => auth()->id(),
+                    'referee_list' => $refereeList,
+                    'details' => [
+                        'sent' => $successCount,
+                        'errors' => $errorCount,
+                        'total_recipients' => $totalRecipients,
+                    ],
+                ]
+            );
+
             $typeLabel = $isCrcNotification ? 'arbitri designati' : 'osservatori';
-            $totalSent = $successCount + count($ccRecipients);
+            $totalSent = $successCount + count($originalCcRecipients);
 
             if ($errorCount === 0) {
                 return redirect()->route('admin.tournament-notifications.index')
