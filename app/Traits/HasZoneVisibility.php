@@ -101,7 +101,7 @@ trait HasZoneVisibility
 
         // Admin zonale vede solo la propria zona
         if ($user->user_type === 'admin') {
-            return $query->where('zone_id', $user->zone_id);
+            return $query->whereHas('club', fn ($q) => $q->where('zone_id', $user->zone_id));
         }
 
         // Referee: dipende dal livello
@@ -109,20 +109,20 @@ trait HasZoneVisibility
             if ($this->isNationalReferee($user)) {
                 // Nazionale/Internazionale: propria zona + tornei nazionali
                 return $query->where(function ($q) use ($user) {
-                    $q->where('zone_id', $user->zone_id)
+                    $q->whereHas('club', fn ($sub) => $sub->where('zone_id', $user->zone_id))
                         ->orWhereHas('tournamentType', function ($sub) {
                             $sub->where('is_national', true);
                         });
                 });
             } else {
                 // 1_livello/Regionale: solo propria zona
-                return $query->where('zone_id', $user->zone_id);
+                return $query->whereHas('club', fn ($q) => $q->where('zone_id', $user->zone_id));
             }
         }
 
         // Fallback: filtra per zona se presente
         if ($user->zone_id) {
-            return $query->where('zone_id', $user->zone_id);
+            return $query->whereHas('club', fn ($q) => $q->where('zone_id', $user->zone_id));
         }
 
         return $query;
@@ -160,14 +160,14 @@ trait HasZoneVisibility
         // Admin zonale vede solo la propria zona
         if ($user->user_type === 'admin') {
             return $query->whereHas($tournamentRelation, function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
+                $q->whereHas('club', fn ($sub) => $sub->where('zone_id', $user->zone_id));
             });
         }
 
         // Referee con accesso nazionale
         if ($user->user_type === 'referee' && $this->isNationalReferee($user)) {
             return $query->whereHas($tournamentRelation, function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id)
+                $q->whereHas('club', fn ($sub) => $sub->where('zone_id', $user->zone_id))
                     ->orWhereHas('tournamentType', function ($sub) {
                         $sub->where('is_national', true);
                     });
@@ -177,7 +177,7 @@ trait HasZoneVisibility
         // Default: filtra per zona
         if ($user->zone_id) {
             return $query->whereHas($tournamentRelation, function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
+                $q->whereHas('club', fn ($sub) => $sub->where('zone_id', $user->zone_id));
             });
         }
 

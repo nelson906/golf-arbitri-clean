@@ -198,8 +198,8 @@ class TournamentController extends Controller
     {
         $user = auth()->user();
 
-        // Check permissions
-        if ($user->user_type === 'admin' && $user->zone_id !== $tournament->zone_id) {
+        // Check permissions using trait method (consistent with edit/update)
+        if (! $this->canAccessTournament($tournament, $user)) {
             abort(403, 'Non hai i permessi per visualizzare questo torneo.');
         }
 

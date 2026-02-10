@@ -16,10 +16,15 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
     use RefreshDatabase;
 
     protected User $referee;
+
     protected User $admin;
+
     protected Zone $zone;
+
     protected Tournament $tournament;
+
     protected CareerHistoryService $careerHistoryService;
+
     protected RefereeCareerService $refereeCareerService;
 
     protected function setUp(): void
@@ -28,8 +33,8 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
 
         // Setup zone - crea una zona unica per ogni test con timestamp
         $this->zone = Zone::create([
-            'name' => 'Test Zone ' . now()->timestamp,
-            'code' => 'TEST' . now()->timestamp,
+            'name' => 'Test Zone '.now()->timestamp,
+            'code' => 'TEST'.now()->timestamp,
             'is_national' => false,
         ]);
 
@@ -40,7 +45,7 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
             'zone_id' => $this->zone->id,
             'first_name' => 'Mario',
             'last_name' => 'Rossi',
-            'referee_code' => 'TEST' . now()->timestamp,
+            'referee_code' => 'TEST'.now()->timestamp,
         ]);
 
         // Setup admin
@@ -50,7 +55,7 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
 
         // Setup tournament
         $this->tournament = Tournament::factory()->create([
-            'name' => "Torneo Test " . now()->timestamp,
+            'name' => 'Torneo Test '.now()->timestamp,
             'zone_id' => $this->zone->id,
             'start_date' => '2025-04-04',
             'end_date' => '2025-04-08', // 5 giorni

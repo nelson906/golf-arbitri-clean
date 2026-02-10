@@ -2,10 +2,10 @@
 
 /**
  * Laravel View Previewer Routes
- * 
+ *
  * Copy this file to: routes/dev/view-routes.php
  * Then include in web.php:
- * 
+ *
  * if (app()->environment(['local', 'staging'])) {
  *     require __DIR__.'/dev/view-routes.php';
  * }
@@ -20,8 +20,8 @@ require_once __DIR__.'/view-helpers.php';
 // ============================================
 
 Route::get('/dev/view-preview/{view?}', function ($view = null) {
-    
-    if (!$view) {
+
+    if (! $view) {
         $viewsPath = resource_path('views');
         $allViews = [];
         $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($viewsPath));
@@ -48,13 +48,15 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
 
     $viewName = str_replace('/', '.', $view);
 
-    if (!view()->exists($viewName)) {
+    if (! view()->exists($viewName)) {
         abort(404, "View '$viewName' non trovata");
     }
 
     DebugCollector::clear();
 
-    set_error_handler(function () { return true; });
+    set_error_handler(function () {
+        return true;
+    });
     error_reporting(0);
 
     try {
@@ -62,7 +64,7 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
 
         $data = ['errors' => new \Illuminate\Support\ViewErrorBag];
         foreach ($allVariables as $varName) {
-            if (!isset($data[$varName])) {
+            if (! isset($data[$varName])) {
                 $data[$varName] = generateValue($varName);
             }
         }
@@ -86,7 +88,7 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
         error_reporting(E_ALL);
         \Illuminate\Support\Facades\Auth::logout();
 
-        if (!empty(trim($renderedView))) {
+        if (! empty(trim($renderedView))) {
             if (DebugCollector::hasIssues()) {
                 $renderedView .= view('dev.debug-panel', [
                     'issues' => DebugCollector::getIssues(),
@@ -100,7 +102,7 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
         // Source analysis
         $viewFile = resource_path('views/'.str_replace('.', '/', $viewName).'.blade.php');
 
-        if (!file_exists($viewFile)) {
+        if (! file_exists($viewFile)) {
             return response("<div style='padding:40px;'>View file non trovato</div>");
         }
 
@@ -198,7 +200,8 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
         error_reporting(E_ALL);
         try {
             \Illuminate\Support\Facades\Auth::logout();
-        } catch (\Throwable $e2) {}
+        } catch (\Throwable $e2) {
+        }
 
         return response()->view('dev.view-error', [
             'view' => $viewName,
@@ -224,12 +227,12 @@ Route::get('/dev/view-test-all', function () {
     $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($viewsPath));
 
     foreach ($iterator as $file) {
-        if (!$file->isFile() || $file->getExtension() !== 'php') {
+        if (! $file->isFile() || $file->getExtension() !== 'php') {
             continue;
         }
 
         $relativePath = str_replace($viewsPath.'/', '', $file->getPathname());
-        if (!str_contains($relativePath, '.blade.php')) {
+        if (! str_contains($relativePath, '.blade.php')) {
             continue;
         }
 
@@ -249,7 +252,7 @@ Route::get('/dev/view-test-all', function () {
             $allVars = @analyzeViewRecursive($viewName);
 
             foreach ($allVars as $var) {
-                if (!isset($data[$var])) {
+                if (! isset($data[$var])) {
                     $data[$var] = generateValue($var);
                 }
             }
@@ -269,7 +272,8 @@ Route::get('/dev/view-test-all', function () {
 
             try {
                 @\Illuminate\Support\Facades\Auth::logout();
-            } catch (\Throwable $e2) {}
+            } catch (\Throwable $e2) {
+            }
         }
 
         error_reporting(E_ALL);
@@ -297,9 +301,9 @@ Route::get('/dev/view-test-all', function () {
 
 Route::get('/dev/view-orphaned', function () {
     set_time_limit(300);
-    
+
     $results = detectOrphanedViews();
-    
+
     return view('dev.view-orphaned', [
         'orphaned' => $results['orphaned'],
         'used' => $results['used'],
@@ -315,11 +319,11 @@ Route::get('/dev/view-orphaned', function () {
 
 Route::get('/dev/view-performance/{view?}', function ($view = null) {
     set_time_limit(300);
-    
-    if (!$view) {
+
+    if (! $view) {
         // Benchmark all views
         $results = benchmarkAllViews(5);
-        
+
         return view('dev.view-performance-all', [
             'results' => $results['results'],
             'total' => $results['total_views'],
@@ -328,25 +332,25 @@ Route::get('/dev/view-performance/{view?}', function ($view = null) {
             'summary' => $results['summary'],
         ]);
     }
-    
+
     // Benchmark single view
     $viewName = str_replace('/', '.', $view);
-    
-    if (!view()->exists($viewName)) {
+
+    if (! view()->exists($viewName)) {
         abort(404, "View '$viewName' not found");
     }
-    
+
     // Generate mock data
     $variables = analyzeViewRecursive($viewName);
     $data = ['errors' => new \Illuminate\Support\ViewErrorBag];
     foreach ($variables as $varName) {
-        if (!isset($data[$varName])) {
+        if (! isset($data[$varName])) {
             $data[$varName] = generateValue($varName);
         }
     }
-    
+
     $result = measureViewPerformance($viewName, $data, 20);
-    
+
     return view('dev.view-performance-single', [
         'result' => $result,
     ]);

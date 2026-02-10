@@ -7,7 +7,6 @@ use App\Models\Tournament;
 use App\Models\TournamentType;
 use App\Models\User;
 use App\Models\Zone;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -152,12 +151,12 @@ class CalendarDataService
             'tournament_type' => $tournament->tournamentType->name ?? 'N/A',
             'status' => $tournament->status,
             'tournament_url' => route('admin.tournaments.show', $tournament),
-            'deadline' => Carbon::parse($tournament->availability_deadline)?->format('d/m/Y') ?? 'N/A',
+            'deadline' => $tournament->availability_deadline ? $tournament->availability_deadline->format('d/m/Y') : 'N/A',
             'type_id' => $tournament->tournament_type_id,
-            'availabilities_count' => $tournament->availabilities()->count(),
-            'assignments_count' => $tournament->assignments()->count(),
+            'availabilities_count' => $tournament->availabilities_count ?? $tournament->availabilities->count(),
+            'assignments_count' => $tournament->assignments_count ?? $tournament->assignments->count(),
             'required_referees' => $tournament->required_referees ?? 1,
-            'max_referees' => $tournament->max_referees ?? 4,
+            'max_referees' => $tournament->tournamentType?->max_referees ?? 4,
         ];
     }
 
@@ -194,8 +193,8 @@ class CalendarDataService
 
         if ($isAdmin) {
             $props['tournament_url'] = route('admin.tournaments.show', $tournament);
-            $props['availabilities_count'] = $tournament->availabilities()->count();
-            $props['assignments_count'] = $tournament->assignments()->count();
+            $props['availabilities_count'] = $tournament->availabilities_count ?? $tournament->availabilities->count();
+            $props['assignments_count'] = $tournament->assignments_count ?? $tournament->assignments->count();
         } else {
             $props['is_available'] = $isAvailable;
             $props['is_assigned'] = $isAssigned;
