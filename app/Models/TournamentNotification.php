@@ -66,11 +66,19 @@ class TournamentNotification extends Model
         'content',       // JSON: { subject, message }
         'documents',     // JSON: { convocation: filename, club_letter: filename }
         'metadata',      // JSON: { error, retry_count, etc }
-        'status',        // pending, sent, failed
+        'details',       // JSON: statistiche invio
+        'attachments',   // JSON: allegati
+        'status',        // pending, sent, partial, failed
         'sent_by',
         'sent_at',
         'is_prepared',
         'referee_list',
+        'workflow_status',
+        'last_step_completed',
+        'workflow_data',
+        'prepared_at',
+        'configured_at',
+        'generated_at',
     ];
 
     protected $casts = [
@@ -78,7 +86,13 @@ class TournamentNotification extends Model
         'content' => 'array',
         'documents' => 'array',
         'metadata' => 'array',
+        'details' => 'array',
+        'attachments' => 'array',
+        'workflow_data' => 'array',
         'sent_at' => 'datetime',
+        'prepared_at' => 'datetime',
+        'configured_at' => 'datetime',
+        'generated_at' => 'datetime',
     ];
 
     /**
@@ -104,8 +118,9 @@ class TournamentNotification extends Model
     {
         return $this->hasMany(Notification::class, 'tournament_id', 'tournament_id')
             ->when($this->sent_at, function ($query) {
-                $query->where('created_at', '>=', $this->sent_at->subMinutes(5))
-                    ->where('created_at', '<=', $this->sent_at->addMinutes(5));
+                $sentAt = $this->sent_at->copy();
+                $query->where('created_at', '>=', $sentAt->subMinutes(5))
+                    ->where('created_at', '<=', $sentAt->addMinutes(10));
             });
     }
 
@@ -138,7 +153,7 @@ class TournamentNotification extends Model
      */
     public function scopeForZone($query, $zoneId)
     {
-        return $query->whereHas('tournament', function ($q) use ($zoneId) {
+        return $query->whereHas('tournament.club', function ($q) use ($zoneId) {
             $q->where('zone_id', $zoneId);
         });
     }
@@ -180,7 +195,7 @@ class TournamentNotification extends Model
                 'referees_failed' => 0,
                 'institutional_sent' => 0,
                 'institutional_failed' => 0,
-                'total_sent' => $details['sent'] ?? $this->total_recipients ?? 0,
+                'total_sent' => $details['sent'] ?? $details['total_recipients'] ?? 0,
                 'total_failed' => 0,
                 'success_rate' => 100.0,
             ];
@@ -194,7 +209,7 @@ class TournamentNotification extends Model
             'referees_failed' => $details['referees']['failed'] ?? 0,
             'institutional_sent' => $details['institutional']['sent'] ?? 0,
             'institutional_failed' => $details['institutional']['failed'] ?? 0,
-            'total_sent' => $this->total_recipients ?? 0,
+            'total_sent' => $details['total_recipients'] ?? 0,
             'total_failed' => ($details['club']['failed'] ?? 0) +
                 ($details['referees']['failed'] ?? 0) +
                 ($details['institutional']['failed'] ?? 0),
@@ -274,8 +289,11 @@ class TournamentNotification extends Model
      */
     public function hasErrors(): bool
     {
-        return ! empty($this->error_message) ||
-            ($this->details['failed'] ?? 0) > 0;
+        $metadata = $this->metadata ?? [];
+        $details = $this->details ?? [];
+
+        return ! empty($metadata['last_error']) ||
+            ($details['failed'] ?? $details['errors'] ?? 0) > 0;
     }
 
     /**
@@ -283,11 +301,11 @@ class TournamentNotification extends Model
      */
     private function calculateSuccessRate(): float
     {
-        $stats = $this->details ?? [];
-        $totalSent = $this->total_recipients ?? 0;
-        $totalFailed = ($stats['club']['failed'] ?? 0) +
-            ($stats['referees']['failed'] ?? 0) +
-            ($stats['institutional']['failed'] ?? 0);
+        $details = $this->details ?? [];
+        $totalSent = $details['total_recipients'] ?? 0;
+        $totalFailed = ($details['club']['failed'] ?? 0) +
+            ($details['referees']['failed'] ?? 0) +
+            ($details['institutional']['failed'] ?? 0);
 
         if ($totalSent == 0) {
             return 0;
@@ -320,7 +338,7 @@ class TournamentNotification extends Model
     {
         return [
             'total_tournaments_notified' => self::count(),
-            'total_recipients_reached' => self::sum('total_recipients'),
+            'total_recipients_reached' => self::where('status', 'sent')->count(),
             'success_rate' => self::calculateGlobalSuccessRate(),
             'this_month' => self::whereMonth('sent_at', now()->month)->count(),
             'this_week' => self::whereBetween('sent_at', [
@@ -336,24 +354,10 @@ class TournamentNotification extends Model
      */
     private static function calculateGlobalSuccessRate(): float
     {
-        $total = self::sum('total_recipients');
-        $sent = self::where('status', 'sent')->sum('total_recipients');
+        $total = self::count();
+        $sent = self::where('status', 'sent')->count();
 
         return $total > 0 ? round(($sent / $total) * 100, 1) : 0;
-    }
-
-    public function getAttachmentsAttribute($value)
-    {
-        if (is_string($value)) {
-            return json_decode($value, true) ?? [];
-        }
-
-        return $value ?? [];
-    }
-
-    public function setAttachmentsAttribute($value)
-    {
-        $this->attributes['attachments'] = is_array($value) ? json_encode($value) : $value;
     }
 
     /**

@@ -14,7 +14,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Schema;
 use Laravel\Sanctum\HasApiTokens;
 
 /**
@@ -68,8 +67,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'club_member', // nuovo campo
         'city',
         'phone',
-        'active',
-        'is_active',  // alcuni DB usano questo
+        'is_active',
         'gender',
         'notes',
     ];
@@ -91,15 +89,17 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * Referee levels
      */
-    public const LEVEL_ASPIRANTE = 'aspirante';
+    public const LEVEL_ASPIRANTE = 'Aspirante';
 
-    public const LEVEL_PRIMO_LIVELLO = 'primo_livello';
+    public const LEVEL_PRIMO_LIVELLO = '1_livello';
 
-    public const LEVEL_REGIONALE = 'regionale';
+    public const LEVEL_REGIONALE = 'Regionale';
 
-    public const LEVEL_NAZIONALE = 'nazionale';
+    public const LEVEL_NAZIONALE = 'Nazionale';
 
-    public const LEVEL_INTERNAZIONALE = 'internazionale';
+    public const LEVEL_INTERNAZIONALE = 'Internazionale';
+
+    public const LEVEL_ARCHIVIO = 'Archivio';
 
     public const LEVELS = [
         self::LEVEL_ASPIRANTE => 'Aspirante',
@@ -107,6 +107,7 @@ class User extends Authenticatable implements MustVerifyEmail
         self::LEVEL_REGIONALE => 'Regionale',
         self::LEVEL_NAZIONALE => 'Nazionale',
         self::LEVEL_INTERNAZIONALE => 'Internazionale',
+        self::LEVEL_ARCHIVIO => 'Archivio',
     ];
 
     /**
@@ -173,13 +174,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function scopeActive($query)
     {
-        if (Schema::hasColumn($this->getTable(), 'is_active')) {
-            return $query->where('is_active', true);
-        } elseif (Schema::hasColumn($this->getTable(), 'active')) {
-            return $query->where('active', true);
-        }
-
-        return $query;
+        return $query->where('is_active', true);
     }
 
     /**
@@ -222,19 +217,6 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * ACCESSORS
      */
-
-    // Normalizza active/is_active
-    public function getIsActiveAttribute()
-    {
-        if (isset($this->attributes['is_active'])) {
-            return $this->attributes['is_active'];
-        }
-        if (isset($this->attributes['active'])) {
-            return $this->attributes['active'];
-        }
-
-        return true; // default
-    }
 
     /**
      * Check if user has a specific role based on user_type

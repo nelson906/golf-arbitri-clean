@@ -11,7 +11,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * @property int $id
@@ -61,8 +60,8 @@ class Tournament extends Model
 
     protected $casts = [
         'start_date' => 'datetime',
-        'date' => 'date',
         'end_date' => 'datetime',
+        'availability_deadline' => 'datetime',
     ];
 
     /**
@@ -98,12 +97,15 @@ class Tournament extends Model
 
     public const STATUS_COMPLETED = 'completed';
 
+    public const STATUS_CANCELLED = 'cancelled';
+
     public const STATUSES = [
         self::STATUS_DRAFT => 'Bozza',
         self::STATUS_OPEN => 'Aperto',
         self::STATUS_CLOSED => 'Chiuso',
         self::STATUS_ASSIGNED => 'Assegnato',
         self::STATUS_COMPLETED => 'Completato',
+        self::STATUS_CANCELLED => 'Annullato',
     ];
 
     /**
@@ -190,10 +192,6 @@ class Tournament extends Model
     // Disponibilità dichiarate
     public function availabilities()
     {
-        if (Schema::hasTable('availabilities')) {
-            return $this->hasMany(Availability::class);
-        }
-
         return $this->hasMany(Availability::class);
     }
 
@@ -239,11 +237,7 @@ class Tournament extends Model
      */
     public function scopeActive($query)
     {
-        if (Schema::hasColumn($this->getTable(), 'status')) {
-            return $query->where('status', 'active');
-        }
-
-        return $query;
+        return $query->whereIn('status', [self::STATUS_OPEN, self::STATUS_CLOSED, self::STATUS_ASSIGNED]);
     }
 
     /**
@@ -297,8 +291,9 @@ class Tournament extends Model
             if ($isNational && $user->zone_id) {
                 // Nazionale/Internazionale: propria zona + tornei nazionali
                 return $query->where(function ($q) use ($user) {
-                    $q->whereHas('club', fn ($sub) => $sub->where('zone_id', $user->zone_id));
-                })->orWhereHas('tournamentType', fn ($sub) => $sub->where('is_national', true));
+                    $q->whereHas('club', fn ($sub) => $sub->where('zone_id', $user->zone_id))
+                        ->orWhereHas('tournamentType', fn ($sub) => $sub->where('is_national', true));
+                });
             } elseif ($isNational) {
                 // Nazionale/Internazionale senza zona: solo tornei nazionali
                 return $query->whereHas('tournamentType', fn ($q) => $q->where('is_national', true));
@@ -322,15 +317,23 @@ class Tournament extends Model
     /**
      * Verifica se il torneo è modificabile
      */
-    public function isEditable()
+    public function isEditable(): bool
     {
-        // Logica semplice: modificabile se non ha una data o se la data è futura
-        if (Schema::hasColumn('tournaments', 'date')) {
-            return ! $this->date || $this->date >= now()->startOfDay();
+        // Non modificabile se completato o annullato
+        if (in_array($this->status, [self::STATUS_COMPLETED, self::STATUS_CANCELLED])) {
+            return false;
         }
 
-        // Se non c'è campo date, sempre modificabile
-        return true;
+        // Modificabile se la data di inizio è futura o non impostata
+        return ! $this->start_date || $this->start_date->gte(now()->startOfDay());
+    }
+
+    /**
+     * Get the required number of referees from tournament type
+     */
+    public function getRequiredRefereesAttribute(): int
+    {
+        return $this->tournamentType?->min_referees ?? 1;
     }
 
     /**
@@ -338,9 +341,6 @@ class Tournament extends Model
      */
     public function needsReferees(): bool
     {
-        $requiredReferees = $this->tournamentType->min_referees ?? 1;
-        $assignedReferees = $this->assignments()->count();
-
-        return $assignedReferees < $requiredReferees;
+        return $this->assignments()->count() < $this->required_referees;
     }
 }

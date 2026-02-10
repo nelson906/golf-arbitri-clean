@@ -2,13 +2,13 @@
 
 /**
  * Laravel View Previewer - Helpers & Mock Classes
- * 
+ *
  * Features:
  * - View preview with mock data
  * - Batch testing all views
  * - Orphaned view detection (NEW)
  * - Performance metrics (NEW)
- * 
+ *
  * @version 2.0
  */
 
@@ -17,7 +17,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 // ============================================
 // DEBUG COLLECTOR
 // ============================================
-if (!class_exists('DebugCollector')) {
+if (! class_exists('DebugCollector')) {
     class DebugCollector
     {
         private static $issues = [];
@@ -47,7 +47,7 @@ if (!class_exists('DebugCollector')) {
 // ============================================
 // MOCK PAGINATOR VIEW
 // ============================================
-if (!class_exists('MockPaginatorView')) {
+if (! class_exists('MockPaginatorView')) {
     class MockPaginatorView
     {
         public function __toString()
@@ -65,7 +65,7 @@ if (!class_exists('MockPaginatorView')) {
 // ============================================
 // MOCK COLLECTION
 // ============================================
-if (!class_exists('MockCollection')) {
+if (! class_exists('MockCollection')) {
     class MockCollection extends \Illuminate\Support\Collection
     {
         public function links($view = null, $data = [])
@@ -93,7 +93,7 @@ if (!class_exists('MockCollection')) {
 // ============================================
 // UNIVERSAL VALUE (Mock Object)
 // ============================================
-if (!class_exists('UniversalValue')) {
+if (! class_exists('UniversalValue')) {
     class UniversalValue implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializable, \Stringable, Authenticatable
     {
         private $data = [];
@@ -101,10 +101,10 @@ if (!class_exists('UniversalValue')) {
         public function __construct($data = [])
         {
             $this->data = is_array($data) ? $data : ['value' => $data];
-            if (!isset($this->data['id'])) {
+            if (! isset($this->data['id'])) {
                 $this->data['id'] = rand(1, 999);
             }
-            if (!isset($this->data['name'])) {
+            if (! isset($this->data['name'])) {
                 $this->data['name'] = 'Mock';
             }
         }
@@ -147,6 +147,7 @@ if (!class_exists('UniversalValue')) {
                 return $this->data[$name];
             }
             $this->data[$name] = $this->generate($name);
+
             return $this->data[$name];
         }
 
@@ -174,6 +175,7 @@ if (!class_exists('UniversalValue')) {
                 return new UniversalValue(['id' => $offset + 1, 'name' => "Item $offset"]);
             }
             $this->data[$offset] = $this->generate($offset);
+
             return $this->data[$offset];
         }
 
@@ -205,6 +207,7 @@ if (!class_exists('UniversalValue')) {
             if (isset($this->data['name'])) {
                 return (string) $this->data['name'];
             }
+
             return 'mock';
         }
 
@@ -216,15 +219,27 @@ if (!class_exists('UniversalValue')) {
         public function __call($method, $args)
         {
             if (in_array($method, ['isEmpty', 'isNotEmpty', 'keys', 'values', 'where', 'filter'])) {
-                if ($method === 'isEmpty') return false;
-                if ($method === 'isNotEmpty') return true;
-                if ($method === 'where') return new MockCollection([new UniversalValue]);
+                if ($method === 'isEmpty') {
+                    return false;
+                }
+                if ($method === 'isNotEmpty') {
+                    return true;
+                }
+                if ($method === 'where') {
+                    return new MockCollection([new UniversalValue]);
+                }
+
                 return new MockCollection(['mock']);
             }
 
             if (in_array($method, ['links', 'render', 'withQueryString', 'appends', 'hasPages', 'total'])) {
-                if ($method === 'total') return 10;
-                if ($method === 'hasPages') return true;
+                if ($method === 'total') {
+                    return 10;
+                }
+                if ($method === 'hasPages') {
+                    return true;
+                }
+
                 return new MockPaginatorView;
             }
 
@@ -236,10 +251,18 @@ if (!class_exists('UniversalValue')) {
                 return true;
             }
 
-            if ($method === 'count') return 5;
-            if ($method === 'format') return now()->format($args[0] ?? 'd/m/Y');
-            if ($method === 'first') return new UniversalValue(['id' => 1]);
-            if (in_array($method, ['get', 'all'])) return new MockCollection([new UniversalValue]);
+            if ($method === 'count') {
+                return 5;
+            }
+            if ($method === 'format') {
+                return now()->format($args[0] ?? 'd/m/Y');
+            }
+            if ($method === 'first') {
+                return new UniversalValue(['id' => 1]);
+            }
+            if (in_array($method, ['get', 'all'])) {
+                return new MockCollection([new UniversalValue]);
+            }
 
             return $this;
         }
@@ -247,21 +270,21 @@ if (!class_exists('UniversalValue')) {
         private function generate($name)
         {
             // Dates
-            if (str_contains(strtolower($name), 'date') || 
+            if (str_contains(strtolower($name), 'date') ||
                 str_contains(strtolower($name), '_at') ||
-                str_contains(strtolower($name), 'time') || 
+                str_contains(strtolower($name), 'time') ||
                 str_contains(strtolower($name), 'deadline')) {
                 return now();
             }
 
             // Numbers
-            if ($name === 'id' || $name === 'total' || 
+            if ($name === 'id' || $name === 'total' ||
                 str_ends_with($name, 'count') ||
-                str_starts_with($name, 'total') || 
+                str_starts_with($name, 'total') ||
                 str_starts_with($name, 'avg_') ||
-                str_starts_with($name, 'max_') || 
+                str_starts_with($name, 'max_') ||
                 str_starts_with($name, 'min_') ||
-                $name === 'percentage' || 
+                $name === 'percentage' ||
                 str_contains($name, 'percent')) {
                 return rand(1, 100);
             }
@@ -283,7 +306,7 @@ if (!class_exists('UniversalValue')) {
             }
 
             // Booleans
-            if (str_starts_with($name, 'is_') || 
+            if (str_starts_with($name, 'is_') ||
                 str_starts_with($name, 'can_') ||
                 str_starts_with($name, 'has_')) {
                 return true;
@@ -302,11 +325,11 @@ if (!class_exists('UniversalValue')) {
 // ============================================
 // VIEW ANALYZER (Core Logic)
 // ============================================
-if (!function_exists('analyzeViewRecursive')) {
+if (! function_exists('analyzeViewRecursive')) {
     function analyzeViewRecursive($viewName, &$allVariables = [])
     {
         $viewFile = resource_path('views/'.str_replace('.', '/', $viewName).'.blade.php');
-        if (!file_exists($viewFile)) {
+        if (! file_exists($viewFile)) {
             return $allVariables;
         }
 
@@ -327,19 +350,19 @@ if (!function_exists('analyzeViewRecursive')) {
     }
 }
 
-if (!function_exists('generateValue')) {
+if (! function_exists('generateValue')) {
     function generateValue($name)
     {
         // Arrays
-        if (str_contains($name, 'stats') || 
+        if (str_contains($name, 'stats') ||
             str_contains($name, 'colors') ||
             in_array($name, ['filters', 'options', 'settings', 'data'])) {
             return ['total' => 5, 'count' => 5];
         }
 
         // Collections (plurals)
-        if (str_ends_with($name, 's') && 
-            !in_array($name, ['class', 'status', 'errors'])) {
+        if (str_ends_with($name, 's') &&
+            ! in_array($name, ['class', 'status', 'errors'])) {
             return new MockCollection([
                 new UniversalValue(['id' => 1, 'name' => 'Item 1']),
                 new UniversalValue(['id' => 2, 'name' => 'Item 2']),
@@ -358,10 +381,10 @@ if (!function_exists('generateValue')) {
 // ============================================
 // NEW: ORPHANED VIEW DETECTOR
 // ============================================
-if (!function_exists('detectOrphanedViews')) {
+if (! function_exists('detectOrphanedViews')) {
     /**
      * Detect views that are never referenced in code
-     * 
+     *
      * @return array ['orphaned' => [...], 'used' => [...], 'total' => N]
      */
     function detectOrphanedViews()
@@ -369,27 +392,27 @@ if (!function_exists('detectOrphanedViews')) {
         try {
             $viewsPath = resource_path('views');
             $allViews = [];
-            
+
             // Get all blade views
             $iterator = new RecursiveIteratorIterator(
                 new RecursiveDirectoryIterator($viewsPath)
             );
 
             foreach ($iterator as $file) {
-                if (!$file->isFile() || $file->getExtension() !== 'php') {
+                if (! $file->isFile() || $file->getExtension() !== 'php') {
                     continue;
                 }
 
                 $relativePath = str_replace($viewsPath.'/', '', $file->getPathname());
-                if (!str_contains($relativePath, '.blade.php')) {
+                if (! str_contains($relativePath, '.blade.php')) {
                     continue;
                 }
 
                 $viewName = str_replace('.blade.php', '', $relativePath);
                 $viewName = str_replace('/', '.', $viewName);
-                
+
                 // Skip vendor, mail, components, and dev views
-                if (str_starts_with($viewName, 'vendor.') || 
+                if (str_starts_with($viewName, 'vendor.') ||
                     str_starts_with($viewName, 'mail.') ||
                     str_starts_with($viewName, 'components.') ||
                     str_starts_with($viewName, 'dev.')) {
@@ -406,7 +429,7 @@ if (!function_exists('detectOrphanedViews')) {
                 'total' => 0,
                 'orphaned_count' => 0,
                 'used_count' => 0,
-                'error' => 'Error scanning views: ' . $e->getMessage(),
+                'error' => 'Error scanning views: '.$e->getMessage(),
             ];
         }
 
@@ -434,17 +457,17 @@ if (!function_exists('detectOrphanedViews')) {
 
                 foreach ($files as $file) {
                     try {
-                        if (!$file->isFile() || 
-                            !in_array($file->getExtension(), ['php', 'blade'])) {
+                        if (! $file->isFile() ||
+                            ! in_array($file->getExtension(), ['php', 'blade'])) {
                             continue;
                         }
 
                         $content = @file_get_contents($file->getPathname());
-                        
-                        if (!$content) {
+
+                        if (! $content) {
                             continue;
                         }
-                        
+
                         foreach ($patterns as $pattern) {
                             if (preg_match_all($pattern, $content, $matches)) {
                                 foreach ($matches[1] as $viewRef) {
@@ -479,18 +502,18 @@ if (!function_exists('detectOrphanedViews')) {
 // ============================================
 // NEW: PERFORMANCE METRICS
 // ============================================
-if (!function_exists('measureViewPerformance')) {
+if (! function_exists('measureViewPerformance')) {
     /**
      * Measure view rendering performance
-     * 
-     * @param string $viewName
-     * @param array $data
-     * @param int $iterations
+     *
+     * @param  string  $viewName
+     * @param  array  $data
+     * @param  int  $iterations
      * @return array
      */
     function measureViewPerformance($viewName, $data = [], $iterations = 10)
     {
-        if (!view()->exists($viewName)) {
+        if (! view()->exists($viewName)) {
             return ['error' => 'View not found'];
         }
 
@@ -505,7 +528,7 @@ if (!function_exists('measureViewPerformance')) {
                 ob_start();
                 echo view($viewName, $data)->render();
                 ob_end_clean();
-                
+
                 $endTime = microtime(true);
                 $endMemory = memory_get_usage();
 
@@ -536,7 +559,7 @@ if (!function_exists('measureViewPerformance')) {
     }
 }
 
-if (!function_exists('getRatingForPerformance')) {
+if (! function_exists('getRatingForPerformance')) {
     function getRatingForPerformance($avgTimeMs, $avgMemoryKb)
     {
         // Time rating
@@ -564,46 +587,46 @@ if (!function_exists('getRatingForPerformance')) {
         return [
             'time' => $timeRating,
             'memory' => $memRating,
-            'overall' => ($timeRating === 'excellent' && $memRating === 'excellent') 
-                ? 'excellent' 
-                : (($timeRating === 'slow' || $memRating === 'heavy') 
-                    ? 'needs-optimization' 
+            'overall' => ($timeRating === 'excellent' && $memRating === 'excellent')
+                ? 'excellent'
+                : (($timeRating === 'slow' || $memRating === 'heavy')
+                    ? 'needs-optimization'
                     : 'acceptable'),
         ];
     }
 }
 
-if (!function_exists('benchmarkAllViews')) {
+if (! function_exists('benchmarkAllViews')) {
     /**
      * Benchmark all views for performance
-     * 
-     * @param int $iterations
+     *
+     * @param  int  $iterations
      * @return array
      */
     function benchmarkAllViews($iterations = 5)
     {
         $viewsPath = resource_path('views');
         $results = [];
-        
+
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($viewsPath)
         );
 
         foreach ($iterator as $file) {
-            if (!$file->isFile() || $file->getExtension() !== 'php') {
+            if (! $file->isFile() || $file->getExtension() !== 'php') {
                 continue;
             }
 
             $relativePath = str_replace($viewsPath.'/', '', $file->getPathname());
-            if (!str_contains($relativePath, '.blade.php')) {
+            if (! str_contains($relativePath, '.blade.php')) {
                 continue;
             }
 
             $viewName = str_replace('.blade.php', '', $relativePath);
             $viewName = str_replace('/', '.', $viewName);
-            
+
             // Skip vendor and mail
-            if (str_starts_with($viewName, 'vendor.') || 
+            if (str_starts_with($viewName, 'vendor.') ||
                 str_starts_with($viewName, 'mail.')) {
                 continue;
             }
@@ -612,19 +635,19 @@ if (!function_exists('benchmarkAllViews')) {
             $variables = analyzeViewRecursive($viewName);
             $data = ['errors' => new \Illuminate\Support\ViewErrorBag];
             foreach ($variables as $varName) {
-                if (!isset($data[$varName])) {
+                if (! isset($data[$varName])) {
                     $data[$varName] = generateValue($varName);
                 }
             }
 
             $result = measureViewPerformance($viewName, $data, $iterations);
-            if (!isset($result['error'])) {
+            if (! isset($result['error'])) {
                 $results[] = $result;
             }
         }
 
         // Sort by avg time (slowest first)
-        usort($results, function($a, $b) {
+        usort($results, function ($a, $b) {
             return $b['avg_time_ms'] <=> $a['avg_time_ms'];
         });
 
@@ -635,11 +658,11 @@ if (!function_exists('benchmarkAllViews')) {
             'fastest' => array_slice(array_reverse($results), 0, 10),
             'summary' => [
                 'avg_time_ms' => round(
-                    array_sum(array_column($results, 'avg_time_ms')) / count($results), 
+                    array_sum(array_column($results, 'avg_time_ms')) / count($results),
                     2
                 ),
                 'avg_memory_kb' => round(
-                    array_sum(array_column($results, 'avg_memory_kb')) / count($results), 
+                    array_sum(array_column($results, 'avg_memory_kb')) / count($results),
                     2
                 ),
             ],

@@ -39,16 +39,7 @@
                 </div>
                 <div class="ml-4">
                     <p class="text-sm font-medium text-gray-500">Tornei Totali</p>
-                    <p class="text-2xl font-semibold text-gray-900">
-                        @php
-                            try {
-                                $tournamentsCount = \App\Models\Tournament::count();
-                            } catch (\Exception $e) {
-                                $tournamentsCount = 0;
-                            }
-                        @endphp
-                        {{ $tournamentsCount }}
-                    </p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ $stats['total_tournaments'] }}</p>
                 </div>
             </div>
         </div>
@@ -61,16 +52,7 @@
                 </div>
                 <div class="ml-4">
                     <p class="text-sm font-medium text-gray-500">Arbitri Registrati</p>
-                    <p class="text-2xl font-semibold text-gray-900">
-                        @php
-                            try {
-                                $refereesCount = \App\Models\User::where('user_type', 'referee')->count();
-                            } catch (\Exception $e) {
-                                $refereesCount = 0;
-                            }
-                        @endphp
-                        {{ $refereesCount }}
-                    </p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ $stats['total_referees'] }}</p>
                 </div>
             </div>
         </div>
@@ -83,16 +65,7 @@
                 </div>
                 <div class="ml-4">
                     <p class="text-sm font-medium text-gray-500">Assegnazioni Totali</p>
-                    <p class="text-2xl font-semibold text-gray-900">
-                        @php
-                            try {
-                                $assignmentsCount = \App\Models\Assignment::count();
-                            } catch (\Exception $e) {
-                                $assignmentsCount = 0;
-                            }
-                        @endphp
-                        {{ $assignmentsCount }}
-                    </p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ $stats['total_assignments'] }}</p>
                 </div>
             </div>
         </div>
@@ -105,16 +78,7 @@
                 </div>
                 <div class="ml-4">
                     <p class="text-sm font-medium text-gray-500">Circoli Golf</p>
-                    <p class="text-2xl font-semibold text-gray-900">
-                        @php
-                            try {
-                                $clubsCount = \App\Models\Club::count();
-                            } catch (\Exception $e) {
-                                $clubsCount = 0;
-                            }
-                        @endphp
-                        {{ $clubsCount }}
-                    </p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ $stats['total_clubs'] }}</p>
                 </div>
             </div>
         </div>
@@ -123,39 +87,29 @@
     {{-- Sezione Informazioni Sistema --}}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
 
-        {{-- Riepilogo Database --}}
+        {{-- Riepilogo Dati --}}
         <div class="bg-white rounded-lg shadow">
             <div class="px-6 py-4 border-b border-gray-200">
-                <h2 class="text-lg font-semibold text-gray-900">💾 Stato Database</h2>
+                <h2 class="text-lg font-semibold text-gray-900">📊 Riepilogo Dati</h2>
             </div>
             <div class="p-6">
                 <div class="space-y-3">
-                    @php
-                        $tables = [
-                            'users' => 'Utenti',
-                            'tournaments' => 'Tornei',
-                            'assignments' => 'Assegnazioni',
-                            'clubs' => 'Circoli',
-                            'zones' => 'Zone',
-                            'referee_career_history' => 'Storico Carriera'
-                        ];
-                    @endphp
-
-                    @foreach($tables as $table => $label)
-                        <div class="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                            <span class="text-sm text-gray-600">{{ $label }}</span>
-                            <span class="text-sm font-medium text-gray-900">
-                                @php
-                                    try {
-                                        $count = \DB::table($table)->count();
-                                    } catch (\Exception $e) {
-                                        $count = 'N/A';
-                                    }
-                                @endphp
-                                {{ $count }}
-                            </span>
-                        </div>
-                    @endforeach
+                    <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span class="text-sm text-gray-600">Tornei</span>
+                        <span class="text-sm font-medium text-gray-900">{{ $stats['total_tournaments'] }}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span class="text-sm text-gray-600">Arbitri</span>
+                        <span class="text-sm font-medium text-gray-900">{{ $stats['total_referees'] }}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span class="text-sm text-gray-600">Assegnazioni</span>
+                        <span class="text-sm font-medium text-gray-900">{{ $stats['total_assignments'] }}</span>
+                    </div>
+                    <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                        <span class="text-sm text-gray-600">Circoli</span>
+                        <span class="text-sm font-medium text-gray-900">{{ $stats['total_clubs'] }}</span>
+                    </div>
                 </div>
             </div>
         </div>

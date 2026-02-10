@@ -20,12 +20,17 @@ class AssignmentValidationService
      */
     public function getValidationSummary(?int $zoneId = null): array
     {
+        $conflicts = $this->getConflictsSummary($zoneId);
+        $missingRequirements = $this->getMissingRequirementsSummary($zoneId);
+        $overassigned = $this->getOverassignedCount($zoneId);
+        $underassigned = $this->getUnderassignedCount($zoneId);
+
         return [
-            'conflicts' => $this->getConflictsSummary($zoneId),
-            'missing_requirements' => $this->getMissingRequirementsSummary($zoneId),
-            'overassigned' => $this->getOverassignedCount($zoneId),
-            'underassigned' => $this->getUnderassignedCount($zoneId),
-            'total_issues' => $this->getTotalIssuesCount($zoneId),
+            'conflicts' => $conflicts,
+            'missing_requirements' => $missingRequirements,
+            'overassigned' => $overassigned,
+            'underassigned' => $underassigned,
+            'total_issues' => $conflicts + $missingRequirements + $overassigned + $underassigned,
         ];
     }
 
@@ -38,7 +43,7 @@ class AssignmentValidationService
             ->whereHas('tournament', function ($q) use ($zoneId) {
                 $q->whereIn('status', ['open', 'closed']);
                 if ($zoneId) {
-                    $q->where('zone_id', $zoneId);
+                    $q->whereHas('club', fn ($c) => $c->where('zone_id', $zoneId));
                 }
             });
 
@@ -79,11 +84,11 @@ class AssignmentValidationService
      */
     public function findMissingRequirements(?int $zoneId = null): Collection
     {
-        $query = Tournament::with(['tournamentType', 'assignments.user', 'zone'])
+        $query = Tournament::with(['tournamentType', 'assignments.user', 'club.zone'])
             ->whereIn('status', ['open', 'closed']);
 
         if ($zoneId) {
-            $query->where('zone_id', $zoneId);
+            $query->whereHas('club', fn ($q) => $q->where('zone_id', $zoneId));
         }
 
         $tournaments = $query->get();
@@ -189,13 +194,21 @@ class AssignmentValidationService
             ->get()
             ->filter(fn ($referee) => $referee->assignments_count > $threshold)
             ->sortByDesc('assignments_count')
-            ->map(function ($referee) use ($threshold) {
-                return [
-                    'referee' => $referee,
-                    'assignments_count' => $referee->assignments_count,
-                    'over_threshold' => $referee->assignments_count - $threshold,
-                    'workload_percentage' => $this->calculateWorkloadPercentage($referee),
-                ];
+            ->values()
+            ->pipe(function ($overassigned) use ($threshold) {
+                // Calcola la media una sola volta per tutti gli arbitri sovrassegnati
+                $avgAssignments = $overassigned->avg('assignments_count');
+
+                return $overassigned->map(function ($referee) use ($threshold, $avgAssignments) {
+                    return [
+                        'referee' => $referee,
+                        'assignments_count' => $referee->assignments_count,
+                        'over_threshold' => $referee->assignments_count - $threshold,
+                        'workload_percentage' => $avgAssignments > 0
+                            ? round(($referee->assignments_count / $avgAssignments) * 100, 1)
+                            : 0,
+                    ];
+                });
             });
     }
 
@@ -281,33 +294,42 @@ class AssignmentValidationService
         // 1. Risolvi conflitti semplici sostituendo arbitri
         $conflicts = $this->detectDateConflicts($zoneId);
 
-        foreach ($conflicts as $conflict) {
-            if ($conflict['severity'] === 'high') {
-                $alternatives = $this->findAlternativeReferees(
-                    $conflict['assignment2']->tournament,
-                    $conflict['referee']->id
-                );
+        DB::beginTransaction();
 
-                if ($alternatives->count() > 0) {
-                    try {
-                        $conflict['assignment2']->update([
-                            'user_id' => $alternatives->first()->id,
-                        ]);
-                        $fixed[] = [
-                            'type' => 'conflict_resolved',
-                            'tournament' => $conflict['assignment2']->tournament->name,
-                            'old_referee' => $conflict['referee']->name,
-                            'new_referee' => $alternatives->first()->name,
-                        ];
-                    } catch (\Exception $e) {
-                        $failed[] = [
-                            'type' => 'conflict_resolution_failed',
-                            'tournament' => $conflict['assignment2']->tournament->name,
-                            'error' => $e->getMessage(),
-                        ];
+        try {
+            foreach ($conflicts as $conflict) {
+                if ($conflict['severity'] === 'high') {
+                    $alternatives = $this->findAlternativeReferees(
+                        $conflict['assignment2']->tournament,
+                        $conflict['referee']->id
+                    );
+
+                    if ($alternatives->count() > 0) {
+                        try {
+                            $conflict['assignment2']->update([
+                                'user_id' => $alternatives->first()->id,
+                            ]);
+                            $fixed[] = [
+                                'type' => 'conflict_resolved',
+                                'tournament' => $conflict['assignment2']->tournament->name,
+                                'old_referee' => $conflict['referee']->name,
+                                'new_referee' => $alternatives->first()->name,
+                            ];
+                        } catch (\Exception $e) {
+                            $failed[] = [
+                                'type' => 'conflict_resolution_failed',
+                                'tournament' => $conflict['assignment2']->tournament->name,
+                                'error' => $e->getMessage(),
+                            ];
+                        }
                     }
                 }
             }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
         }
 
         return [
@@ -402,45 +424,11 @@ class AssignmentValidationService
         return $query->withCount('assignments')->orderBy('assignments_count')->get();
     }
 
-    private function calculateWorkloadPercentage(User $referee): float
-    {
-        // Ottieni tutti gli arbitri attivi con il loro conteggio di assegnazioni
-        $allReferees = User::where('user_type', 'referee')
-            ->where('is_active', true)
-            ->withCount(['assignments' => function ($q) {
-                $q->whereHas('tournament', function ($tq) {
-                    $tq->whereIn('status', ['open', 'closed'])
-                        ->whereYear('start_date', date('Y'));
-                });
-            }])
-            ->get();
-
-        if ($allReferees->isEmpty()) {
-            return 0;
-        }
-
-        // Calcola la media manualmente dalla collection
-        $avgAssignments = $allReferees->avg('assignments_count');
-
-        if ($avgAssignments == 0) {
-            return 0;
-        }
-
-        return round(($referee->assignments_count / $avgAssignments) * 100, 1);
-    }
-
     private function checkAvailabilityStatus(User $referee): string
     {
-        // Controlla se l'arbitro ha dichiarato disponibilità (la presenza del record indica disponibilità)
-        if (DB::getSchemaBuilder()->hasTable('availabilities')) {
-            $hasAvailabilities = DB::table('availabilities')
-                ->where('user_id', $referee->id)
-                ->exists();
+        $hasAvailabilities = $referee->availabilities()->exists();
 
-            return $hasAvailabilities ? 'available' : 'unavailable';
-        }
-
-        return 'unknown';
+        return $hasAvailabilities ? 'available' : 'unavailable';
     }
 
     private function getConflictsSummary(?int $zoneId): int

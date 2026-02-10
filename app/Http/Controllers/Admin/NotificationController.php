@@ -7,7 +7,6 @@ use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Services\NotificationDocumentService;
 use App\Services\NotificationPreparationService;
-use App\Services\NotificationService;
 use App\Services\NotificationTransactionService;
 use App\Traits\HasZoneVisibility;
 use Illuminate\Http\Request;
@@ -765,6 +764,9 @@ class NotificationController extends Controller
                 }
             }
 
+            // Salva la lista completa di CC PRIMA di eventuali modifiche
+            $originalCcRecipients = $ccRecipients;
+
             // Se non ci sono TO ma solo CC, usa il primo CC come TO
             if (empty($toRecipients) && ! empty($ccRecipients)) {
                 $firstCc = array_shift($ccRecipients);
@@ -787,16 +789,16 @@ class NotificationController extends Controller
                 }
             }
 
-            // Prepara lista nomi destinatari per visualizzazione
+            // Prepara lista nomi destinatari per visualizzazione (usa la lista CC originale)
             $allRecipientNames = [];
             foreach ($toRecipients as $r) {
                 $allRecipientNames[] = $r['name'];
             }
-            foreach ($ccRecipients as $r) {
+            foreach ($originalCcRecipients as $r) {
                 $allRecipientNames[] = $r['name'];
             }
             $refereeList = implode(', ', $allRecipientNames);
-            $totalRecipients = count($toRecipients) + count($ccRecipients);
+            $totalRecipients = count($toRecipients) + count($originalCcRecipients);
 
             // Elimina la notifica "bozza" (notification_type = null) per evitare duplicati
             // Questo record viene creato automaticamente da prepareNotification() ma non serve per gare nazionali
@@ -805,8 +807,27 @@ class NotificationController extends Controller
                 ->whereNull('sent_at')
                 ->delete();
 
+            // Salva il record della notifica nazionale inviata
+            TournamentNotification::updateOrCreate(
+                [
+                    'tournament_id' => $tournament->id,
+                    'notification_type' => $notificationType,
+                ],
+                [
+                    'status' => $errorCount === 0 ? 'sent' : 'partial',
+                    'sent_at' => now(),
+                    'sent_by' => auth()->id(),
+                    'referee_list' => $refereeList,
+                    'details' => [
+                        'sent' => $successCount,
+                        'errors' => $errorCount,
+                        'total_recipients' => $totalRecipients,
+                    ],
+                ]
+            );
+
             $typeLabel = $isCrcNotification ? 'arbitri designati' : 'osservatori';
-            $totalSent = $successCount + count($ccRecipients);
+            $totalSent = $successCount + count($originalCcRecipients);
 
             if ($errorCount === 0) {
                 return redirect()->route('admin.tournament-notifications.index')
