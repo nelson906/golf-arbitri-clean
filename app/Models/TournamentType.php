@@ -15,17 +15,23 @@ class TournamentType extends Model
 
     protected $fillable = [
         'name',
-        'code',
-        'is_national',
-        'description',
-        'calendar_color',
         'short_name',
-        'is_active',
+        'description',
+        'is_national',
+        'level',
+        'required_level',
+        'calendar_color',
+        'min_referees',
+        'max_referees',
         'sort_order',
+        'is_active',
+        'settings',
     ];
 
     protected $casts = [
         'is_national' => 'boolean',
+        'is_active' => 'boolean',
+        'settings' => 'array',
     ];
 
     /**

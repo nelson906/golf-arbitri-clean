@@ -292,8 +292,9 @@ class Tournament extends Model
             if ($isNational && $user->zone_id) {
                 // Nazionale/Internazionale: propria zona + tornei nazionali
                 return $query->where(function ($q) use ($user) {
-                    $q->whereHas('club', fn ($sub) => $sub->where('zone_id', $user->zone_id));
-                })->orWhereHas('tournamentType', fn ($sub) => $sub->where('is_national', true));
+                    $q->whereHas('club', fn ($sub) => $sub->where('zone_id', $user->zone_id))
+                        ->orWhereHas('tournamentType', fn ($sub) => $sub->where('is_national', true));
+                });
             } elseif ($isNational) {
                 // Nazionale/Internazionale senza zona: solo tornei nazionali
                 return $query->whereHas('tournamentType', fn ($q) => $q->where('is_national', true));

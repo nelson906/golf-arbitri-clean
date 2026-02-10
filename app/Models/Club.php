@@ -44,9 +44,7 @@ class Club extends Model
         'address',
         'phone',
         'email',
-        'website',
         'is_active',
-        'notes',
     ];
 
     protected $casts = [

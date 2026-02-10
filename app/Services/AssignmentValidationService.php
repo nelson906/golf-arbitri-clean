@@ -43,7 +43,7 @@ class AssignmentValidationService
             ->whereHas('tournament', function ($q) use ($zoneId) {
                 $q->whereIn('status', ['open', 'closed']);
                 if ($zoneId) {
-                    $q->where('zone_id', $zoneId);
+                    $q->whereHas('club', fn ($c) => $c->where('zone_id', $zoneId));
                 }
             });
 
@@ -84,11 +84,11 @@ class AssignmentValidationService
      */
     public function findMissingRequirements(?int $zoneId = null): Collection
     {
-        $query = Tournament::with(['tournamentType', 'assignments.user', 'zone'])
+        $query = Tournament::with(['tournamentType', 'assignments.user', 'club.zone'])
             ->whereIn('status', ['open', 'closed']);
 
         if ($zoneId) {
-            $query->where('zone_id', $zoneId);
+            $query->whereHas('club', fn ($q) => $q->where('zone_id', $zoneId));
         }
 
         $tournaments = $query->get();
@@ -194,13 +194,21 @@ class AssignmentValidationService
             ->get()
             ->filter(fn ($referee) => $referee->assignments_count > $threshold)
             ->sortByDesc('assignments_count')
-            ->map(function ($referee) use ($threshold) {
-                return [
-                    'referee' => $referee,
-                    'assignments_count' => $referee->assignments_count,
-                    'over_threshold' => $referee->assignments_count - $threshold,
-                    'workload_percentage' => $this->calculateWorkloadPercentage($referee),
-                ];
+            ->values()
+            ->pipe(function ($overassigned) use ($threshold) {
+                // Calcola la media una sola volta per tutti gli arbitri sovrassegnati
+                $avgAssignments = $overassigned->avg('assignments_count');
+
+                return $overassigned->map(function ($referee) use ($threshold, $avgAssignments) {
+                    return [
+                        'referee' => $referee,
+                        'assignments_count' => $referee->assignments_count,
+                        'over_threshold' => $referee->assignments_count - $threshold,
+                        'workload_percentage' => $avgAssignments > 0
+                            ? round(($referee->assignments_count / $avgAssignments) * 100, 1)
+                            : 0,
+                    ];
+                });
             });
     }
 
@@ -416,45 +424,11 @@ class AssignmentValidationService
         return $query->withCount('assignments')->orderBy('assignments_count')->get();
     }
 
-    private function calculateWorkloadPercentage(User $referee): float
-    {
-        // Ottieni tutti gli arbitri attivi con il loro conteggio di assegnazioni
-        $allReferees = User::where('user_type', 'referee')
-            ->where('is_active', true)
-            ->withCount(['assignments' => function ($q) {
-                $q->whereHas('tournament', function ($tq) {
-                    $tq->whereIn('status', ['open', 'closed'])
-                        ->whereYear('start_date', date('Y'));
-                });
-            }])
-            ->get();
-
-        if ($allReferees->isEmpty()) {
-            return 0;
-        }
-
-        // Calcola la media manualmente dalla collection
-        $avgAssignments = $allReferees->avg('assignments_count');
-
-        if ($avgAssignments == 0) {
-            return 0;
-        }
-
-        return round(($referee->assignments_count / $avgAssignments) * 100, 1);
-    }
-
     private function checkAvailabilityStatus(User $referee): string
     {
-        // Controlla se l'arbitro ha dichiarato disponibilità (la presenza del record indica disponibilità)
-        if (DB::getSchemaBuilder()->hasTable('availabilities')) {
-            $hasAvailabilities = DB::table('availabilities')
-                ->where('user_id', $referee->id)
-                ->exists();
+        $hasAvailabilities = $referee->availabilities()->exists();
 
-            return $hasAvailabilities ? 'available' : 'unavailable';
-        }
-
-        return 'unknown';
+        return $hasAvailabilities ? 'available' : 'unavailable';
     }
 
     private function getConflictsSummary(?int $zoneId): int
