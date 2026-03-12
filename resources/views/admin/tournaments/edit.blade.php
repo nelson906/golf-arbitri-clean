@@ -206,7 +206,7 @@
                     <div>
                         <h3 class="text-sm font-medium text-amber-800">Cambio Stato (Override)</h3>
                         <p class="text-xs text-amber-600 mt-1">Stato attuale:
-                            <strong>{{ \App\Models\Tournament::STATUSES[$tournament->status] ?? $tournament->status }}</strong>
+                            <strong>{{ \App\Models\Tournament::STATUSES[$tournament->status->value] ?? $tournament->status->value }}</strong>
                         </p>
                     </div>
                     <div class="flex items-center gap-2">
@@ -214,7 +214,7 @@
                             class="text-sm rounded-md border-amber-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
                             @foreach (\App\Models\Tournament::STATUSES as $value => $label)
                                 <option value="{{ $value }}"
-                                    {{ $tournament->status == $value ? 'selected' : '' }}>
+                                    {{ $tournament->status->value === $value ? 'selected' : '' }}>
                                     {{ $label }}
                                 </option>
                             @endforeach

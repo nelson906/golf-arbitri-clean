@@ -97,22 +97,12 @@ class ZoneHelper
      */
     public static function userHasAccessToZone($user, int $zoneId): bool
     {
-        // Super admin ha accesso a tutto
-        if ($user->user_type === 'super_admin') {
+        // Super admin e national admin hanno accesso a tutto
+        if ($user->isNationalAdmin()) {
             return true;
         }
 
-        // National admin ha accesso a tutto
-        if ($user->user_type === 'national_admin') {
-            return true;
-        }
-
-        // Admin zonale ha accesso solo alla propria zona
-        if ($user->user_type === 'admin') {
-            return $user->zone_id === $zoneId;
-        }
-
-        // Referee ha accesso alla propria zona
+        // Admin zonale e referee hanno accesso alla propria zona
         return $user->zone_id === $zoneId;
     }
 }

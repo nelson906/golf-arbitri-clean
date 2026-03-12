@@ -12,7 +12,7 @@ class TournamentTypeRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()->user_type === 'super_admin';
+        return $this->user()->isSuperAdmin();
     }
 
     /**

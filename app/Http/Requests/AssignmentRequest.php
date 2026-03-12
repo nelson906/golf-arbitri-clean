@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\AssignmentRole;
+use App\Enums\TournamentStatus;
+use App\Enums\UserType;
 use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Models\User;
@@ -11,25 +14,25 @@ use Illuminate\Validation\Rule;
 class AssignmentRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Determina se l'utente è autorizzato a fare questa richiesta.
+     * Usa i metodi tipizzati del model User invece di confronti stringa.
      */
     public function authorize(): bool
     {
         $user = $this->user();
 
-        // Check user type
-        if (! in_array($user->user_type, ['admin', 'national_admin', 'super_admin'])) {
+        // Solo gli admin possono creare assegnazioni
+        if (! $user->isAdmin()) {
             return false;
         }
 
-        // Check tournament access
         $tournament = Tournament::find($this->tournament_id);
         if (! $tournament) {
             return false;
         }
 
-        // Zone admins can only assign in their zone
-        if ($user->user_type === 'admin' && $tournament->zone_id !== $user->zone_id) {
+        // Zone admin: solo tornei della propria zona
+        if ($user->isZoneAdmin() && $tournament->zone_id !== $user->zone_id) {
             return false;
         }
 
@@ -37,9 +40,9 @@ class AssignmentRequest extends FormRequest
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * Regole di validazione con Enum type-safe.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
@@ -47,46 +50,48 @@ class AssignmentRequest extends FormRequest
             'tournament_id' => [
                 'required',
                 'exists:tournaments,id',
-                function ($attribute, $value, $fail) {
+                function (string $attribute, mixed $value, \Closure $fail): void {
                     /** @var Tournament|null $tournament */
-                    $tournament = Tournament::find($value);
+                    $tournament = Tournament::with('tournamentType')->find($value);
+
                     if (! $tournament instanceof Tournament) {
                         return;
                     }
 
-                    // Check if tournament can accept assignments
-                    if (! in_array($tournament->status, ['open', 'closed'])) {
-                        $fail('Il torneo non è in uno stato che permette assegnazioni.');
+                    // Usa l'Enum TournamentStatus per verificare lo stato
+                    if (! $tournament->status->isActive()) {
+                        $fail('Il torneo non è in uno stato che permette assegnazioni (stato: '.$tournament->status->label().').');
                     }
 
-                    // Check if tournament has reached max referees
+                    // Verifica limite massimo arbitri
                     $maxReferees = $tournament->tournamentType?->max_referees ?? 4;
                     if ($tournament->assignments()->count() >= $maxReferees) {
-                        $fail('Il torneo ha già raggiunto il numero massimo di arbitri.');
+                        $fail('Il torneo ha già raggiunto il numero massimo di '.$maxReferees.' arbitri.');
                     }
                 },
             ],
             'user_id' => [
                 'required',
                 'exists:users,id',
-                function ($attribute, $value, $fail) {
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    /** @var User|null $user */
                     $user = User::find($value);
+
                     if (! $user) {
                         return;
                     }
 
-                    // Check if user is a referee
-                    if ($user->user_type !== 'referee') {
-                        $fail('L\'utente selezionato non è un arbitro.');
+                    // Usa il metodo tipizzato isReferee()
+                    if (! $user->isReferee()) {
+                        $fail("L'utente selezionato non è un arbitro.");
                     }
 
-                    // Check if user is active
                     if (! $user->is_active) {
-                        $fail('L\'arbitro selezionato non è attivo.');
+                        $fail("L'arbitro selezionato non è attivo.");
                     }
 
-                    // Check if already assigned
-                    $tournament = Tournament::find($this->tournament_id);
+                    $tournament = Tournament::with('tournamentType')->find($this->tournament_id);
+
                     if ($tournament && Assignment::where('tournament_id', $tournament->id)
                         ->where('user_id', $user->id)
                         ->exists()
@@ -94,32 +99,43 @@ class AssignmentRequest extends FormRequest
                         $fail('Questo arbitro è già stato assegnato a questo torneo.');
                     }
 
-                    // Check referee level - FIX: Use User::LEVELS instead of TournamentType::REFEREE_LEVELS
-                    if ($tournament && $tournament->tournamentType) {
+                    // Verifica livello minimo richiesto
+                    if ($tournament?->tournamentType && $tournament->tournamentType->required_level) {
                         $requiredLevel = $tournament->tournamentType->required_level;
-                        $levels = array_keys(User::LEVELS);
+                        $levels        = array_keys(User::LEVELS);
                         $requiredIndex = array_search($requiredLevel, $levels);
-                        $userIndex = array_search($user->level, $levels);
+                        $userIndex     = array_search($user->level, $levels);
 
-                        if ($userIndex < $requiredIndex) {
-                            $fail('L\'arbitro non ha il livello richiesto per questo torneo.');
+                        if ($userIndex !== false && $requiredIndex !== false && $userIndex < $requiredIndex) {
+                            $fail("L'arbitro non ha il livello richiesto per questo torneo.");
                         }
                     }
 
-                    // Check zone for non-national tournaments
-                    if ($tournament && ! $tournament->tournamentType->is_national) {
+                    // Per tornei zonali: stesso zona
+                    if ($tournament && ! ($tournament->tournamentType?->is_national ?? false)) {
                         if ($user->zone_id !== $tournament->zone_id) {
-                            $fail('L\'arbitro appartiene a una zona diversa.');
+                            $fail("L'arbitro appartiene a una zona diversa dal torneo.");
                         }
                     }
                 },
             ],
+            // Usa Rule::enum() di Laravel 10+ invece di Rule::in() con stringhe
             'role' => [
                 'required',
-                Rule::in(['Arbitro', 'Direttore di Torneo', 'Osservatore']),
+                Rule::enum(AssignmentRole::class),
             ],
             'notes' => 'nullable|string|max:500',
         ];
+    }
+
+    /**
+     * Restituisce il ruolo come valore Enum tipizzato.
+     */
+    public function resolvedRole(): AssignmentRole
+    {
+        return $this->role
+            ? AssignmentRole::from($this->role)
+            : AssignmentRole::Referee;
     }
 
     /**

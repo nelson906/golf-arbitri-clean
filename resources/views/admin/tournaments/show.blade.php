@@ -114,7 +114,7 @@
                                         class="text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                                         @foreach (\App\Models\Tournament::STATUSES as $value => $label)
                                             <option value="{{ $value }}"
-                                                {{ $tournament->status == $value ? 'selected' : '' }}>
+                                                {{ $tournament->status->value === $value ? 'selected' : '' }}>
                                                 {{ $label }}
                                             </option>
                                         @endforeach

@@ -202,7 +202,7 @@ class RefereeCareerService
                     'id' => $tournament->id,
                     'name' => $tournament->name,
                     'start_date' => $tournament->start_date,
-                    'status' => $tournament->status,
+                    'status' => $tournament->status->value,
                 ];
             })
             ->toArray();

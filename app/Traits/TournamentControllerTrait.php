@@ -108,7 +108,7 @@ trait TournamentControllerTrait
             ], $options)
         );
 
-        $calendarData['userRoles'] = [$user->user_type];
+        $calendarData['userRoles'] = [$user->user_type->value];
         $calendarData['canModify'] = true;
         $calendarData['totalTournaments'] = $tournaments->count();
         $calendarData['lastUpdated'] = now()->toISOString();
@@ -129,7 +129,7 @@ trait TournamentControllerTrait
             $total = $tournaments->count();
         }
 
-        $byStatus = $collection->groupBy('status');
+        $byStatus = $collection->groupBy(fn ($t) => $t->status->value);
 
         return [
             'total' => $total,

@@ -84,7 +84,7 @@ class CalendarDataService
         array $availableTournamentIds = [],
         array $assignedTournamentIds = []
     ): Collection {
-        $isAdmin = in_array($user->user_type, ['admin', 'national_admin', 'super_admin']);
+        $isAdmin = $user->isAdmin();
 
         return $tournaments->map(function ($tournament) use ($isAdmin, $availableTournamentIds, $assignedTournamentIds) {
             $isAvailable = in_array($tournament->id, $availableTournamentIds);
@@ -134,7 +134,7 @@ class CalendarDataService
             'zones' => $this->formatZones($zones),
             'clubs' => $this->formatClubs($clubs),
             'tournamentTypes' => $this->formatTournamentTypes($tournamentTypes),
-            'userType' => $user->user_type,
+            'userType' => $user->user_type->value,
             'legend' => $this->getLegendForViewType($viewType),
         ];
     }
@@ -149,7 +149,7 @@ class CalendarDataService
             'zone' => $tournament->zone->name ?? 'N/A',
             'zone_id' => $tournament->zone_id,
             'tournament_type' => $tournament->tournamentType->name ?? 'N/A',
-            'status' => $tournament->status,
+            'status' => $tournament->status->value,
             'tournament_url' => route('admin.tournaments.show', $tournament),
             'deadline' => $tournament->availability_deadline ? $tournament->availability_deadline->format('d/m/Y') : 'N/A',
             'type_id' => $tournament->tournament_type_id,
@@ -169,7 +169,7 @@ class CalendarDataService
             'club' => $tournament->club->name ?? 'N/A',
             'zone' => $tournament->club->zone->name ?? 'N/A',
             'category' => $tournament->tournamentType->name ?? 'N/A',
-            'status' => $tournament->status ?? 'active',
+            'status' => $tournament->status?->value ?? 'active',
             'is_available' => $isAvailable,
             'is_assigned' => $isAssigned,
             'personal_status' => $this->colorService->getPersonalStatus($isAssigned, $isAvailable),
@@ -188,7 +188,7 @@ class CalendarDataService
             'type_id' => $tournament->tournament_type_id,
             'zone_id' => $tournament->zone_id,
             'club_id' => $tournament->club_id,
-            'status' => $tournament->status,
+            'status' => $tournament->status->value,
         ];
 
         if ($isAdmin) {
@@ -260,7 +260,7 @@ class CalendarDataService
      */
     public function getTournamentStats(Collection $tournaments): array
     {
-        $byStatus = $tournaments->groupBy('status');
+        $byStatus = $tournaments->groupBy(fn ($t) => $t->status->value);
 
         return [
             'total' => $tournaments->count(),

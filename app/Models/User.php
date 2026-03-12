@@ -6,6 +6,8 @@
 
 namespace App\Models;
 
+use App\Enums\RefereeLevel;
+use App\Enums\UserType;
 use Carbon\Carbon;
 use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -23,7 +25,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string|null $last_name
  * @property string $email
  * @property string $password
- * @property string|null $user_type
+ * @property UserType|null $user_type
  * @property int|null $zone_id
  * @property string|null $referee_code
  * @property string|null $level
@@ -79,7 +81,8 @@ class User extends Authenticatable implements MustVerifyEmail
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'is_active' => 'boolean',
+        'is_active'         => 'boolean',
+        'user_type'         => UserType::class,
     ];
 
     protected $attributes = [
@@ -167,12 +170,12 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * SCOPES
      */
-    public function scopeReferees($query)
+    public function scopeReferees(Builder $query): Builder
     {
-        return $query->where('user_type', 'referee');
+        return $query->where('user_type', UserType::Referee->value);
     }
 
-    public function scopeActive($query)
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
     }
@@ -181,105 +184,118 @@ class User extends Authenticatable implements MustVerifyEmail
      * Scope per filtrare utenti/arbitri visibili all'utente.
      *
      * Regole:
-     * - super_admin: vede tutto
+     * - super_admin:    vede tutto
      * - national_admin: solo arbitri nazionali/internazionali
-     * - admin zonale: solo arbitri della propria zona
-     *
-     * @param  Builder  $query
-     * @return Builder
+     * - admin zonale:   solo arbitri della propria zona
      */
-    public function scopeVisible($query, ?self $user = null)
+    public function scopeVisible(Builder $query, ?self $user = null): Builder
     {
         $user = $user ?? auth()->user();
 
-        if (! $user) {
+        if (! $user || ! $user->user_type) {
             return $query->whereRaw('1 = 0');
         }
 
+        $type = $user->user_type; // già castato a UserType
+
         // Super admin vede tutto
-        if ($user->user_type === 'super_admin') {
+        if ($type->seesEverything()) {
             return $query;
         }
 
         // National admin vede solo arbitri nazionali/internazionali
-        if ($user->user_type === 'national_admin') {
-            return $query->whereIn('level', ['Nazionale', 'Internazionale']);
+        if ($type === UserType::NationalAdmin) {
+            $nationalLevels = array_map(
+                fn (RefereeLevel $l) => $l->value,
+                array_filter(RefereeLevel::cases(), fn (RefereeLevel $l) => $l->isNational())
+            );
+
+            return $query->whereIn('level', $nationalLevels);
         }
 
         // Admin zonale vede solo arbitri della propria zona
-        if ($user->user_type === 'admin' && $user->zone_id) {
+        if ($type === UserType::ZoneAdmin && $user->zone_id) {
             return $query->where('zone_id', $user->zone_id);
         }
 
         return $query;
     }
 
-    /**
-     * ACCESSORS
-     */
+    // ── Metodi di ruolo ──────────────────────────────────────────────────────
 
     /**
-     * Check if user has a specific role based on user_type
+     * L'utente è un qualsiasi tipo di admin (non referee).
+     * Delega all'Enum UserType per essere il single source of truth.
      */
-    public function hasRole($role): bool
+    public function isAdmin(): bool
     {
-        // Mapping dei ruoli al user_type per compatibilità
-        $roleMapping = [
-            'admin' => ['admin', 'national_admin', 'super_admin'],
-            'zone_admin' => ['admin'], // zone_admin è un alias per admin
-            'national_admin' => ['national_admin', 'super_admin'],
-            'super_admin' => ['super_admin'],
-            'referee' => ['referee'],
-            'administrator' => ['admin', 'national_admin', 'super_admin'],
-        ];
+        return $this->user_type?->isAdmin() ?? false;
+    }
 
-        // Se il ruolo non è mappato, verifica direttamente con user_type
-        if (! isset($roleMapping[$role])) {
-            return $this->user_type === $role;
-        }
+    public function isReferee(): bool
+    {
+        return $this->user_type === UserType::Referee;
+    }
 
-        // Verifica se user_type è incluso nel mapping del ruolo
-        return in_array($this->user_type, $roleMapping[$role]);
+    public function isSuperAdmin(): bool
+    {
+        return $this->user_type === UserType::SuperAdmin;
+    }
+
+    public function isNationalAdmin(): bool
+    {
+        return $this->user_type?->isNational() ?? false;
+    }
+
+    public function isZoneAdmin(): bool
+    {
+        return $this->user_type === UserType::ZoneAdmin;
     }
 
     /**
-     * Check if user has any of the specified roles
+     * L'arbitro ha accesso ai tornei nazionali (livello Nazionale o Internazionale).
      */
-    public function hasAnyRole($roles): bool
+    public function isNationalReferee(): bool
     {
-        if (is_string($roles)) {
-            $roles = [$roles];
+        if (! $this->isReferee() || ! $this->level) {
+            return false;
         }
 
-        foreach ($roles as $role) {
+        $level = RefereeLevel::tryFrom($this->level);
+
+        return $level?->isNational() ?? false;
+    }
+
+    /**
+     * Verifica compatibilità con codice legacy che usa stringhe di ruolo.
+     *
+     * @deprecated Preferire i metodi tipizzati isAdmin(), isReferee(), ecc.
+     */
+    public function hasRole(string $role): bool
+    {
+        return match ($role) {
+            'super_admin'   => $this->isSuperAdmin(),
+            'national_admin' => $this->isNationalAdmin(),
+            'zone_admin'                            => $this->isZoneAdmin(),
+            'admin', 'administrator'                => $this->isAdmin(),
+            'referee'       => $this->isReferee(),
+            default         => $this->user_type?->value === $role,
+        };
+    }
+
+    /**
+     * @deprecated Preferire i metodi tipizzati isAdmin(), isReferee(), ecc.
+     *
+     * @param  string|string[]  $roles
+     */
+    public function hasAnyRole(string|array $roles): bool
+    {
+        foreach ((array) $roles as $role) {
             if ($this->hasRole($role)) {
                 return true;
             }
         }
 
         return false;
-    }
-
-    /**
-     * Helper methods for user type checking
-     */
-    public function isAdmin(): bool
-    {
-        return in_array($this->user_type, ['admin', 'national_admin', 'super_admin']);
-    }
-
-    public function isReferee(): bool
-    {
-        return $this->user_type === 'referee';
-    }
-
-    public function isSuperAdmin(): bool
-    {
-        return $this->user_type === 'super_admin';
-    }
-
-    public function isNationalAdmin(): bool
-    {
-        return in_array($this->user_type, ['national_admin', 'super_admin']);
     }
 }

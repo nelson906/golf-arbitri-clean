@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\UserType;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use Illuminate\Http\JsonResponse;
@@ -28,7 +29,7 @@ class DocumentController extends Controller
             ->orderBy('created_at', 'desc');
 
         // Admin di zona vede solo documenti della sua zona o globali
-        if ($user && $user->user_type === 'admin') {
+        if ($user && $user->isZoneAdmin()) {
             $query->where(function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id)
                     ->orWhereNull('zone_id');
@@ -45,7 +46,7 @@ class DocumentController extends Controller
             $query->where('category', $request->category);
         }
 
-        if ($request->filled('zone_id') && $user && in_array($user->user_type, ['national_admin', 'super_admin'])) {
+        if ($request->filled('zone_id') && $user && $user->isNationalAdmin()) {
             $query->where('zone_id', $request->zone_id);
         }
 
@@ -123,7 +124,7 @@ class DocumentController extends Controller
 
             // Per admin, usa la zone_id fornita o quella dell'utente
             $zoneId = $request->zone_id;
-            if (! $zoneId && $user && $user->user_type === 'admin') {
+            if (! $zoneId && $user && $user->isZoneAdmin()) {
                 $zoneId = $user->zone_id;
             }
 
@@ -317,14 +318,14 @@ class DocumentController extends Controller
         }
 
         // Super admin e national admin possono accedere a tutto
-        if ($user->user_type === 'super_admin' || $user->user_type === 'national_admin') {
+        if ($user->isNationalAdmin()) {
             return;
         }
 
         // Se richiede ownership per modifica/cancellazione
         if ($requireOwnership) {
             // Admin può modificare/cancellare documenti della propria zona
-            if ($user->user_type === 'admin') {
+            if ($user->isZoneAdmin()) {
                 if ($document->zone_id && $document->zone_id !== $user->zone_id) {
                     abort(403, 'Non puoi modificare documenti di altre zone.');
                 }
@@ -338,7 +339,7 @@ class DocumentController extends Controller
         }
 
         // Verifica accesso per lettura
-        if ($user->user_type === 'admin') {
+        if ($user->isZoneAdmin()) {
             // Admin può vedere documenti della propria zona o globali
             if ($document->zone_id && $document->zone_id !== $user->zone_id) {
                 abort(403, 'Accesso negato a questo documento.');

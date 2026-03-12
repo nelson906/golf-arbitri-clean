@@ -218,7 +218,7 @@ class ClubController extends Controller
             $tournamentList = $tournaments->map(function ($t) {
                 $date = $t->start_date ? $t->start_date->format('d/m/Y') : 'N/A';
 
-                return "- {$t->name} ({$date}) [{$t->status}]";
+                return "- {$t->name} ({$date}) [{$t->status->value}]";
             })->implode("\n");
 
             return back()->with('error', "Impossibile eliminare: il circolo ha {$tournaments->count()} tornei associati:\n{$tournamentList}");

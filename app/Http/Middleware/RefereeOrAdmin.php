@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserType;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,17 +31,15 @@ class RefereeOrAdmin
         }
 
         $user = Auth::user();
-        $userType = $user->user_type;
+        $userType = $user->user_type; // UserType enum or null
 
-        // Allowed user types for referee/admin access
-        $allowedTypes = ['referee', 'admin', 'national_admin', 'super_admin'];
-
-        if (! in_array($userType, $allowedTypes)) {
+        // Allowed: any user with a valid user_type (all 4 enum values)
+        if ($userType === null) {
             // Log unauthorized access attempt
             Log::warning('Unauthorized referee/admin access attempt', [
                 'user_id' => $user->id,
                 'user_email' => $user->email,
-                'user_type' => $userType,
+                'user_type' => null,
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
                 'requested_url' => $request->fullUrl(),
@@ -58,12 +57,12 @@ class RefereeOrAdmin
         }
 
         // For referees accessing their own data
-        if ($userType === 'referee') {
+        if ($user->isReferee()) {
             $this->checkRefereeAccess($request, $user);
         }
 
-        // For admins, apply zone restrictions
-        if (in_array($userType, ['admin', 'national_admin']) && $user->zone_id) {
+        // For zone/national admins (not super_admin), apply zone restrictions
+        if (($user->isZoneAdmin() || $userType === UserType::NationalAdmin) && $user->zone_id) {
             $this->checkZoneAccess($request, $user);
         }
 
@@ -71,7 +70,7 @@ class RefereeOrAdmin
         Log::info('Referee/Admin access granted', [
             'user_id' => $user->id,
             'user_email' => $user->email,
-            'user_type' => $userType,
+            'user_type' => $userType->value,
             'zone_id' => $user->zone_id,
             'requested_url' => $request->fullUrl(),
             'ip_address' => $request->ip(),
@@ -214,7 +213,7 @@ class RefereeOrAdmin
             // Special handling for users (referees)
             if (
                 $parameterName === 'referee' &&
-                $resource->getAttribute('user_type') === 'referee' &&
+                $resource->getAttribute('user_type') === UserType::Referee &&
                 $resource->getAttribute('zone_id') !== $user->zone_id) {
 
                 return true;

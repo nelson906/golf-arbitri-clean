@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\Tournament;
+use App\Observers\TournamentObserver;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +21,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Register policies
+        // Registra l'Observer per sincronizzare tournament.zone_id con club.zone_id
+        Tournament::observe(TournamentObserver::class);
     }
 }

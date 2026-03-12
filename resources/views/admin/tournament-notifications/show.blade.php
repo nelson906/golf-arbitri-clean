@@ -27,7 +27,7 @@
                                     <li><strong>🌍 Zona:</strong> {{ $tournamentNotification->tournament->zone->name }}</li>
                                     <li><strong>📊 Stato Torneo:</strong>
                                         <span
-                                            class="inline-flex px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">{{ $tournamentNotification->tournament->status }}</span>
+                                            class="inline-flex px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">{{ $tournamentNotification->tournament->status->value }}</span>
                                     </li>
                                 </ul>
                             </div>

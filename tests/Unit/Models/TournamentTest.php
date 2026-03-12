@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Models;
 
+use App\Enums\TournamentStatus;
 use App\Models\Assignment;
 use App\Models\Availability;
 use App\Models\Club;
@@ -311,7 +312,7 @@ class TournamentTest extends TestCase
         $this->assertNotNull($tournament->club_id);
         $this->assertNotNull($tournament->tournament_type_id);
         $this->assertNotNull($tournament->created_by);
-        $this->assertEquals(Tournament::STATUS_OPEN, $tournament->status);
+        $this->assertEquals(TournamentStatus::Open, $tournament->status);
     }
 
     /**

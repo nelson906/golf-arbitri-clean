@@ -99,7 +99,7 @@ class Club extends Model
         }
 
         // Super admin e national admin vedono tutto
-        if (in_array($user->user_type, ['super_admin', 'national_admin'])) {
+        if ($user->isNationalAdmin()) {
             return $query;
         }
 

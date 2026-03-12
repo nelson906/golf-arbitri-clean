@@ -9,7 +9,7 @@ class SuperAdmin
 {
     public function handle(Request $request, Closure $next)
     {
-        if (! auth()->check() || auth()->user()->user_type !== 'super_admin') {
+        if (! auth()->check() || ! auth()->user()->isSuperAdmin()) {
             abort(403, 'Accesso non autorizzato.');
         }
 

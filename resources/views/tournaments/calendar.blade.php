@@ -1,8 +1,8 @@
-@extends(in_array(auth()->user()->user_type ?? '', ['admin', 'national_admin', 'super_admin']) ? 'layouts.admin' : 'layouts.app')
+@extends(auth()->user()->isAdmin() ? 'layouts.admin' : 'layouts.app')
 
 @section('title', 'Calendario Tornei')
 
-@if(in_array(auth()->user()->user_type ?? '', ['admin', 'national_admin', 'super_admin']))
+@if(auth()->user()->isAdmin())
     @section('page-title', 'Calendario Tornei')
 @else
     @section('header')
@@ -93,7 +93,7 @@
                 @else
                     {{-- Fallback legend if service legend not available --}}
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        @if(in_array(auth()->user()->user_type ?? '', ['admin', 'national_admin', 'super_admin']))
+                        @if(auth()->user()->isAdmin())
                             {{-- Admin Legend - Colori basati su calendar_color --}}
                             @if(isset($calendarData['tournamentTypes']) && count($calendarData['tournamentTypes']) > 0)
                                 @foreach($calendarData['tournamentTypes'] as $type)
