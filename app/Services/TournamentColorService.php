@@ -104,7 +104,7 @@ class TournamentColorService
      */
     public function getAdminBorderColor(Tournament $tournament): string
     {
-        return self::STATUS_COLORS[$tournament->status] ?? self::DEFAULT_BORDER;
+        return self::STATUS_COLORS[$tournament->status->value] ?? self::DEFAULT_BORDER;
     }
 
     /**

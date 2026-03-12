@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\TournamentStatus;
+use App\Enums\UserType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TournamentRequest;
 use App\Models\Club;
@@ -103,9 +105,9 @@ class TournamentController extends Controller
     private function getAdminRoles($user): array
     {
         $roles = ['Admin'];
-        if ($user->user_type === 'super_admin') {
+        if ($user->isSuperAdmin()) {
             $roles[] = 'SuperAdmin';
-        } elseif ($user->user_type === 'national_admin') {
+        } elseif ($user->user_type === UserType::NationalAdmin) {
             $roles[] = 'NationalAdmin';
         }
 
@@ -118,7 +120,7 @@ class TournamentController extends Controller
     public function create()
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+        $isNationalAdmin = $user->isNationalAdmin();
 
         // Tutti gli admin vedono tutti i tipi di torneo attivi
         $tournamentTypes = TournamentType::active()->ordered()->get();
@@ -306,7 +308,7 @@ class TournamentController extends Controller
         ]);
 
         $newStatus = $request->status;
-        $currentStatus = $tournament->status;
+        $currentStatus = $tournament->status; // TournamentStatus enum
 
         // Validate status transition
         $validTransitions = [
@@ -317,7 +319,7 @@ class TournamentController extends Controller
             'completed' => [],
         ];
 
-        if (! in_array($newStatus, $validTransitions[$currentStatus] ?? [])) {
+        if (! in_array($newStatus, $validTransitions[$currentStatus->value] ?? [])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Transizione di stato non valida.',
@@ -356,8 +358,8 @@ class TournamentController extends Controller
             'status' => ['required', 'in:'.implode(',', array_keys(Tournament::STATUSES))],
         ]);
 
-        $oldStatus = $tournament->status;
-        $newStatus = $request->status;
+        $oldStatus = $tournament->status; // TournamentStatus enum
+        $newStatus = $request->status;    // string from request
 
         // Update status directly (no workflow validation)
         $tournament->update(['status' => $newStatus]);
@@ -366,7 +368,7 @@ class TournamentController extends Controller
         Log::info('Tournament status override', [
             'tournament_id' => $tournament->id,
             'tournament_name' => $tournament->name,
-            'old_status' => $oldStatus,
+            'old_status' => $oldStatus->value,
             'new_status' => $newStatus,
             'user_id' => auth()->id(),
             'user_name' => auth()->user()->name,
@@ -375,8 +377,8 @@ class TournamentController extends Controller
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => "Stato cambiato da '{$oldStatus}' a '{$newStatus}'.",
-                'old_status' => $oldStatus,
+                'message' => "Stato cambiato da '{$oldStatus->value}' a '{$newStatus}'.",
+                'old_status' => $oldStatus->value,
                 'new_status' => $newStatus,
                 'new_status_label' => Tournament::STATUSES[$newStatus],
             ]);
@@ -384,7 +386,7 @@ class TournamentController extends Controller
 
         return redirect()
             ->back()
-            ->with('success', "Stato torneo cambiato da '".Tournament::STATUSES[$oldStatus]."' a '".Tournament::STATUSES[$newStatus]."'.");
+            ->with('success', "Stato torneo cambiato da '".Tournament::STATUSES[$oldStatus->value]."' a '".Tournament::STATUSES[$newStatus]."'.");
     }
 
     /**
@@ -473,7 +475,7 @@ class TournamentController extends Controller
 
     protected function canBeDeleted($tournament): bool
     {
-        return ! $tournament->assignments()->exists() && $tournament->status === 'draft';
+        return ! $tournament->assignments()->exists() && $tournament->status === TournamentStatus::Draft;
     }
 
     protected function checkAccess($tournament): void

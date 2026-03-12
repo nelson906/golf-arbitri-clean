@@ -2,14 +2,20 @@
 
 namespace App\Traits;
 
+use App\Enums\RefereeLevel;
+use App\Enums\UserType;
 use App\Models\User;
+use App\Support\TournamentVisibility;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Trait per centralizzare la logica di visibilità basata su zona e ruolo.
  *
+ * I metodi apply* delegano a TournamentVisibility che è il SINGLE SOURCE OF TRUTH.
+ * Questo Trait è solo un "bridge" conveniente per i Controller che lo usano.
+ *
  * Regole di visibilità:
- * - super_admin: vede tutto
+ * - super_admin:    vede tutto
  * - national_admin: vede solo tornei con TournamentType.is_national = true
  * - admin (zonale): vede solo entità della propria zona
  * - referee nazionale/internazionale: propria zona + tornei nazionali
@@ -17,195 +23,114 @@ use Illuminate\Database\Eloquent\Builder;
  */
 trait HasZoneVisibility
 {
-    /**
-     * Verifica se l'utente è super_admin
-     */
+    // ── Check ruolo — delegano al Model User per evitare duplicazione ─────────
+
     protected function isSuperAdmin(?User $user = null): bool
     {
-        $user = $user ?? auth()->user();
-
-        return $user->user_type === 'super_admin';
+        return ($user ?? auth()->user())?->isSuperAdmin() ?? false;
     }
 
-    /**
-     * Verifica se l'utente è admin nazionale o super_admin
-     */
     protected function isNationalAdmin(?User $user = null): bool
     {
-        $user = $user ?? auth()->user();
-
-        return in_array($user->user_type, ['national_admin', 'super_admin']);
+        return ($user ?? auth()->user())?->isNationalAdmin() ?? false;
     }
 
-    /**
-     * Verifica se l'utente è un admin (qualsiasi tipo)
-     */
     protected function isAdmin(?User $user = null): bool
     {
-        $user = $user ?? auth()->user();
-
-        return in_array($user->user_type, ['admin', 'national_admin', 'super_admin']);
+        return ($user ?? auth()->user())?->isAdmin() ?? false;
     }
 
-    /**
-     * Verifica se l'utente è admin zonale (non nazionale)
-     */
     protected function isZoneAdmin(?User $user = null): bool
     {
-        $user = $user ?? auth()->user();
-
-        return $user->user_type === 'admin';
+        return ($user ?? auth()->user())?->isZoneAdmin() ?? false;
     }
 
-    /**
-     * Verifica se il referee può accedere ai tornei nazionali
-     */
     protected function isNationalReferee(?User $user = null): bool
     {
-        $user = $user ?? auth()->user();
+        return ($user ?? auth()->user())?->isNationalReferee() ?? false;
+    }
 
-        return in_array($user->level ?? '', ['Nazionale', 'Internazionale']);
+    protected function getUserZoneId(?User $user = null): ?int
+    {
+        return ($user ?? auth()->user())?->zone_id;
     }
 
     /**
-     * Ottiene la zone_id dell'utente corrente (o null se vede tutto)
+     * Restituisce la zone_id appropriata per le query filtrate.
+     * Restituisce null per admin che vedono tutto (super/national).
      */
-    protected function getUserZoneId(?User $user = null): ?int
+    protected function getZoneIdForUser(?User $user = null): ?int
     {
         $user = $user ?? auth()->user();
 
-        return $user->zone_id;
+        if (! $user || ! $user->user_type) {
+            return null;
+        }
+
+        /** @var UserType $type */
+        $type = $user->user_type;
+
+        return $type->isNational() ? null : $user->zone_id;
     }
+
+    // ── Visibilità query — delegano a TournamentVisibility ────────────────────
 
     /**
      * Applica filtro visibilità su query Tournament.
-     *
-     * @param  Builder  $query  Query su Tournament
-     * @param  User|null  $user  Utente (default: auth user)
+     * Delega a TournamentVisibility (single source of truth).
      */
     protected function applyTournamentVisibility(Builder $query, ?User $user = null): Builder
     {
-        $user = $user ?? auth()->user();
-
-        // Super admin vede tutto
-        if ($this->isSuperAdmin($user)) {
-            return $query;
-        }
-
-        // National admin vede solo tornei nazionali
-        if ($user->user_type === 'national_admin') {
-            return $query->whereHas('tournamentType', function ($q) {
-                $q->where('is_national', true);
-            });
-        }
-
-        // Admin zonale vede solo la propria zona
-        if ($user->user_type === 'admin') {
-            return $query->whereHas('club', fn ($q) => $q->where('zone_id', $user->zone_id));
-        }
-
-        // Referee: dipende dal livello
-        if ($user->user_type === 'referee') {
-            if ($this->isNationalReferee($user)) {
-                // Nazionale/Internazionale: propria zona + tornei nazionali
-                return $query->where(function ($q) use ($user) {
-                    $q->whereHas('club', fn ($sub) => $sub->where('zone_id', $user->zone_id))
-                        ->orWhereHas('tournamentType', function ($sub) {
-                            $sub->where('is_national', true);
-                        });
-                });
-            } else {
-                // 1_livello/Regionale: solo propria zona
-                return $query->whereHas('club', fn ($q) => $q->where('zone_id', $user->zone_id));
-            }
-        }
-
-        // Fallback: filtra per zona se presente
-        if ($user->zone_id) {
-            return $query->whereHas('club', fn ($q) => $q->where('zone_id', $user->zone_id));
-        }
-
-        return $query;
+        return TournamentVisibility::apply($query, $user);
     }
 
     /**
      * Applica filtro visibilità su query con relazione al torneo.
      * Utile per Assignment, Availability, Notification, ecc.
      *
-     * @param  Builder  $query  Query su entità con relazione tournament
-     * @param  User|null  $user  Utente (default: auth user)
-     * @param  string  $tournamentRelation  Nome della relazione (default: 'tournament')
+     * @param  string  $tournamentRelation  Nome della relazione Eloquent (default: 'tournament')
      */
     protected function applyTournamentRelationVisibility(
         Builder $query,
         ?User $user = null,
         string $tournamentRelation = 'tournament'
     ): Builder {
-        $user = $user ?? auth()->user();
-
-        // Super admin vede tutto
-        if ($this->isSuperAdmin($user)) {
-            return $query;
-        }
-
-        // National admin vede solo entità di tornei nazionali
-        if ($user->user_type === 'national_admin') {
-            return $query->whereHas($tournamentRelation, function ($q) {
-                $q->whereHas('tournamentType', function ($sub) {
-                    $sub->where('is_national', true);
-                });
-            });
-        }
-
-        // Admin zonale vede solo la propria zona
-        if ($user->user_type === 'admin') {
-            return $query->whereHas($tournamentRelation, function ($q) use ($user) {
-                $q->whereHas('club', fn ($sub) => $sub->where('zone_id', $user->zone_id));
-            });
-        }
-
-        // Referee con accesso nazionale
-        if ($user->user_type === 'referee' && $this->isNationalReferee($user)) {
-            return $query->whereHas($tournamentRelation, function ($q) use ($user) {
-                $q->whereHas('club', fn ($sub) => $sub->where('zone_id', $user->zone_id))
-                    ->orWhereHas('tournamentType', function ($sub) {
-                        $sub->where('is_national', true);
-                    });
-            });
-        }
-
-        // Default: filtra per zona
-        if ($user->zone_id) {
-            return $query->whereHas($tournamentRelation, function ($q) use ($user) {
-                $q->whereHas('club', fn ($sub) => $sub->where('zone_id', $user->zone_id));
-            });
-        }
-
-        return $query;
+        return TournamentVisibility::applyViaRelation($query, $user, $tournamentRelation);
     }
 
     /**
      * Applica filtro visibilità su query User (arbitri).
      *
-     * @param  Builder  $query  Query su User
-     * @param  User|null  $user  Utente (default: auth user)
+     * Regole:
+     * - super_admin:    vede tutto
+     * - national_admin: solo arbitri nazionali/internazionali
+     * - admin zonale:   solo arbitri della propria zona
      */
     protected function applyUserVisibility(Builder $query, ?User $user = null): Builder
     {
         $user = $user ?? auth()->user();
 
-        // Super admin vede tutto
-        if ($this->isSuperAdmin($user)) {
+        if (! $user || ! $user->user_type) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        /** @var UserType $type */
+        $type = $user->user_type;
+
+        if ($type->seesEverything()) {
             return $query;
         }
 
-        // National admin vede solo arbitri nazionali/internazionali
-        if ($user->user_type === 'national_admin') {
-            return $query->whereIn('level', ['Nazionale', 'Internazionale']);
+        if ($type === UserType::NationalAdmin) {
+            $nationalLevels = array_map(
+                fn (RefereeLevel $l) => $l->value,
+                array_filter(RefereeLevel::cases(), fn (RefereeLevel $l) => $l->isNational())
+            );
+
+            return $query->whereIn('level', $nationalLevels);
         }
 
-        // Admin zonale vede solo arbitri della propria zona
-        if ($user->user_type === 'admin' && $user->zone_id) {
+        if ($type === UserType::ZoneAdmin && $user->zone_id) {
             return $query->where('zone_id', $user->zone_id);
         }
 
@@ -214,20 +139,23 @@ trait HasZoneVisibility
 
     /**
      * Applica filtro visibilità su query Club.
-     *
-     * @param  Builder  $query  Query su Club
-     * @param  User|null  $user  Utente (default: auth user)
      */
     protected function applyClubVisibility(Builder $query, ?User $user = null): Builder
     {
         $user = $user ?? auth()->user();
 
-        // Super admin e national admin vedono tutto
-        if ($this->isNationalAdmin($user)) {
+        if (! $user || ! $user->user_type) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        /** @var UserType $type */
+        $type = $user->user_type;
+
+        // Super admin e national admin vedono tutti i circoli
+        if ($type->isNational()) {
             return $query;
         }
 
-        // Admin zonale vede solo circoli della propria zona
         if ($user->zone_id) {
             return $query->where('zone_id', $user->zone_id);
         }
@@ -237,38 +165,11 @@ trait HasZoneVisibility
 
     /**
      * Verifica se l'utente può accedere a un torneo specifico.
-     *
-     * @param  \App\Models\Tournament  $tournament
+     * Delega a TournamentVisibility (single source of truth).
      */
     protected function canAccessTournament($tournament, ?User $user = null): bool
     {
-        $user = $user ?? auth()->user();
-
-        $tournamentZoneId = $tournament->club->zone_id ?? $tournament->zone_id;
-
-        // Super admin può tutto
-        if ($this->isSuperAdmin($user)) {
-            return true;
-        }
-
-        // National admin: solo tornei nazionali
-        if ($user->user_type === 'national_admin') {
-            return $tournament->tournamentType?->is_national ?? false;
-        }
-
-        // Admin zonale: solo propria zona
-        if ($user->user_type === 'admin') {
-            return $tournamentZoneId === $user->zone_id;
-        }
-
-        // Referee nazionale: propria zona o torneo nazionale
-        if ($user->user_type === 'referee' && $this->isNationalReferee($user)) {
-            return $tournamentZoneId === $user->zone_id
-                || ($tournament->tournamentType?->is_national ?? false);
-        }
-
-        // Referee zonale: solo propria zona
-        return $tournamentZoneId === $user->zone_id;
+        return TournamentVisibility::canAccess($tournament, $user);
     }
 
     /**
@@ -279,14 +180,14 @@ trait HasZoneVisibility
         $user = $user ?? auth()->user();
 
         return [
-            'isSuperAdmin' => $this->isSuperAdmin($user),
-            'isNationalAdmin' => $this->isNationalAdmin($user),
-            'isAdmin' => $this->isAdmin($user),
-            'isZoneAdmin' => $this->isZoneAdmin($user),
+            'isSuperAdmin'     => $this->isSuperAdmin($user),
+            'isNationalAdmin'  => $this->isNationalAdmin($user),
+            'isAdmin'          => $this->isAdmin($user),
+            'isZoneAdmin'      => $this->isZoneAdmin($user),
             'isNationalReferee' => $this->isNationalReferee($user),
-            'userZoneId' => $user->zone_id,
-            'userType' => $user->user_type,
-            'userLevel' => $user->level ?? null,
+            'userZoneId'       => $user?->zone_id,
+            'userType'         => $user?->user_type?->value,
+            'userLevel'        => $user?->level ?? null,
         ];
     }
 }

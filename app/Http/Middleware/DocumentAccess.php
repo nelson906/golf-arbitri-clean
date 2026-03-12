@@ -20,7 +20,7 @@ class DocumentAccess
         }
 
         // Verifica accesso ai documenti based on user type
-        if ($user->user_type === 'referee') {
+        if ($user->isReferee()) {
             // Referee può accedere solo a documenti pubblici o della sua zona
             $document = $request->route('document');
             if ($document instanceof \App\Models\Document && ! $document->is_public && $document->zone_id !== $user->zone_id) {

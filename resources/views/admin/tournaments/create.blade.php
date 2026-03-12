@@ -90,7 +90,7 @@
                 </div>
 
                 {{-- Zone (only for national admin) --}}
-                @if(auth()->user()->user_type === 'national_admin')
+                @if(auth()->user()->isNationalAdmin())
                 <div>
                     <label for="zone_id" class="block text-sm font-medium text-gray-700">
                         Zona <span class="text-red-500">*</span>
@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    @if(auth()->user()->user_type === 'national_admin')
+    @if(auth()->user()->isNationalAdmin())
     // Zone change handler (for national admin)
     const zoneSelect = document.getElementById('zone_id');
     const clubSelect = document.getElementById('club_id');

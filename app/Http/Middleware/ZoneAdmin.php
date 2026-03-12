@@ -14,9 +14,9 @@ class ZoneAdmin
      */
     public function handle(Request $request, Closure $next)
     {
-        $userType = auth()->user()->user_type ?? 'referee';
+        $userType = auth()->user()->user_type;
 
-        if (! in_array($userType, ['zone_admin', 'admin', 'super_admin', 'national_admin'])) {
+        if (! ($userType?->isAdmin() ?? false)) {
             abort(403);
         }
 

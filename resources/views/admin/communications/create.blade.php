@@ -99,7 +99,7 @@
                 </div>
 
                 {{-- Zona (solo per national/super admin) --}}
-                @if(auth()->user()->user_type === 'national_admin' || auth()->user()->user_type === 'super_admin')
+                @if(auth()->user()->isNationalAdmin())
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
                         Zona di destinazione

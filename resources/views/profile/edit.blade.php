@@ -1,6 +1,6 @@
-@extends(in_array(auth()->user()->user_type ?? '', ['admin', 'national_admin', 'super_admin']) ? 'layouts.admin' : 'layouts.app')
+@extends(auth()->user()->isAdmin() ? 'layouts.admin' : 'layouts.app')
 
-@if(in_array(auth()->user()->user_type ?? '', ['admin', 'national_admin', 'super_admin']))
+@if(auth()->user()->isAdmin())
     @section('page-title', 'Il mio profilo')
 @else
     @section('header')

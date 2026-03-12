@@ -27,8 +27,8 @@ class DocumentController extends Controller
         $query = Document::with(['uploader', 'tournament', 'zone'])
             ->orderBy('created_at', 'desc');
 
-        // Filtro accesso per zona
-        if ($user->user_type !== 'national_admin' && $user->user_type !== 'super_admin') {
+        // Filtro accesso per zona — national_admin e super_admin vedono tutto
+        if (! $user->isNationalAdmin()) {
             $query->where(function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id)
                     ->orWhereNull('zone_id')
@@ -241,7 +241,7 @@ class DocumentController extends Controller
         $user = Auth::user();
 
         // Super admin e national admin possono accedere a tutto
-        if ($user->user_type === 'super_admin' || $user->user_type === 'national_admin') {
+        if ($user->isNationalAdmin()) {
             return;
         }
 

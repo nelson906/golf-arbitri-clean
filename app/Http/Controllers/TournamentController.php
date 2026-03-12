@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TournamentStatus;
 use App\Models\Tournament;
 use App\Services\CalendarDataService;
 use App\Services\TournamentColorService;
@@ -97,7 +98,7 @@ class TournamentController extends Controller
         // Dati user-specific
         $userAvailabilities = [];
         $userAssignments = [];
-        if ($user->user_type === 'referee') {
+        if ($user->isReferee()) {
             $userAvailabilities = $user->availabilities()->pluck('tournament_id')->toArray();
             $userAssignments = $user->assignments()->pluck('tournament_id')->toArray();
         }
@@ -138,7 +139,7 @@ class TournamentController extends Controller
         $userAvailability = null;
         $userAssignment = null;
 
-        if ($user->user_type === 'referee') {
+        if ($user->isReferee()) {
             $userAvailability = $tournament->availabilities()->where('user_id', $user->id)->first();
             $userAssignment = $tournament->assignments()->where('user_id', $user->id)->first();
         }
@@ -188,7 +189,7 @@ class TournamentController extends Controller
     private function checkTournamentAccess($tournament, $user, $isAdmin): void
     {
         // Non-admin non possono vedere tornei in draft
-        if (! $isAdmin && $tournament->status === 'draft') {
+        if (! $isAdmin && $tournament->status === TournamentStatus::Draft) {
             abort(404);
         }
 

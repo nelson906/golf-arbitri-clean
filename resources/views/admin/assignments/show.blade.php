@@ -173,7 +173,7 @@
                         Visualizza Arbitro
                     </a>
 
-                    @if(!$assignment->is_confirmed && $assignment->tournament->status === 'assigned')
+                    @if(!$assignment->is_confirmed && $assignment->tournament->status->value === 'assigned')
                         <form action="{{ route('admin.assignments.confirm', $assignment) }}" method="POST" class="w-full">
                             @csrf
                             <button type="submit"
@@ -184,7 +184,7 @@
                         </form>
                     @endif
 
-                    @if($assignment->tournament->status !== 'completed')
+                    @if($assignment->tournament->status->value !== 'completed')
                         <form action="{{ route('admin.assignments.destroy', $assignment) }}" method="POST" class="w-full">
                             @csrf
                             @method('DELETE')

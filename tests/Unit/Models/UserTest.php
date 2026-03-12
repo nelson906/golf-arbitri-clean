@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Models;
 
+use App\Enums\UserType;
 use App\Models\Assignment;
 use App\Models\Availability;
 use App\Models\RefereeCareerHistory;
@@ -132,7 +133,7 @@ class UserTest extends TestCase
 
         $this->assertCount(3, $referees);
         $referees->each(function ($user) {
-            $this->assertEquals('referee', $user->user_type);
+            $this->assertEquals(UserType::Referee, $user->user_type);
         });
     }
 
@@ -300,7 +301,7 @@ class UserTest extends TestCase
     {
         $user = User::factory()->referee()->create();
 
-        $this->assertEquals('referee', $user->user_type);
+        $this->assertEquals(UserType::Referee, $user->user_type);
         $this->assertNotNull($user->level);
         $this->assertContains($user->level, ['Aspirante', '1_livello', 'Regionale', 'Nazionale', 'Internazionale']);
     }
@@ -312,7 +313,7 @@ class UserTest extends TestCase
     {
         $user = User::factory()->zoneAdmin()->create();
 
-        $this->assertEquals('admin', $user->user_type);
+        $this->assertEquals(UserType::ZoneAdmin, $user->user_type);
         $this->assertNotNull($user->zone_id);
     }
 }

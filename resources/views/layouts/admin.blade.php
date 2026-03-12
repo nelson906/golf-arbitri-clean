@@ -38,7 +38,7 @@
 
             <ul class="mt-6">
                 {{-- Super Admin Section --}}
-                @if (auth()->user()->user_type === 'super_admin')
+                @if (auth()->user()->isSuperAdmin())
                     <li class="px-4 py-2">
                         <h3 class="text-xs font-semibold text-blue-300 uppercase tracking-wider">Sistema</h3>
                     </li>
@@ -222,11 +222,11 @@
                                 <div class="text-sm font-medium text-gray-900">{{ auth()->user()->name }}</div>
                                 <div class="text-xs text-gray-500">{{ auth()->user()->email }}</div>
                                 <div class="text-xs text-gray-400 mt-1">
-                                    @if (auth()->user()->user_type === 'super_admin')
+                                    @if (auth()->user()->isSuperAdmin())
                                         Super Admin
-                                    @elseif(auth()->user()->user_type === 'national_admin')
+                                    @elseif(auth()->user()->isNationalAdmin() && !auth()->user()->isSuperAdmin())
                                         Admin Nazionale
-                                    @elseif(auth()->user()->user_type === 'admin')
+                                    @elseif(auth()->user()->isZoneAdmin())
                                         Admin Zona
                                     @endif
                                 </div>

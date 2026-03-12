@@ -21,12 +21,9 @@ class AssignmentController extends Controller
 {
     use HasZoneVisibility;
 
-    protected AssignmentValidationService $validationService;
-
-    public function __construct(AssignmentValidationService $validationService)
-    {
-        $this->validationService = $validationService;
-    }
+    public function __construct(
+        private readonly AssignmentValidationService $validationService,
+    ) {}
 
     /**
      * Display lista assegnazioni
@@ -123,7 +120,7 @@ class AssignmentController extends Controller
                     ->get();
 
                 // Altri arbitri
-                $zoneId = (! $isNationalAdmin && $user && $user->user_type === 'admin') ? $user->zone_id : null;
+                $zoneId = (! $isNationalAdmin && $user && $user->isZoneAdmin()) ? $user->zone_id : null;
 
                 $otherReferees = User::where('user_type', 'referee')
                     ->where('is_active', true)
@@ -612,24 +609,9 @@ class AssignmentController extends Controller
         }
     }
 
-    /**
-     * Helper: controlla conflitti di date (placeholder)
-     *
-     * TODO: Implementare logica di controllo conflitti quando necessario
-     * La logica di validazione conflitti è attualmente gestita da ValidationService
-     */
-    private function checkDateConflicts($referees, $tournament)
-    {
-        // Implementa logica per controllare conflitti se necessario
-        // Per ora è solo un placeholder
-
-        foreach ($referees as $referee) {
-            $referee->has_conflicts = false; // Default: nessun conflitto
-
-            // Verifica conflitti di date (usando start_date/end_date)
-            // La logica di conflitto può essere implementata se necessario
-        }
-    }
+    // Nota: il controllo conflitti di date è gestito da
+    // AssignmentValidationService::detectDateConflicts() e
+    // AssignmentValidationService::suggestConflictResolutions().
 
     /**
      * Remove assignment by ID

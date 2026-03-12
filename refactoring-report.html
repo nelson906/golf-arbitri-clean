@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Golf Arbitri — Refactoring Report</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3250;
+    --accent: #6c8fff;
+    --accent2: #a78bfa;
+    --green: #4ade80;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --code-bg: #12141c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .header {
+    background: linear-gradient(135deg, #1a1d27 0%, #22263a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 40px 60px;
+  }
+  .header h1 { font-size: 2.2rem; font-weight: 700; color: #fff; }
+  .header .subtitle { color: var(--muted); margin-top: 8px; font-size: 1rem; }
+  .header .meta { margin-top: 20px; display: flex; gap: 24px; flex-wrap: wrap; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
+  }
+  .badge-blue { background: rgba(108,143,255,.15); color: var(--accent); border: 1px solid rgba(108,143,255,.3); }
+  .badge-purple { background: rgba(167,139,250,.15); color: var(--accent2); border: 1px solid rgba(167,139,250,.3); }
+  .badge-green { background: rgba(74,222,128,.15); color: var(--green); border: 1px solid rgba(74,222,128,.3); }
+  .badge-red { background: rgba(248,113,113,.15); color: var(--red); border: 1px solid rgba(248,113,113,.3); }
+  .badge-yellow { background: rgba(251,191,36,.15); color: var(--yellow); border: 1px solid rgba(251,191,36,.3); }
+  .badge-orange { background: rgba(251,146,60,.15); color: var(--orange); border: 1px solid rgba(251,146,60,.3); }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 60px; }
+  h2 { font-size: 1.5rem; font-weight: 700; color: #fff; margin: 48px 0 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 1.15rem; font-weight: 600; color: var(--accent); margin: 32px 0 12px; }
+  h4 { font-size: 1rem; font-weight: 600; color: var(--accent2); margin: 24px 0 8px; }
+  p { color: var(--text); margin-bottom: 12px; }
+  ul, ol { padding-left: 24px; margin-bottom: 12px; }
+  li { margin-bottom: 6px; color: var(--text); }
+  strong { color: #fff; }
+  em { color: var(--muted); font-style: normal; }
+
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 32px;
+    margin-bottom: 40px;
+  }
+  .toc h3 { margin-top: 0; color: var(--accent2); }
+  .toc ol { counter-reset: toc-counter; list-style: none; padding-left: 0; }
+  .toc ol li { counter-increment: toc-counter; margin-bottom: 8px; }
+  .toc ol li::before { content: counter(toc-counter) ". "; color: var(--accent); font-weight: 700; }
+  .toc a { color: var(--text); text-decoration: none; }
+  .toc a:hover { color: var(--accent); }
+
+  .analysis-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent2);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 20px 0;
+  }
+  .analysis-box .label {
+    font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--accent2); margin-bottom: 10px;
+  }
+
+  .issue-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin: 24px 0;
+    overflow: hidden;
+  }
+  .issue-card .card-header {
+    background: var(--surface2);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-body { padding: 20px; }
+
+  .severity {
+    display: inline-block; padding: 3px 10px; border-radius: 12px;
+    font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  }
+  .sev-critical { background: rgba(248,113,113,.2); color: var(--red); }
+  .sev-high { background: rgba(251,146,60,.2); color: var(--orange); }
+  .sev-medium { background: rgba(251,191,36,.2); color: var(--yellow); }
+  .sev-low { background: rgba(74,222,128,.2); color: var(--green); }
+
+  .code-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+  @media(max-width: 800px) { .code-grid { grid-template-columns: 1fr; } }
+  .code-block { background: var(--code-bg); border-radius: 8px; overflow: hidden; }
+  .code-block .code-label {
+    padding: 8px 16px;
+    font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; border-bottom: 1px solid var(--border);
+  }
+  .code-block.before .code-label { color: var(--red); background: rgba(248,113,113,.08); }
+  .code-block.after .code-label { color: var(--green); background: rgba(74,222,128,.08); }
+  pre { padding: 16px; font-size: 0.82rem; overflow-x: auto; line-height: 1.5; font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; }
+  .code-full { background: var(--code-bg); border-radius: 8px; overflow: hidden; margin: 16px 0; }
+  .code-full .code-label { padding: 8px 16px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--accent); background: rgba(108,143,255,.08); border-bottom: 1px solid var(--border); }
+
+  .why-box {
+    background: rgba(108,143,255,.07);
+    border: 1px solid rgba(108,143,255,.2);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 12px 0;
+  }
+  .why-box .why-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 8px; }
+
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; margin: 24px 0; }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+  }
+  .summary-card .num { font-size: 2rem; font-weight: 800; margin-bottom: 4px; }
+  .summary-card .lbl { font-size: 0.8rem; color: var(--muted); }
+
+  .callout {
+    border-radius: 8px; padding: 14px 18px; margin: 16px 0;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .callout-info { background: rgba(108,143,255,.1); border: 1px solid rgba(108,143,255,.25); }
+  .callout-warn { background: rgba(251,191,36,.08); border: 1px solid rgba(251,191,36,.2); }
+  .callout-danger { background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.2); }
+  .callout-icon { font-size: 1.1rem; margin-top: 1px; flex-shrink: 0; }
+  .callout-text { font-size: 0.9rem; }
+
+  .quick-wins {
+    background: var(--surface);
+    border: 1px solid var(--green);
+    border-radius: 10px;
+    padding: 24px;
+    margin: 24px 0;
+  }
+  .quick-wins h3 { margin-top: 0; color: var(--green); }
+
+  code {
+    background: rgba(108,143,255,.12);
+    color: var(--accent);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.85em;
+  }
+  .keyword { color: #c792ea; }
+  .string { color: #c3e88d; }
+  .comment { color: #546e7a; font-style: italic; }
+  .type { color: #82aaff; }
+  .func { color: #82aaff; }
+  .var { color: #f78c6c; }
+  .num { color: #f78c6c; }
+
+  footer { border-top: 1px solid var(--border); padding: 30px 60px; color: var(--muted); font-size: 0.85rem; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⛳ Golf Arbitri — Refactoring Report</h1>
+  <p class="subtitle">Analisi architetturale e proposte di refactoring · Laravel 12 · PHP 8.2+</p>
+  <div class="meta">
+    <span class="badge badge-blue">Laravel 12</span>
+    <span class="badge badge-purple">PHP 8.2+</span>
+    <span class="badge badge-green">React 19 + Vite</span>
+    <span class="badge badge-yellow">Deploy: Aruba Virtual Host</span>
+    <span class="badge badge-orange">15.000+ LOC analizzate</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="toc">
+    <h3>📋 Indice</h3>
+    <ol>
+      <li><a href="#executive">Executive Summary</a></li>
+      <li><a href="#issue1">PHP Enums — Stringhe magiche ovunque</a></li>
+      <li><a href="#issue2">Duplicazione logica visibilità (Trait vs Scope)</a></li>
+      <li><a href="#issue3">NotificationController — God Method</a></li>
+      <li><a href="#issue4">AssignmentController — Validazione inline e metodi fantasma</a></li>
+      <li><a href="#issue5">Tournament Model — zone_id e accessor problematico</a></li>
+      <li><a href="#issue6">N+1 Query e Eager Loading</a></li>
+      <li><a href="#issue7">Mailable Classes — Mail::raw() da eliminare</a></li>
+      <li><a href="#issue8">Type Hinting incompleto</a></li>
+      <li><a href="#issue9">Show() con codice morto in AssignmentController</a></li>
+      <li><a href="#quick">Quick Wins: cambiamenti a basso rischio</a></li>
+      <li><a href="#roadmap">Roadmap di refactoring consigliata</a></li>
+    </ol>
+  </div>
+
+  <!-- ─── EXECUTIVE SUMMARY ─────────────────────────────────────────── -->
+  <h2 id="executive">📊 Executive Summary</h2>
+
+  <p>Il progetto è <strong>architetturalmente solido</strong> per le sue dimensioni. Hai già implementato Service Layer, Trait per visibilità, Form Requests e Query Scopes — scelte eccellenti. L'analisi ha però identificato <strong>10 pattern critici</strong> che, se corretti, aumenteranno significativamente la manutenibilità a lungo termine.</p>
+
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="num" style="color:var(--red)">3</div>
+      <div class="lbl">Problemi Critici</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:var(--orange)">4</div>
+      <div class="lbl">Priorità Alta</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:var(--yellow)">3</div>
+      <div class="lbl">Priorità Media</div>
+    </div>
+    <div class="summary-card">
+      <div class="num" style="color:var(--green)">40+</div>
+      <div class="lbl">Controller analizzati</div>
+    </div>
+  </div>
+
+  <div class="analysis-box">
+    <div class="label">🔍 Analisi critica (thinking process)</div>
+    <p>Il problema principale del codebase è la <strong>proliferazione di stringhe magiche</strong> per concetti di dominio fondamentali: <code>user_type</code>, <code>level</code>, <code>status</code>, <code>role</code>. Queste stringhe compaiono in oltre 30 file diversi e non sono type-safe. PHP 8.1+ ha gli Enum nativi proprio per questo — e il refactoring si ammortizerà con il primo typo evitato in produzione.</p>
+    <p>Il secondo tema è la <strong>duplicazione della logica di visibilità</strong>: lo stesso switch su <code>user_type</code> è replicato nel Trait <code>HasZoneVisibility</code>, nel scope <code>Tournament::scopeVisible()</code>, nel scope <code>User::scopeVisible()</code>, e sporadicamente anche in metodi privati di controller. Ogni nuova regola di visibilità deve essere aggiornata in 4+ posti.</p>
+    <p>Il terzo tema è il <code>NotificationController::sendNationalNotification()</code> che è un metodo da 200 righe che fa tutto: validazione, costruzione destinatari, invio email, aggiornamento DB. Il metodo <code>resendNationalNotification()</code> duplica il 70% dello stesso codice.</p>
+  </div>
+
+  <!-- ─── ISSUE 1: ENUMS ─────────────────────────────────────────────── -->
+  <h2 id="issue1">1. PHP Enums — Le stringhe magiche del dominio</h2>
+
+  <div class="issue-card">
+    <div class="card-header">
+      <span class="severity sev-critical">Critico</span>
+      <strong>Magic strings per concetti di dominio — 30+ file coinvolti</strong>
+    </div>
+    <div class="card-body">
+
+      <p>I concetti chiave del dominio (<code>user_type</code>, <code>level</code>, <code>role</code> assignment, <code>status</code> torneo) sono rappresentati come stringhe disperse nell'intero codebase. Un refactoring con <strong>PHP 8.1+ Backed Enums</strong> porta type-safety, autocompletamento IDE e un unico source of truth.</p>
+
+      <div class="callout callout-danger">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-text">Il pattern <code>['Nazionale', 'Internazionale']</code> appare in almeno 6 file diversi. <code>'national_admin'</code> in 8+ file. Un typo in produzione passerebbe silenziosamente.</div>
+      </div>
+
+      <h4>Prima — stringhe ovunque</h4>
+      <div class="code-grid">
+        <div class="code-block before">
+          <div class="code-label">❌ Prima — User.php</div>
+          <pre><span class="keyword">public const</span> <span class="var">LEVEL_NAZIONALE</span> = <span class="string">'Nazionale'</span>;
+<span class="keyword">public const</span> <span class="var">LEVEL_INTERNAZIONALE</span> = <span class="string">'Internazionale'</span>;
+
+<span class="keyword">public function</span> <span class="func">isNationalAdmin</span>(): <span class="type">bool</span>
+{
+    <span class="keyword">return</span> <span class="func">in_array</span>(<span class="var">$this</span>->user_type, [
+        <span class="string">'national_admin'</span>, <span class="string">'super_admin'</span>
+    ]);
+}</pre>
+        </div>
+        <div class="code-block before">
+          <div class="code-label">❌ Prima — HasZoneVisibility.php</div>
+          <pre><span class="keyword">if</span> (<span class="var">$user</span>->user_type === <span class="string">'national_admin'</span>) {
+    <span class="keyword">return</span> <span class="var">$query</span>-><span class="func">whereIn</span>(<span class="string">'level'</span>, [
+        <span class="string">'Nazionale'</span>, <span class="string">'Internazionale'</span>
+    ]);
+}
+<span class="comment">// Ripetuto in AssignmentController, Tournament::scopeVisible(), ...</span></pre>
+        </div>
+      </div>
+
+      <h4>Dopo — PHP 8.1 Backed Enums</h4>
+
+      <div class="code-full">
+        <div class="code-label">✅ Dopo — app/Enums/UserType.php</div>
+        <pre><span class="keyword">namespace</span> App\Enums;
+
+<span class="keyword">enum</span> <span class="type">UserType</span>: <span class="type">string</span>
+{
+    <span class="keyword">case</span> SuperAdmin    = <span class="string">'super_admin'</span>;
+    <span class="keyword">case</span> NationalAdmin = <span class="string">'national_admin'</span>;
+    <span class="keyword">case</span> ZoneAdmin     = <span class="string">'admin'</span>;
+    <span class="keyword">case</span> Referee       = <span class="string">'referee'</span>;
+
+    <span class="keyword">public function</span> <span class="func">isAdmin</span>(): <span class="type">bool</span>
+    {
+        <span class="keyword">return</span> <span class="keyword">in_array</span>(<span class="var">$this</span>, [
+            <span class="type">self</span>::SuperAdmin,
+            <span class="type">self</span>::NationalAdmin,
+            <span class="type">self</span>::ZoneAdmin,
+        ]);
+    }
+
+    <span class="keyword">public function</span> <span class="func">seesEverything</span>(): <span class="type">bool</span>
+    {
+        <span class="keyword">return</span> <span class="var">$this</span> === <span class="type">self</span>::SuperAdmin;
+    }
+
+    <span class="keyword">public function</span> <span class="func">isNational</span>(): <span class="type">bool</span>
+    {
+        <span class="keyword">return</span> <span class="keyword">in_array</span>(<span class="var">$this</span>, [<span class="type">self</span>::SuperAdmin, <span class="type">self</span>::NationalAdmin]);
+    }
+}</pre>
+      </div>
+
+      <div class="code-full">
+        <div class="code-label">✅ Dopo — app/Enums/RefereeLevel.php</div>
+        <pre><span class="keyword">namespace</span> App\Enums;
+
+<span class="keyword">enum</span> <span class="type">RefereeLevel</span>: <span class="type">string</span>
+{
+    <span class="keyword">case</span> Aspirante     = <span class="string">'Aspirante'</span>;
+    <span class="keyword">case</span> PrimoLivello  = <span class="string">'1_livello'</span>;
+    <span class="keyword">case</span> Regionale     = <span class="string">'Regionale'</span>;
+    <span class="keyword">case</span> Nazionale     = <span class="string">'Nazionale'</span>;
+    <span class="keyword">case</span> Internazionale = <span class="string">'Internazionale'</span>;
+    <span class="keyword">case</span> Archivio      = <span class="string">'Archivio'</span>;
+
+    <span class="keyword">public function</span> <span class="func">isNational</span>(): <span class="type">bool</span>
+    {
+        <span class="keyword">return</span> <span class="keyword">in_array</span>(<span class="var">$this</span>, [
+            <span class="type">self</span>::Nazionale,
+            <span class="type">self</span>::Internazionale,
+        ]);
+    }
+
+    <span class="keyword">public function</span> <span class="func">label</span>(): <span class="type">string</span>
+    {
+        <span class="keyword">return match</span>(<span class="var">$this</span>) {
+            <span class="type">self</span>::PrimoLivello => <span class="string">'Primo Livello'</span>,
+            <span class="keyword">default</span>           => <span class="var">$this</span>->value,
+        };
+    }
+}</pre>
+      </div>
+
+      <div class="code-full">
+        <div class="code-label">✅ Dopo — app/Enums/TournamentStatus.php</div>
+        <pre><span class="keyword">namespace</span> App\Enums;
+
+<span class="keyword">enum</span> <span class="type">TournamentStatus</span>: <span class="type">string</span>
+{
+    <span class="keyword">case</span> Draft     = <span class="string">'draft'</span>;
+    <span class="keyword">case</span> Open      = <span class="string">'open'</span>;
+    <span class="keyword">case</span> Closed    = <span class="string">'closed'</span>;
+    <span class="keyword">case</span> Assigned  = <span class="string">'assigned'</span>;
+    <span class="keyword">case</span> Completed = <span class="string">'completed'</span>;
+    <span class="keyword">case</span> Cancelled = <span class="string">'cancelled'</span>;
+
+    <span class="keyword">public function</span> <span class="func">isEditable</span>(): <span class="type">bool</span>
+    {
+        <span class="keyword">return</span> !<span class="keyword">in_array</span>(<span class="var">$this</span>, [<span class="type">self</span>::Completed, <span class="type">self</span>::Cancelled]);
+    }
+
+    <span class="keyword">public function</span> <span class="func">isActive</span>(): <span class="type">bool</span>
+    {
+        <span class="keyword">return</span> <span class="keyword">in_array</span>(<span class="var">$this</span>, [
+            <span class="type">self</span>::Open, <span class="type">self</span>::Closed, <span class="type">self</span>::Assigned
+        ]);
+    }
+
+    <span class="keyword">public function</span> <span class="func">label</span>(): <span class="type">string</span>
+    {
+        <span class="keyword">return match</span>(<span class="var">$this</span>) {
+            <span class="type">self</span>::Draft     => <span class="string">'Bozza'</span>,
+            <span class="type">self</span>::Open      => <span class="string">'Aperto'</span>,
+            <span class="type">self</span>::Closed    => <span class="string">'Chiuso'</span>,
+            <span class="type">self</span>::Assigned  => <span class="string">'Assegnato'</span>,
+            <span class="type">self</span>::Completed => <span class="string">'Completato'</span>,
+            <span class="type">self</span>::Cancelled => <span class="string">'Annullato'</span>,
+        };
+    }
+}</pre>
+      </div>
+
+      <div class="code-full">
+        <div class="code-label">✅ Dopo — app/Enums/AssignmentRole.php</div>
+        <pre><span class="keyword">namespace</span> App\Enums;
+
+<span class="keyword">enum</span> <span class="type">AssignmentRole</span>: <span class="type">string</span>
+{
+    <span class="keyword">case</span> Referee           = <span class="string">'Arbitro'</span>;
+    <span class="keyword">case</span> TournamentDirector = <span class="string">'Direttore di Torneo'</span>;
+    <span class="keyword">case</span> Observer          = <span class="string">'Osservatore'</span>;
+}</pre>
+      </div>
+
+      <div class="code-full">
+        <div class="code-label">✅ Dopo — uso nel Model con cast (Laravel 10/11)</div>
+        <pre><span class="comment">// app/Models/Tournament.php</span>
+<span class="keyword">protected</span> <span class="var">$casts</span> = [
+    <span class="string">'start_date'</span>           => <span class="string">'datetime'</span>,
+    <span class="string">'end_date'</span>             => <span class="string">'datetime'</span>,
+    <span class="string">'availability_deadline'</span> => <span class="string">'datetime'</span>,
+    <span class="string">'status'</span>               => <span class="type">TournamentStatus</span>::<span class="keyword">class</span>,  <span class="comment">// ← Enum cast</span>
+];
+
+<span class="comment">// Ora la validazione è type-safe:</span>
+<span class="keyword">public function</span> <span class="func">isEditable</span>(): <span class="type">bool</span>
+{
+    <span class="keyword">return</span> <span class="var">$this</span>->status-><span class="func">isEditable</span>()  <span class="comment">// invece di in_array($this->status, [...])</span>
+        && (! <span class="var">$this</span>->start_date || <span class="var">$this</span>->start_date-><span class="func">gte</span>(<span class="func">now</span>()-><span class="func">startOfDay</span>()));
+}</pre>
+      </div>
+
+      <div class="why-box">
+        <div class="why-label">💡 Perché questa scelta</div>
+        <p>I Backed Enums di PHP 8.1 sono il modo idiomatico di rappresentare valori finiti. Con il cast Eloquent, il valore viene automaticamente serializzato/deserializzato dal DB. L'IDE autocompleta, il refactoring è sicuro, i typo diventano errori a compile-time invece di bug silenti in produzione. Il costo iniziale è alto ma il guadagno in sicurezza è permanente.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── ISSUE 2: DUPLICAZIONE VISIBILITÀ ────────────────────────────── -->
+  <h2 id="issue2">2. Duplicazione logica visibilità (Trait vs Scope)</h2>
+
+  <div class="issue-card">
+    <div class="card-header">
+      <span class="severity sev-critical">Critico</span>
+      <strong>La stessa logica di visibilità esiste in 4 posti diversi</strong>
+    </div>
+    <div class="card-body">
+
+      <p>La logica di visibilità basata su <code>user_type</code> è implementata in:</p>
+      <ul>
+        <li><code>HasZoneVisibility::applyTournamentVisibility()</code></li>
+        <li><code>Tournament::scopeVisible()</code></li>
+        <li><code>User::scopeVisible()</code></li>
+        <li>Metodi privati nei controller (es. <code>getAvailableReferees()</code>)</li>
+      </ul>
+
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-text">Quando cambiano le regole di accesso (es. un nuovo ruolo) devi modificare 4+ posti. La soluzione è far sì che gli <strong>Scope del Model usino il Trait</strong> (o viceversa) come singolo source of truth.</div>
+      </div>
+
+      <h4>Soluzione: il Trait diventa la fonte, gli Scope delegano</h4>
+
+      <div class="code-grid">
+        <div class="code-block before">
+          <div class="code-label">❌ Prima — Tournament::scopeVisible (duplicato)</div>
+          <pre><span class="keyword">public function</span> <span class="func">scopeVisible</span>(<span class="var">$query</span>, ?<span class="type">User</span> <span class="var">$user</span> = <span class="keyword">null</span>)
+{
+    <span class="var">$user</span> = <span class="var">$user</span> ?? <span class="func">auth</span>()-><span class="func">user</span>();
+    <span class="keyword">if</span> (<span class="var">$user</span>->user_type === <span class="string">'super_admin'</span>) {
+        <span class="keyword">return</span> <span class="var">$query</span>;
+    }
+    <span class="keyword">if</span> (<span class="var">$user</span>->user_type === <span class="string">'national_admin'</span>) {
+        <span class="keyword">return</span> <span class="var">$query</span>-><span class="func">whereHas</span>(<span class="string">'tournamentType'</span>,
+            <span class="keyword">fn</span> (<span class="var">$q</span>) => <span class="var">$q</span>-><span class="func">where</span>(<span class="string">'is_national'</span>, <span class="keyword">true</span>));
+    }
+    <span class="comment">// ... 30 righe identiche al Trait ...</span>
+}</pre>
+        </div>
+        <div class="code-block after">
+          <div class="code-label">✅ Dopo — Tournament::scopeVisible (delega al Trait)</div>
+          <pre><span class="keyword">use</span> App\Traits\HasZoneVisibility;
+
+<span class="comment">/**
+ * Lo scope delega al Trait che è il
+ * single source of truth per la visibilità.
+ */</span>
+<span class="keyword">public function</span> <span class="func">scopeVisible</span>(
+    <span class="type">Builder</span> <span class="var">$query</span>,
+    ?<span class="type">User</span> <span class="var">$user</span> = <span class="keyword">null</span>
+): <span class="type">Builder</span> {
+    <span class="keyword">return</span> (<span class="keyword">new class</span> {
+        <span class="keyword">use</span> HasZoneVisibility;
+    })-><span class="func">applyTournamentVisibility</span>(
+        <span class="var">$query</span>, <span class="var">$user</span>
+    );
+}</pre>
+        </div>
+      </div>
+
+      <div class="callout callout-info">
+        <span class="callout-icon">💡</span>
+        <div class="callout-text"><strong>Alternativa più pulita:</strong> spostare la logica in una classe <code>VisibilityPolicy</code> statica che sia usabile sia dal Trait che dagli Scope senza dipendenze circolari.</div>
+      </div>
+
+      <div class="code-full">
+        <div class="code-label">✅ Soluzione preferita — app/Support/TournamentVisibility.php</div>
+        <pre><span class="keyword">namespace</span> App\Support;
+
+<span class="keyword">use</span> App\Enums\UserType;
+<span class="keyword">use</span> App\Models\User;
+<span class="keyword">use</span> Illuminate\Database\Eloquent\Builder;
+
+<span class="keyword">final class</span> <span class="type">TournamentVisibility</span>
+{
+    <span class="keyword">public static function</span> <span class="func">apply</span>(
+        <span class="type">Builder</span> <span class="var">$query</span>,
+        ?<span class="type">User</span> <span class="var">$user</span> = <span class="keyword">null</span>
+    ): <span class="type">Builder</span> {
+        <span class="var">$user</span> = <span class="var">$user</span> ?? <span class="func">auth</span>()-><span class="func">user</span>();
+
+        <span class="keyword">if</span> (! <span class="var">$user</span>) {
+            <span class="keyword">return</span> <span class="var">$query</span>-><span class="func">whereRaw</span>(<span class="string">'1 = 0'</span>);
+        }
+
+        <span class="var">$type</span> = <span class="type">UserType</span>::<span class="func">from</span>(<span class="var">$user</span>->user_type);
+
+        <span class="keyword">return match</span> (<span class="keyword">true</span>) {
+            <span class="var">$type</span>-><span class="func">seesEverything</span>()
+                => <span class="var">$query</span>,
+            <span class="var">$type</span> === <span class="type">UserType</span>::NationalAdmin
+                => <span class="var">$query</span>-><span class="func">whereHas</span>(<span class="string">'tournamentType'</span>,
+                    <span class="keyword">fn</span> (<span class="var">$q</span>) => <span class="var">$q</span>-><span class="func">where</span>(<span class="string">'is_national'</span>, <span class="keyword">true</span>)),
+            <span class="var">$type</span> === <span class="type">UserType</span>::ZoneAdmin
+                => <span class="var">$query</span>-><span class="func">whereHas</span>(<span class="string">'club'</span>,
+                    <span class="keyword">fn</span> (<span class="var">$q</span>) => <span class="var">$q</span>-><span class="func">where</span>(<span class="string">'zone_id'</span>, <span class="var">$user</span>->zone_id)),
+            <span class="var">$type</span> === <span class="type">UserType</span>::Referee
+                => <span class="type">self</span>::<span class="func">applyRefereeVisibility</span>(<span class="var">$query</span>, <span class="var">$user</span>),
+            <span class="keyword">default</span>
+                => <span class="var">$query</span>,
+        };
+    }
+
+    <span class="keyword">private static function</span> <span class="func">applyRefereeVisibility</span>(
+        <span class="type">Builder</span> <span class="var">$query</span>,
+        <span class="type">User</span> <span class="var">$user</span>
+    ): <span class="type">Builder</span> {
+        <span class="var">$level</span> = <span class="type">RefereeLevel</span>::<span class="func">tryFrom</span>(<span class="var">$user</span>->level ?? <span class="string">''</span>);
+        <span class="var">$isNational</span> = <span class="var">$level</span>?-><span class="func">isNational</span>() ?? <span class="keyword">false</span>;
+
+        <span class="keyword">if</span> (<span class="var">$isNational</span> && <span class="var">$user</span>->zone_id) {
+            <span class="keyword">return</span> <span class="var">$query</span>-><span class="func">where</span>(<span class="keyword">function</span> (<span class="var">$q</span>) <span class="keyword">use</span> (<span class="var">$user</span>) {
+                <span class="var">$q</span>-><span class="func">whereHas</span>(<span class="string">'club'</span>,
+                    <span class="keyword">fn</span> (<span class="var">$s</span>) => <span class="var">$s</span>-><span class="func">where</span>(<span class="string">'zone_id'</span>, <span class="var">$user</span>->zone_id))
+                  -><span class="func">orWhereHas</span>(<span class="string">'tournamentType'</span>,
+                    <span class="keyword">fn</span> (<span class="var">$s</span>) => <span class="var">$s</span>-><span class="func">where</span>(<span class="string">'is_national'</span>, <span class="keyword">true</span>));
+            });
+        }
+
+        <span class="keyword">return</span> <span class="var">$user</span>->zone_id
+            ? <span class="var">$query</span>-><span class="func">whereHas</span>(<span class="string">'club'</span>,
+                <span class="keyword">fn</span> (<span class="var">$q</span>) => <span class="var">$q</span>-><span class="func">where</span>(<span class="string">'zone_id'</span>, <span class="var">$user</span>->zone_id))
+            : <span class="var">$query</span>-><span class="func">whereRaw</span>(<span class="string">'1 = 0'</span>);
+    }
+}</pre>
+      </div>
+
+      <div class="why-box">
+        <div class="why-label">💡 Perché questa scelta</div>
+        <p>Una classe <code>final</code> statica è il posto migliore per logica di visibilità: non ha stato, non ha dipendenze dal container, è testabile in isolamento e può essere usata sia dai Trait che dagli Scope Eloquent senza duplicazione. Il pattern <code>match(true)</code> con le guardie booleane è più leggibile di un chain di if/elseif e sfrutta il PHP 8.0+ match exhaustiveness.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── ISSUE 3: NOTIFICATION GOD METHOD ────────────────────────────── -->
+  <h2 id="issue3">3. NotificationController — God Method da 200 righe</h2>
+
+  <div class="issue-card">
+    <div class="card-header">
+      <span class="severity sev-critical">Critico</span>
+      <strong>sendNationalNotification() e resendNationalNotification() — 70% di codice duplicato</strong>
+    </div>
+    <div class="card-body">
+
+      <p>I metodi <code>sendNationalNotification()</code> e <code>resendNationalNotification()</code> fanno entrambi:</p>
+      <ol>
+        <li>Costruzione manuale dei destinatari (TO + CC) con query Eloquent inline</li>
+        <li>Invio email con <code>Mail::raw()</code> in un loop foreach</li>
+        <li>Logica di fallback (se TO vuoto, usa il primo CC come TO)</li>
+        <li>Aggiornamento del record <code>TournamentNotification</code></li>
+        <li>Costruzione del messaggio di risposta</li>
+      </ol>
+
+      <div class="callout callout-danger">
+        <span class="callout-icon">🚨</span>
+        <div class="callout-text">Usa <code>Mail::raw()</code> — email senza template HTML, senza Mailable class, senza testabilità. Il contenuto email è costruito inline nel controller.</div>
+      </div>
+
+      <h4>Soluzione: RecipientBuilder + Mailable + Action class</h4>
+
+      <div class="code-full">
+        <div class="code-label">✅ Dopo — app/Mail/TournamentNotificationMail.php</div>
+        <pre><span class="keyword">namespace</span> App\Mail;
+
+<span class="keyword">use</span> App\Models\TournamentNotification;
+<span class="keyword">use</span> Illuminate\Bus\Queueable;
+<span class="keyword">use</span> Illuminate\Mail\Mailable;
+<span class="keyword">use</span> Illuminate\Mail\Mailables\Content;
+<span class="keyword">use</span> Illuminate\Mail\Mailables\Envelope;
+<span class="keyword">use</span> Illuminate\Queue\SerializesModels;
+
+<span class="keyword">class</span> <span class="type">TournamentNotificationMail</span> <span class="keyword">extends</span> <span class="type">Mailable</span>
+{
+    <span class="keyword">use</span> Queueable, SerializesModels;
+
+    <span class="keyword">public function</span> <span class="func">__construct</span>(
+        <span class="keyword">private readonly</span> <span class="type">TournamentNotification</span> <span class="var">$notification</span>,
+        <span class="keyword">private readonly</span> <span class="type">string</span> <span class="var">$subject</span>,
+        <span class="keyword">private readonly</span> <span class="type">string</span> <span class="var">$body</span>,
+    ) {}
+
+    <span class="keyword">public function</span> <span class="func">envelope</span>(): <span class="type">Envelope</span>
+    {
+        <span class="keyword">return new</span> <span class="type">Envelope</span>(subject: <span class="var">$this</span>->subject);
+    }
+
+    <span class="keyword">public function</span> <span class="func">content</span>(): <span class="type">Content</span>
+    {
+        <span class="keyword">return new</span> <span class="type">Content</span>(
+            view: <span class="string">'emails.tournament-notification'</span>,
+            with: [
+                <span class="string">'notification'</span> => <span class="var">$this</span>->notification,
+                <span class="string">'body'</span>         => <span class="var">$this</span>->body,
+                <span class="string">'tournament'</span>   => <span class="var">$this</span>->notification->tournament,
+            ],
+        );
+    }
+}</pre>
+      </div>
+
+      <div class="code-full">
+        <div class="code-label">✅ Dopo — app/Services/NotificationRecipientBuilder.php</div>
+        <pre><span class="keyword">namespace</span> App\Services;
+
+<span class="keyword">use</span> App\Enums\AssignmentRole;
+<span class="keyword">use</span> App\Models\Tournament;
+<span class="keyword">use</span> App\Models\User;
+
+<span class="keyword">final class</span> <span class="type">NotificationRecipientBuilder</span>
+{
+    <span class="comment">/** @var array&lt;array{email: string, name: string}&gt; */</span>
+    <span class="keyword">private</span> <span class="type">array</span> <span class="var">$to</span> = [];
+    <span class="keyword">private</span> <span class="type">array</span> <span class="var">$cc</span> = [];
+
+    <span class="keyword">public function</span> <span class="func">addCampionati</span>(): <span class="type">static</span>
+    {
+        <span class="var">$this</span>->to[] = [
+            <span class="string">'email'</span> => <span class="func">config</span>(<span class="string">'golf.emails.ufficio_campionati'</span>),
+            <span class="string">'name'</span>  => <span class="string">'Comitato Campionati'</span>,
+        ];
+        <span class="keyword">return</span> <span class="var">$this</span>;
+    }
+
+    <span class="keyword">public function</span> <span class="func">addZone</span>(<span class="type">Tournament</span> <span class="var">$tournament</span>): <span class="type">static</span>
+    {
+        <span class="var">$zone</span> = <span class="var">$tournament</span>->club?->zone;
+        <span class="keyword">if</span> (<span class="var">$zone</span>?->email) {
+            <span class="var">$this</span>->cc[] = [<span class="string">'email'</span> => <span class="var">$zone</span>->email, <span class="string">'name'</span> => <span class="var">$zone</span>->name];
+        }
+        <span class="keyword">return</span> <span class="var">$this</span>;
+    }
+
+    <span class="keyword">public function</span> <span class="func">addZoneAdmins</span>(<span class="type">Tournament</span> <span class="var">$tournament</span>): <span class="type">static</span>
+    {
+        <span class="type">User</span>::<span class="func">where</span>(<span class="string">'user_type'</span>, <span class="string">'admin'</span>)
+            -><span class="func">where</span>(<span class="string">'zone_id'</span>, <span class="var">$tournament</span>->club?->zone_id)
+            -><span class="func">where</span>(<span class="string">'is_active'</span>, <span class="keyword">true</span>)
+            -><span class="func">each</span>(<span class="keyword">fn</span> (<span class="var">$u</span>) => <span class="var">$this</span>->cc[] = [
+                <span class="string">'email'</span> => <span class="var">$u</span>->email, <span class="string">'name'</span> => <span class="var">$u</span>->name
+            ]);
+        <span class="keyword">return</span> <span class="var">$this</span>;
+    }
+
+    <span class="keyword">public function</span> <span class="func">addAssignedReferees</span>(<span class="type">Tournament</span> <span class="var">$tournament</span>): <span class="type">static</span>
+    {
+        <span class="var">$tournament</span>->assignments-><span class="func">each</span>(<span class="keyword">function</span> (<span class="var">$a</span>) {
+            <span class="keyword">if</span> (<span class="var">$a</span>->user) {
+                <span class="var">$this</span>->cc[] = [<span class="string">'email'</span> => <span class="var">$a</span>->user->email, <span class="string">'name'</span> => <span class="var">$a</span>->user->name];
+            }
+        });
+        <span class="keyword">return</span> <span class="var">$this</span>;
+    }
+
+    <span class="keyword">public function</span> <span class="func">addObservers</span>(<span class="type">Tournament</span> <span class="var">$tournament</span>): <span class="type">static</span>
+    {
+        <span class="var">$tournament</span>->assignments
+            -><span class="func">where</span>(<span class="string">'role'</span>, <span class="type">AssignmentRole</span>::Observer->value)
+            -><span class="func">each</span>(<span class="keyword">function</span> (<span class="var">$a</span>) {
+                <span class="keyword">if</span> (<span class="var">$a</span>->user) {
+                    <span class="var">$this</span>->cc[] = [<span class="string">'email'</span> => <span class="var">$a</span>->user->email, <span class="string">'name'</span> => <span class="var">$a</span>->user->name];
+                }
+            });
+        <span class="keyword">return</span> <span class="var">$this</span>;
+    }
+
+    <span class="comment">/** @return array{to: array, cc: array} */</span>
+    <span class="keyword">public function</span> <span class="func">build</span>(): <span class="type">array</span>
+    {
+        <span class="keyword">return</span> [<span class="string">'to'</span> => <span class="var">$this</span>->to, <span class="string">'cc'</span> => <span class="var">$this</span>->cc];
+    }
+}</pre>
+      </div>
+
+      <div class="code-full">
+        <div class="code-label">✅ Dopo — NotificationController (metodo ridotto a 30 righe)</div>
+        <pre><span class="keyword">public function</span> <span class="func">sendNationalNotification</span>(
+    <span class="type">Request</span> <span class="var">$request</span>,
+    <span class="type">Tournament</span> <span class="var">$tournament</span>
+): <span class="type">RedirectResponse</span> {
+    <span class="var">$validated</span> = <span class="var">$request</span>-><span class="func">validate</span>([
+        <span class="string">'notification_type'</span> => [<span class="string">'required'</span>, Rule::<span class="func">in</span>([<span class="string">'crc_referees'</span>, <span class="string">'zone_observers'</span>])],
+        <span class="string">'subject'</span>           => <span class="string">'required|string|max:255'</span>,
+        <span class="string">'message'</span>           => <span class="string">'required|string'</span>,
+    ]);
+
+    <span class="keyword">try</span> {
+        <span class="var">$result</span> = <span class="var">$this</span>->nationalNotificationService-><span class="func">send</span>(
+            tournament:        <span class="var">$tournament</span>,
+            notificationType:  <span class="var">$validated</span>[<span class="string">'notification_type'</span>],
+            subject:           <span class="var">$validated</span>[<span class="string">'subject'</span>],
+            message:           <span class="var">$validated</span>[<span class="string">'message'</span>],
+            options:           <span class="var">$request</span>-><span class="func">only</span>([
+                <span class="string">'send_to_campionati'</span>, <span class="string">'send_to_zone'</span>,
+                <span class="string">'cc_zone_admins'</span>, <span class="string">'cc_referees'</span>,
+                <span class="string">'send_to_crc'</span>, <span class="string">'cc_national_admins'</span>, <span class="string">'cc_observers'</span>,
+            ]),
+        );
+
+        <span class="keyword">return</span> <span class="keyword">match</span>(<span class="var">$result</span>->hasErrors()) {
+            <span class="keyword">true</span>  => <span class="func">redirect</span>()-><span class="func">route</span>(<span class="string">'admin.tournament-notifications.index'</span>)
+                        -><span class="func">with</span>(<span class="string">'warning'</span>, <span class="var">$result</span>-><span class="func">warningMessage</span>()),
+            <span class="keyword">false</span> => <span class="func">redirect</span>()-><span class="func">route</span>(<span class="string">'admin.tournament-notifications.index'</span>)
+                        -><span class="func">with</span>(<span class="string">'success'</span>, <span class="var">$result</span>-><span class="func">successMessage</span>()),
+        };
+    } <span class="keyword">catch</span> (\<span class="type">Exception</span> <span class="var">$e</span>) {
+        <span class="type">Log</span>::<span class="func">error</span>(<span class="string">'Errore invio notifica nazionale'</span>, [
+            <span class="string">'tournament_id'</span> => <span class="var">$tournament</span>->id,
+            <span class="string">'error'</span>         => <span class="var">$e</span>-><span class="func">getMessage</span>(),
+        ]);
+        <span class="keyword">return</span> <span class="func">redirect</span>()-><span class="func">back</span>()-><span class="func">with</span>(<span class="string">'error'</span>, <span class="var">$e</span>-><span class="func">getMessage</span>());
+    }
+}</pre>
+      </div>
+
+      <div class="why-box">
+        <div class="why-label">💡 Perché questa scelta</div>
+        <p>Il Controller deve solo: validare input → delegare al Service → restituire risposta HTTP. La costruzione destinatari, l'invio mail e l'aggiornamento DB sono responsabilità del Service. Il <code>RecipientBuilder</code> è un fluent builder che rende il codice auto-documentante e permette di aggiungere tipi di destinatari senza toccare il controller. La <code>Mailable</code> class consente template HTML, queueing e testing con <code>Mail::fake()</code>.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── ISSUE 4: ASSIGNMENT CONTROLLER ──────────────────────────────── -->
+  <h2 id="issue4">4. AssignmentController — Validazione inline e metodi fantasma</h2>
+
+  <div class="issue-card">
+    <div class="card-header">
+      <span class="severity sev-high">Alta</span>
+      <strong>store/update usano $request->validate() inline + metodo checkDateConflicts() vuoto</strong>
+    </div>
+    <div class="card-body">
+
+      <div class="code-grid">
+        <div class="code-block before">
+          <div class="code-label">❌ Prima — store() con validazione inline</div>
+          <pre><span class="keyword">public function</span> <span class="func">store</span>(<span class="type">Request</span> <span class="var">$request</span>)
+{
+    <span class="var">$validated</span> = <span class="var">$request</span>-><span class="func">validate</span>([
+        <span class="string">'tournament_id'</span> => <span class="string">'required|exists:tournaments,id'</span>,
+        <span class="string">'user_id'</span>       => <span class="string">'required|exists:users,id'</span>,
+        <span class="string">'role'</span>          => <span class="string">'nullable|string|in:Direttore di Torneo,Arbitro,Osservatore'</span>,
+        <span class="string">'notes'</span>         => <span class="string">'nullable|string'</span>,
+    ]);
+    <span class="comment">// Logica duplicata con update()...</span>
+}</pre>
+        </div>
+        <div class="code-block after">
+          <div class="code-label">✅ Dopo — Form Request dedicata</div>
+          <pre><span class="comment">// app/Http/Requests/Admin/StoreAssignmentRequest.php</span>
+<span class="keyword">class</span> <span class="type">StoreAssignmentRequest</span> <span class="keyword">extends</span> <span class="type">FormRequest</span>
+{
+    <span class="keyword">public function</span> <span class="func">authorize</span>(): <span class="type">bool</span>
+    {
+        <span class="keyword">return</span> <span class="var">$this</span>-><span class="func">user</span>()-><span class="func">isAdmin</span>();
+    }
+
+    <span class="keyword">public function</span> <span class="func">rules</span>(): <span class="type">array</span>
+    {
+        <span class="keyword">return</span> [
+            <span class="string">'tournament_id'</span> => <span class="string">'required|exists:tournaments,id'</span>,
+            <span class="string">'user_id'</span>       => <span class="string">'required|exists:users,id'</span>,
+            <span class="string">'role'</span>          => [<span class="string">'nullable'</span>, <span class="type">Rule</span>::<span class="func">enum</span>(<span class="type">AssignmentRole</span>::<span class="keyword">class</span>)],
+            <span class="string">'notes'</span>         => <span class="string">'nullable|string|max:1000'</span>,
+        ];
+    }
+
+    <span class="keyword">public function</span> <span class="func">resolvedRole</span>(): <span class="type">AssignmentRole</span>
+    {
+        <span class="keyword">return</span> <span class="var">$this</span>->role
+            ? <span class="type">AssignmentRole</span>::<span class="func">from</span>(<span class="var">$this</span>->role)
+            : <span class="type">AssignmentRole</span>::Referee;
+    }
+}</pre>
+        </div>
+      </div>
+
+      <h4>Metodo fantasma: checkDateConflicts()</h4>
+      <div class="code-grid">
+        <div class="code-block before">
+          <div class="code-label">❌ Prima — metodo vuoto che inganna il lettore</div>
+          <pre><span class="keyword">private function</span> <span class="func">checkDateConflicts</span>(<span class="var">$referees</span>, <span class="var">$tournament</span>)
+{
+    <span class="comment">// Implementa logica... Per ora è solo un placeholder</span>
+    <span class="keyword">foreach</span> (<span class="var">$referees</span> <span class="keyword">as</span> <span class="var">$referee</span>) {
+        <span class="var">$referee</span>->has_conflicts = <span class="keyword">false</span>; <span class="comment">// Default: nessun conflitto</span>
+        <span class="comment">// La logica di conflitto può essere implementata se necessario</span>
+    }
+}</pre>
+        </div>
+        <div class="code-block after">
+          <div class="code-label">✅ Dopo — rimuovi o implementa correttamente</div>
+          <pre><span class="comment">// OPZIONE A: Rimuovi il metodo e usa il service</span>
+<span class="comment">// AssignmentValidationService::detectDateConflicts()
+// è già implementato e funzionante.</span>
+
+<span class="comment">// OPZIONE B: Se serve il check in-memory sui Referee,
+// aggiungilo come metodo nel Service esistente:</span>
+
+<span class="comment">// AssignmentValidationService.php</span>
+<span class="keyword">public function</span> <span class="func">decorateWithConflicts</span>(
+    <span class="type">Collection</span> <span class="var">$referees</span>,
+    <span class="type">Tournament</span> <span class="var">$tournament</span>
+): <span class="type">Collection</span> {
+    <span class="var">$conflictMap</span> = <span class="var">$this</span>-><span class="func">buildConflictMap</span>(<span class="var">$tournament</span>);
+
+    <span class="keyword">return</span> <span class="var">$referees</span>-><span class="func">map</span>(<span class="keyword">function</span> (<span class="var">$referee</span>) <span class="keyword">use</span> (<span class="var">$conflictMap</span>) {
+        <span class="var">$referee</span>->has_conflicts =
+            <span class="func">isset</span>(<span class="var">$conflictMap</span>[<span class="var">$referee</span>->id]);
+        <span class="keyword">return</span> <span class="var">$referee</span>;
+    });
+}</pre>
+        </div>
+      </div>
+
+      <h4>show() con logica ridondante</h4>
+      <div class="code-grid">
+        <div class="code-block before">
+          <div class="code-label">❌ Prima — variabile $found e $assignment ridondanti</div>
+          <pre><span class="keyword">public function</span> <span class="func">show</span>(<span class="var">$assignmentId</span>): <span class="type">View</span>
+{
+    <span class="var">$assignment</span> = <span class="keyword">null</span>;
+    <span class="var">$found</span> = <span class="type">Assignment</span>::<span class="func">with</span>([...])-><span class="func">find</span>(<span class="var">$assignmentId</span>);
+    <span class="keyword">if</span> (<span class="var">$found</span>) {
+        <span class="var">$assignment</span> = <span class="var">$found</span>; <span class="comment">// ← completamente inutile</span>
+    }
+    <span class="keyword">if</span> (! <span class="var">$assignment</span>) {
+        <span class="func">abort</span>(<span class="num">404</span>);
+    }
+    ...
+}</pre>
+        </div>
+        <div class="code-block after">
+          <div class="code-label">✅ Dopo — Route Model Binding + findOrFail</div>
+          <pre><span class="keyword">public function</span> <span class="func">show</span>(<span class="type">Assignment</span> <span class="var">$assignment</span>): <span class="type">View</span>
+{
+    <span class="comment">// Route Model Binding gestisce il 404 automaticamente.</span>
+    <span class="var">$assignment</span>-><span class="func">load</span>([
+        <span class="string">'user'</span>,
+        <span class="string">'tournament.club'</span>,
+        <span class="string">'tournament.tournamentType'</span>,
+        <span class="string">'assignedBy'</span>,
+    ]);
+
+    <span class="var">$this</span>-><span class="func">checkAssignmentAccess</span>(<span class="var">$assignment</span>);
+
+    <span class="keyword">return</span> <span class="func">view</span>(<span class="string">'admin.assignments.show'</span>, <span class="func">compact</span>(<span class="string">'assignment'</span>));
+}</pre>
+        </div>
+      </div>
+
+      <div class="why-box">
+        <div class="why-label">💡 Perché questa scelta</div>
+        <p>Le Form Request sono il posto idiomatico per la validazione in Laravel: centralizzi regole, messaggi e authorization. Con <code>Rule::enum()</code> di Laravel 10+ la validazione degli Enum è automatica. I metodi fantasma (placeholder vuoti) sono peggio del nulla: inducono false sicurezze e confondono chi legge il codice. Vanno rimossi o implementati.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── ISSUE 5: TOURNAMENT MODEL ZONE_ID ───────────────────────────── -->
+  <h2 id="issue5">5. Tournament Model — L'accessor zone_id e la doppia fonte di verità</h2>
+
+  <div class="issue-card">
+    <div class="card-header">
+      <span class="severity sev-high">Alta</span>
+      <strong>zone_id esiste nel DB e viene anche calcolato dall'accessor — doppia fonte di verità</strong>
+    </div>
+    <div class="card-body">
+
+      <p>Il model <code>Tournament</code> ha <code>zone_id</code> sia come colonna di database che come attributo appended calcolato dall'accessor. Il commento stesso nel codice dice <em>"Manteniamo per compatibilità"</em>. Questo crea ambiguità: qual è il valore corretto?</p>
+
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠️</span>
+        <div class="callout-text">L'accessor <code>getZoneIdAttribute()</code> esegue potenzialmente una query extra (<code>$this->club()->first()</code>) nel fallback. Se chiamato in un loop su una collection di tornei non loaded con <code>club</code>, causa N+1.</div>
+      </div>
+
+      <div class="code-grid">
+        <div class="code-block before">
+          <div class="code-label">❌ Prima — accessor con fallback query potenzialmente N+1</div>
+          <pre><span class="keyword">public function</span> <span class="func">getZoneIdAttribute</span>()
+{
+    <span class="keyword">if</span> (<span class="var">$this</span>-><span class="func">relationLoaded</span>(<span class="string">'club'</span>) && <span class="var">$this</span>->club) {
+        <span class="keyword">return</span> <span class="var">$this</span>->club->zone_id;
+    }
+    <span class="keyword">if</span> (<span class="func">isset</span>(<span class="var">$this</span>->attributes[<span class="string">'zone_id'</span>])) {
+        <span class="keyword">return</span> <span class="var">$this</span>->attributes[<span class="string">'zone_id'</span>];
+    }
+    <span class="keyword">if</span> (<span class="var">$this</span>->club_id) {
+        <span class="var">$club</span> = <span class="var">$this</span>-><span class="func">club</span>()-><span class="func">first</span>(); <span class="comment">// ← query nascosta!</span>
+        <span class="keyword">return</span> <span class="var">$club</span> ? <span class="var">$club</span>->zone_id : <span class="keyword">null</span>;
+    }
+    <span class="keyword">return</span> <span class="keyword">null</span>;
+}</pre>
+        </div>
+        <div class="code-block after">
+          <div class="code-label">✅ Dopo — rimuovi colonna ridondante, usa relazione</div>
+          <pre><span class="comment">// Opzione A: Rimuovi zone_id dal DB (migration)
+// e usa solo tournament->club->zone_id
+
+// Opzione B (se serve performance):
+// Mantieni zone_id ma usa un Observer per sincronizzarlo</span>
+
+<span class="comment">// app/Observers/TournamentObserver.php</span>
+<span class="keyword">class</span> <span class="type">TournamentObserver</span>
+{
+    <span class="keyword">public function</span> <span class="func">saving</span>(<span class="type">Tournament</span> <span class="var">$tournament</span>): <span class="type">void</span>
+    {
+        <span class="keyword">if</span> (<span class="var">$tournament</span>-><span class="func">isDirty</span>(<span class="string">'club_id'</span>) && <span class="var">$tournament</span>->club_id) {
+            <span class="var">$tournament</span>->attributes[<span class="string">'zone_id'</span>] =
+                <span class="type">Club</span>::<span class="func">find</span>(<span class="var">$tournament</span>->club_id)?->zone_id;
+        }
+    }
+}
+
+<span class="comment">// Il model diventa semplice:
+// zone_id è sempre sincronizzato dall'Observer,
+// l'accessor non serve più.</span>
+<span class="keyword">protected</span> <span class="var">$appends</span> = []; <span class="comment">// rimuovi 'zone_id'</span></pre>
+        </div>
+      </div>
+
+      <div class="why-box">
+        <div class="why-label">💡 Perché questa scelta</div>
+        <p>Un Model Observer è il pattern Laravel per mantenere campi derivati sincronizzati. Intercetta l'evento <code>saving</code> e aggiorna <code>zone_id</code> ogni volta che cambia <code>club_id</code>. Così la colonna DB è sempre in sync, l'accessor è eliminato, e non ci sono query nascoste. Il tradeoff è un'operazione in più al save, ma è trascurabile rispetto all'ambiguità corrente.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── ISSUE 6: N+1 ─────────────────────────────────────────────────── -->
+  <h2 id="issue6">6. N+1 Query e Eager Loading</h2>
+
+  <div class="issue-card">
+    <div class="card-header">
+      <span class="severity sev-high">Alta</span>
+      <strong>NotificationController::index() chiama updateRecipientInfo() per ogni notifica in un foreach</strong>
+    </div>
+    <div class="card-body">
+
+      <div class="code-grid">
+        <div class="code-block before">
+          <div class="code-label">❌ Prima — foreach con side effect + paginazione manuale</div>
+          <pre><span class="var">$allNotifications</span> = <span class="var">$query</span>-><span class="func">get</span>();
+
+<span class="comment">// N chiamate a updateRecipientInfo() — ognuna
+// potrebbe fare query per aggiornare i destinatari</span>
+<span class="keyword">foreach</span> (<span class="var">$allNotifications</span> <span class="keyword">as</span> <span class="var">$notification</span>) {
+    <span class="var">$this</span>->preparationService
+         -><span class="func">updateRecipientInfo</span>(<span class="var">$notification</span>);
+}
+
+<span class="comment">// Paginazione manuale su LengthAwarePaginator
+// dopo aver già caricato TUTTI i record in memoria</span>
+<span class="var">$grouped</span> = <span class="var">$allNotifications</span>-><span class="func">groupBy</span>(<span class="string">'tournament_id'</span>)...;</pre>
+        </div>
+        <div class="code-block after">
+          <div class="code-label">✅ Dopo — eager loading + lazy collection</div>
+          <pre><span class="comment">// Usa lazy loading per evitare di caricare
+// tutti i record in memoria</span>
+<span class="var">$allNotifications</span> = <span class="var">$query</span>
+    -><span class="func">with</span>([
+        <span class="string">'tournament.club.zone'</span>,
+        <span class="string">'tournament.assignments.user'</span>,
+        <span class="string">'tournament.tournamentType'</span>,
+    ])
+    -><span class="func">get</span>();
+
+<span class="comment">// updateRecipientInfo diventa un accessor
+// calcolato staticamente — zero query aggiuntive</span>
+
+<span class="comment">// Nel Model TournamentNotification aggiungere:</span>
+<span class="keyword">public function</span> <span class="func">getRecipientSummaryAttribute</span>(): <span class="type">string</span>
+{
+    <span class="keyword">return</span> <span class="var">$this</span>->referee_list ?? <span class="string">'—'</span>;
+}</pre>
+        </div>
+      </div>
+
+      <h4>needsReferees() — query nascosta nel Model</h4>
+      <div class="code-grid">
+        <div class="code-block before">
+          <div class="code-label">❌ Prima — query implicita in accessor</div>
+          <pre><span class="keyword">public function</span> <span class="func">needsReferees</span>(): <span class="type">bool</span>
+{
+    <span class="comment">// Esegue COUNT(*) ogni volta che viene chiamato
+    // senza che il caller se ne accorga</span>
+    <span class="keyword">return</span> <span class="var">$this</span>-><span class="func">assignments</span>()-><span class="func">count</span>()
+        < <span class="var">$this</span>->required_referees;
+}</pre>
+        </div>
+        <div class="code-block after">
+          <div class="code-label">✅ Dopo — usa la relazione caricata</div>
+          <pre><span class="keyword">public function</span> <span class="func">needsReferees</span>(): <span class="type">bool</span>
+{
+    <span class="comment">// Se assignments è già eager loaded, usa
+    // la collection in memoria (zero query)</span>
+    <span class="keyword">if</span> (<span class="var">$this</span>-><span class="func">relationLoaded</span>(<span class="string">'assignments'</span>)) {
+        <span class="keyword">return</span> <span class="var">$this</span>->assignments-><span class="func">count</span>()
+            < <span class="var">$this</span>->required_referees;
+    }
+
+    <span class="comment">// Fallback con withCount per evitare
+    // il caricamento della collection completa</span>
+    <span class="keyword">return</span> (<span class="var">$this</span>->assignments_count ?? <span class="var">$this</span>-><span class="func">assignments</span>()-><span class="func">count</span>())
+        < <span class="var">$this</span>->required_referees;
+}</pre>
+        </div>
+      </div>
+
+      <div class="callout callout-info">
+        <span class="callout-icon">💡</span>
+        <div class="callout-text">Installa <strong>Laravel Debugbar</strong> in sviluppo (già presente in composer) e abilita il contatore di query. Cerca pagine con più di 20 query — la maggior parte saranno N+1 risolvibili con eager loading.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── ISSUE 7: MAILABLE ─────────────────────────────────────────────── -->
+  <h2 id="issue7">7. Mail::raw() — Email senza template HTML</h2>
+
+  <div class="issue-card">
+    <div class="card-header">
+      <span class="severity sev-high">Alta</span>
+      <strong>Email inviate come testo grezzo senza Mailable class né template HTML</strong>
+    </div>
+    <div class="card-body">
+
+      <p>Sia <code>sendNationalNotification()</code> che <code>resendNationalNotification()</code> usano <code>Mail::raw()</code> — le email arrivano come testo senza formattazione. Non sono testabili con <code>Mail::fake()</code> e non possono avere template brandizzati.</p>
+
+      <div class="code-grid">
+        <div class="code-block before">
+          <div class="code-label">❌ Prima — Mail::raw() nel loop</div>
+          <pre><span class="keyword">foreach</span> (<span class="var">$toRecipients</span> <span class="keyword">as</span> <span class="var">$recipient</span>) {
+    <span class="keyword">try</span> {
+        <span class="type">Mail</span>::<span class="func">raw</span>(
+            <span class="var">$validated</span>[<span class="string">'message'</span>],
+            <span class="keyword">function</span> (<span class="var">$mail</span>) <span class="keyword">use</span> (<span class="var">$recipient</span>, <span class="var">$validated</span>, <span class="var">$ccArray</span>) {
+                <span class="var">$mail</span>-><span class="func">to</span>(<span class="var">$recipient</span>[<span class="string">'email'</span>], <span class="var">$recipient</span>[<span class="string">'name'</span>])
+                     -><span class="func">subject</span>(<span class="var">$validated</span>[<span class="string">'subject'</span>]);
+                <span class="keyword">if</span> (!<span class="func">empty</span>(<span class="var">$ccArray</span>)) {
+                    <span class="var">$mail</span>-><span class="func">cc</span>(<span class="var">$ccArray</span>);
+                }
+            }
+        );
+    } <span class="keyword">catch</span> (\<span class="type">Exception</span> <span class="var">$e</span>) { ... }
+}</pre>
+        </div>
+        <div class="code-block after">
+          <div class="code-label">✅ Dopo — Mailable testabile con queue</div>
+          <pre><span class="comment">// Nel Service:</span>
+<span class="var">$mailable</span> = <span class="keyword">new</span> <span class="type">TournamentNotificationMail</span>(
+    notification: <span class="var">$notification</span>,
+    subject:      <span class="var">$subject</span>,
+    body:         <span class="var">$body</span>,
+);
+
+<span class="type">Mail</span>::<span class="func">to</span>(<span class="var">$recipient</span>[<span class="string">'email'</span>], <span class="var">$recipient</span>[<span class="string">'name'</span>])
+    -><span class="func">cc</span>(<span class="var">$ccArray</span>)
+    -><span class="func">send</span>(<span class="var">$mailable</span>); <span class="comment">// oppure ->queue()</span>
+
+<span class="comment">// Nel test:</span>
+<span class="type">Mail</span>::<span class="func">fake</span>();
+<span class="var">$this</span>-><span class="func">post</span>(<span class="string">'/admin/notifications/send-national'</span>, [...]);
+<span class="type">Mail</span>::<span class="func">assertSent</span>(<span class="type">TournamentNotificationMail</span>::<span class="keyword">class</span>);</pre>
+        </div>
+      </div>
+
+      <div class="why-box">
+        <div class="why-label">💡 Perché questa scelta</div>
+        <p>Le classi Mailable sono la feature core di Laravel Mail. Permettono template Blade per le email (HTML/testo), sono serializzabili (queueable), testabili con <code>Mail::fake()</code>, e separano la struttura dell'email dalla logica di invio. Su Aruba senza SSH il queue worker potrebbe non essere disponibile — in quel caso usa <code>->send()</code> sincrono ma mantieni la Mailable per la testabilità.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── ISSUE 8: TYPE HINTING ─────────────────────────────────────────── -->
+  <h2 id="issue8">8. Type Hinting incompleto — PHP 8.2</h2>
+
+  <div class="issue-card">
+    <div class="card-header">
+      <span class="severity sev-medium">Media</span>
+      <strong>Metodi privati senza type hints, collection tipizzate genericamente</strong>
+    </div>
+    <div class="card-body">
+
+      <div class="code-grid">
+        <div class="code-block before">
+          <div class="code-label">❌ Prima — metodi privati senza tipi</div>
+          <pre><span class="keyword">private function</span> <span class="func">getAssignedReferees</span>(<span class="var">$tournament</span>)
+{
+    ...
+}
+
+<span class="keyword">private function</span> <span class="func">getAvailableReferees</span>(<span class="var">$tournament</span>, <span class="var">$excludeIds</span> = [])
+{
+    ...
+}
+
+<span class="keyword">private function</span> <span class="func">getZoneIdForUser</span>(<span class="var">$user</span>): ?<span class="type">int</span>
+{
+    ...
+}</pre>
+        </div>
+        <div class="code-block after">
+          <div class="code-label">✅ Dopo — PHP 8.2 type hints completi</div>
+          <pre><span class="keyword">private function</span> <span class="func">getAssignedReferees</span>(
+    <span class="type">Tournament</span> <span class="var">$tournament</span>
+): <span class="type">Collection</span> {
+    ...
+}
+
+<span class="keyword">private function</span> <span class="func">getAvailableReferees</span>(
+    <span class="type">Tournament</span> <span class="var">$tournament</span>,
+    <span class="type">array</span> <span class="var">$excludeIds</span> = []
+): <span class="type">Collection</span> {
+    ...
+}
+
+<span class="keyword">private function</span> <span class="func">getZoneIdForUser</span>(
+    <span class="type">User</span> <span class="var">$user</span>
+): ?<span class="type">int</span> {
+    <span class="comment">// Ora delega direttamente all'Enum</span>
+    <span class="keyword">return</span> <span class="type">UserType</span>::<span class="func">from</span>(<span class="var">$user</span>->user_type)-><span class="func">seesEverything</span>()
+        || <span class="var">$user</span>-><span class="func">isNational</span>()
+        ? <span class="keyword">null</span>
+        : <span class="var">$user</span>->zone_id;
+}</pre>
+        </div>
+      </div>
+
+      <h4>readonly properties in PHP 8.2 (già usate nel constructor)</h4>
+      <div class="code-full">
+        <div class="code-label">✅ PHP 8.2 — readonly e typed properties</div>
+        <pre><span class="comment">// Nel NotificationController già si usa:
+// private readonly NotificationPreparationService $preparationService
+// Estendere questo pattern a tutti i controller:</span>
+
+<span class="keyword">class</span> <span class="type">AssignmentController</span> <span class="keyword">extends</span> <span class="type">Controller</span>
+{
+    <span class="keyword">use</span> HasZoneVisibility;
+
+    <span class="keyword">public function</span> <span class="func">__construct</span>(
+        <span class="keyword">private readonly</span> <span class="type">AssignmentValidationService</span> <span class="var">$validationService</span>,
+    ) {}
+    <span class="comment">// NON serve più: protected $validationService;
+    // NON serve più: $this->validationService = $validationService;</span>
+}</pre>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── ISSUE 9: SHOW() DEAD CODE ─────────────────────────────────────── -->
+  <h2 id="issue9">9. getAssignedReferees() — mutazione di model in memoria</h2>
+
+  <div class="issue-card">
+    <div class="card-header">
+      <span class="severity sev-medium">Media</span>
+      <strong>Aggiunta dinamica di proprietà a istanze Eloquent — pattern non type-safe</strong>
+    </div>
+    <div class="card-body">
+
+      <div class="code-grid">
+        <div class="code-block before">
+          <div class="code-label">❌ Prima — aggiunta di proprietà custom all'Assignment model</div>
+          <pre><span class="keyword">private function</span> <span class="func">getAssignedReferees</span>(<span class="var">$tournament</span>)
+{
+    <span class="keyword">return</span> <span class="var">$tournament</span>-><span class="func">assignments</span>()
+        -><span class="func">with</span>(<span class="string">'user'</span>)
+        -><span class="func">get</span>()
+        -><span class="func">map</span>(<span class="keyword">function</span> (<span class="var">$assignment</span>) {
+            <span class="comment">// Aggiunge proprietà dinamiche al Model Eloquent
+            // Non type-safe, non documentato, IDE cieco</span>
+            <span class="var">$assignment</span>->name = <span class="var">$assignment</span>->user->name;
+            <span class="var">$assignment</span>->email = <span class="var">$assignment</span>->user->email;
+            <span class="var">$assignment</span>->referee_code = <span class="var">$assignment</span>->user->referee_code;
+            <span class="var">$assignment</span>->level = <span class="var">$assignment</span>->user->level;
+            <span class="var">$assignment</span>->user_id = <span class="var">$assignment</span>->user->id;
+            <span class="keyword">return</span> <span class="var">$assignment</span>;
+        });
+}</pre>
+        </div>
+        <div class="code-block after">
+          <div class="code-label">✅ Dopo — usa Data Transfer Objects o View Data</div>
+          <pre><span class="comment">// Opzione A: usa direttamente la relazione in Blade
+// assignment->user->name invece di assignment->name</span>
+
+<span class="comment">// Opzione B: Value Object leggero</span>
+<span class="keyword">final readonly class</span> <span class="type">AssignedRefereeData</span>
+{
+    <span class="keyword">public function</span> <span class="func">__construct</span>(
+        <span class="keyword">public</span> <span class="type">int</span>    <span class="var">$userId</span>,
+        <span class="keyword">public</span> <span class="type">string</span> <span class="var">$name</span>,
+        <span class="keyword">public</span> <span class="type">string</span> <span class="var">$email</span>,
+        <span class="keyword">public</span> ?<span class="type">string</span> <span class="var">$refereeCode</span>,
+        <span class="keyword">public</span> ?<span class="type">string</span> <span class="var">$level</span>,
+        <span class="keyword">public</span> <span class="type">string</span> <span class="var">$role</span>,
+        <span class="keyword">public</span> <span class="type">int</span>    <span class="var">$assignmentId</span>,
+    ) {}
+
+    <span class="keyword">public static function</span> <span class="func">fromAssignment</span>(
+        <span class="type">Assignment</span> <span class="var">$assignment</span>
+    ): <span class="type">self</span> {
+        <span class="keyword">return new self</span>(
+            userId:      <span class="var">$assignment</span>->user->id,
+            name:        <span class="var">$assignment</span>->user->name,
+            email:       <span class="var">$assignment</span>->user->email,
+            refereeCode: <span class="var">$assignment</span>->user->referee_code,
+            level:       <span class="var">$assignment</span>->user->level,
+            role:        <span class="var">$assignment</span>->role,
+            assignmentId: <span class="var">$assignment</span>->id,
+        );
+    }
+}</pre>
+        </div>
+      </div>
+
+      <div class="why-box">
+        <div class="why-label">💡 Perché questa scelta</div>
+        <p>Aggiungere proprietà dinamiche a Model Eloquent è un pattern che "funziona" ma rompe il contratto del model, confonde l'IDE, e crea accoppiamento implicito tra view e model. I <code>readonly class</code> di PHP 8.2 sono perfetti come Data Transfer Objects: immutabili, documentati, type-safe. Il pattern <code>fromAssignment()</code> è uno static factory che centralizza la mappatura.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── QUICK WINS ─────────────────────────────────────────────────────── -->
+  <h2 id="quick">⚡ Quick Wins — Basso rischio, alto valore</h2>
+
+  <div class="quick-wins">
+    <h3>Cambiamenti immediati senza refactoring architetturale</h3>
+
+    <h4>1. Documenti JSON — pattern ripetuto 3 volte</h4>
+    <div class="code-grid">
+      <div class="code-block before">
+        <div class="code-label">❌ Prima — deserializzazione inline ripetuta</div>
+        <pre><span class="var">$documents</span> = <span class="func">is_string</span>(<span class="var">$notification</span>->documents) ?
+    <span class="func">json_decode</span>(<span class="var">$notification</span>->documents, <span class="keyword">true</span>)
+    : (<span class="var">$notification</span>->documents ?? []);
+<span class="comment">// Appare 3 volte in NotificationController!</span></pre>
+      </div>
+      <div class="code-block after">
+        <div class="code-label">✅ Dopo — cast nel Model</div>
+        <pre><span class="comment">// app/Models/TournamentNotification.php</span>
+<span class="keyword">protected</span> <span class="var">$casts</span> = [
+    <span class="string">'documents'</span>  => <span class="string">'array'</span>,
+    <span class="string">'metadata'</span>   => <span class="string">'array'</span>,
+    <span class="string">'details'</span>    => <span class="string">'array'</span>,
+    <span class="string">'attachments'</span> => <span class="string">'array'</span>,
+    <span class="string">'sent_at'</span>    => <span class="string">'datetime'</span>,
+];
+<span class="comment">// Ora $notification->documents è sempre un array</span></pre>
+      </div>
+    </div>
+
+    <h4>2. Roles array — definito nel codice invece che nell'Enum</h4>
+    <div class="code-grid">
+      <div class="code-block before">
+        <div class="code-label">❌ Prima — array hardcoded nel controller</div>
+        <pre><span class="var">$roles</span> = [<span class="string">'Arbitro'</span>, <span class="string">'Direttore di Torneo'</span>, <span class="string">'Osservatore'</span>];</pre>
+      </div>
+      <div class="code-block after">
+        <div class="code-label">✅ Dopo — da Enum</div>
+        <pre><span class="var">$roles</span> = <span class="type">AssignmentRole</span>::<span class="func">cases</span>();
+<span class="comment">// In Blade: {{ $role->value }} oppure {{ $role->label() }}</span></pre>
+      </div>
+    </div>
+
+    <h4>3. isNationalAdmin() — duplicato in Trait e User model</h4>
+    <div class="code-grid">
+      <div class="code-block before">
+        <div class="code-label">❌ Prima — duplicato</div>
+        <pre><span class="comment">// HasZoneVisibility.php</span>
+<span class="keyword">protected function</span> <span class="func">isNationalAdmin</span>(?<span class="type">User</span> <span class="var">$user</span> = <span class="keyword">null</span>): <span class="type">bool</span>
+{
+    <span class="var">$user</span> = <span class="var">$user</span> ?? <span class="func">auth</span>()-><span class="func">user</span>();
+    <span class="keyword">return</span> <span class="func">in_array</span>(<span class="var">$user</span>->user_type, [<span class="string">'national_admin'</span>, <span class="string">'super_admin'</span>]);
+}
+
+<span class="comment">// User.php — identico!</span>
+<span class="keyword">public function</span> <span class="func">isNationalAdmin</span>(): <span class="type">bool</span>
+{
+    <span class="keyword">return</span> <span class="func">in_array</span>(<span class="var">$this</span>->user_type, [<span class="string">'national_admin'</span>, <span class="string">'super_admin'</span>]);
+}</pre>
+      </div>
+      <div class="code-block after">
+        <div class="code-label">✅ Dopo — Trait delega al Model</div>
+        <pre><span class="comment">// HasZoneVisibility.php</span>
+<span class="keyword">protected function</span> <span class="func">isNationalAdmin</span>(?<span class="type">User</span> <span class="var">$user</span> = <span class="keyword">null</span>): <span class="type">bool</span>
+{
+    <span class="keyword">return</span> (<span class="var">$user</span> ?? <span class="func">auth</span>()-><span class="func">user</span>())-><span class="func">isNationalAdmin</span>();
+}
+
+<span class="comment">// Così tutta la logica di ruolo vive nel Model User</span></pre>
+      </div>
+    </div>
+
+    <h4>4. constructor promotion — già usato in NotificationController, estendere</h4>
+    <div class="code-grid">
+      <div class="code-block before">
+        <div class="code-label">❌ Prima — AssignmentController vecchio stile</div>
+        <pre><span class="keyword">protected</span> <span class="type">AssignmentValidationService</span> <span class="var">$validationService</span>;
+
+<span class="keyword">public function</span> <span class="func">__construct</span>(<span class="type">AssignmentValidationService</span> <span class="var">$validationService</span>)
+{
+    <span class="var">$this</span>->validationService = <span class="var">$validationService</span>;
+}</pre>
+      </div>
+      <div class="code-block after">
+        <div class="code-label">✅ Dopo — PHP 8.0 constructor promotion</div>
+        <pre><span class="keyword">public function</span> <span class="func">__construct</span>(
+    <span class="keyword">private readonly</span> <span class="type">AssignmentValidationService</span> <span class="var">$validationService</span>,
+) {}</pre>
+      </div>
+    </div>
+
+    <h4>5. Anonymous migration (Laravel 10+) — già disponibili, usare per future</h4>
+    <div class="code-full">
+      <div class="code-label">✅ Anonymous Migration — evita conflitti di nomi</div>
+      <pre><span class="comment">// database/migrations/2026_03_11_000001_add_enum_cast_to_tournaments.php</span>
+<span class="keyword">return new class</span> <span class="keyword">extends</span> <span class="type">Migration</span> {
+    <span class="keyword">public function</span> <span class="func">up</span>(): <span class="type">void</span>
+    {
+        <span class="type">Schema</span>::<span class="func">table</span>(<span class="string">'tournaments'</span>, <span class="keyword">function</span> (<span class="type">Blueprint</span> <span class="var">$table</span>) {
+            <span class="comment">// Nessun cambio necessario in DB — gli Enum backed usano
+            // gli stessi valori stringa già presenti</span>
+        });
+    }
+};</pre>
+    </div>
+  </div>
+
+  <!-- ─── ROADMAP ─────────────────────────────────────────────────────────── -->
+  <h2 id="roadmap">🗺️ Roadmap di refactoring consigliata</h2>
+
+  <div class="analysis-box">
+    <div class="label">Considerazioni per Deploy su Aruba Virtual Host (senza SSH)</div>
+    <p>Senza SSH e senza queue worker, alcune ottimizzazioni vanno calibrate: <strong>non usare queue per le email</strong> (usa <code>QUEUE_CONNECTION=sync</code>), evita Artisan commands schedulate. Le Mailable class rimangono comunque utili per la testabilità anche in modalità sincrona. Le migration vanno eseguite via web route protetta o tramite il pannello FTP Aruba.</p>
+  </div>
+
+  <div style="overflow-x: auto;">
+  <table style="width:100%; border-collapse:collapse; background:var(--surface); border-radius:10px; overflow:hidden; font-size:0.9rem;">
+    <thead>
+      <tr style="background:var(--surface2); border-bottom:2px solid var(--border);">
+        <th style="padding:12px 16px; text-align:left; color:var(--accent);">Fase</th>
+        <th style="padding:12px 16px; text-align:left; color:var(--accent);">Azione</th>
+        <th style="padding:12px 16px; text-align:left; color:var(--accent);">Impatto</th>
+        <th style="padding:12px 16px; text-align:left; color:var(--accent);">Rischio</th>
+        <th style="padding:12px 16px; text-align:left; color:var(--accent);">Giorni</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:12px 16px; color:var(--yellow); font-weight:700;">Sprint 1</td>
+        <td style="padding:12px 16px;">Aggiungi cast <code>array</code> su TournamentNotification.documents/metadata</td>
+        <td style="padding:12px 16px;"><span class="badge badge-green">Alto</span></td>
+        <td style="padding:12px 16px;"><span class="badge badge-green">Basso</span></td>
+        <td style="padding:12px 16px;">0.5</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:12px 16px; color:var(--yellow); font-weight:700;">Sprint 1</td>
+        <td style="padding:12px 16px;">Constructor promotion su tutti i controller</td>
+        <td style="padding:12px 16px;"><span class="badge badge-blue">Medio</span></td>
+        <td style="padding:12px 16px;"><span class="badge badge-green">Basso</span></td>
+        <td style="padding:12px 16px;">1</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:12px 16px; color:var(--yellow); font-weight:700;">Sprint 1</td>
+        <td style="padding:12px 16px;">Rimuovi/implementa <code>checkDateConflicts()</code> placeholder</td>
+        <td style="padding:12px 16px;"><span class="badge badge-blue">Medio</span></td>
+        <td style="padding:12px 16px;"><span class="badge badge-green">Basso</span></td>
+        <td style="padding:12px 16px;">0.5</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border); background:rgba(108,143,255,.04);">
+        <td style="padding:12px 16px; color:var(--orange); font-weight:700;">Sprint 2</td>
+        <td style="padding:12px 16px;">Crea Enum: <code>UserType</code>, <code>RefereeLevel</code>, <code>TournamentStatus</code>, <code>AssignmentRole</code></td>
+        <td style="padding:12px 16px;"><span class="badge badge-red">Molto Alto</span></td>
+        <td style="padding:12px 16px;"><span class="badge badge-yellow">Medio</span></td>
+        <td style="padding:12px 16px;">3</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border); background:rgba(108,143,255,.04);">
+        <td style="padding:12px 16px; color:var(--orange); font-weight:700;">Sprint 2</td>
+        <td style="padding:12px 16px;">Aggiungi cast Enum su modelli + aggiorna references</td>
+        <td style="padding:12px 16px;"><span class="badge badge-red">Molto Alto</span></td>
+        <td style="padding:12px 16px;"><span class="badge badge-yellow">Medio</span></td>
+        <td style="padding:12px 16px;">2</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:12px 16px; color:var(--accent); font-weight:700;">Sprint 3</td>
+        <td style="padding:12px 16px;">Crea <code>TournamentVisibility</code> e unifica Trait + Scope</td>
+        <td style="padding:12px 16px;"><span class="badge badge-red">Molto Alto</span></td>
+        <td style="padding:12px 16px;"><span class="badge badge-orange">Alto</span></td>
+        <td style="padding:12px 16px;">2</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:12px 16px; color:var(--accent); font-weight:700;">Sprint 3</td>
+        <td style="padding:12px 16px;">Crea <code>TournamentNotificationMail</code> Mailable class</td>
+        <td style="padding:12px 16px;"><span class="badge badge-blue">Medio</span></td>
+        <td style="padding:12px 16px;"><span class="badge badge-green">Basso</span></td>
+        <td style="padding:12px 16px;">1</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border); background:rgba(108,143,255,.04);">
+        <td style="padding:12px 16px; color:var(--accent2); font-weight:700;">Sprint 4</td>
+        <td style="padding:12px 16px;">Crea <code>NotificationRecipientBuilder</code> e refactor metodi send/resend</td>
+        <td style="padding:12px 16px;"><span class="badge badge-red">Molto Alto</span></td>
+        <td style="padding:12px 16px;"><span class="badge badge-orange">Alto</span></td>
+        <td style="padding:12px 16px;">3</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border); background:rgba(108,143,255,.04);">
+        <td style="padding:12px 16px; color:var(--accent2); font-weight:700;">Sprint 4</td>
+        <td style="padding:12px 16px;">TournamentObserver per sincronizzare zone_id</td>
+        <td style="padding:12px 16px;"><span class="badge badge-blue">Medio</span></td>
+        <td style="padding:12px 16px;"><span class="badge badge-yellow">Medio</span></td>
+        <td style="padding:12px 16px;">1</td>
+      </tr>
+      <tr>
+        <td style="padding:12px 16px; color:var(--muted); font-weight:700;">Sprint 5</td>
+        <td style="padding:12px 16px;">Type hints completi + <code>AssignedRefereeData</code> DTO + StoreAssignmentRequest</td>
+        <td style="padding:12px 16px;"><span class="badge badge-blue">Medio</span></td>
+        <td style="padding:12px 16px;"><span class="badge badge-green">Basso</span></td>
+        <td style="padding:12px 16px;">2</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div style="margin-top: 32px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px;">
+    <h3 style="margin-top: 0; color: var(--green);">✅ Cosa è già eccellente nel codebase</h3>
+    <ul>
+      <li><strong>Service Layer</strong> — 20 service class ben strutturate, logica fuori dai controller</li>
+      <li><strong>HasZoneVisibility Trait</strong> — il concetto è giusto, serve solo il consolidamento</li>
+      <li><strong>Form Requests</strong> — già presenti (TournamentRequest, AssignmentRequest, etc.)</li>
+      <li><strong>Query Scopes</strong> — scopeVisible(), scopeActive(), scopeUpcoming() ben implementati</li>
+      <li><strong>PHPDoc @property</strong> — documentazione completa sui model principali</li>
+      <li><strong>Route organization</strong> — routes suddivise in file per area (admin/, user/, api/)</li>
+      <li><strong>Constructor injection</strong> — NotificationController usa già readonly + injection corretta</li>
+      <li><strong>Constants nei Model</strong> — STATUS_*, LEVEL_* già definiti come costanti di classe</li>
+    </ul>
+  </div>
+
+</div>
+
+<footer>
+  Report generato per il progetto <strong>golf-arbitri-clean</strong> · Laravel 12 · PHP 8.2+ · Marzo 2026
+</footer>
+
+</body>
+</html>

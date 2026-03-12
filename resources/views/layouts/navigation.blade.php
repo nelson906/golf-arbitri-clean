@@ -14,7 +14,7 @@
                 <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
 
 {{-- Super Admin Menu Items --}}
-@if(auth()->user()->user_type === 'super_admin')
+@if(auth()->user()->isSuperAdmin())
         {{-- Dashboard --}}
         <x-nav-link :href="route('super-admin.institutional-emails.index')" :active="request()->routeIs('super-admin.*')">
             🏠 Dashboard SuperAdmin
@@ -48,7 +48,7 @@
 @endif
 
 {{-- Admin Menu Items --}}
-@if(in_array(auth()->user()->user_type ?? '', ['admin', 'national_admin', 'super_admin']) && auth()->user()->user_type !== 'super_admin')
+@if(auth()->user()->isAdmin() && !auth()->user()->isSuperAdmin())
         {{-- Dashboard Admin --}}
         <x-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">
             🏠 Dashboard Admin
@@ -118,7 +118,7 @@
 @endif
 
 {{-- Menu Amministratore per Super Admin --}}
-@if(auth()->user()->user_type === 'super_admin')
+@if(auth()->user()->isSuperAdmin())
     <x-dropdown align="left" width="48">
         <x-slot name="trigger">
             <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
@@ -155,7 +155,7 @@
 
 
 {{-- User (Referee) Menu Items --}}
-@if(auth()->user()->user_type === 'referee')
+@if(auth()->user()->isReferee())
         {{-- User Dashboard --}}
         <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
             🏠 La Mia Dashboard
@@ -220,11 +220,11 @@
                             <div class="text-sm font-medium text-gray-900">{{ Auth::user()->name }}</div>
                             <div class="text-xs text-gray-500">{{ Auth::user()->email }}</div>
                             <div class="text-xs text-gray-400 mt-1">
-                                @if(Auth::user()->user_type === 'super_admin')
+                                @if(Auth::user()->isSuperAdmin())
                                     Super Amministratore
-                                @elseif(Auth::user()->user_type === 'national_admin')
+                                @elseif(Auth::user()->isNationalAdmin() && !Auth::user()->isSuperAdmin())
                                     Amministratore Nazionale
-                                @elseif(Auth::user()->user_type === 'admin')
+                                @elseif(Auth::user()->isZoneAdmin())
                                     Amministratore di Zona
                                 @else
                                     Arbitro
@@ -280,13 +280,13 @@
 
             <x-responsive-nav-link :href="route('tournaments.calendar')" :active="request()->routeIs('tournaments.calendar')">
                 📅 Calendario Tornei
-                @if(in_array(auth()->user()->user_type ?? '', ['admin', 'national_admin', 'super_admin']))
+                @if(auth()->user()->isAdmin())
                     <span class="text-xs text-blue-600 ml-1">(Admin)</span>
                 @endif
             </x-responsive-nav-link>
 
             {{-- Super Admin Mobile Links --}}
-            @if(auth()->user()->user_type === 'super_admin')
+            @if(auth()->user()->isSuperAdmin())
                 <div class="border-t border-gray-200 mt-2 pt-2">
                     <div class="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">Super Admin</div>
                 </div>
@@ -311,7 +311,7 @@
             @endif
 
             {{-- Admin Mobile Links --}}
-            @if(in_array(auth()->user()->user_type ?? '', ['admin', 'national_admin', 'super_admin']))
+            @if(auth()->user()->isAdmin())
                 <div class="border-t border-gray-200 mt-2 pt-2">
                     <div class="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">Amministrazione</div>
                 </div>
@@ -361,7 +361,7 @@
             @endif
 
             {{-- User (Referee) Mobile Links --}}
-            @if(auth()->user()->user_type === 'referee')
+            @if(auth()->user()->isReferee())
                 <div class="border-t border-gray-200 mt-2 pt-2">
                     <div class="px-4 py-2 text-xs font-semibold text-gray-400 uppercase">Le Mie Attività</div>
                 </div>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\UserType;
 use App\Models\Club;
 use App\Models\Tournament;
 use App\Models\TournamentType;
@@ -17,8 +18,8 @@ class TournamentRequest extends FormRequest
     {
         $user = $this->user();
 
-        // Check user type
-        if (! in_array($user->user_type, ['admin', 'national_admin', 'super_admin'])) {
+        // Check user type — solo gli admin possono gestire tornei
+        if (! $user->isAdmin()) {
             return false;
         }
 
@@ -26,7 +27,7 @@ class TournamentRequest extends FormRequest
         $tournament = $this->route('tournament');
         if ($tournament instanceof Tournament) {
 
-            if ($user->user_type === 'admin' && $tournament->zone_id !== $user->zone_id) {
+            if ($user->isZoneAdmin() && $tournament->zone_id !== $user->zone_id) {
                 return false;
             }
         }
@@ -65,7 +66,7 @@ class TournamentRequest extends FormRequest
 
                     // Check if category is available for user's zone
                     $user = $this->user();
-                    if ($user && $user->user_type === 'admin' && ! $category->isAvailableForZone($user->zone_id)) {
+                    if ($user && $user->isZoneAdmin() && ! $category->isAvailableForZone($user->zone_id)) {
                         $fail('Questa categoria non è disponibile per la tua zona.');
                     }
                 },
@@ -74,14 +75,14 @@ class TournamentRequest extends FormRequest
                 'required',
                 'exists:clubs,id',
                 function ($attribute, $value, $fail) {
-                    $club = club::find($value);
+                    $club = Club::find($value);
                     if ($club && ! $club->is_active) {
                         $fail('Il circolo selezionato non è attivo.');
                     }
 
                     // Check zone access for club
                     $user = $this->user();
-                    if ($user->user_type === 'admin' && $club->zone_id !== $user->zone_id) {
+                    if ($user->isZoneAdmin() && $club->zone_id !== $user->zone_id) {
                         $fail('Non puoi selezionare un circolo di un\'altra zona.');
                     }
                 },
@@ -122,8 +123,8 @@ class TournamentRequest extends FormRequest
             ],
         ];
 
-        // Zone ID is required for national admins
-        if ($this->user()->user_type === 'national_admin') {
+        // Zone ID is required for national admins (not super_admin, who can set it via club)
+        if ($this->user()->user_type === UserType::NationalAdmin) {
             $rules['zone_id'] = [
                 'required',
                 'exists:zones,id',
@@ -169,8 +170,8 @@ class TournamentRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         // If not a national admin, set zone_id from the selected club
-        if ($this->user()->user_type !== 'national_admin' && $this->has('club_id')) {
-            $club = club::find($this->club_id);
+        if ($this->user()->user_type !== UserType::NationalAdmin && $this->has('club_id')) {
+            $club = Club::find($this->club_id);
             if ($club) {
                 $this->merge([
                     'zone_id' => $club->zone_id,

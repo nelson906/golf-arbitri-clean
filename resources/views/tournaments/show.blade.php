@@ -1,4 +1,4 @@
-@extends(in_array(auth()->user()->user_type ?? '', ['admin', 'national_admin', 'super_admin']) ? 'layouts.admin' : 'layouts.app')
+@extends(auth()->user()->isAdmin() ? 'layouts.admin' : 'layouts.app')
 
 @section('title', 'Torneo: ' . $tournament->name)
 
@@ -60,8 +60,8 @@
                             <dd class="mt-1">
                                 <span
                                     class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                {{ $tournament->status === 'open' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
-                                    {{ $tournament->status === 'open' ? 'Aperto' : ucfirst($tournament->status) }}
+                                {{ $tournament->status->value === 'open' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                    {{ $tournament->status->value === 'open' ? 'Aperto' : ucfirst($tournament->status->value) }}
                                 </span>
                             </dd>
                         </div>
@@ -84,7 +84,7 @@
                 </div>
 
                 {{-- Referee Actions (only for referees) --}}
-                @if (auth()->user()->user_type === 'referee')
+                @if (auth()->user()->isReferee())
                     <div class="bg-white shadow rounded-lg p-6">
                         <h3 class="text-lg font-medium text-gray-900 mb-4">Le tue azioni</h3>
 
@@ -108,7 +108,7 @@
                                     </div>
                                 </div>
                             </div>
-                        @elseif($tournament->status === 'open')
+                        @elseif($tournament->status->value === 'open')
                             <button
                                 onclick="openAvailabilityModal('{{ $tournament->id }}', '{{ $tournament->name }}', {{ $userAvailability ? 'true' : 'false' }})"
                                 class="w-full px-4 py-2 rounded-md transition duration-200 {{ $userAvailability ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white' }}">

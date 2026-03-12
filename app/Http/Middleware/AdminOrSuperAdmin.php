@@ -15,7 +15,7 @@ class AdminOrSuperAdmin
 
         $userType = auth()->user()->user_type;
 
-        if (! in_array($userType, ['super_admin', 'national_admin', 'admin'])) {
+        if (! ($userType?->isAdmin() ?? false)) {
             abort(403, 'Access denied');
         }
 

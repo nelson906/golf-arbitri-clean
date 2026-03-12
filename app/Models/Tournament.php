@@ -6,6 +6,8 @@
 
 namespace App\Models;
 
+use App\Enums\TournamentStatus;
+use App\Support\TournamentVisibility;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -21,7 +23,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property Carbon|null $start_date
  * @property Carbon|null $end_date
  * @property Carbon|null $availability_deadline
- * @property string $status
+ * @property TournamentStatus $status
  * @property string|null $notes
  * @property int|null $created_by
  * @property Carbon|null $created_at
@@ -59,9 +61,10 @@ class Tournament extends Model
     ];
 
     protected $casts = [
-        'start_date' => 'datetime',
-        'end_date' => 'datetime',
+        'start_date'            => 'datetime',
+        'end_date'              => 'datetime',
         'availability_deadline' => 'datetime',
+        'status'                => TournamentStatus::class,
     ];
 
     /**
@@ -79,9 +82,7 @@ class Tournament extends Model
      * Solo se specificato esplicitamente saranno in bozza (draft).
      */
     protected $attributes = [
-
-        'status' => self::STATUS_OPEN,
-
+        'status' => 'open', // TournamentStatus::Open — il cast converte automaticamente
     ];
 
     /**
@@ -235,9 +236,9 @@ class Tournament extends Model
     /**
      * SCOPES
      */
-    public function scopeActive($query)
+    public function scopeActive(Builder $query): Builder
     {
-        return $query->whereIn('status', [self::STATUS_OPEN, self::STATUS_CLOSED, self::STATUS_ASSIGNED]);
+        return $query->whereIn('status', TournamentStatus::activeValues());
     }
 
     /**
@@ -250,81 +251,27 @@ class Tournament extends Model
 
     /**
      * Scope per filtrare tornei visibili all'utente.
+     * Delega a TournamentVisibility (single source of truth).
      *
-     * Regole:
-     * - super_admin: vede tutto
-     * - national_admin: solo tornei nazionali (is_national = true)
-     * - admin zonale: solo tornei della propria zona
-     * - referee nazionale/internazionale: propria zona + tornei nazionali
-     * - referee 1_livello/regionale: solo propria zona
-     *
-     * @param  Builder  $query
-     * @return Builder
+     * @see \App\Support\TournamentVisibility per le regole complete
      */
-    public function scopeVisible($query, ?User $user = null)
+    public function scopeVisible(Builder $query, ?User $user = null): Builder
     {
-        $user = $user ?? auth()->user();
-
-        if (! $user) {
-            return $query->whereRaw('1 = 0'); // Nessun utente = nessun risultato
-        }
-
-        // Super admin vede tutto
-        if ($user->user_type === 'super_admin') {
-            return $query;
-        }
-
-        // National admin vede solo tornei nazionali
-        if ($user->user_type === 'national_admin') {
-            return $query->whereHas('tournamentType', fn ($q) => $q->where('is_national', true));
-        }
-
-        // Admin zonale vede solo la propria zona
-        if ($user->user_type === 'admin') {
-            return $query->whereHas('club', fn ($q) => $q->where('zone_id', $user->zone_id));
-        }
-
-        // Referee
-        if ($user->user_type === 'referee') {
-            $isNational = in_array($user->level ?? '', ['Nazionale', 'Internazionale']);
-
-            if ($isNational && $user->zone_id) {
-                // Nazionale/Internazionale: propria zona + tornei nazionali
-                return $query->where(function ($q) use ($user) {
-                    $q->whereHas('club', fn ($sub) => $sub->where('zone_id', $user->zone_id))
-                        ->orWhereHas('tournamentType', fn ($sub) => $sub->where('is_national', true));
-                });
-            } elseif ($isNational) {
-                // Nazionale/Internazionale senza zona: solo tornei nazionali
-                return $query->whereHas('tournamentType', fn ($q) => $q->where('is_national', true));
-            } elseif ($user->zone_id) {
-                // 1_livello/Regionale: solo propria zona
-                return $query->whereHas('club', fn ($q) => $q->where('zone_id', $user->zone_id));
-            } else {
-                // Referee senza zona: nessun risultato
-                return $query->whereRaw('1 = 0');
-            }
-        }
-
-        // Fallback: filtra per zona se presente
-        if ($user->zone_id) {
-            return $query->whereHas('club', fn ($q) => $q->where('zone_id', $user->zone_id));
-        }
-
-        return $query;
+        return TournamentVisibility::apply($query, $user);
     }
 
     /**
-     * Verifica se il torneo è modificabile
+     * Verifica se il torneo è modificabile.
+     * Delega la logica di stato all'Enum TournamentStatus.
      */
     public function isEditable(): bool
     {
-        // Non modificabile se completato o annullato
-        if (in_array($this->status, [self::STATUS_COMPLETED, self::STATUS_CANCELLED])) {
+        // Non modificabile se l'Enum dice che lo stato non è editabile
+        if (! $this->status->isEditable()) {
             return false;
         }
 
-        // Modificabile se la data di inizio è futura o non impostata
+        // Modificabile solo se la data di inizio è futura o non impostata
         return ! $this->start_date || $this->start_date->gte(now()->startOfDay());
     }
 
@@ -337,10 +284,28 @@ class Tournament extends Model
     }
 
     /**
-     * Check if tournament needs referees
+     * Check if tournament needs referees.
+     * Se la relazione è già eager-loaded usa la collection in memoria (zero query extra).
      */
     public function needsReferees(): bool
     {
-        return $this->assignments()->count() < $this->required_referees;
+        $assignedCount = $this->relationLoaded('assignments')
+            ? $this->assignments->count()
+            : ($this->assignments_count ?? $this->assignments()->count());
+
+        return $assignedCount < $this->required_referees;
+    }
+
+    // ── Notifica nazionale ────────────────────────────────────────────────────
+
+    /**
+     * Verifica se il torneo ha notifiche nazionali inviate (usa i tipi tipizzati).
+     */
+    public function hasNationalNotificationsSent(): bool
+    {
+        return $this->notifications()
+            ->whereIn('notification_type', ['crc_referees', 'zone_observers'])
+            ->where('status', 'sent')
+            ->exists();
     }
 }
