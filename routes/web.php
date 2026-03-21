@@ -167,13 +167,11 @@ Route::prefix('api')->name('api.')->group(function () {
         require __DIR__.'/api/v1/notifications.php';
     });
 });
-if (app()->environment(['local', 'staging'])) {
-    require __DIR__.'/dev/view-preview.php';
-    require __DIR__.'/dev/view-test-all.php'; // ⚠️ AGGIUNGI
-}
 require __DIR__.'/maintenance.php';
 
-// View Previewer Routes (only in local/staging)
+// Development routes (solo in local/staging)
 if (app()->environment(['local', 'staging'])) {
+    require __DIR__.'/dev/view-preview.php';
+    require __DIR__.'/dev/view-test-all.php';
     require __DIR__.'/dev/view-routes.php';
 }

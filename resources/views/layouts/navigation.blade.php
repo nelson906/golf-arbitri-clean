@@ -85,7 +85,7 @@
         </x-nav-link>
 
         {{-- Communications --}}
-        <x-nav-link :href="route('admin.communications.index')" :active="request()->routeIs('communications.*')">
+        <x-nav-link :href="route('admin.communications.index')" :active="request()->routeIs('admin.communications.*')">
             📢 Comunicazioni
         </x-nav-link>
 
@@ -222,7 +222,7 @@
                             <div class="text-xs text-gray-400 mt-1">
                                 @if(Auth::user()->isSuperAdmin())
                                     Super Amministratore
-                                @elseif(Auth::user()->isNationalAdmin() && !Auth::user()->isSuperAdmin())
+                                @elseif(Auth::user()->isNationalAdmin())
                                     Amministratore Nazionale
                                 @elseif(Auth::user()->isZoneAdmin())
                                     Amministratore di Zona
@@ -333,7 +333,7 @@
                 <x-responsive-nav-link :href="route('admin.clubs.index')" :active="request()->routeIs('admin.clubs.*')">
                     🏌️ Gestione Circoli
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.communications.index')" :active="request()->routeIs('communications.*')">
+                <x-responsive-nav-link :href="route('admin.communications.index')" :active="request()->routeIs('admin.communications.*')">
                     📢 Comunicazioni
                 </x-responsive-nav-link>
 

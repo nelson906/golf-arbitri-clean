@@ -1,70 +1,7 @@
 <?php
 
 use App\Http\Controllers\SuperAdmin\ArubaToolsController;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
-
-// ========================================
-// ROUTE TEMPORANEE PER SETUP INIZIALE
-// (Rimuovere dopo aver impostato super admin)
-// ========================================
-Route::middleware(['auth'])->group(function () {
-
-    // Verifica funzioni disabilitate (TEMPORANEO - per debugging)
-    Route::get('/admin/check-disabled-functions', function () {
-        if (auth()->id() !== 14) {
-            abort(403);
-        }
-
-        $disabledFunctions = explode(',', ini_get('disable_functions'));
-        $disabledFunctions = array_map('trim', $disabledFunctions);
-
-        $criticalFunctions = ['exec', 'shell_exec', 'system', 'passthru', 'proc_open'];
-
-        $output = '<h2>Funzioni PHP Disabilitate</h2><ul>';
-        foreach ($criticalFunctions as $func) {
-            $isDisabled = in_array($func, $disabledFunctions);
-            $status = $isDisabled ? '❌ DISABILITATA' : '✅ DISPONIBILE';
-            $output .= "<li><strong>{$func}()</strong>: {$status}</li>";
-        }
-        $output .= '</ul><pre>'.implode("\n", $disabledFunctions).'</pre>';
-
-        return $output;
-    });
-
-    // Migration (solo utente ID 1)
-    Route::get('/admin/run-migration', function () {
-        if (auth()->id() !== 14) {
-            abort(403, 'Solo il primo utente registrato');
-        }
-
-        try {
-            Artisan::call('migrate', ['--force' => true]);
-
-            return '<pre>✅ Migration eseguita:\n'.Artisan::output().'</pre>';
-        } catch (\Exception $e) {
-            return '<pre>❌ Errore: '.$e->getMessage().'</pre>';
-        }
-    });
-
-    // Imposta Super Admin (solo utente ID 1)
-    Route::get('/admin/set-super-admin', function () {
-        $user = auth()->user();
-
-        if ($user->id !== 14) {
-            abort(403, 'Solo il primo utente registrato');
-        }
-
-        // Imposta role='super_admin'
-        $user->role = 'super_admin';
-        $user->save();
-
-        return "✅ Super Admin impostato per: {$user->email}<br><br>
-                <a href='/aruba-admin' style='color: blue; text-decoration: underline;'>
-                    Vai alla Dashboard Admin →
-                </a>";
-    });
-});
 
 // ========================================
 // ARUBA ADMIN TOOLS - Solo Super Admin
