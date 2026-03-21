@@ -2,26 +2,9 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
 <head>
-    <!-- Alpine Plugins -->
-    <script defer src="https://unpkg.com/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
-
-    <!-- Alpine Core -->
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-
-    {{-- Alpine.js test --}}
-    <script>
-        function testAlpine() {
-            return {
-                open: false,
-                toggle() {
-                    this.open = !this.open;
-                }
-            }
-        }
-    </script>
 
     <title>@yield('title', 'Golf Arbitri Admin')</title>
 
@@ -137,14 +120,14 @@
                 <li>
                     <a href="{{ route('admin.assignments.index') ?? '#' }}"
                         class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.assignments.*') ? 'bg-blue-900' : '' }}">
-                        <span class="mr-3">📋</span>
+                        <span class="mr-3">📝</span>
                         Assegnazioni
                     </a>
                 </li>
                 <li>
                     <a href="{{ route('admin.assignment-validation.index') }}"
                         class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.statistics.*') ? 'bg-blue-900' : '' }}">
-                        <span class="mr-3">📊</span>
+                        <span class="mr-3">✅</span>
                         Validazione Assegnazioni
                     </a>
                 </li>
@@ -161,7 +144,7 @@
                 <li>
                     <a href="{{ route('admin.career-history.index') }}"
                         class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.career-history.*') ? 'bg-blue-900' : '' }}">
-                        <span class="mr-3">📊</span>
+                        <span class="mr-3">📚</span>
                         Storico Carriera Arbitri
                     </a>
                 </li>
@@ -224,7 +207,7 @@
                                 <div class="text-xs text-gray-400 mt-1">
                                     @if (auth()->user()->isSuperAdmin())
                                         Super Admin
-                                    @elseif(auth()->user()->isNationalAdmin() && !auth()->user()->isSuperAdmin())
+                                    @elseif(auth()->user()->isNationalAdmin())
                                         Admin Nazionale
                                     @elseif(auth()->user()->isZoneAdmin())
                                         Admin Zona
