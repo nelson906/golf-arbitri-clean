@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AssignmentRole;
 use App\Http\Controllers\Controller;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
@@ -378,7 +379,7 @@ class NotificationController extends Controller
 
             // CC Osservatori (solo ruolo Osservatore)
             $observers = $tournament->assignments()
-                ->where('role', 'Osservatore')
+                ->where('role', AssignmentRole::Observer->value)
                 ->with('user')
                 ->get();
             foreach ($observers as $assignment) {

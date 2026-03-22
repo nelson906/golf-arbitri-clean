@@ -2,25 +2,40 @@
 
 namespace App\Helpers;
 
+use App\Enums\RefereeLevel;
 use Illuminate\Support\Facades\Log;
 
 /**
- * RefereeLevelsHelper - VERSIONE SEMPLIFICATA
+ * RefereeLevelsHelper
  *
- * Usa strtolower() per gestire tutti i casi e varianti
+ * Thin adapter sopra l'enum RefereeLevel.
+ * Aggiunge solo ciò che l'enum non gestisce: normalizzazione di varianti
+ * esterne (alias, abbreviazioni, stringhe non-standard) tramite VARIANTS_MAP.
+ *
+ * DB_ENUM_VALUES è mantenuto per retrocompatibilità ma delega a RefereeLevel.
  */
 class RefereeLevelsHelper
 {
     /**
-     * Valori ENUM del database (chiavi = valori DB, valori = label utente)
+     * @deprecated Usa RefereeLevel::selectOptions(true) direttamente.
+     * Mantenuto per retrocompatibilità con codice esterno al progetto.
+     */
+    public static function getDbEnumValues(): array
+    {
+        return RefereeLevel::selectOptions(true);
+    }
+
+    /**
+     * Costante mantenuta per accesso statico legacy (es. array_keys(DB_ENUM_VALUES)).
+     * Delegare a RefereeLevel::selectOptions(true) nelle nuove scritture.
      */
     public const DB_ENUM_VALUES = [
-        'Aspirante' => 'Aspirante',
-        '1_livello' => 'Primo Livello',
-        'Regionale' => 'Regionale',
-        'Nazionale' => 'Nazionale',
+        'Aspirante'      => 'Aspirante',
+        '1_livello'      => 'Primo Livello',
+        'Regionale'      => 'Regionale',
+        'Nazionale'      => 'Nazionale',
         'Internazionale' => 'Internazionale',
-        'Archivio' => 'Archivio',
+        'Archivio'       => 'Archivio',
     ];
 
     /**
@@ -57,17 +72,12 @@ class RefereeLevelsHelper
     ];
 
     /**
-     * Ottieni tutti i livelli per select
+     * Ottieni tutti i livelli per select.
+     * Delega a RefereeLevel::selectOptions() — fonte di verità.
      */
     public static function getSelectOptions(bool $includeArchived = false): array
     {
-        $levels = self::DB_ENUM_VALUES;
-
-        if (! $includeArchived) {
-            unset($levels['Archivio']);
-        }
-
-        return $levels;
+        return RefereeLevel::selectOptions($includeArchived);
     }
 
     /**
@@ -129,13 +139,12 @@ class RefereeLevelsHelper
     }
 
     /**
-     * Verifica accesso tornei nazionali
+     * Verifica accesso tornei nazionali.
+     * Delega a RefereeLevel::canAccessNational() — fonte di verità.
      */
     public static function canAccessNationalTournaments(?string $level): bool
     {
-        $normalized = self::normalize($level);
-
-        return in_array($normalized, ['Nazionale', 'Internazionale']);
+        return RefereeLevel::canAccessNational(self::normalize($level));
     }
 
     /**

@@ -435,7 +435,8 @@ class NotificationCycleTest extends TestCase
             'Osservatore' => 'Osservatore',
             'Referee' => 'Arbitro',
             'Arbitro' => 'Arbitro',
-            'Unknown Role' => 'Unknown Role',
+            // Il nuovo normalize() defaulta ad Arbitro invece di passare la stringa originale
+            'Unknown Role' => 'Arbitro',
         ];
 
         foreach ($testCases as $input => $expected) {

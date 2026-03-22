@@ -59,7 +59,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-500">Livello</label>
                         <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                            {{ \App\Models\User::LEVELS[$user->level] ?? $user->level }}
+                            {{ \App\Enums\RefereeLevel::tryFrom($user->level)?->label() ?? $user->level }}
                         </span>
                     </div>
                     <div>

@@ -62,4 +62,31 @@ enum RefereeLevel: string
             self::Internazionale,
         ];
     }
+
+    /**
+     * Array associativo valore-DB => etichetta, usabile nei <select>.
+     * Unica fonte di verità: sostituisce User::LEVELS e RefereeLevelsHelper::DB_ENUM_VALUES.
+     *
+     * @return array<string,string>
+     */
+    public static function selectOptions(bool $includeArchived = false): array
+    {
+        $cases = $includeArchived ? self::cases() : self::activeLevels();
+
+        $result = [];
+        foreach ($cases as $case) {
+            $result[$case->value] = $case->label();
+        }
+
+        return $result;
+    }
+
+    /**
+     * Verifica se un livello stringa ha accesso ai tornei nazionali.
+     * Delega a isNational() sull'istanza; null-safe su input invalidi.
+     */
+    public static function canAccessNational(?string $value): bool
+    {
+        return self::tryFrom($value ?? '')?->isNational() ?? false;
+    }
 }

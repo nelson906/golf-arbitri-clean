@@ -4,6 +4,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AssignmentRole;
 use App\Enums\RefereeLevel;
 use App\Http\Controllers\Controller;
 use App\Models\Assignment;
@@ -17,6 +18,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class AssignmentController extends Controller
 {
@@ -152,7 +154,7 @@ class AssignmentController extends Controller
         $validated = $request->validate([
             'tournament_id' => 'required|exists:tournaments,id',
             'user_id' => 'required|exists:users,id',
-            'role' => 'nullable|string|in:Direttore di Torneo,Arbitro,Osservatore',
+            'role'  => ['nullable', Rule::enum(AssignmentRole::class)],
             'notes' => 'nullable|string',
         ]);
 
@@ -164,12 +166,8 @@ class AssignmentController extends Controller
             return back()->with('error', 'Arbitro già assegnato a questo torneo');
         }
 
-        // ✅ Crea assignment con campi aggiuntivi
-        // Default role è 'Arbitro' se non specificato
-
         if (empty($validated['role'])) {
-
-            $validated['role'] = 'Arbitro';
+            $validated['role'] = AssignmentRole::default()->value;
         }
 
         Assignment::create(array_merge($validated, [
@@ -231,8 +229,7 @@ class AssignmentController extends Controller
         $this->applyUserVisibility($refereesQuery, $user);
         $referees = $refereesQuery->get();
 
-        // Ruoli disponibili (devono corrispondere ai valori enum del database)
-        $roles = ['Arbitro', 'Direttore di Torneo', 'Osservatore'];
+        $roles = AssignmentRole::values();
 
         // Suggested referee from conflict resolution
         $suggestedRefereeId = $request->query('suggested_referee');
@@ -256,7 +253,7 @@ class AssignmentController extends Controller
 
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
-            'role' => 'required|string|in:Direttore di Torneo,Arbitro,Osservatore',
+            'role' => ['required', Rule::enum(AssignmentRole::class)],
             'notes' => 'nullable|string|max:1000',
         ]);
 
@@ -515,8 +512,7 @@ class AssignmentController extends Controller
                     ->exists();
 
                 if (! $exists) {
-                    // Default role è 'Arbitro' se non specificato
-                    $role = $request->roles[$refereeId] ?? 'Arbitro';
+                    $role = $request->roles[$refereeId] ?? AssignmentRole::default()->value;
 
                     $data = [
                         'tournament_id' => $tournament->id,
