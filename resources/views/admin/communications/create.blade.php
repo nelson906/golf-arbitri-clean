@@ -257,7 +257,6 @@ document.addEventListener('DOMContentLoaded', function() {
             clearTimeout(timeoutId);
             timeoutId = setTimeout(() => {
                 // Could add live preview here if needed
-                console.log('Content updated');
             }, 500);
         });
     }

@@ -180,7 +180,6 @@
                 // Potrebbe chiamare un endpoint AJAX per aggiornare le stats
                 // Per ora mostra solo l'anno selezionato
                 // Could call AJAX endpoint to update stats
-                console.log('Anno selezionato:', year);
             }
 
             function toggleClearWarning() {

@@ -185,31 +185,10 @@
                         Crea Arbitro
                     </button>
                 </div>
-                <script>
-document.querySelector('form').addEventListener('submit', function(e) {
-    console.log('Form submit event fired!');
-    console.log('Form action:', this.action);
-    console.log('Form method:', this.method);
-});
-</script>
-
 
             </form>
         </div>
     </div>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
-
-    form.addEventListener('submit', function(e) {
-        console.log('Form submitted!', new FormData(form));
-    });
-
-    // Log click del bottone
-    document.querySelector('button[type="submit"]').addEventListener('click', function(e) {
-        console.log('Button clicked!');
-    });
-});
 </script>
 
 @endsection
