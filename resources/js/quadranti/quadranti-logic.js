@@ -474,7 +474,6 @@ export class QuadrantiLogic {
     } else {
     // Early(<12): partenza immediata o con gap minimo (solo 10 minuti extra)
     firstLateTime = addTime(lastEarlyTime, '00:10');
-    console.log('DEBUG: Using CONTINUOUS mode, adding 00:10'); // DEBUG
     }
 
         // Calcola fine gara

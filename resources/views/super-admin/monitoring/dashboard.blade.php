@@ -331,9 +331,6 @@ function setRefreshInterval(seconds) {
 
     if (seconds > 0) {
         refreshTimer = setInterval(() => location.reload(), seconds * 1000);
-        console.log('✓ Refresh attivo:', seconds, 'secondi');
-    } else {
-        console.log('✓ Refresh disabilitato');
     }
 }
 
