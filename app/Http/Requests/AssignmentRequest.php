@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\AssignmentRole;
+use App\Enums\RefereeLevel;
 use App\Enums\TournamentStatus;
 use App\Enums\UserType;
 use App\Models\Assignment;
@@ -102,7 +103,7 @@ class AssignmentRequest extends FormRequest
                     // Verifica livello minimo richiesto
                     if ($tournament?->tournamentType && $tournament->tournamentType->required_level) {
                         $requiredLevel = $tournament->tournamentType->required_level;
-                        $levels        = array_keys(User::LEVELS);
+                        $levels        = array_keys(RefereeLevel::selectOptions(true));
                         $requiredIndex = array_search($requiredLevel, $levels);
                         $userIndex     = array_search($user->level, $levels);
 

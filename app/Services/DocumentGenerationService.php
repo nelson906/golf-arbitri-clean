@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Helpers\RefereeRoleHelper;
+use App\Enums\AssignmentRole;
 use App\Helpers\ZoneHelper;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
@@ -169,7 +169,7 @@ class DocumentGenerationService
             $section->addText('Ai Signori:', null, ['lineHeight' => 1, 'spacing' => 60]);
 
             // ORDINA GLI ARBITRI PER GERARCHIA (mantengo il tuo sistema)
-            $sortedAssignments = RefereeRoleHelper::sortByRole($tournament->assignments);
+            $sortedAssignments = AssignmentRole::sortCollection($tournament->assignments);
 
             foreach ($sortedAssignments as $assignment) {
                 // Controllo null safety
@@ -223,11 +223,7 @@ class DocumentGenerationService
                 // Controllo null safety
                 if ($assignment && $assignment->user && $assignment->user->name) {
                     // Gestione corretta di tutti i ruoli incluso Osservatore
-                    $ruolo = match ($assignment->role) {
-                        'Direttore di Torneo' => 'Direttore di Torneo',
-                        'Osservatore' => 'Osservatore',
-                        default => 'Arbitro'
-                    };
+                    $ruolo = (AssignmentRole::tryFrom($assignment->role) ?? AssignmentRole::default())->value;
                     $section->addText(
                         $assignment->user->name."\t".$ruolo,
                         ['bold' => true],
@@ -405,7 +401,7 @@ class DocumentGenerationService
         }
 
         // Aggiungi lista arbitri se il template ha placeholder
-        $sortedAssignments = RefereeRoleHelper::sortByRole($tournament->assignments);
+        $sortedAssignments = AssignmentRole::sortCollection($tournament->assignments);
 
         // Prepara lista arbitri
         $refereesList = $sortedAssignments->map(function ($assignment) {
@@ -443,19 +439,12 @@ class DocumentGenerationService
     }
 
     /**
-     * Translate role to Italian
+     * Normalizza e traduce un ruolo in italiano.
+     * Gestisce varianti inglesi tramite AssignmentRole::normalize().
      */
     protected function translateRole($role): string
     {
-        return match ($role) {
-            'Tournament Director' => 'Direttore di Torneo',
-            'Direttore di Torneo' => 'Direttore di Torneo',
-            'Observer' => 'Osservatore',
-            'Osservatore' => 'Osservatore',
-            'Referee' => 'Arbitro',
-            'Arbitro' => 'Arbitro',
-            default => $role
-        };
+        return AssignmentRole::normalize($role ?? '')->value;
     }
 
     /**

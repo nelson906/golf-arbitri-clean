@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\RefereeLevel;
 use App\Enums\UserType;
 use App\Http\Controllers\Controller;
 use App\Models\Assignment;
@@ -28,7 +29,7 @@ class DashboardController extends Controller
             $clubsQuery->where('zone_id', $user->zone_id);
         } elseif ($user->user_type === UserType::NationalAdmin) {
             // National admin: only national tournaments and national-level referees
-            $refereesQuery->whereIn('level', [User::LEVEL_NAZIONALE, User::LEVEL_INTERNAZIONALE]);
+            $refereesQuery->whereIn('level', [RefereeLevel::Nazionale->value, RefereeLevel::Internazionale->value]);
             $tournamentsQuery->whereHas('tournamentType', fn ($q) => $q->where('is_national', true));
             $assignmentsQuery->whereHas('tournament.tournamentType', fn ($q) => $q->where('is_national', true));
             // National admin sees all clubs (national tournaments span all clubs)

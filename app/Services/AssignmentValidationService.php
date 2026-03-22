@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\AssignmentRole;
 use App\Helpers\RefereeLevelsHelper;
 use App\Models\Assignment;
 use App\Models\Tournament;
@@ -151,7 +152,7 @@ class AssignmentValidationService
 
             // Controlla presenza ruoli chiave
             $roles = $tournament->assignments->pluck('role');
-            if (! $roles->contains('Direttore di Torneo') && $tournament->tournamentType->level === 'nazionale') {
+            if (! $roles->contains(AssignmentRole::TournamentDirector->value) && $tournament->tournamentType->level === 'nazionale') {
                 $tournamentIssues[] = [
                     'type' => 'missing_role',
                     'message' => 'Manca il Direttore di Torneo',

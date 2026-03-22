@@ -90,30 +90,6 @@ class User extends Authenticatable implements MustVerifyEmail
     ];
 
     /**
-     * Referee levels
-     */
-    public const LEVEL_ASPIRANTE = 'Aspirante';
-
-    public const LEVEL_PRIMO_LIVELLO = '1_livello';
-
-    public const LEVEL_REGIONALE = 'Regionale';
-
-    public const LEVEL_NAZIONALE = 'Nazionale';
-
-    public const LEVEL_INTERNAZIONALE = 'Internazionale';
-
-    public const LEVEL_ARCHIVIO = 'Archivio';
-
-    public const LEVELS = [
-        self::LEVEL_ASPIRANTE => 'Aspirante',
-        self::LEVEL_PRIMO_LIVELLO => 'Primo Livello',
-        self::LEVEL_REGIONALE => 'Regionale',
-        self::LEVEL_NAZIONALE => 'Nazionale',
-        self::LEVEL_INTERNAZIONALE => 'Internazionale',
-        self::LEVEL_ARCHIVIO => 'Archivio',
-    ];
-
-    /**
      * Referee categories
      */
     public const CATEGORY_MASCHILE = 'maschile';

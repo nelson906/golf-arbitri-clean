@@ -4,6 +4,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\RefereeLevel;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Zone;
@@ -99,7 +100,7 @@ class UserController extends Controller
         ];
 
         // Array dei livelli (chiavi = valori DB enum)
-        $levels = User::LEVELS;
+        $levels = RefereeLevel::selectOptions(true);
 
         return view('admin.users.index', compact(
             'users',

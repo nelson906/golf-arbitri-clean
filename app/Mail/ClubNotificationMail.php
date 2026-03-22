@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Enums\AssignmentRole;
 use App\Models\Tournament;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -29,23 +30,8 @@ class ClubNotificationMail extends Mailable
         $this->content = $content;
         $this->attachmentPaths = $attachmentPaths;
 
-        // ORDINA GLI ARBITRI PER GERARCHIA
-        $roleOrder = [
-            'Direttore di Torneo' => 1,
-            'Arbitro' => 2,
-            'Osservatore' => 3,
-        ];
-
-        $this->sortedAssignments = $tournament->assignments->sort(function ($a, $b) use ($roleOrder) {
-            $orderA = $roleOrder[$a->role] ?? 999;
-            $orderB = $roleOrder[$b->role] ?? 999;
-
-            if ($orderA === $orderB) {
-                return strcmp($a->user->name, $b->user->name);
-            }
-
-            return $orderA - $orderB;
-        });
+        // ORDINA GLI ARBITRI PER GERARCHIA (Direttore → Arbitro → Osservatore)
+        $this->sortedAssignments = AssignmentRole::sortCollection($tournament->assignments);
     }
 
     /**
