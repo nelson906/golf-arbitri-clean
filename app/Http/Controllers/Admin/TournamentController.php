@@ -228,7 +228,7 @@ class TournamentController extends Controller
             'total_assignments' => $assignedReferees ? $assignedReferees->count() : 0,
             'total_availabilities' => $availableReferees ? $availableReferees->count() : 0,
             'assigned_referees' => $assignedReferees ? $assignedReferees->count() : 0,
-            'required_referees' => $tournament->tournamentType->min_referees ?? 2,
+            'required_referees' => $tournament->tournamentType?->min_referees ?? 2,
             'days_until_deadline' => $tournament->availability_deadline
                 ? now()->diffInDays($tournament->availability_deadline, false)
                 : null,
@@ -411,9 +411,10 @@ class TournamentController extends Controller
         $eligibleReferees = \App\Models\User::where('user_type', '=', 'referee')
             ->where('is_active', '=', true)
 
-            // ✅ FIXED: Use tournamentType relationship
-            ->when($tournament->tournamentType->is_national, function ($q) {
-                $q->whereIn('level', ['nazionale', 'internazionale']);
+            // ✅ FIXED: Use tournamentType relationship (null-safe: tournamentType può essere null)
+            ->when($tournament->tournamentType?->is_national ?? false, function ($q) {
+                // Usa i valori dell'enum RefereeLevel per evitare inconsistenze di case
+                $q->whereIn('level', [\App\Enums\RefereeLevel::Nazionale->value, \App\Enums\RefereeLevel::Internazionale->value]);
             }, function ($q) use ($tournament) {
                 $q->where('zone_id', '=', $tournament->zone_id);
             })
@@ -447,7 +448,7 @@ class TournamentController extends Controller
             'zone_id' => 'required|exists:zones,id',
         ]);
 
-        $clubs = club::active()
+        $clubs = Club::active()
             ->where('zone_id', $request->zone_id)
             ->ordered()
             ->get(['id', 'name', 'short_name']);
