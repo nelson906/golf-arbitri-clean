@@ -305,7 +305,7 @@
                 <x-responsive-nav-link :href="route('super-admin.settings.index')" :active="request()->routeIs('super-admin.settings.*')">
                     ⚙️ Impostazioni Sistema
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('super-admin.system.logs')" :active="request()->routeIs('super-admin.system.*')">
+                <x-responsive-nav-link :href="route('super-admin.monitoring.logs')" :active="request()->routeIs('super-admin.monitoring.*')">
                     📊 Monitoraggio Sistema
                 </x-responsive-nav-link>
             @endif

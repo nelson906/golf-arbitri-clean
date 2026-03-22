@@ -77,19 +77,79 @@
 
                 <div>
                     <label class="flex items-center">
-                        <input type="checkbox" 
-                               name="is_active" 
-                               value="1" 
+                        <input type="checkbox"
+                               name="is_active"
+                               value="1"
                                {{ old('is_active', $tournamentType->is_active) ? 'checked' : '' }}
                                class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         <span class="ml-2 text-sm text-gray-700">Attivo</span>
                     </label>
                 </div>
 
-                @if($tournamentType->tournaments_count > 0)
+                <div>
+                    <label class="flex items-center">
+                        <input type="checkbox"
+                               name="is_national"
+                               value="1"
+                               {{ old('is_national', $tournamentType->is_national) ? 'checked' : '' }}
+                               class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <span class="ml-2 text-sm text-gray-700">Torneo Nazionale</span>
+                    </label>
+                    <p class="mt-1 text-xs text-gray-500">Se attivo, richiede arbitri di livello Nazionale/Internazionale.</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="min_referees" class="block text-sm font-medium text-gray-700">Min. Arbitri</label>
+                        <input type="number"
+                               name="min_referees"
+                               id="min_referees"
+                               value="{{ old('min_referees', $tournamentType->min_referees) }}"
+                               min="0"
+                               placeholder="—"
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        @error('min_referees')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="max_referees" class="block text-sm font-medium text-gray-700">Max. Arbitri</label>
+                        <input type="number"
+                               name="max_referees"
+                               id="max_referees"
+                               value="{{ old('max_referees', $tournamentType->max_referees) }}"
+                               min="0"
+                               placeholder="—"
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        @error('max_referees')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+
+                <div>
+                    <label for="required_level" class="block text-sm font-medium text-gray-700">Livello Arbitro Richiesto</label>
+                    <select name="required_level"
+                            id="required_level"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="">— Nessun requisito —</option>
+                        @foreach(['Aspirante', '1_livello', 'Regionale', 'Nazionale', 'Internazionale'] as $level)
+                            <option value="{{ $level }}"
+                                {{ old('required_level', $tournamentType->required_level) === $level ? 'selected' : '' }}>
+                                {{ str_replace('_', ' ', $level) }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('required_level')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                @php($torneiCount = $tournamentType->tournaments()->count())
+                @if($torneiCount > 0)
                     <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-md">
                         <p class="text-sm text-yellow-800">
-                            Questo tipo è utilizzato da {{ $tournamentType->tournaments_count }} torneo/i.
+                            Questo tipo è utilizzato da {{ $torneiCount }} torneo/i.
                         </p>
                     </div>
                 @endif

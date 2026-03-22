@@ -256,7 +256,13 @@ class AvailabilityController extends Controller
                 ->delete();
 
             // Aggiungi le nuove disponibilità selezionate
+            // Verifica visibilità per ciascun torneo per prevenire IDOR:
+            // un utente non dovrebbe poter dichiarare disponibilità per tornei fuori dalla sua zona.
             foreach ($selectedTournaments as $tournamentId) {
+                $tournament = Tournament::find($tournamentId);
+                if (! $tournament || ! $this->canDeclareAvailability($user, $tournament)) {
+                    continue; // Salta tornei non accessibili silenziosamente
+                }
                 Availability::create([
                     'user_id' => $user->id,
                     'tournament_id' => $tournamentId,

@@ -97,11 +97,17 @@ class AssignmentValidationService
         foreach ($tournaments as $tournament) {
             $tournamentIssues = [];
 
+            // Skip tornei senza tipo associato (non si può validare senza requisiti)
+            if (! $tournament->tournamentType) {
+                continue;
+            }
+
             // Controlla numero minimo arbitri
-            if ($tournament->assignments->count() < $tournament->tournamentType->min_referees) {
+            $minReferees = $tournament->tournamentType->min_referees ?? 0;
+            if ($tournament->assignments->count() < $minReferees) {
                 $tournamentIssues[] = [
                     'type' => 'min_referees',
-                    'message' => "Arbitri assegnati: {$tournament->assignments->count()}, richiesti: {$tournament->tournamentType->min_referees}",
+                    'message' => "Arbitri assegnati: {$tournament->assignments->count()}, richiesti: {$minReferees}",
                     'severity' => 'high',
                 ];
             }
@@ -347,9 +353,16 @@ class AssignmentValidationService
     private function datesOverlap(Assignment $a1, Assignment $a2): bool
     {
         $start1 = Carbon::parse($a1->tournament->start_date);
-        $end1 = Carbon::parse($a1->tournament->end_date);
+        // Se end_date è null, Carbon::parse(null) restituisce la data corrente causando falsi conflitti.
+        // Usiamo la fine del giorno di start_date come fallback sicuro.
+        $end1 = $a1->tournament->end_date
+            ? Carbon::parse($a1->tournament->end_date)
+            : Carbon::parse($a1->tournament->start_date)->endOfDay();
+
         $start2 = Carbon::parse($a2->tournament->start_date);
-        $end2 = Carbon::parse($a2->tournament->end_date);
+        $end2 = $a2->tournament->end_date
+            ? Carbon::parse($a2->tournament->end_date)
+            : Carbon::parse($a2->tournament->start_date)->endOfDay();
 
         return $start1->lte($end2) && $start2->lte($end1);
     }
@@ -357,17 +370,27 @@ class AssignmentValidationService
     private function calculateConflictSeverity(Assignment $a1, Assignment $a2): string
     {
         $start1 = Carbon::parse($a1->tournament->start_date);
+        $end1 = $a1->tournament->end_date
+            ? Carbon::parse($a1->tournament->end_date)
+            : Carbon::parse($a1->tournament->start_date)->endOfDay();
+
         $start2 = Carbon::parse($a2->tournament->start_date);
+        $end2 = $a2->tournament->end_date
+            ? Carbon::parse($a2->tournament->end_date)
+            : Carbon::parse($a2->tournament->start_date)->endOfDay();
 
-        $daysDiff = abs($start1->diffInDays($start2));
+        // Calcola i giorni di effettiva sovrapposizione (non la differenza tra start_date)
+        $overlapStart = $start1->max($start2);
+        $overlapEnd = $end1->min($end2);
+        $overlapDays = (int) $overlapStart->diffInDays($overlapEnd);
 
-        if ($daysDiff === 0) {
-            return 'high'; // Stesso giorno
-        } elseif ($daysDiff <= 1) {
-            return 'medium'; // Giorni consecutivi
+        if ($overlapDays >= 2) {
+            return 'high'; // Sovrapposizione di 2+ giorni
+        } elseif ($overlapDays >= 1) {
+            return 'medium'; // Sovrapposizione di 1 giorno
         }
 
-        return 'low';
+        return 'low'; // Sovrapposizione parziale nello stesso giorno
     }
 
     private function calculateTotalSeverity(array $issues): int
@@ -387,8 +410,8 @@ class AssignmentValidationService
 
     private function findAlternativeReferees(Tournament $tournament, int $excludeUserId): Collection
     {
-        // Usa RefereeLevelsHelper per normalizzazione livelli
-        $requiredLevel = RefereeLevelsHelper::normalize($tournament->tournamentType->required_level ?? '');
+        // Usa RefereeLevelsHelper per normalizzazione livelli (null-safe: tournamentType può essere null)
+        $requiredLevel = RefereeLevelsHelper::normalize($tournament->tournamentType?->required_level ?? '');
         $levels = array_keys(RefereeLevelsHelper::DB_ENUM_VALUES);
         $requiredIndex = array_search($requiredLevel, $levels);
 
@@ -401,8 +424,8 @@ class AssignmentValidationService
         $acceptableLevels = array_slice($levels, $requiredIndex !== false ? $requiredIndex : 0);
         $query->whereIn('level', $acceptableLevels);
 
-        // Filtra per zona se non nazionale
-        if (! $tournament->tournamentType->is_national) {
+        // Filtra per zona se non nazionale (null-safe: se tournamentType è null, tratta come non nazionale)
+        if (! ($tournament->tournamentType?->is_national ?? false)) {
             $query->where('zone_id', $tournament->zone_id);
         }
 
@@ -426,7 +449,14 @@ class AssignmentValidationService
 
     private function checkAvailabilityStatus(User $referee): string
     {
-        $hasAvailabilities = $referee->availabilities()->exists();
+        // Considera solo disponibilità per tornei dell'anno corrente o futuri,
+        // per evitare che disponibilità di anni passati vengano conteggiate come "disponibile".
+        $hasAvailabilities = $referee->availabilities()
+            ->whereHas('tournament', function ($q) {
+                $q->whereYear('start_date', date('Y'))
+                    ->orWhere('start_date', '>=', now());
+            })
+            ->exists();
 
         return $hasAvailabilities ? 'available' : 'unavailable';
     }

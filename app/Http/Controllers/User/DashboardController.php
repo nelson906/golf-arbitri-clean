@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\User;
 
+use App\Enums\RefereeLevel;
 use App\Http\Controllers\Controller;
 use App\Models\Tournament;
 use Carbon\Carbon;
@@ -18,7 +19,7 @@ class DashboardController extends Controller
 
         $user->load('zone'); // Eager load zone relationship
 
-        $isNationalReferee = in_array($user->level, ['nazionale', 'internazionale']);
+        $isNationalReferee = in_array($user->level, [RefereeLevel::Nazionale->value, RefereeLevel::Internazionale->value]);
 
         // Build statistics
         $stats = (object) [

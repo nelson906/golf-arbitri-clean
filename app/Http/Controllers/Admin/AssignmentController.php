@@ -4,6 +4,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\RefereeLevel;
 use App\Http\Controllers\Controller;
 use App\Models\Assignment;
 use App\Models\Tournament;
@@ -115,7 +116,7 @@ class AssignmentController extends Controller
                     ->where('is_active', true)
                     ->whereIn('id', $availableRefereeIds)
                     ->whereNotIn('id', $assignedRefereeIds)
-                    ->when($isNationalAdmin, fn ($q) => $q->whereIn('level', ['Nazionale', 'Internazionale']))
+                    ->when($isNationalAdmin, fn ($q) => $q->whereIn('level', [RefereeLevel::Nazionale->value, RefereeLevel::Internazionale->value]))
                     ->orderBy('name')
                     ->get();
 
@@ -126,7 +127,7 @@ class AssignmentController extends Controller
                     ->where('is_active', true)
                     ->whereNotIn('id', $availableRefereeIds)
                     ->whereNotIn('id', $assignedRefereeIds)
-                    ->when($isNationalAdmin, fn ($q) => $q->whereIn('level', ['Nazionale', 'Internazionale']))
+                    ->when($isNationalAdmin, fn ($q) => $q->whereIn('level', [RefereeLevel::Nazionale->value, RefereeLevel::Internazionale->value]))
                     ->when($zoneId, fn ($q) => $q->where('zone_id', $zoneId))
                     ->orderBy('name')
                     ->get();
@@ -260,7 +261,8 @@ class AssignmentController extends Controller
         ]);
 
         // Verifica che il nuovo arbitro non sia già assegnato allo stesso torneo
-        if ($validated['user_id'] != $assignment->user_id) {
+        // Usa !== (strict) per evitare problemi di type juggling stringa/int
+        if ((int) $validated['user_id'] !== (int) $assignment->user_id) {
             $exists = Assignment::where('tournament_id', $assignment->tournament_id)
                 ->where('user_id', $validated['user_id'])
                 ->where('id', '!=', $assignment->id)
@@ -410,7 +412,7 @@ class AssignmentController extends Controller
 
         // CRC admin: mostra solo arbitri nazionali/internazionali
         if ($this->isNationalAdmin()) {
-            $query->whereIn('level', ['Nazionale', 'Internazionale']);
+            $query->whereIn('level', [RefereeLevel::Nazionale->value, RefereeLevel::Internazionale->value]);
         }
 
         // Escludi già assegnati
@@ -470,7 +472,7 @@ class AssignmentController extends Controller
             ->where('user_type', 'referee');
 
         // Filtra per livello nazionale/internazionale
-        $query->whereIn('level', ['Nazionale', 'Internazionale']);
+        $query->whereIn('level', [RefereeLevel::Nazionale->value, RefereeLevel::Internazionale->value]);
 
         // Filtra solo arbitri attivi
         $query->where('is_active', true);
@@ -750,8 +752,9 @@ class AssignmentController extends Controller
         $user = auth()->user();
         $zoneId = $this->getZoneIdForUser($user);
 
-        // Threshold configurabile
-        $threshold = $request->input('threshold', 5);
+        // Threshold configurabile — minimo 1 per evitare che valori negativi o zero
+        // restituiscano tutti gli arbitri come "sovrassegnati"
+        $threshold = max(1, (int) $request->input('threshold', 5));
 
         $referees = $this->validationService->findOverassignedReferees($zoneId, $threshold);
 
@@ -779,8 +782,9 @@ class AssignmentController extends Controller
         $user = auth()->user();
         $zoneId = $this->getZoneIdForUser($user);
 
-        // Threshold configurabile
-        $threshold = $request->input('threshold', 2);
+        // Threshold configurabile — minimo 1 per evitare che valori negativi o zero
+        // restituiscano tutti gli arbitri come "sottoutilizzati"
+        $threshold = max(1, (int) $request->input('threshold', 2));
 
         $referees = $this->validationService->findUnderassignedReferees($zoneId, $threshold);
 

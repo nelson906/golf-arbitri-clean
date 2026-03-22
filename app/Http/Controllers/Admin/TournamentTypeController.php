@@ -14,7 +14,9 @@ class TournamentTypeController extends Controller
      */
     public function index()
     {
-        $types = TournamentType::orderBy('sort_order')->paginate(20);
+        $types = TournamentType::withCount('tournaments')
+            ->orderBy('sort_order')
+            ->paginate(20);
 
         return view('admin.tournament-types.index', compact('types'));
     }
@@ -33,12 +35,16 @@ class TournamentTypeController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:tournament_types',
-            'code' => 'nullable|string|max:50|unique:tournament_types',
-            'description' => 'nullable|string',
+            'name'           => 'required|string|max:255|unique:tournament_types',
+            'code'           => 'nullable|string|max:50|unique:tournament_types',
+            'description'    => 'nullable|string',
             'calendar_color' => 'nullable|string|max:7',
-            'sort_order' => 'integer|min:0',
-            'is_active' => 'boolean',
+            'sort_order'     => 'integer|min:0',
+            'is_active'      => 'boolean',
+            'is_national'    => 'boolean',
+            'min_referees'   => 'nullable|integer|min:0',
+            'max_referees'   => 'nullable|integer|min:0',
+            'required_level' => 'nullable|string|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale',
         ]);
 
         // Generate code if not provided
@@ -47,8 +53,9 @@ class TournamentTypeController extends Controller
         }
 
         // Set default values
-        $validated['sort_order'] = $validated['sort_order'] ?? (TournamentType::max('sort_order') ?? 0) + 1;
-        $validated['is_active'] = $validated['is_active'] ?? true;
+        $validated['sort_order']  = $validated['sort_order'] ?? (TournamentType::max('sort_order') ?? 0) + 1;
+        $validated['is_active']   = $validated['is_active'] ?? true;
+        $validated['is_national'] = $validated['is_national'] ?? false;
         $validated['calendar_color'] = $validated['calendar_color'] ?? '#'.substr(md5($validated['name']), 0, 6);
 
         TournamentType::create($validated);
@@ -83,13 +90,20 @@ class TournamentTypeController extends Controller
     public function update(Request $request, TournamentType $tournamentType)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:tournament_types,name,'.$tournamentType->id,
-            'code' => 'nullable|string|max:50|unique:tournament_types,code,'.$tournamentType->id,
-            'description' => 'nullable|string',
+            'name'           => 'required|string|max:255|unique:tournament_types,name,'.$tournamentType->id,
+            'code'           => 'nullable|string|max:50|unique:tournament_types,code,'.$tournamentType->id,
+            'description'    => 'nullable|string',
             'calendar_color' => 'nullable|string|max:7',
-            'sort_order' => 'integer|min:0',
-            'is_active' => 'boolean',
+            'sort_order'     => 'integer|min:0',
+            'is_active'      => 'boolean',
+            'is_national'    => 'boolean',
+            'min_referees'   => 'nullable|integer|min:0',
+            'max_referees'   => 'nullable|integer|min:0',
+            'required_level' => 'nullable|string|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale',
         ]);
+
+        // I checkbox non inviati dal browser valgono false — forziamo il valore
+        $validated['is_national'] = $request->boolean('is_national');
 
         $tournamentType->update($validated);
 

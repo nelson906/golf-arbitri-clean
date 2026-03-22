@@ -156,6 +156,11 @@ class NotificationController extends Controller
      */
     public function generateDocument(TournamentNotification $notification, $type)
     {
+        // Validazione whitelist per evitare path traversal e input arbitrari
+        if (! in_array($type, ['convocation', 'club_letter'], true)) {
+            return response()->json(['success' => false, 'message' => 'Tipo documento non valido.'], 422);
+        }
+
         try {
             $fileName = $this->documentService->generateDocument($notification, $type);
 
@@ -192,6 +197,11 @@ class NotificationController extends Controller
      */
     public function deleteDocument(TournamentNotification $notification, $type)
     {
+        // Validazione whitelist per evitare path traversal e input arbitrari
+        if (! in_array($type, ['convocation', 'club_letter'], true)) {
+            return response()->json(['success' => false, 'message' => 'Tipo documento non valido.'], 422);
+        }
+
         try {
             $this->documentService->deleteDocument($notification, $type);
 
@@ -226,6 +236,11 @@ class NotificationController extends Controller
      */
     public function downloadDocument(TournamentNotification $notification, $type)
     {
+        // Validazione whitelist per evitare path traversal e input arbitrari
+        if (! in_array($type, ['convocation', 'club_letter'], true)) {
+            abort(422, 'Tipo documento non valido.');
+        }
+
         try {
             $fullPath = $this->documentService->getDocumentPath($notification, $type);
 
@@ -322,8 +337,8 @@ class NotificationController extends Controller
         ];
 
         if ($isCrcNotification) {
-            // CRC: CC a zona del torneo
-            if ($tournament->club->zone?->email) {
+            // CRC: CC a zona del torneo (null-safe: club o zone potrebbero essere null)
+            if ($tournament->club?->zone?->email) {
                 $ccRecipients[] = [
                     'email' => $tournament->club->zone->email,
                     'name' => $tournament->club->zone->name,
@@ -332,7 +347,7 @@ class NotificationController extends Controller
 
             // CC Admin zonali della zona del torneo
             $zoneAdmins = \App\Models\User::where('user_type', 'admin')
-                ->where('zone_id', $tournament->club->zone_id)
+                ->where('zone_id', $tournament->club?->zone_id)
                 ->where('is_active', true)
                 ->get();
             foreach ($zoneAdmins as $admin) {
@@ -609,6 +624,11 @@ class NotificationController extends Controller
      */
     public function uploadDocument(Request $request, TournamentNotification $notification, $type)
     {
+        // Validazione whitelist per evitare path traversal e input arbitrari
+        if (! in_array($type, ['convocation', 'club_letter'], true)) {
+            return response()->json(['success' => false, 'message' => 'Tipo documento non valido.'], 422);
+        }
+
         try {
             // Valida il file
             $request->validate([
@@ -675,8 +695,8 @@ class NotificationController extends Controller
             }
 
             if ($isCrcNotification) {
-                // CRC: CC a zona del torneo e arbitri designati
-                if ($request->has('send_to_zone') && $tournament->club->zone?->email) {
+                // CRC: CC a zona del torneo e arbitri designati (null-safe: club o zone potrebbero essere null)
+                if ($request->has('send_to_zone') && $tournament->club?->zone?->email) {
                     $ccRecipients[] = [
                         'email' => $tournament->club->zone->email,
                         'name' => $tournament->club->zone->name,

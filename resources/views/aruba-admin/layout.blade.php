@@ -20,6 +20,10 @@
                 </div>
                 <div class="flex items-center space-x-6">
                     <!-- Link Home/Dashboard Principale -->
+                    <a href="{{ route('admin.dashboard') }}" class="text-sm hover:text-gray-200 flex items-center space-x-1">
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Menu Principale</span>
+                    </a>
 
                     <span class="text-sm">{{ auth()->user()->name }}</span>
                     <form method="POST" action="{{ route('logout') }}" class="inline">
@@ -39,6 +43,13 @@
             <aside class="w-full md:w-64 bg-white rounded-lg shadow-md p-4">
                 <nav class="space-y-2">
                     <!-- Link Torna alla Home -->
+                    <a href="{{ route('admin.dashboard') }}"
+                        class="flex items-center space-x-3 p-3 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium mb-2">
+                        <i class="fas fa-arrow-left w-5"></i>
+                        <span>← Menu Principale</span>
+                    </a>
+
+                    <div class="border-t border-gray-200 mb-2"></div>
 
                     <a href="{{ route('aruba.admin.dashboard') }}"
                         class="flex items-center space-x-3 p-3 rounded hover:bg-blue-50 {{ request()->routeIs('aruba.admin.dashboard') ? 'bg-blue-100 text-blue-600' : '' }}">
