@@ -94,8 +94,7 @@ class NotificationTransactionService
      * Prepara e invia una notifica in un'unica transazione
      */
     public function prepareAndSend(
-        TournamentNotification $notification,
-        array $data
+        TournamentNotification $notification
     ): void {
         DB::beginTransaction();
 

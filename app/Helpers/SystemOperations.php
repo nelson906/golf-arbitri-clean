@@ -142,54 +142,6 @@ class SystemOperations
     }
 
     /**
-     * Composer install (aggiornato)
-     */
-    public static function composerInstall(bool $noDev = true): array
-    {
-        $composerPath = self::findComposerPath();
-
-        if (! $composerPath) {
-            return [
-                'success' => false,
-                'output' => 'Composer non trovato. Verifica l\'installazione.',
-            ];
-        }
-
-        $basePath = base_path();
-        $options = $noDev ? '--no-dev --optimize-autoloader' : '';
-
-        $result = self::execCommand("cd {$basePath} && {$composerPath} install {$options} 2>&1");
-
-        return [
-            'success' => $result['success'],
-            'output' => implode("\n", $result['output']),
-        ];
-    }
-
-    /**
-     * Composer update (aggiornato)
-     */
-    public static function composerUpdate(string $package = ''): array
-    {
-        $composerPath = self::findComposerPath();
-
-        if (! $composerPath) {
-            return [
-                'success' => false,
-                'output' => 'Composer non trovato. Verifica l\'installazione.',
-            ];
-        }
-
-        $basePath = base_path();
-        $result = self::execCommand("cd {$basePath} && {$composerPath} update {$package} --no-dev 2>&1");
-
-        return [
-            'success' => $result['success'],
-            'output' => implode("\n", $result['output']),
-        ];
-    }
-
-    /**
      * Lista pacchetti Composer outdated (aggiornato)
      */
     public static function composerOutdated(): array
@@ -237,51 +189,6 @@ class SystemOperations
         $result = self::execCommand("cd {$basePath} && git rev-parse --abbrev-ref HEAD");
 
         return $result['success'] ? trim($result['output'][0] ?? '') : null;
-    }
-
-    /**
-     * Ottieni ultimo commit
-     */
-    public static function getLatestCommit(): ?array
-    {
-        if (! self::isGitAvailable()) {
-            return null;
-        }
-
-        $basePath = base_path();
-        $result = self::execCommand("cd {$basePath} && git log -1 --pretty=format:'%H|%an|%ae|%ad|%s'");
-
-        if (! $result['success'] || empty($result['output'])) {
-            return null;
-        }
-
-        $parts = explode('|', $result['output'][0]);
-
-        return [
-            'hash' => $parts[0] ?? '',
-            'author' => $parts[1] ?? '',
-            'email' => $parts[2] ?? '',
-            'date' => $parts[3] ?? '',
-            'message' => $parts[4] ?? '',
-        ];
-    }
-
-    /**
-     * Git pull (PERICOLOSO)
-     */
-    public static function gitPull(): array
-    {
-        if (! self::isGitAvailable()) {
-            return ['success' => false, 'output' => 'Git non disponibile'];
-        }
-
-        $basePath = base_path();
-        $result = self::execCommand("cd {$basePath} && git pull origin ".self::getCurrentBranch());
-
-        return [
-            'success' => $result['success'],
-            'output' => implode("\n", $result['output']),
-        ];
     }
 
     /**
@@ -454,29 +361,6 @@ class SystemOperations
         }
 
         return ['success' => false, 'size' => 0];
-    }
-
-    /**
-     * Pulisci file vecchi da directory
-     */
-    public static function cleanOldFiles(string $path, int $daysOld = 30): array
-    {
-        if (! File::exists($path)) {
-            return ['success' => false, 'deleted' => 0];
-        }
-
-        $command = sprintf(
-            'find %s -type f -mtime +%d -delete',
-            escapeshellarg($path),
-            $daysOld
-        );
-
-        $result = self::execCommand($command);
-
-        return [
-            'success' => $result['success'],
-            'output' => implode("\n", $result['output']),
-        ];
     }
 
     // ================================

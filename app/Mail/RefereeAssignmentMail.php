@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Helpers\ZoneHelper;
 use App\Models\Assignment;
 use App\Models\Tournament;
 use Illuminate\Bus\Queueable;
@@ -33,7 +34,7 @@ class RefereeAssignmentMail extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct($assignment, Tournament $tournament, array $attachmentPaths = [])
+    public function __construct(Assignment $assignment, Tournament $tournament, array $attachmentPaths = [])
     {
         $this->assignment = $assignment;
         $this->tournament = $tournament;
@@ -69,7 +70,7 @@ class RefereeAssignmentMail extends Mailable
                     'role' => $this->assignment->role,
                     'email' => $this->assignment->user->email,
                 ]],
-                'zone_email' => "szr{$this->tournament->zone_id}@federgolf.it",
+                'zone_email' => ZoneHelper::getEmailPattern($this->tournament->zone_id),
                 'club_email' => $this->tournament->club->email,
                 'attachments_info' => count($this->attachmentPaths) > 0 ?
                     ['Convocazione ufficiale in allegato'] : null,

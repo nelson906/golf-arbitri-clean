@@ -71,24 +71,32 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * Crea zone territoriali
+     * Crea zone territoriali con ID espliciti (1-8).
+     *
+     * IMPORTANTE: si usa DB::table()->insert() con ID espliciti per risolvere
+     * il problema di MySQL AUTO_INCREMENT che NON si azzera con il rollback delle
+     * transazioni (RefreshDatabase usa transazioni, non migrate:fresh per ogni test).
+     * Con ID espliciti, ogni test ottiene sempre zone id=1-8 indipendentemente da
+     * quanti test sono stati eseguiti prima — i test che usano zone_id=1, 2, 3
+     * trovano sempre le righe corrispondenti.
+     *
+     * Le email sono incluse perché AvailabilityNotificationService::getZoneEmail()
+     * le legge dal DB (dopo FIX A-1 — rimozione array hardcoded).
      */
     protected function seedZones(): void
     {
-        $zones = [
-            ['code' => 'SZR1', 'name' => 'Zona 1 - Nord Ovest'],
-            ['code' => 'SZR2', 'name' => 'Zona 2 - Nord Est'],
-            ['code' => 'SZR3', 'name' => 'Zona 3 - Centro'],
-            ['code' => 'SZR4', 'name' => 'Zona 4 - Sud'],
-            ['code' => 'SZR5', 'name' => 'Zona 5 - Isole'],
-            ['code' => 'SZR6', 'name' => 'Zona 6 - Sardegna'],
-            ['code' => 'SZR7', 'name' => 'Zona 7 - Sicilia'],
-            ['code' => 'CRC', 'name' => 'Commissione Regole e Competizioni'],
-        ];
+        $now = now();
 
-        foreach ($zones as $zone) {
-            Zone::create($zone);
-        }
+        \Illuminate\Support\Facades\DB::table('zones')->insert([
+            ['id' => 1, 'code' => 'SZR1', 'name' => 'Zona 1 - Nord Ovest', 'email' => 'szr1@federgolf.it', 'is_active' => 1, 'is_national' => 0, 'created_at' => $now, 'updated_at' => $now],
+            ['id' => 2, 'code' => 'SZR2', 'name' => 'Zona 2 - Nord Est',   'email' => 'szr2@federgolf.it', 'is_active' => 1, 'is_national' => 0, 'created_at' => $now, 'updated_at' => $now],
+            ['id' => 3, 'code' => 'SZR3', 'name' => 'Zona 3 - Centro',     'email' => 'szr3@federgolf.it', 'is_active' => 1, 'is_national' => 0, 'created_at' => $now, 'updated_at' => $now],
+            ['id' => 4, 'code' => 'SZR4', 'name' => 'Zona 4 - Sud',        'email' => 'szr4@federgolf.it', 'is_active' => 1, 'is_national' => 0, 'created_at' => $now, 'updated_at' => $now],
+            ['id' => 5, 'code' => 'SZR5', 'name' => 'Zona 5 - Isole',      'email' => 'szr5@federgolf.it', 'is_active' => 1, 'is_national' => 0, 'created_at' => $now, 'updated_at' => $now],
+            ['id' => 6, 'code' => 'SZR6', 'name' => 'Zona 6 - Sardegna',   'email' => 'szr6@federgolf.it', 'is_active' => 1, 'is_national' => 0, 'created_at' => $now, 'updated_at' => $now],
+            ['id' => 7, 'code' => 'SZR7', 'name' => 'Zona 7 - Sicilia',    'email' => 'szr7@federgolf.it', 'is_active' => 1, 'is_national' => 0, 'created_at' => $now, 'updated_at' => $now],
+            ['id' => 8, 'code' => 'CRC',  'name' => 'Commissione Regole e Competizioni', 'email' => null, 'is_active' => 1, 'is_national' => 1, 'created_at' => $now, 'updated_at' => $now],
+        ]);
     }
 
     /**

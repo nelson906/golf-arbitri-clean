@@ -296,56 +296,6 @@ class TournamentController extends Controller
     }
 
     /**
-     * Update tournament status.
-     */
-    public function updateStatus(Request $request, Tournament $tournament)
-    {
-        // Check access
-        $this->checkTournamentAccess($tournament);
-
-        $request->validate([
-            'status' => ['required', 'in:'.implode(',', array_keys(Tournament::STATUSES))],
-        ]);
-
-        $newStatus = $request->status;
-        $currentStatus = $tournament->status; // TournamentStatus enum
-
-        // Validate status transition
-        $validTransitions = [
-            'draft' => ['open'],
-            'open' => ['closed'],
-            'closed' => ['open', 'assigned'],
-            'assigned' => ['completed'],
-            'completed' => [],
-        ];
-
-        if (! in_array($newStatus, $validTransitions[$currentStatus->value] ?? [])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Transizione di stato non valida.',
-            ], 400);
-        }
-
-        // Additional checks
-        if ($newStatus === 'assigned' && $tournament->assignments()->count() < $tournament->required_referees) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Non ci sono abbastanza arbitri assegnati.',
-            ], 400);
-        }
-
-        $tournament->update(['status' => $newStatus]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Stato aggiornato con successo.',
-            'new_status' => $newStatus,
-            'new_status_label' => Tournament::STATUSES[$newStatus],
-            'new_status_color' => $tournament->status_color,
-        ]);
-    }
-
-    /**
      * Change tournament status with override (bypasses workflow validation).
      * Use this for manual corrections or administrative overrides.
      */
@@ -439,48 +389,4 @@ class TournamentController extends Controller
         }
     }
 
-    /**
-     * Get clubs for a specific zone (AJAX).
-     */
-    public function getclubsByZone(Request $request)
-    {
-        $request->validate([
-            'zone_id' => 'required|exists:zones,id',
-        ]);
-
-        $clubs = Club::active()
-            ->where('zone_id', $request->zone_id)
-            ->ordered()
-            ->get(['id', 'name', 'short_name']);
-
-        return response()->json($clubs);
-    }
-
-    /**
-     * Configurazione per il trait
-     */
-    protected function getEntityName($model): string
-    {
-        return 'Torneo';
-    }
-
-    protected function getIndexRoute(): string
-    {
-        return 'admin.tournaments.index';
-    }
-
-    protected function getDeleteErrorMessage($model): string
-    {
-        return 'Impossibile eliminare un torneo con assegnazioni.';
-    }
-
-    protected function canBeDeleted($tournament): bool
-    {
-        return ! $tournament->assignments()->exists() && $tournament->status === TournamentStatus::Draft;
-    }
-
-    protected function checkAccess($tournament): void
-    {
-        $this->checkTournamentAccess($tournament);
-    }
 }

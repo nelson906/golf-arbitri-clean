@@ -273,15 +273,20 @@ class TournamentNotification extends Model
 
     /**
      * 🔄 Metodo: Può essere reinviato?
+     *
+     * FIX B-3: rimosso il doppio `return true` che rendeva la logica sempre vera
+     * indipendentemente dall'orario di invio. Ora la regola è:
+     *   - Notifiche mai inviate (sent_at null) → sempre reinviabili
+     *   - Notifiche inviate da più di 1 ora    → reinviabili
+     *   - Notifiche inviate da meno di 1 ora   → non reinviabili (debounce)
      */
     public function canBeResent(): bool
     {
-        // Permetti sempre reinvio dopo 1 ora per testing
-        if ($this->sent_at && $this->sent_at->lt(now()->subHour())) {
+        if (! $this->sent_at) {
             return true;
         }
 
-        return true;
+        return $this->sent_at->lt(now()->subHour());
     }
 
     /**

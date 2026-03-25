@@ -87,19 +87,31 @@ class Tournament extends Model
 
     /**
      * Tournament statuses
+     *
+     * @deprecated Usare \App\Enums\TournamentStatus al posto di queste costanti.
+     *             Queste rimangono solo per retrocompatibilità con codice legacy.
      */
+    /** @deprecated Use TournamentStatus::Draft->value */
     public const STATUS_DRAFT = 'draft';
 
+    /** @deprecated Use TournamentStatus::Open->value */
     public const STATUS_OPEN = 'open';
 
+    /** @deprecated Use TournamentStatus::Closed->value */
     public const STATUS_CLOSED = 'closed';
 
+    /** @deprecated Use TournamentStatus::Assigned->value */
     public const STATUS_ASSIGNED = 'assigned';
 
+    /** @deprecated Use TournamentStatus::Completed->value */
     public const STATUS_COMPLETED = 'completed';
 
+    /** @deprecated Use TournamentStatus::Cancelled->value */
     public const STATUS_CANCELLED = 'cancelled';
 
+    /**
+     * @deprecated Usare TournamentStatus::selectOptions() o TournamentStatus::cases().
+     */
     public const STATUSES = [
         self::STATUS_DRAFT => 'Bozza',
         self::STATUS_OPEN => 'Aperto',

@@ -17,15 +17,6 @@ use Illuminate\Support\Facades\Log;
 class RefereeLevelsHelper
 {
     /**
-     * @deprecated Usa RefereeLevel::selectOptions(true) direttamente.
-     * Mantenuto per retrocompatibilità con codice esterno al progetto.
-     */
-    public static function getDbEnumValues(): array
-    {
-        return RefereeLevel::selectOptions(true);
-    }
-
-    /**
      * Costante mantenuta per accesso statico legacy (es. array_keys(DB_ENUM_VALUES)).
      * Delegare a RefereeLevel::selectOptions(true) nelle nuove scritture.
      */
@@ -180,26 +171,7 @@ class RefereeLevelsHelper
     }
 }
 
-/**
- * Funzioni helper globali
- */
-if (! function_exists('referee_levels')) {
-    function referee_levels(bool $includeArchived = false): array
-    {
-        return RefereeLevelsHelper::getSelectOptions($includeArchived);
-    }
-}
-
-if (! function_exists('normalize_referee_level')) {
-    function normalize_referee_level(?string $level): ?string
-    {
-        return RefereeLevelsHelper::normalize($level);
-    }
-}
-
-if (! function_exists('referee_level_label')) {
-    function referee_level_label(?string $level): string
-    {
-        return RefereeLevelsHelper::getLabel($level);
-    }
-}
+// Le funzioni globali referee_levels(), normalize_referee_level() e referee_level_label()
+// si trovano in app/Helpers/helpers.php (caricato via Composer "files" autoload).
+// NON ridefinirle qui: questo file ha namespace App\Helpers, quindi qualsiasi funzione
+// definita qui sarebbe \App\Helpers\referee_levels(), non \referee_levels().

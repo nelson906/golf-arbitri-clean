@@ -92,11 +92,14 @@ return [
     ],
 
     'assignment_roles' => [
-        // Ruoli possibili nelle assegnazioni
-        'default' => 'Arbitro',
+        // Ruoli possibili nelle assegnazioni.
+        // IMPORTANTE: i valori devono corrispondere esattamente ai casi
+        // dell'enum AssignmentRole e al valore nel DB (Direttore di Torneo,
+        // Arbitro, Osservatore). Non aggiungere ruoli senza aggiornare l'enum.
+        // FIX: rimosso 'assistant' => 'Assistente' — ruolo inesistente nel DB.
+        'default'  => 'Arbitro',
         'director' => 'Direttore di Torneo',
-        'referee' => 'Arbitro',
-        'assistant' => 'Assistente',
+        'referee'  => 'Arbitro',
         'observer' => 'Osservatore',
     ],
 

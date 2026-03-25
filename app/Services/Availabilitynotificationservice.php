@@ -6,6 +6,7 @@ use App\Mail\BatchAvailabilityAdminNotification;
 use App\Mail\BatchAvailabilityNotification;
 use App\Models\Availability;
 use App\Models\User;
+use App\Models\Zone;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -213,28 +214,36 @@ class AvailabilityNotificationService
     }
 
     /**
-     * Ottiene email della zona
+     * Ottiene email della zona leggendo dal database.
+     *
+     * FIX A-1: rimosso l'array PHP hardcoded — le email ora vengono lette da zones.email.
+     * In questo modo un cambio di email non richiede modifiche al codice.
      */
     protected function getZoneEmail(int $zoneId): string
     {
-        $zoneEmails = [
-            1 => 'szr1@federgolf.it',
-            2 => 'szr2@federgolf.it',
-            3 => 'szr3@federgolf.it',
-            4 => 'szr4@federgolf.it',
-            5 => 'szr5@federgolf.it',
-            6 => 'szr6@federgolf.it',
-            7 => 'szr7@federgolf.it',
-        ];
+        $email = Zone::find($zoneId)?->email;
 
-        return $zoneEmails[$zoneId] ?? 'arbitri@federgolf.it';
+        if (empty($email)) {
+            Log::warning('Email zona non trovata nel DB, usato fallback', ['zone_id' => $zoneId]);
+
+            return config('golf.emails.fallback_zone', 'arbitri@federgolf.it');
+        }
+
+        return $email;
     }
 
     /**
-     * Ottiene email del CRC
+     * Ottiene email del CRC dalla configurazione.
+     *
+     * FIX A-2: rimossa stringa hardcoded — ora legge da config('golf.emails.crc').
+     *
+     * NOTA: usiamo ?: invece del secondo argomento di config() perché
+     * config('key', 'default') restituisce il default solo quando la chiave è
+     * assente del tutto, non quando è esplicitamente null o stringa vuota.
+     * Con ?: il fallback scatta su null, '', e false — comportamento più robusto.
      */
     protected function getCrcEmail(): string
     {
-        return 'crc@federgolf.it';
+        return config('golf.emails.crc') ?: 'crc@federgolf.it';
     }
 }

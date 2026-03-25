@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Enums\AssignmentRole;
+use App\Helpers\ZoneHelper;
 use App\Models\Tournament;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -66,7 +67,7 @@ class ClubNotificationMail extends Mailable
                 'tournament_dates' => $this->tournament->date_range,
                 'club_name' => $this->tournament->club->name,
                 'referees' => $referees,
-                'zone_email' => "szr{$this->tournament->zone_id}@federgolf.it",
+                'zone_email' => ZoneHelper::getEmailPattern($this->tournament->zone_id),
                 'club_email' => $this->tournament->club->email,
                 'attachments_info' => count($this->attachmentPaths) > 0 ?
                     ['Facsimile convocazione in formato Word'] : null,
@@ -107,5 +108,4 @@ class ClubNotificationMail extends Mailable
         return $mailAttachments;
     }
 
-    // RIMUOVI COMPLETAMENTE IL METODO build()
 }

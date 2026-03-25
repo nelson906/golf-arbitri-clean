@@ -73,28 +73,4 @@ class TournamentNotificationMail extends Mailable
         );
     }
 
-    /**
-     * Costruisce la mail per un reinvio usando i metadata salvati.
-     *
-     * @param  array{subject?: string, message?: string}  $metadata
-     */
-    public static function fromMetadata(
-        TournamentNotification $notification,
-        array $metadata,
-        string $recipientType = 'generic'
-    ): self {
-        $tournament = $notification->tournament;
-
-        // Inietta i dati dal metadata nel campo content per riusare il template
-        $notification->content = [
-            'subject' => $metadata['subject'] ?? 'Designazione Arbitri — ' . $tournament->name,
-            'message' => $metadata['message'] ?? '',
-        ];
-
-        return new self(
-            tournament:       $tournament,
-            notification:     $notification,
-            recipientType:    $recipientType,
-        );
-    }
 }

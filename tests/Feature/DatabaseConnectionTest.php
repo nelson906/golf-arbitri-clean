@@ -8,17 +8,17 @@ use Tests\TestCase;
 class DatabaseConnectionTest extends TestCase
 {
     /**
-     * Test che verifica che i test usino SQLite in memoria
+     * Test che verifica che i test usino MySQL con database dedicato
      */
-    public function test_uses_sqlite_in_memory_for_tests(): void
+    public function test_uses_mysql_for_tests(): void
     {
-        // Verifica che la connessione sia SQLite
+        // Verifica che la connessione sia MySQL
         $connection = config('database.default');
-        $this->assertEquals('sqlite', $connection, 'I test devono usare SQLite');
+        $this->assertEquals('mysql', $connection, 'I test devono usare MySQL');
 
-        // Verifica che il database sia :memory:
-        $database = config('database.connections.sqlite.database');
-        $this->assertEquals(':memory:', $database, 'I test devono usare database in memoria');
+        // Verifica che il database contenga "test" nel nome
+        $database = config('database.connections.mysql.database');
+        $this->assertStringContainsString('test', strtolower($database), 'Il database di test deve contenere "test" nel nome');
 
         // Verifica che l'ambiente sia testing
         $this->assertEquals('testing', config('app.env'));
@@ -31,7 +31,7 @@ class DatabaseConnectionTest extends TestCase
     {
         // Ottieni il nome del driver
         $driver = DB::connection()->getDriverName();
-        $this->assertEquals('sqlite', $driver);
+        $this->assertEquals('mysql', $driver);
 
         // Verifica che possiamo creare e distruggere tabelle senza problemi
         $this->assertTrue(true, 'Database isolato e sicuro per i test');

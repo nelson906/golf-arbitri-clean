@@ -20,8 +20,8 @@ class CommunicationPolicy
      */
     public function view(User $user, Communication $communication): bool
     {
-        // Admin può vedere tutto
-        if ($user->hasRole(['admin', 'super-admin'])) {
+        // Admin può vedere tutto (isAdmin() copre super_admin, national_admin, zone_admin)
+        if ($user->isAdmin()) {
             return true;
         }
 
@@ -34,7 +34,7 @@ class CommunicationPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasRole(['admin', 'super-admin']);
+        return $user->isAdmin();
     }
 
     /**
@@ -42,7 +42,7 @@ class CommunicationPolicy
      */
     public function update(User $user, Communication $communication): bool
     {
-        return $user->hasRole(['admin', 'super-admin']);
+        return $user->isAdmin();
     }
 
     /**
@@ -50,6 +50,6 @@ class CommunicationPolicy
      */
     public function delete(User $user, Communication $communication): bool
     {
-        return $user->hasRole(['admin', 'super-admin']);
+        return $user->isAdmin();
     }
 }

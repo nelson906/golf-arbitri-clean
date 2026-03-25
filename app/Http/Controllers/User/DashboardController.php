@@ -88,16 +88,21 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
-        // Monthly statistics (last 12 months) - semplificato
+        // Monthly statistics (last 12 months) — una sola query aggregata invece di 12
+        $startOfPeriod = Carbon::now()->subMonths(11)->startOfMonth();
+        $rawMonthly = $user->assignments()
+            ->join('tournaments', 'assignments.tournament_id', '=', 'tournaments.id')
+            ->where('tournaments.start_date', '>=', $startOfPeriod)
+            ->selectRaw("DATE_FORMAT(tournaments.start_date, '%Y-%m') as month, COUNT(*) as total")
+            ->groupByRaw("DATE_FORMAT(tournaments.start_date, '%Y-%m')")
+            ->pluck('total', 'month')
+            ->toArray();
+
+        // Costruisce l'array completo con zero per i mesi senza assegnazioni
         $monthlyStats = [];
         for ($i = 11; $i >= 0; $i--) {
             $month = Carbon::now()->subMonths($i)->format('Y-m');
-            $count = $user->assignments()
-                ->whereHas('tournament', function ($q) use ($month) {
-                    $q->where('start_date', 'like', $month.'%');
-                })
-                ->count();
-            $monthlyStats[$month] = $count;
+            $monthlyStats[$month] = $rawMonthly[$month] ?? 0;
         }
 
         // Assignments by tournament type

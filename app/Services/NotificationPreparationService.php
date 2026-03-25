@@ -158,16 +158,15 @@ class NotificationPreparationService
      */
     public function loadFormData(Tournament $tournament): array
     {
+        // Una sola query: la collection viene riusata per costruire sia la lista flat che quella raggruppata
+        $allEmails = InstitutionalEmail::where('is_active', true)
+            ->orderBy('category')
+            ->orderBy('name')
+            ->get();
+
         return [
-            'institutionalEmails' => InstitutionalEmail::where('is_active', true)
-                ->orderBy('category')
-                ->orderBy('name')
-                ->get(),
-            'groupedEmails' => InstitutionalEmail::where('is_active', true)
-                ->orderBy('category')
-                ->orderBy('name')
-                ->get()
-                ->groupBy('category'),
+            'institutionalEmails' => $allEmails,
+            'groupedEmails' => $allEmails->groupBy('category'),
             'availableClauses' => NotificationClause::active()
                 ->ordered()
                 ->get()
