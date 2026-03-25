@@ -582,7 +582,7 @@ CREATE TABLE `zones` (
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
-CREATE DEFINER=`Sql1466239`@`%` FUNCTION `UC_Words`(`str` VARCHAR(255)) RETURNS varchar(255) CHARSET utf8mb3
+CREATE DEFINER=`root`@`localhost` FUNCTION `UC_Words`(`str` VARCHAR(255)) RETURNS varchar(255) CHARSET utf8mb3 NO SQL DETERMINISTIC
 BEGIN  
   DECLARE c CHAR(1);  
   DECLARE s VARCHAR(255);  
@@ -630,3 +630,10 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (3,'0001_01_01_0000
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (4,'2025_08_29_055240_create_clean_golf_schema',1);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (5,'2025_12_19_130000_add_club_member_to_users_table',2);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (6,'2026_01_04_000001_add_notification_type_to_tournament_notifications',3);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (7,'2025_08_29_000001_create_tournament_types_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (8,'2025_08_29_000002_create_referee_career_history_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (9,'2025_08_29_000003_create_tournaments_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (10,'2025_08_29_000004_create_notifications_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (11,'2025_08_29_000005_create_notification_clauses_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (12,'2025_08_29_000006_create_documents_table',1);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (13,'2025_08_29_000007_create_letter_templates_table',1);

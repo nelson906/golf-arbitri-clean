@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\User;
 
+use App\Enums\UserType;
 use App\Http\Controllers\Controller;
 use App\Mail\BatchAvailabilityAdminNotification;
 use App\Mail\BatchAvailabilityNotification;
@@ -575,8 +576,9 @@ class AvailabilityController extends Controller
             $zoneId = $tournament->club->zone_id ?? $tournament->zone_id;
 
             if ($zoneId) {
+                // FIX: uso UserType::ZoneAdmin->value invece della stringa 'admin' per robustezza
                 $zoneAdmins = User::where('zone_id', $zoneId)
-                    ->where('user_type', 'admin')
+                    ->where('user_type', UserType::ZoneAdmin->value)
                     ->where('is_active', true)
                     ->whereNotNull('email')
                     ->pluck('email')
@@ -594,7 +596,7 @@ class AvailabilityController extends Controller
      */
     private function collectNationalAdminEmails(): array
     {
-        return User::where('user_type', 'national_admin')
+        return User::where('user_type', UserType::NationalAdmin->value)
             ->where('is_active', true)
             ->whereNotNull('email')
             ->pluck('email')

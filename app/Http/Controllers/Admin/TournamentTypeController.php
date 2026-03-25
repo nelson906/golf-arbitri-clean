@@ -144,20 +144,4 @@ class TournamentTypeController extends Controller
         );
     }
 
-    /**
-     * Update the order of tournament types.
-     */
-    public function updateOrder(Request $request)
-    {
-        $validated = $request->validate([
-            'order' => 'required|array',
-            'order.*' => 'required|integer|exists:tournament_types,id',
-        ]);
-
-        foreach ($validated['order'] as $index => $id) {
-            TournamentType::where('id', $id)->update(['sort_order' => $index]);
-        }
-
-        return response()->json(['success' => true]);
-    }
 }

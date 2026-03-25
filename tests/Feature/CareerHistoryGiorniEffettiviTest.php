@@ -31,10 +31,10 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
     {
         parent::setUp();
 
-        // Setup zone - crea una zona unica per ogni test con timestamp
+        // Setup zone per i test (il codice è breve: varchar(10))
         $this->zone = Zone::create([
-            'name' => 'Test Zone '.now()->timestamp,
-            'code' => 'TEST'.now()->timestamp,
+            'name' => 'Test Zone',
+            'code' => 'TZ',
             'is_national' => false,
         ]);
 

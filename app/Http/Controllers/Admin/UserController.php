@@ -5,6 +5,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\RefereeLevel;
+use App\Enums\UserType;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Zone;
@@ -93,10 +94,10 @@ class UserController extends Controller
 
         // Array dei tipi utente disponibili
         $userTypes = [
-            'referee' => 'Arbitro',
-            'admin' => 'Admin Zona',
-            'national_admin' => 'Admin Nazionale',
-            'super_admin' => 'Super Admin',
+            UserType::Referee->value       => 'Arbitro',
+            UserType::ZoneAdmin->value     => 'Admin Zona',
+            UserType::NationalAdmin->value => 'Admin Nazionale',
+            UserType::SuperAdmin->value    => 'Super Admin',
         ];
 
         // Array dei livelli (chiavi = valori DB enum)
@@ -163,13 +164,13 @@ class UserController extends Controller
         $clubs = \App\Models\Club::orderBy('name')->get();
 
         // Tipi utente che può creare
-        $userTypes = ['referee' => 'Arbitro'];
+        $userTypes = [UserType::Referee->value => 'Arbitro'];
         if ($isNationalAdmin) {
-            $userTypes['admin'] = 'Admin Zona';
+            $userTypes[UserType::ZoneAdmin->value] = 'Admin Zona';
         }
         if ($isSuperAdmin) {
-            $userTypes['national_admin'] = 'Admin Nazionale';
-            $userTypes['super_admin'] = 'Super Admin';
+            $userTypes[UserType::NationalAdmin->value] = 'Admin Nazionale';
+            $userTypes[UserType::SuperAdmin->value]    = 'Super Admin';
         }
 
         return view('admin.users.create', compact('zones', 'clubs', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
@@ -252,13 +253,13 @@ class UserController extends Controller
             ->get();
 
         // Tipi utente modificabili
-        $userTypes = ['referee' => 'Arbitro'];
+        $userTypes = [UserType::Referee->value => 'Arbitro'];
         if ($isNationalAdmin) {
-            $userTypes['admin'] = 'Admin Zona';
+            $userTypes[UserType::ZoneAdmin->value] = 'Admin Zona';
         }
         if ($isSuperAdmin) {
-            $userTypes['national_admin'] = 'Admin Nazionale';
-            $userTypes['super_admin'] = 'Super Admin';
+            $userTypes[UserType::NationalAdmin->value] = 'Admin Nazionale';
+            $userTypes[UserType::SuperAdmin->value]    = 'Super Admin';
         }
 
         return view('admin.users.edit', compact('user', 'zones', 'clubs', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
