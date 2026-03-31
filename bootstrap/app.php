@@ -22,4 +22,12 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
-    })->create();
+    })
+    ->withCommands([
+        \App\Console\Commands\ArchiveCareerYear::class,
+        \App\Console\Commands\ManageCareerEntry::class,
+        \App\Console\Commands\SimpleBackupCommand::class,
+        \App\Console\Commands\ImportFedergolfCommittees::class,
+        \App\Console\Commands\CreateMissingFigData::class,
+    ])
+    ->create();
