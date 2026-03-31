@@ -191,7 +191,7 @@ class AssignmentValidationService
         }
 
         // Filtering after get() for SQLite compatibility (HAVING on subquery count not supported)
-        return $query
+        $overassigned = $query
             ->with(['zone', 'assignments' => function ($q) {
                 $q->whereHas('tournament', function ($tq) {
                     $tq->whereIn('status', ['open', 'closed'])
@@ -201,22 +201,21 @@ class AssignmentValidationService
             ->get()
             ->filter(fn ($referee) => $referee->assignments_count > $threshold)
             ->sortByDesc('assignments_count')
-            ->values()
-            ->pipe(function ($overassigned) use ($threshold) {
-                // Calcola la media una sola volta per tutti gli arbitri sovrassegnati
-                $avgAssignments = $overassigned->avg('assignments_count');
+            ->values();
 
-                return $overassigned->map(function ($referee) use ($threshold, $avgAssignments) {
-                    return [
-                        'referee' => $referee,
-                        'assignments_count' => $referee->assignments_count,
-                        'over_threshold' => $referee->assignments_count - $threshold,
-                        'workload_percentage' => $avgAssignments > 0
-                            ? round(($referee->assignments_count / $avgAssignments) * 100, 1)
-                            : 0,
-                    ];
-                });
-            });
+        // Calcola la media una sola volta per tutti gli arbitri sovrassegnati
+        $avgAssignments = $overassigned->avg('assignments_count');
+
+        return $overassigned->map(function ($referee) use ($threshold, $avgAssignments) {
+            return [
+                'referee' => $referee,
+                'assignments_count' => $referee->assignments_count,
+                'over_threshold' => $referee->assignments_count - $threshold,
+                'workload_percentage' => $avgAssignments > 0
+                    ? round(($referee->assignments_count / $avgAssignments) * 100, 1)
+                    : 0,
+            ];
+        });
     }
 
     /**

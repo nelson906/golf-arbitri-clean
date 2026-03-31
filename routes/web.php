@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\FedergolfImportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController;
 use App\Http\Controllers\User\FedergolfController;
@@ -104,6 +105,15 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
         require __DIR__.'/admin/documents.php';
         require __DIR__.'/admin/communications.php';       // SPOSTATO da inline
         require __DIR__.'/admin/career-history.php';       // Gestione storico carriera arbitri
+
+        // ── Import guidato Comitato di Gara da federgolf.it ─────────────────
+        // Strumento saltuario: nessuna scrittura automatica, solo su conferma admin.
+        Route::prefix('federgolf-import')->name('federgolf-import.')->group(function () {
+            Route::get('/',                [FedergolfImportController::class, 'index'])              ->name('index');
+            Route::post('/fig-competitions', [FedergolfImportController::class, 'loadFigCompetitions'])->name('fig-competitions');
+            Route::post('/fetch-committee', [FedergolfImportController::class, 'fetchCommittee'])    ->name('fetch-committee');
+            Route::post('/execute',         [FedergolfImportController::class, 'executeImport'])     ->name('execute');
+        });
     });
 });
 
