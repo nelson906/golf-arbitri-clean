@@ -18,12 +18,28 @@ class NotificationPreparationService
     /**
      * Prepara o recupera una notifica per un torneo
      */
+    /**
+     * Prepara o recupera una notifica per un torneo.
+     *
+     * NOTA: crea il record con notification_type basato su tournamentType.is_national:
+     *   - zonale  → notification_type = null
+     *   - nazionale → notification_type = 'crc_referees' (draft iniziale CRC)
+     *
+     * Per tornei nazionali, sendNationalNotification() gestirà poi la distinzione
+     * CRC/SZR e la pulizia di eventuali bozze.
+     */
     public function prepareNotification(Tournament $tournament): TournamentNotification
     {
+        $isNational = $tournament->tournamentType?->is_national ?? false;
+        $notificationType = $isNational ? 'crc_referees' : null;
+
         $total = $tournament->assignments->count() + 1;
 
         return TournamentNotification::firstOrCreate(
-            ['tournament_id' => $tournament->id],
+            [
+                'tournament_id'     => $tournament->id,
+                'notification_type' => $notificationType,
+            ],
             [
                 'status' => 'pending',
                 'referee_list' => $tournament->assignments->pluck('user.name')->implode(', '),
@@ -156,13 +172,20 @@ class NotificationPreparationService
     /**
      * Carica i dati necessari per il form di preparazione notifica
      */
-    public function loadFormData(Tournament $tournament): array
+    public function loadFormData(Tournament $tournament, ?TournamentNotification $notification = null): array
     {
         // Una sola query: la collection viene riusata per costruire sia la lista flat che quella raggruppata
         $allEmails = InstitutionalEmail::where('is_active', true)
             ->orderBy('category')
             ->orderBy('name')
             ->get();
+
+        // IDs istituzionali già salvati nella notifica precedente (per pre-selezionare le checkbox)
+        $savedInstitutionalIds = [];
+        if ($notification) {
+            $metadata = $notification->metadata ?? [];
+            $savedInstitutionalIds = $metadata['recipients']['institutional'] ?? [];
+        }
 
         return [
             'institutionalEmails' => $allEmails,
@@ -173,6 +196,9 @@ class NotificationPreparationService
                 ->groupBy('applies_to')
                 ->toArray(),
             'assignedReferees' => $tournament->referees()->get(),
+            // Array di ID InstitutionalEmail già selezionati nella notifica corrente.
+            // Usato dalla view per pre-spuntare le checkbox. Vuoto = prima volta (usa is_default).
+            'savedInstitutionalIds' => $savedInstitutionalIds,
         ];
     }
 

@@ -30,6 +30,10 @@ Route::prefix('tournament-notifications')->name('tournament-notifications.')->gr
     Route::post('/{notification}/save-clauses', [NotificationController::class, 'saveClauses'])
         ->name('save-clauses');
 
+    // Elimina TUTTE le notifiche di un torneo (gruppo CRC + Zona + bozze)
+    Route::delete('/tournament/{tournament}/destroy-all', [NotificationController::class, 'destroyTournament'])
+        ->name('destroy-tournament');
+
     // Core notification operations
     Route::post('/{notification}/send', [NotificationController::class, 'send'])->name('send');
     Route::post('/{notification}/resend', [NotificationController::class, 'resend'])->name('resend');

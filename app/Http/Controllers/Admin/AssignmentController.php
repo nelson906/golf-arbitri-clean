@@ -505,29 +505,30 @@ class AssignmentController extends Controller
         DB::beginTransaction();
 
         try {
+            // Precaricare in una sola query tutti gli user_id già assegnati al torneo
+            $existingUserIds = Assignment::where('tournament_id', $tournament->id)
+                ->pluck('user_id')
+                ->toArray();
+
             foreach ($request->referee_ids as $refereeId) {
-                // Verifica se esiste già
-                $exists = Assignment::where('tournament_id', $tournament->id)
-                    ->where('user_id', $refereeId)
-                    ->exists();
-
-                if (! $exists) {
-                    $role = $request->roles[$refereeId] ?? AssignmentRole::default()->value;
-
-                    $data = [
-                        'tournament_id' => $tournament->id,
-                        'user_id' => $refereeId,
-                        'role' => $role,
-                        'assigned_at' => now(),
-                        'assigned_by' => auth()->id(),
-                        'status' => 'assigned',
-                    ];
-
-                    Assignment::create($data);
-                    $created++;
-                } else {
+                if (in_array($refereeId, $existingUserIds)) {
                     $skipped++;
+                    continue;
                 }
+
+                $role = $request->roles[$refereeId] ?? AssignmentRole::default()->value;
+
+                $data = [
+                    'tournament_id' => $tournament->id,
+                    'user_id' => $refereeId,
+                    'role' => $role,
+                    'assigned_at' => now(),
+                    'assigned_by' => auth()->id(),
+                    'status' => 'assigned',
+                ];
+
+                Assignment::create($data);
+                $created++;
             }
 
             DB::commit();
@@ -537,21 +538,24 @@ class AssignmentController extends Controller
                 $existingNotification = TournamentNotification::where('tournament_id', $tournament->id)->first();
 
                 if (! $existingNotification && $created > 0) {
+                    // Determina notification_type dalla fonte di verità (tournamentType.is_national)
+                    $isNational = $tournament->tournamentType?->is_national ?? false;
+
                     TournamentNotification::create([
-                        'tournament_id' => $tournament->id,
-                        'status' => 'draft',
-                        'created_by' => auth()->id(),
-                        'notifications_data' => json_encode([
+                        'tournament_id'     => $tournament->id,
+                        'notification_type' => $isNational ? 'crc_referees' : null,
+                        'status'            => 'draft',
+                        'sent_by'           => auth()->id(),
+                        'details'           => [
                             'referees_count' => $created,
-                            'auto_created' => true,
-                            'created_at' => now()->toISOString(),
-                        ]),
-                        'attachments' => json_encode([]),
+                            'auto_created'   => true,
+                        ],
                     ]);
 
                     Log::info('Auto-created TournamentNotification', [
                         'tournament_id' => $tournament->id,
                         'referees_count' => $created,
+                        'is_national' => $isNational,
                     ]);
                 }
             } catch (\Exception $e) {

@@ -71,8 +71,12 @@ class NotificationServiceTest extends TestCase
     {
         $tournament = $this->createTournament();
 
+        // notification_type deve corrispondere a tournamentType.is_national
+        $isNational = $tournament->tournamentType?->is_national ?? false;
+
         $existing = TournamentNotification::create([
             'tournament_id' => $tournament->id,
+            'notification_type' => $isNational ? 'crc_referees' : null,
             'status' => 'sent',
             'recipients' => ['club' => true, 'referees' => [], 'institutional' => []],
         ]);

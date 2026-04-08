@@ -278,13 +278,23 @@ class Tournament extends Model
      */
     public function isEditable(): bool
     {
-        // Non modificabile se l'Enum dice che lo stato non è editabile
-        if (! $this->status->isEditable()) {
-            return false;
+        // Un torneo è sempre modificabile dall'admin, tranne se Completed o Cancelled.
+        // Rimosso il vincolo sulla data: un admin deve poter correggere dati anche dopo lo svolgimento.
+        return $this->status->isEditable();
+    }
+
+    /**
+     * Verifica se il torneo è modificabile dall'utente specificato.
+     * Il super_admin bypassa qualunque vincolo di stato — può modificare anche
+     * tornei Completati o Annullati per correggere dati storici.
+     */
+    public function isEditableBy(\App\Models\User $user): bool
+    {
+        if ($user->isSuperAdmin()) {
+            return true;
         }
 
-        // Modificabile solo se la data di inizio è futura o non impostata
-        return ! $this->start_date || $this->start_date->gte(now()->startOfDay());
+        return $this->isEditable();
     }
 
     /**

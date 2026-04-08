@@ -12,6 +12,7 @@ use App\Services\NotificationPreparationService;
 use App\Services\NotificationTransactionService;
 use App\Traits\HasZoneVisibility;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -38,39 +39,71 @@ class NotificationController extends Controller
         $query = TournamentNotification::with([
             'tournament.club',
             'tournament.zone',
+            'tournament.tournamentType',   // fonte di verità per is_national
             'tournament.assignments.user',
         ]);
 
         // Filtro visibilità per zona/ruolo (centralizzato nel trait)
         $this->applyTournamentRelationVisibility($query, $user, 'tournament');
 
-        $query->orderBy('sent_at', 'desc');
+        // Filtro anno (sulla data del torneo)
+        if ($request->filled('anno')) {
+            $anno = (int) $request->anno;
+            $query->whereHas('tournament', fn ($q) => $q->whereYear('start_date', $anno));
+        }
+
+        // Filtro ricerca nome torneo
+        if ($request->filled('cerca')) {
+            $cerca = $request->cerca;
+            $query->whereHas('tournament', fn ($q) => $q->where('name', 'like', "%{$cerca}%"));
+        }
+
+        // Ordina per data torneo ascendente (cronologia crescente)
+        $query->join('tournaments', 'tournament_notifications.tournament_id', '=', 'tournaments.id')
+              ->orderBy('tournaments.start_date', 'asc')
+              ->select('tournament_notifications.*');
+
         $allNotifications = $query->get();
 
         // RIMOSSO: updateRecipientInfo() in loop causava N+1 UPDATE queries ad ogni visualizzazione.
         // referee_list e details.total_recipients vengono ora aggiornati dall'AssignmentObserver
         // al momento della creazione/eliminazione delle assegnazioni (single source of truth).
 
-        // Raggruppa per tournament_id: gare nazionali hanno CRC + Zona nella stessa riga
+        // Raggruppa per tournament_id: gare nazionali hanno CRC + Zona nella stessa riga.
+        //
+        // FONTE DI VERITÀ: tournament.tournamentType.is_national determina se il torneo
+        // è nazionale o zonale. NON si usa notification_type per questa decisione,
+        // perché i record di notifica possono avere il tipo errato (es. import batch FIG
+        // che assegna crc_referees a tutti i tornei indiscriminatamente).
         $grouped = $allNotifications->groupBy('tournament_id')->map(function ($notifications) {
-            $first = $notifications->first();
+            $first      = $notifications->first();
+            $tournament = $first->tournament;
+
+            // Fonte di verità: is_national dal tipo torneo, non dalla notifica
+            $isNational = $tournament?->tournamentType?->is_national ?? false;
 
             return (object) [
-                'tournament' => $first->tournament,
-                'notifications' => $notifications,
-                // Notifica principale (CRC per nazionali, o l'unica per zonali)
-                'primary' => $notifications->firstWhere('notification_type', 'crc_referees') ?? $first,
-                // Notifica CRC (se esiste)
-                'crc' => $notifications->firstWhere('notification_type', 'crc_referees'),
-                // Notifica Zona (se esiste)
-                'zone' => $notifications->firstWhere('notification_type', 'zone_observers'),
-                // Per tornei zonali (notification_type null)
-                'zonal' => $notifications->whereNull('notification_type')->first(),
-                // Data più recente tra tutte le notifiche
-                'created_at' => $notifications->max('created_at'),
-                'sent_at' => $notifications->max('sent_at'),
+                'tournament'            => $tournament,
+                'notifications'         => $notifications,
+                // is_national da tournamentType — NON da notification_type
+                'is_national'           => $isNational,
+                // Notifica CRC (rilevante solo per tornei nazionali)
+                'crc'                   => $notifications->firstWhere('notification_type', 'crc_referees'),
+                // Notifica Zona (rilevante solo per tornei nazionali)
+                'zone'                  => $notifications->firstWhere('notification_type', 'zone_observers'),
+                // Notifica zonale (notification_type null)
+                'zonal'                 => $notifications->whereNull('notification_type')->first(),
+                // Notifica principale per azioni (resend, dettaglio, modifica):
+                //   nazionali → CRC; zonali → record null; fallback → primo disponibile
+                'primary'               => $isNational
+                    ? ($notifications->firstWhere('notification_type', 'crc_referees') ?? $first)
+                    : ($notifications->whereNull('notification_type')->first() ?? $first),
+                // Data torneo per ordinamento
+                'tournament_start_date' => $tournament->start_date,
+                'created_at'            => $notifications->max('created_at'),
+                'sent_at'               => $notifications->max('sent_at'),
             ];
-        })->sortByDesc('sent_at');
+        })->sortBy('tournament_start_date');
 
         // Paginazione manuale
         $page = $request->get('page', 1);
@@ -86,7 +119,15 @@ class NotificationController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        return view('admin.tournament-notifications.index', compact('tournamentNotifications'));
+        // Anni disponibili per il filtro (ricavati dai tornei con notifiche)
+        $anniDisponibili = TournamentNotification::join('tournaments', 'tournament_notifications.tournament_id', '=', 'tournaments.id')
+            ->selectRaw('YEAR(tournaments.start_date) as anno')
+            ->whereNotNull('tournaments.start_date')
+            ->groupBy('anno')
+            ->orderByDesc('anno')
+            ->pluck('anno');
+
+        return view('admin.tournament-notifications.index', compact('tournamentNotifications', 'anniDisponibili'));
     }
 
     /**
@@ -122,8 +163,8 @@ class NotificationController extends Controller
         $documentStatus = $this->documentService->checkDocumentsExist($notification);
         $hasExistingConvocation = $documentStatus['hasConvocation'] || $documentStatus['hasClubLetter'];
 
-        // Carica dati per il form
-        $formData = $this->preparationService->loadFormData($tournament);
+        // Carica dati per il form, passando la notifica esistente per pre-popolare i destinatari salvati
+        $formData = $this->preparationService->loadFormData($tournament, $notification);
 
         return view('admin.notifications.prepare_notification', array_merge([
             'tournament' => $tournament,
@@ -448,6 +489,26 @@ class NotificationController extends Controller
     }
 
     /**
+     * Elimina TUTTE le notifiche di un torneo (CRC + Zona + bozze)
+     * Usato dal pulsante "Elimina" nella lista raggruppata
+     */
+    public function destroyTournament(Tournament $tournament)
+    {
+        try {
+            $notifications = TournamentNotification::where('tournament_id', $tournament->id)->get();
+
+            foreach ($notifications as $notification) {
+                $this->transactionService->deleteWithCleanup($notification);
+            }
+
+            return redirect()->route('admin.tournament-notifications.index', request()->only(['anno', 'cerca']))
+                ->with('success', "Notifiche del torneo «{$tournament->name}» eliminate ({$notifications->count()}).");
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', "Errore durante l'eliminazione: ".$e->getMessage());
+        }
+    }
+
+    /**
      * Salva clausole via AJAX (per rigenerazione documenti)
      */
     public function saveClauses(Request $request, TournamentNotification $notification)
@@ -634,6 +695,15 @@ class NotificationController extends Controller
         $notificationType = $validated['notification_type'];
         $isCrcNotification = $notificationType === 'crc_referees';
 
+        // GUARD: solo tornei nazionali possono avere notifiche CRC/SZR
+        $isNational = $tournament->tournamentType?->is_national ?? false;
+        if (! $isNational) {
+            return redirect()->back()->with('error',
+                'Questo torneo è zonale (tipo: ' . ($tournament->tournamentType?->name ?? '?') . '). ' .
+                'Le notifiche CRC/SZR sono riservate ai tornei nazionali.'
+            );
+        }
+
         try {
             // Prepara destinatari tramite NotificationRecipientBuilder
             $builder = new \App\Services\NotificationRecipientBuilder();
@@ -715,41 +785,44 @@ class NotificationController extends Controller
             $refereeList     = implode(', ', $recipients['allNames']);
             $totalRecipients = $recipients['total'];
 
-            // Elimina la notifica "bozza" (notification_type = null) per evitare duplicati
-            // Questo record viene creato automaticamente da prepareNotification() ma non serve per gare nazionali
-            TournamentNotification::where('tournament_id', $tournament->id)
-                ->whereNull('notification_type')
-                ->whereNull('sent_at')
-                ->delete();
+            // Transazione: elimina bozza zonale + crea/aggiorna record nazionale
+            DB::transaction(function () use ($tournament, $notificationType, $errorCount, $successCount, $refereeList, $totalRecipients, $validated) {
+                // Elimina la notifica "bozza" (notification_type = null) per evitare duplicati
+                // Questo record viene creato automaticamente da prepareNotification() ma non serve per gare nazionali
+                TournamentNotification::where('tournament_id', $tournament->id)
+                    ->whereNull('notification_type')
+                    ->whereNull('sent_at')
+                    ->delete();
 
-            // Salva il record della notifica nazionale inviata
-            // NOTA: il campo 'metadata' deve contenere 'is_national' => true e 'type' => $notificationType
-            // per permettere a resend() di riconoscere questa come notifica nazionale e usare il percorso corretto.
-            TournamentNotification::updateOrCreate(
-                [
-                    'tournament_id' => $tournament->id,
-                    'notification_type' => $notificationType,
-                ],
-                [
-                    'status' => $errorCount === 0 ? 'sent' : 'partial',
-                    'sent_at' => now(),
-                    'sent_by' => auth()->id(),
-                    'referee_list' => $refereeList,
-                    'details' => [
-                        'sent' => $successCount,
-                        'errors' => $errorCount,
-                        'total_recipients' => $totalRecipients,
+                // Salva il record della notifica nazionale inviata
+                // NOTA: il campo 'metadata' deve contenere 'is_national' => true e 'type' => $notificationType
+                // per permettere a resend() di riconoscere questa come notifica nazionale e usare il percorso corretto.
+                TournamentNotification::updateOrCreate(
+                    [
+                        'tournament_id' => $tournament->id,
+                        'notification_type' => $notificationType,
                     ],
-                    'metadata' => [
-                        'is_national' => true,
-                        'type' => $notificationType,
-                        'subject' => $validated['subject'],
-                        'message' => $validated['message'],
-                        'success_count' => $successCount,
-                        'error_count' => $errorCount,
-                    ],
-                ]
-            );
+                    [
+                        'status' => $errorCount === 0 ? 'sent' : 'partial',
+                        'sent_at' => now(),
+                        'sent_by' => auth()->id(),
+                        'referee_list' => $refereeList,
+                        'details' => [
+                            'sent' => $successCount,
+                            'errors' => $errorCount,
+                            'total_recipients' => $totalRecipients,
+                        ],
+                        'metadata' => [
+                            'is_national' => true,
+                            'type' => $notificationType,
+                            'subject' => $validated['subject'],
+                            'message' => $validated['message'],
+                            'success_count' => $successCount,
+                            'error_count' => $errorCount,
+                        ],
+                    ]
+                );
+            });
 
             $typeLabel = $isCrcNotification ? 'arbitri designati' : 'osservatori';
             $totalSent = $successCount + count($ccArray);

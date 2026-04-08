@@ -83,8 +83,8 @@
                                                     {{ $tournament['name'] }}
                                                 </h5>
                                                 <p class="text-sm text-gray-600">
-                                                    {{ \Carbon\Carbon::parse($tournament['start_date'])->format('d/m/Y') }}
-                                                    @if($tournament['start_date'] !== $tournament['end_date'])
+                                                    {{ \Carbon\Carbon::parse($tournament['start_date'] ?? now())->format('d/m/Y') }}
+                                                    @if(isset($tournament['end_date']) && $tournament['start_date'] !== $tournament['end_date'])
                                                         - {{ \Carbon\Carbon::parse($tournament['end_date'])->format('d/m/Y') }}
                                                     @endif
                                                 </p>
