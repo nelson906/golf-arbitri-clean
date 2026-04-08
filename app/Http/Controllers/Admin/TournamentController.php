@@ -146,14 +146,15 @@ class TournamentController extends Controller
         // Check access usando il trait
         $this->checkTournamentAccess($tournament);
 
-        // Check if editable
-        if (! $tournament->isEditable()) {
+        $user = auth()->user();
+
+        // Check if editable — il super_admin bypassa qualunque vincolo di stato
+        if (! $tournament->isEditableBy($user)) {
             return redirect()
                 ->route('admin.tournaments.show', $tournament)
                 ->with('error', 'Questo torneo non può essere modificato nel suo stato attuale.');
         }
 
-        $user = auth()->user();
         // Tutti gli admin vedono tutti i tipi di torneo attivi
         $tournamentTypes = TournamentType::active()->ordered()->get();
 
@@ -250,8 +251,8 @@ class TournamentController extends Controller
         // Check access
         $this->checkTournamentAccess($tournament);
 
-        // Check if editable
-        if (! $tournament->isEditable()) {
+        // Check if editable — il super_admin bypassa qualunque vincolo di stato
+        if (! $tournament->isEditableBy(auth()->user())) {
             return redirect()
                 ->route('admin.tournaments.show', $tournament)->with('error', 'Questo torneo non può essere modificato nel suo stato attuale.');
         }

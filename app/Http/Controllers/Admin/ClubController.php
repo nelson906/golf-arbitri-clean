@@ -295,7 +295,7 @@ class ClubController extends Controller
             $query->where('zone_id', $request->zone_id);
         }
 
-        $clubs = $query->orderBy('name', 'asc')->get();
+        $clubs = $query->withCount('tournaments')->orderBy('name', 'asc')->get();
 
         // Genera CSV
         $headers = [
@@ -320,7 +320,7 @@ class ClubController extends Controller
                     $club->city ?? '',
                     $club->email ?? '',
                     $club->phone ?? '',
-                    $club->tournaments()->count(),
+                    $club->tournaments_count,
                 ]);
             }
 

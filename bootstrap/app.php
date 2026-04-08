@@ -29,5 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         \App\Console\Commands\SimpleBackupCommand::class,
         \App\Console\Commands\ImportFedergolfCommittees::class,
         \App\Console\Commands\CreateMissingFigData::class,
+        \App\Console\Commands\MarkFigAssignmentsNotified::class,
+        \App\Console\Commands\FixNotificationTypes::class,
     ])
     ->create();

@@ -347,6 +347,7 @@ class ImportFedergolfCommittees extends Command
             return null;
         }
 
+        /** @var Tournament $best */
         return ['torneo' => $best, 'score' => $bestScore];
     }
 
@@ -552,6 +553,7 @@ class ImportFedergolfCommittees extends Command
         $abbinatiIds = array_unique($abbinatiIds);
 
         // Tornei locali che non hanno ricevuto nessuna gara FIG abbinata
+        /** @var \Illuminate\Database\Eloquent\Collection<int, Tournament> $torneiSenzaFig */
         $torneiSenzaFig = $torneiLocali->filter(
             fn ($t) => ! in_array($t->id, $abbinatiIds, true)
         );

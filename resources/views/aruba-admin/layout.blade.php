@@ -114,7 +114,7 @@
                 <!-- Messaggi Flash -->
                 @if (session('success'))
                     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-                        <i class="fas fa-check-circle"></i> {!! session('success') !!}
+                        <i class="fas fa-check-circle"></i> {{ session('success') }}
                     </div>
                 @endif
 
@@ -126,7 +126,7 @@
 
                 @if (session('info'))
                     <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
-                        <i class="fas fa-info-circle"></i> {!! session('info') !!}
+                        <i class="fas fa-info-circle"></i> {{ session('info') }}
                     </div>
                 @endif
 

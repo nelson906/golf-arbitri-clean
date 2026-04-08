@@ -37,6 +37,24 @@
                 </div>
             @endif
 
+            {{-- Banner "notifica già inviata" — appare in modalità modifica --}}
+            @if($notification->sent_at)
+                <div class="mb-4 p-4 bg-amber-50 border-l-4 border-amber-400 rounded flex items-start gap-3">
+                    <svg class="w-5 h-5 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                    </svg>
+                    <div class="text-sm text-amber-800">
+                        <span class="font-semibold">Notifica già inviata</span> il {{ $notification->sent_at->format('d/m/Y \a\l\l\e H:i') }}.
+                        Stai preparando una <strong>re-notifica</strong>. I destinatari sono pre-selezionati come nell'invio precedente — puoi modificarli prima di reinviare.
+                        <a href="{{ route('admin.assignments.assign-referees', $tournament) }}"
+                           class="ml-2 underline font-medium hover:text-amber-900">
+                            ✏️ Modifica elenco arbitri
+                        </a>
+                    </div>
+                </div>
+            @endif
+
             {{-- Info flow banner - differenziato per tipo gara --}}
             @if($tournament->tournamentType?->is_national ?? false)
                 {{-- Banner per gare nazionali --}}
@@ -535,10 +553,17 @@
                                                         <div class="space-y-2">
                                                             @foreach ($emails as $email)
                                                                 <div class="flex items-center">
+                                                                    @php
+                                                                        // Se ci sono ID salvati dalla notifica precedente, usa quelli.
+                                                                        // Altrimenti usa il default del record.
+                                                                        $isChecked = !empty($savedInstitutionalIds)
+                                                                            ? in_array($email->id, $savedInstitutionalIds)
+                                                                            : $email->is_default;
+                                                                    @endphp
                                                                     <input type="checkbox" id="fixed_{{ $email->id }}"
                                                                         name="fixed_addresses[]"
                                                                         value="{{ $email->id }}"
-                                                                        {{ $email->is_default ? 'checked' : '' }}
+                                                                        {{ $isChecked ? 'checked' : '' }}
                                                                         class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
                                                                     <label for="fixed_{{ $email->id }}"
                                                                         class="ml-2 text-sm text-gray-700">
@@ -587,10 +612,17 @@
                                                             @foreach ($emails as $email)
                                                                 @if (is_object($email) && isset($email->id))
                                                                     <div class="flex items-center">
-                                                                        <input type="checkbox" name="fixed_addresses[]"
+                                                                        @php
+                                                                        // Se ci sono ID salvati dalla notifica precedente, usa quelli.
+                                                                        // Altrimenti pre-seleziona la categoria 'convocazioni' come default.
+                                                                        $isChecked = !empty($savedInstitutionalIds)
+                                                                            ? in_array($email->id, $savedInstitutionalIds)
+                                                                            : ($category === 'convocazioni');
+                                                                    @endphp
+                                                                    <input type="checkbox" name="fixed_addresses[]"
                                                                             value="{{ $email->id }}"
                                                                             id="institutional_{{ $email->id }}"
-                                                                            {{ $category === 'convocazioni' ? 'checked' : '' }}
+                                                                            {{ $isChecked ? 'checked' : '' }}
                                                                             class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
 
                                                                         <label for="institutional_{{ $email->id }}"

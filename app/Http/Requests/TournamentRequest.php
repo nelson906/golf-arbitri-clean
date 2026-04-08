@@ -87,22 +87,24 @@ class TournamentRequest extends FormRequest
                     }
                 },
             ],
-            'start_date' => [
+            'start_date' => array_filter([
                 'required',
                 'date',
-                $isUpdate ? 'after_or_equal:today' : 'after:today',
-            ],
+                // Il super_admin può salvare tornei con date passate (correzione dati storici)
+                $this->user()->isSuperAdmin() ? null : ($isUpdate ? 'after_or_equal:today' : 'after:today'),
+            ]),
             'end_date' => [
                 'required',
                 'date',
                 'after_or_equal:start_date',
             ],
-            'availability_deadline' => [
+            'availability_deadline' => array_filter([
                 'required',
                 'date',
-                'after_or_equal:today',
+                // Il super_admin può correggere scadenze passate
+                $this->user()->isSuperAdmin() ? null : 'after_or_equal:today',
                 'before:start_date',
-            ],
+            ]),
             'notes' => 'nullable|string|max:1000',
             'status' => [
                 'sometimes',
@@ -114,8 +116,8 @@ class TournamentRequest extends FormRequest
                             $fail('Stato non valido per un nuovo torneo.');
                         }
                     } else {
-                        // For updates, check if tournament is editable
-                        if (! $tournament->isEditable()) {
+                        // Per updates, il super_admin bypassa il vincolo di stato
+                        if (! $this->user()->isSuperAdmin() && ! $tournament->isEditable()) {
                             $fail('Questo torneo non può essere modificato nel suo stato attuale.');
                         }
                     }

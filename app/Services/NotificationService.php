@@ -26,9 +26,16 @@ class NotificationService
 
     public function prepareNotification(Tournament $tournament): TournamentNotification
     {
-        // Crea nuova notifica o recupera esistente
+        // Fonte di verità: is_national dal tipo torneo
+        $isNational = $tournament->tournamentType?->is_national ?? false;
+        $notificationType = $isNational ? 'crc_referees' : null;
+
+        // Crea nuova notifica o recupera esistente (chiave include notification_type)
         $notification = TournamentNotification::firstOrCreate(
-            ['tournament_id' => $tournament->id],
+            [
+                'tournament_id'     => $tournament->id,
+                'notification_type' => $notificationType,
+            ],
             [
                 'status' => 'pending',
                 'recipients' => [

@@ -28,6 +28,22 @@ class RefereeCareerService
                 'career_summary' => $careerHistory->career_stats ?? [],
             ];
 
+            // Merge dati live dell'anno corrente se non ancora archiviati nel JSON.
+            // L'archiviazione avviene a fine anno, quindi durante l'anno in corso
+            // le assegnazioni vivono solo nelle tabelle live (assignments, tournaments).
+            $currentYear = now()->year;
+            $currentYearKey = (string) $currentYear;
+
+            if (! isset($historicalData['assignments'][$currentYearKey])) {
+                $liveAssignments = $this->getAssignmentsForYear($referee, $currentYear);
+                $liveTournaments = $this->getTournamentsForYear($referee, $currentYear);
+
+                if (! empty($liveAssignments) || ! empty($liveTournaments)) {
+                    $historicalData['assignments'][$currentYearKey] = $liveAssignments;
+                    $historicalData['tournaments'][$currentYearKey] = $liveTournaments;
+                }
+            }
+
             // Calcola first_year dai dati storici
             $allYears = [];
             if (is_array($historicalData['assignments'])) {
@@ -106,8 +122,19 @@ class RefereeCareerService
         $careerHistory = RefereeCareerHistory::where('user_id', $referee->id)->first();
 
         if ($careerHistory) {
-            $yearAssignments = isset($careerHistory->assignments_by_year[$year]) ? $careerHistory->assignments_by_year[$year] : [];
-            $yearTournaments = isset($careerHistory->tournaments_by_year[$year]) ? $careerHistory->tournaments_by_year[$year] : [];
+            $yearKey = (string) $year;
+            $isArchivedYear = isset($careerHistory->assignments_by_year[$yearKey])
+                || isset($careerHistory->tournaments_by_year[$yearKey]);
+
+            if ($isArchivedYear) {
+                // Anno già archiviato: leggi dal JSON
+                $yearAssignments = $careerHistory->assignments_by_year[$yearKey] ?? [];
+                $yearTournaments = $careerHistory->tournaments_by_year[$yearKey] ?? [];
+            } else {
+                // Anno non ancora archiviato (tipicamente anno corrente): leggi le tabelle live
+                $yearAssignments = $this->getAssignmentsForYear($referee, $year);
+                $yearTournaments = $this->getTournamentsForYear($referee, $year);
+            }
 
             // Cerca il livello storico nei level_changes
             $levelChanges = $careerHistory->level_changes_by_year ?? [];
@@ -201,8 +228,15 @@ class RefereeCareerService
                 return [
                     'id' => $tournament->id,
                     'name' => $tournament->name,
-                    'start_date' => $tournament->start_date,
-                    'status' => $tournament->status->value,
+                    'start_date' => $tournament->start_date instanceof \Carbon\Carbon
+                        ? $tournament->start_date->format('Y-m-d')
+                        : $tournament->start_date,
+                    'end_date' => $tournament->end_date instanceof \Carbon\Carbon
+                        ? $tournament->end_date->format('Y-m-d')
+                        : ($tournament->end_date ?? $tournament->start_date),
+                    'status' => $tournament->status instanceof \BackedEnum
+                        ? $tournament->status->value
+                        : $tournament->status,
                 ];
             })
             ->toArray();

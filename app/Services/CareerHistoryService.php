@@ -32,8 +32,9 @@ class CareerHistoryService
         // Trova tutti gli arbitri con assegnazioni o disponibilità nell'anno
         $userField = Assignment::getUserField();
 
-        $refereeIds = Assignment::whereYear('assigned_at', $year)
-            ->pluck($userField)
+        $refereeIds = Assignment::whereHas('tournament', function ($q) use ($year) {
+            $q->whereYear('start_date', $year);
+        })->pluck($userField)
             ->merge(
                 Availability::whereHas('tournament', function ($q) use ($year) {
                     $q->whereYear('start_date', $year);
@@ -75,9 +76,12 @@ class CareerHistoryService
     {
         $userField = Assignment::getUserField();
 
-        // Recupera assegnazioni dell'anno
+        // Recupera assegnazioni dell'anno (filtro su start_date del torneo, non su assigned_at
+        // che è la data di creazione dell'assegnazione e può essere in un anno diverso)
         $assignments = Assignment::where($userField, $userId)
-            ->whereYear('assigned_at', $year)
+            ->whereHas('tournament', function ($q) use ($year) {
+                $q->whereYear('start_date', $year);
+            })
             ->with(['tournament:id,name,club_id,start_date,end_date', 'tournament.club:id,name'])
             ->get();
 
