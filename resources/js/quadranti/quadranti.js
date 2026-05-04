@@ -509,9 +509,6 @@ populateFedergolfDropdown(gare) {
     const tipo = $dropdown.find(':selected').data('tipo');
 
     try {
-      let atleti = [];
-      let atlete = [];
-
       // Carica prima gara (maschile o mista)
       const response1 = await $.ajax({
         url: '/user/federgolf/iscritti',
@@ -520,21 +517,56 @@ populateFedergolfDropdown(gare) {
         headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
       });
 
-      if (tipo === 'FEMMINILE') {
-        atlete = response1.iscritti;
-      } else {
-        atleti = response1.iscritti;
-      }
-
       // Se ci sono due gare (M+F), carica anche la seconda
+      let response2 = null;
       if (ids.length > 1) {
-        const response2 = await $.ajax({
+        response2 = await $.ajax({
           url: '/user/federgolf/iscritti',
           type: 'POST',
           data: { gara_id: ids[1] },
           headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
         });
-        atlete = response2.iscritti;
+      }
+
+      // ── Iscrizioni non ancora chiuse? ───────────────────────────────────
+      // Il backend restituisce iscrizioni_aperte=true quando ci sono righe
+      // ma nessuna ha l'icona-ammesso. In quel caso NON dobbiamo toccare
+      // né lo storage né i campi #players/#proette: usciamo subito.
+      const aperte1 = !!(response1 && response1.iscrizioni_aperte);
+      const aperte2 = !!(response2 && response2.iscrizioni_aperte);
+
+      if (aperte1 || aperte2) {
+        const msg = (response1 && response1.message) ||
+                    (response2 && response2.message) ||
+                    'Iscrizioni non ancora chiuse: nessun iscritto ammesso. Riprovare dopo la chiusura.';
+        alert('⚠ ' + msg);
+        // Ripristina la voce "Seleziona…" senza far ripartire il flusso.
+        $dropdown.val('');
+        return;
+      }
+
+      // ── Costruisce gli array atleti/atlete ─────────────────────────────
+      let atleti = [];
+      let atlete = [];
+
+      if (tipo === 'FEMMINILE') {
+        atlete = response1.iscritti || [];
+      } else {
+        atleti = response1.iscritti || [];
+      }
+
+      if (response2) {
+        atlete = response2.iscritti || [];
+      }
+
+      // Anche con icona-ammesso presente potrebbero esserci 0 nomi
+      // (es. gara con sole donne caricata come maschile): avvisa e non
+      // sovrascrivere lo stato corrente.
+      if (atleti.length === 0 && atlete.length === 0) {
+        alert('⚠ Nessun nominativo trovato per la gara selezionata. ' +
+              'Controllare il sito federgolf.it.');
+        $dropdown.val('');
+        return;
       }
 
       // Salva e aggiorna come fa l'upload Excel
@@ -560,6 +592,7 @@ populateFedergolfDropdown(gare) {
       alert(`Iscritti caricati!\n${atleti.length} atleti\n${atlete.length} atlete`);
 
     } catch (error) {
+      console.error('Errore caricamento iscritti:', error);
       alert('Errore nel caricamento degli iscritti');
     }
   }
