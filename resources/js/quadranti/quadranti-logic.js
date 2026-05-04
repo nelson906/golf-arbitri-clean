@@ -81,7 +81,7 @@ export class QuadrantiLogic {
      * @param {number} mod - Players per flight (3 or 4)
      * @returns {Object} Quadrant distribution
      */
-    bilanciaQuadranti(players, mod = 3) {
+    bilanciaQuadranti(players, mod = 3, maxEarlySlots = null) {
         let totalMatches = Math.ceil(players / mod);
 
         // Start with equal distribution
@@ -90,11 +90,21 @@ export class QuadrantiLogic {
         let Q3 = Math.floor(totalMatches / 4);
         let Q4 = Math.floor(totalMatches / 4);
 
-        // Distribute remainder
+        // Distribute remainder (natural: Early first)
         let remainder = totalMatches % 4;
         if (remainder > 0) Q1++;
         if (remainder > 1) Q2++;
         if (remainder > 2) Q4++;
+
+        // Constraint: max orari Early (uomini+donne combined ≤ 12 per session)
+        // Se Q1 supera il limite, sposta l'eccesso su Late (Q3/Q4)
+        if (maxEarlySlots !== null && Q1 > maxEarlySlots) {
+            const overflow = Q1 - maxEarlySlots;
+            Q1 -= overflow;
+            Q2 -= overflow;
+            Q3 += overflow;
+            Q4 += overflow;
+        }
 
         // Apply special rules based on player count modulo
         const rem12 = players % 12;
@@ -121,8 +131,8 @@ export class QuadrantiLogic {
      * @param {number} mod - Players per flight
      * @returns {Object} Limits and quadrant info
      */
-    limitiQuadranti(players, mod) {
-        const quadranti = this.bilanciaQuadranti(players, mod);
+    limitiQuadranti(players, mod, maxEarlySlots = null) {
+        const quadranti = this.bilanciaQuadranti(players, mod, maxEarlySlots);
 
         // Calculate total flights
         let sumQuadranti = quadranti.Q1 + quadranti.Q2 + quadranti.Q3 + quadranti.Q4;
@@ -228,8 +238,8 @@ export class QuadrantiLogic {
      * @param {string} category - 'M' for men, 'F' for women
      * @returns {Array} Array of player groups with quadrant info
      */
-    generatePlayerGroups(players, mod, sourceArray, category = 'M') {
-        const limits = this.limitiQuadranti(players, mod);
+    generatePlayerGroups(players, mod, sourceArray, category = 'M', maxEarlySlots = null) {
+        const limits = this.limitiQuadranti(players, mod, maxEarlySlots);
         const groups = [];
         const difference = limits.difference;
 
@@ -392,9 +402,20 @@ export class QuadrantiLogic {
     const proette = parseInt(this.config.proette) || 0;
     const dayNumber = round === ROUND_TYPES.SECOND ? 2 : 1;
 
-    // Generate player groups with new logic
-    const maleGroups = (players > 0) ? this.generatePlayerGroups(players, mod, atleti, 'M') : [];
+    // Constraint: max 12 orari (uomini + donne) per sessione (Early o Late)
+    const MAX_ORARI_PER_SESSIONE = 12;
+
+    // Calcola le donne prima (distribuzione naturale, senza vincoli)
     const femaleGroups = (proette > 0) ? this.generatePlayerGroups(proette, mod, atlete, 'F') : [];
+
+    // Ricava quanti orari Early occupano le donne (ogni coppia Tee1+Tee10 = 1 orario)
+    const femaleEarlySlots = Math.ceil(femaleGroups.filter(g => g.type === 'Early').length / 2);
+
+    // Il massimo di orari Early consentito per gli uomini rispetta il vincolo combinato
+    const maleMaxEarlySlots = MAX_ORARI_PER_SESSIONE - femaleEarlySlots;
+
+    // Calcola gli uomini applicando il constraint
+    const maleGroups = (players > 0) ? this.generatePlayerGroups(players, mod, atleti, 'M', maleMaxEarlySlots) : [];
 
         // Filter groups by type
         const maleEarlyGroups = maleGroups.filter(g => g.type === 'Early');
