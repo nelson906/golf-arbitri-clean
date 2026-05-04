@@ -62,13 +62,21 @@ class FedergolfController extends Controller
         );
 
         $data = $response->json();
-        $iscritti = [];
+        $entries = $data['data']['processedData'] ?? [];
 
-        foreach ($data['data']['processedData'] ?? [] as $entry) {
-            // Solo iscritti ammessi
-            if (strpos($entry[8], 'icona-ammesso') === false) {
+        $iscritti = [];
+        $totale = count($entries);
+        $ammessi = 0; // righe che hanno l'icona-ammesso (lista chiusa)
+
+        foreach ($entries as $entry) {
+            // Solo iscritti ammessi: l'ammissione è segnalata da `icona-ammesso`
+            // nella colonna stato (l'ultima). Finché le iscrizioni non sono
+            // chiuse, nessun iscritto ha questa icona → 0 ammessi.
+            if (! isset($entry[8]) || strpos($entry[8], 'icona-ammesso') === false) {
                 continue;
             }
+
+            $ammessi++;
 
             preg_match('/<span class="nome-giocatore">([^<]+)<\/span>/', $entry[1], $matches);
             if (! empty($matches[1])) {
@@ -76,7 +84,21 @@ class FedergolfController extends Controller
             }
         }
 
-        return response()->json(['success' => true, 'iscritti' => $iscritti]);
+        // Se ci sono righe ma nessun ammesso → iscrizioni non ancora chiuse.
+        // Avvisiamo il client perché NON deve sovrascrivere i campi nominativi
+        // né azzerare i contatori a video.
+        $iscrizioniAperte = ($totale > 0 && $ammessi === 0);
+
+        return response()->json([
+            'success'            => true,
+            'iscritti'           => $iscritti,
+            'totale_iscritti'    => $totale,
+            'ammessi'            => $ammessi,
+            'iscrizioni_aperte'  => $iscrizioniAperte,
+            'message'            => $iscrizioniAperte
+                ? 'Iscrizioni non ancora chiuse: nessun iscritto ammesso. Riprovare dopo la chiusura.'
+                : null,
+        ]);
     }
 
     public function loadAllCompetitions(Request $request)
