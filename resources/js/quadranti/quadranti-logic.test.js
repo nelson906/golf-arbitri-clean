@@ -189,28 +189,27 @@ describe('updateConfig', () => {
   });
 });
 
-// ─── REGRESSIONE: vincolo 12 orari per sessione (Early + Late) ───────────────
-// Bug originale: con 102 uomini + 42 donne il calcolo naturale produceva
-// 9 orari Early uomini + 4 Early donne = 13 > 12 (violazione del vincolo).
-// Fix: le donne vengono calcolate per prime; il constraint
-// MAX_ORARI - femaleEarlySlots viene passato al calcolo maschile.
-
-const MAX_ORARI = 12;
+// ─── REGRESSIONE: bilanciamento Early ≈ Late (differenza max 1) ──────────────
+// Vincolo corretto: Early e Late devono essere bilanciati (|Early-Late| ≤ 1).
+// Il vincolo fisso di 12 non bastava: per configurazioni piccole (es. 64M+17F)
+// non scattava mai. Il fix usa targetEarly = ceil(totalOrari/2) come limite dinamico.
+// Il giorno 1 riceve l'orario "in più" in Early; il giorno 2 (remap) lo avrà in Late.
 
 /**
- * Simula la logica di generateDoubleTee:
- * 1. Calcola donne (distribuzione naturale)
- * 2. Ricava earlySlots donne
- * 3. Calcola uomini con constraint
+ * Simula la logica di generateDoubleTee con il nuovo constraint dinamico.
  * Restituisce { mEarly, mLate, fEarly, fLate, totalEarly, totalLate }
  */
 function simulaCombinato(logic, nUomini, nDonne, mod = 3) {
-  const wQ = logic.bilanciaQuadranti(nDonne, mod);      // donne: naturale
-  const fEarly = wQ.Q1;                                  // orari Early donne
-  const fLate  = wQ.Q3;                                  // orari Late  donne
+  const wQ = logic.bilanciaQuadranti(nDonne, mod);
+  const fEarly = wQ.Q1;
+  const fLate  = wQ.Q3;
 
-  const menMax = MAX_ORARI - fEarly;
-  const mQ = logic.bilanciaQuadranti(nUomini, mod, menMax); // uomini: con vincolo
+  const totalFlights    = Math.ceil(nUomini / mod) + Math.ceil(nDonne / mod);
+  const totalOrari      = totalFlights / 2;
+  const targetEarly     = Math.ceil(totalOrari / 2);
+  const menMax          = Math.max(0, targetEarly - fEarly);
+
+  const mQ     = logic.bilanciaQuadranti(nUomini, mod, menMax);
   const mEarly = mQ.Q1;
   const mLate  = mQ.Q3;
 
@@ -218,57 +217,70 @@ function simulaCombinato(logic, nUomini, nDonne, mod = 3) {
     mEarly, mLate, fEarly, fLate,
     totalEarly: mEarly + fEarly,
     totalLate:  mLate  + fLate,
+    totalOrari,
+    targetEarly,
   };
 }
 
-describe('REGRESSIONE — vincolo 12 orari per sessione', () => {
+describe('REGRESSIONE — bilanciamento Early ≈ Late (|diff| ≤ 1)', () => {
   let logic;
   beforeEach(() => { logic = makeLogic(); });
 
-  it('[BUG FIX] 102 uomini + 42 donne → Early=12, Late=12', () => {
+  it('[BUG ORIGINALE] 102U+42D → Early=12, Late=12 (era 13+11 senza fix)', () => {
     const r = simulaCombinato(logic, 102, 42);
-    // Prima del fix: Early era 13 (9 M + 4 F)
-    expect(r.mEarly).toBe(8);   // uomini: 8 Early (non più 9)
-    expect(r.mLate).toBe(9);    // uomini: 9 Late
-    expect(r.fEarly).toBe(4);   // donne: invariate
-    expect(r.fLate).toBe(3);    // donne: invariate
+    expect(r.mEarly).toBe(8);
+    expect(r.mLate).toBe(9);
+    expect(r.fEarly).toBe(4);
+    expect(r.fLate).toBe(3);
     expect(r.totalEarly).toBe(12);
     expect(r.totalLate).toBe(12);
   });
 
+  it('[BUG 2] 64U+17D → Early=7, Late=7 (era 8+6 con vincolo fisso 12)', () => {
+    // Con MAX_ORARI=12: maleMax=12-2=10, men naturale=6 → nessun constraint → 8E+6L ❌
+    // Con targetEarly=7: maleMax=7-2=5, men→5E+6L → total 7E+7L ✓
+    const r = simulaCombinato(logic, 64, 17);
+    expect(r.mEarly).toBe(5);
+    expect(r.mLate).toBe(6);
+    expect(r.fEarly).toBe(2);
+    expect(r.totalEarly).toBe(7);
+    expect(r.totalLate).toBe(7);  // non 6 come prima
+  });
+
   it('donne non vengono alterate dal constraint maschile (42 donne)', () => {
-    const wQ = logic.bilanciaQuadranti(42, 3); // senza maxEarlySlots
-    // Distribuzione naturale donne: Q1=Q2=4, Q3=Q4=3
+    const wQ = logic.bilanciaQuadranti(42, 3);
     expect(wQ.Q1).toBe(4);
     expect(wQ.Q2).toBe(4);
     expect(wQ.Q3).toBe(3);
     expect(wQ.Q4).toBe(3);
   });
 
-  // Scenari multipli: il vincolo ≤ 12 deve essere sempre rispettato
+  // Tutti gli scenari: |totalEarly - totalLate| ≤ 1
   const scenari = [
-    { m: 144, f: 0,  desc: '144U + 0D (solo uomini)'      },
-    { m: 96,  f: 48, desc: '96U + 48D (perfettamente pari)'},
-    { m: 108, f: 36, desc: '108U + 36D'                    },
-    { m: 120, f: 24, desc: '120U + 24D'                    },
-    { m: 90,  f: 42, desc: '90U + 42D'                     },
-    { m: 72,  f: 30, desc: '72U + 30D'                     },
-    { m: 102, f: 42, desc: '102U + 42D (caso bugfix)'      },
+    { m: 144, f: 0,  desc: '144U + 0D'  },
+    { m: 102, f: 42, desc: '102U + 42D' },
+    { m: 96,  f: 48, desc: '96U + 48D'  },
+    { m: 108, f: 36, desc: '108U + 36D' },
+    { m: 120, f: 24, desc: '120U + 24D' },
+    { m: 90,  f: 42, desc: '90U + 42D'  },
+    { m: 72,  f: 30, desc: '72U + 30D'  },
+    { m: 64,  f: 17, desc: '64U + 17D'  },
+    { m: 48,  f: 12, desc: '48U + 12D'  },
   ];
 
   scenari.forEach(({ m, f, desc }) => {
-    it(`${desc} → totalEarly ≤ ${MAX_ORARI} e totalLate ≤ ${MAX_ORARI}`, () => {
+    it(`${desc} → |Early-Late| ≤ 1`, () => {
       const r = simulaCombinato(logic, m, f);
-      expect(r.totalEarly).toBeLessThanOrEqual(MAX_ORARI);
-      expect(r.totalLate).toBeLessThanOrEqual(MAX_ORARI);
+      expect(Math.abs(r.totalEarly - r.totalLate)).toBeLessThanOrEqual(1);
     });
   });
 
   it('i gruppi uomini con constraint coprono tutti i giocatori senza duplicati', () => {
-    // Verifica che il constraint non "perda" giocatori
     const atleti = Array.from({ length: 102 }, (_, i) => i + 1);
     const wQ = logic.bilanciaQuadranti(42, 3);
-    const menMax = MAX_ORARI - wQ.Q1;
+    const totalFlights = Math.ceil(102/3) + Math.ceil(42/3);
+    const targetEarly  = Math.ceil((totalFlights/2) / 2);
+    const menMax = Math.max(0, targetEarly - wQ.Q1);
     const groups = logic.generatePlayerGroups(102, 3, atleti, 'M', menMax);
     const all = groups.flatMap(g => g.players);
     expect(all.length).toBe(102);
