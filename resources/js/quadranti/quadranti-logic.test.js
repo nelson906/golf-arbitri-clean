@@ -177,6 +177,27 @@ describe('generatePlayerGroups', () => {
     const count = groups.flatMap(g => g.players).length;
     expect(count).toBe(100);
   });
+
+  it('playerIndices tracciano la posizione originale in sourceArray', () => {
+    // Usiamo nomi distinti così il match indice→valore è univoco e verificabile.
+    const sourceArray = Array.from({ length: 60 }, (_, i) => `P${i}`);
+    const groups = logic.generatePlayerGroups(60, 3, sourceArray, 'M');
+
+    groups.forEach(g => {
+      expect(g.playerIndices).toBeDefined();
+      expect(g.playerIndices.length).toBe(g.players.length);
+      g.playerIndices.forEach((idx, j) => {
+        expect(idx).toBeGreaterThanOrEqual(0);
+        expect(idx).toBeLessThan(sourceArray.length);
+        expect(sourceArray[idx]).toBe(g.players[j]);
+      });
+    });
+
+    // Tutti gli indici 0..59 devono comparire esattamente una volta in totale.
+    const allIdx = groups.flatMap(g => g.playerIndices);
+    expect(allIdx.length).toBe(60);
+    expect(new Set(allIdx).size).toBe(60);
+  });
 });
 
 // ─── updateConfig ────────────────────────────────────────────────────────────

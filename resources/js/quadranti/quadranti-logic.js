@@ -243,17 +243,26 @@ export class QuadrantiLogic {
         const groups = [];
         const difference = limits.difference;
 
+        // Indici originali nell'array sorgente (atleti/atlete), allineati a sourceArray.
+        // Servono al pulsante "rimuovi" della UI per identificare univocamente la riga
+        // da cancellare anche in presenza di omonimie.
+        const sourceIndices = sourceArray.map((_, i) => i);
+
         // Q2: Players 1 to limit1 (descending order, from largest to smallest)
         const q2Players = sourceArray.slice(0, limits.limit1);
+        const q2Indices = sourceIndices.slice(0, limits.limit1);
         const q2Groups = [];
         for (let i = q2Players.length - 1; i >= 0; i -= mod) {
             const group = [];
+            const groupIdx = [];
             for (let j = 0; j < mod && (i - j) >= 0; j++) {
                 group.push(q2Players[i - j]);
+                groupIdx.push(q2Indices[i - j]);
             }
             if (group.length > 0) {
                 q2Groups.push({
-                    players: group.reverse(), // Reverse to maintain ascending order within group
+                    players: group.reverse(),
+                    playerIndices: groupIdx.reverse(),
                     quadrant: 'Q2',
                     type: 'Early',
                     category: category
@@ -264,6 +273,7 @@ export class QuadrantiLogic {
 
         // Q1: Players from limit1+1 to limit2 (ascending order, handling difference)
         const q1Players = sourceArray.slice(limits.limit1, limits.limit2);
+        const q1Indices = sourceIndices.slice(limits.limit1, limits.limit2);
         const q1Groups = [];
 
         if (difference === 1 && q1Players.length > 0) {
@@ -271,6 +281,7 @@ export class QuadrantiLogic {
             if (q1Players.length >= 2) {
                 q1Groups.push({
                     players: [q1Players[0], q1Players[1]],
+                    playerIndices: [q1Indices[0], q1Indices[1]],
                     quadrant: 'Q1',
                     type: 'Early',
                     category: category
@@ -279,9 +290,11 @@ export class QuadrantiLogic {
             // Rest in groups of mod
             for (let i = 2; i < q1Players.length; i += mod) {
                 const group = q1Players.slice(i, Math.min(i + mod, q1Players.length));
+                const groupIdx = q1Indices.slice(i, Math.min(i + mod, q1Players.length));
                 if (group.length > 0) {
                     q1Groups.push({
                         players: group,
+                        playerIndices: groupIdx,
                         quadrant: 'Q1',
                         type: 'Early',
                         category: category
@@ -293,6 +306,7 @@ export class QuadrantiLogic {
             if (q1Players.length >= 2) {
                 q1Groups.push({
                     players: [q1Players[0], q1Players[1]],
+                    playerIndices: [q1Indices[0], q1Indices[1]],
                     quadrant: 'Q1',
                     type: 'Early',
                     category: category
@@ -301,6 +315,7 @@ export class QuadrantiLogic {
             if (q1Players.length >= 4) {
                 q1Groups.push({
                     players: [q1Players[2], q1Players[3]],
+                    playerIndices: [q1Indices[2], q1Indices[3]],
                     quadrant: 'Q1',
                     type: 'Early',
                     category: category
@@ -309,9 +324,11 @@ export class QuadrantiLogic {
             // Rest in groups of mod
             for (let i = 4; i < q1Players.length; i += mod) {
                 const group = q1Players.slice(i, Math.min(i + mod, q1Players.length));
+                const groupIdx = q1Indices.slice(i, Math.min(i + mod, q1Players.length));
                 if (group.length > 0) {
                     q1Groups.push({
                         players: group,
+                        playerIndices: groupIdx,
                         quadrant: 'Q1',
                         type: 'Early',
                         category: category
@@ -323,9 +340,11 @@ export class QuadrantiLogic {
             // Q1 keeps normal grouping
             for (let i = 0; i < q1Players.length; i += mod) {
                 const group = q1Players.slice(i, Math.min(i + mod, q1Players.length));
+                const groupIdx = q1Indices.slice(i, Math.min(i + mod, q1Players.length));
                 if (group.length > 0) {
                     q1Groups.push({
                         players: group,
+                        playerIndices: groupIdx,
                         quadrant: 'Q1',
                         type: 'Early',
                         category: category
@@ -336,9 +355,11 @@ export class QuadrantiLogic {
             // Normal grouping
             for (let i = 0; i < q1Players.length; i += mod) {
                 const group = q1Players.slice(i, Math.min(i + mod, q1Players.length));
+                const groupIdx = q1Indices.slice(i, Math.min(i + mod, q1Players.length));
                 if (group.length > 0) {
                     q1Groups.push({
                         players: group,
+                        playerIndices: groupIdx,
                         quadrant: 'Q1',
                         type: 'Early',
                         category: category
@@ -351,20 +372,26 @@ export class QuadrantiLogic {
         // Q3: Players from limit3+1 to players (descending order)
         // Special handling for difference=3 case
         let q3Players = sourceArray.slice(limits.limit3);
+        let q3Indices = sourceIndices.slice(limits.limit3);
         if (difference === 3 && mod === 3) {
             // Remove last player(s) to avoid incomplete flight
-            q3Players = q3Players.slice(0, q3Players.length - (q3Players.length % mod));
+            const trimmed = q3Players.length - (q3Players.length % mod);
+            q3Players = q3Players.slice(0, trimmed);
+            q3Indices = q3Indices.slice(0, trimmed);
         }
 
         const q3Groups = [];
         for (let i = q3Players.length - 1; i >= 0; i -= mod) {
             const group = [];
+            const groupIdx = [];
             for (let j = 0; j < mod && (i - j) >= 0; j++) {
                 group.push(q3Players[i - j]);
+                groupIdx.push(q3Indices[i - j]);
             }
             if (group.length === mod) { // Only add complete groups
                 q3Groups.push({
                     players: group.reverse(),
+                    playerIndices: groupIdx.reverse(),
                     quadrant: 'Q3',
                     type: 'Late',
                     category: category
@@ -375,11 +402,14 @@ export class QuadrantiLogic {
 
         // Q4: Players from limit2+1 to limit3 (ascending order)
         const q4Players = sourceArray.slice(limits.limit2, limits.limit3);
+        const q4Indices = sourceIndices.slice(limits.limit2, limits.limit3);
         for (let i = 0; i < q4Players.length; i += mod) {
             const group = q4Players.slice(i, Math.min(i + mod, q4Players.length));
+            const groupIdx = q4Indices.slice(i, Math.min(i + mod, q4Players.length));
             if (group.length > 0) {
                 groups.push({
                     players: group,
+                    playerIndices: groupIdx,
                     quadrant: 'Q4',
                     type: 'Late',
                     category: category
@@ -993,6 +1023,19 @@ export class QuadrantiLogic {
         let currentTime = startTime;
         let matchNumber = startNumber;
         const mod = parseInt(this.config.playersPerFlight);
+        const showRemove = this.config.nominativo === 'On';
+
+        const renderCell = (group, j) => {
+            const player = (group && group.players[j]) || '';
+            if (player === '') {
+                return `<td class="text-center px-2 py-1 border border-gray-300" style="color: ${color}"></td>`;
+            }
+            const idx = group.playerIndices ? group.playerIndices[j] : '';
+            const btn = showRemove
+                ? ` <button type="button" class="qd-remove ml-1 text-xs text-red-600 hover:text-red-800" data-cat="${group.category}" data-idx="${idx}" title="Rimuovi iscritto e ridisegna lo schema">&times;</button>`
+                : '';
+            return `<td class="text-center px-2 py-1 border border-gray-300" style="color: ${color}">${player}${btn}</td>`;
+        };
 
         const maxGroups = Math.max(leftGroups.length, rightGroups.length);
 
@@ -1005,8 +1048,7 @@ export class QuadrantiLogic {
                 html += '<td class="text-center px-2 py-1 border border-gray-300 font-medium">1</td>';
 
                 for (let j = 0; j < mod; j++) {
-                    const player = leftGroups[i].players[j] || '';
-                    html += `<td class="text-center px-2 py-1 border border-gray-300" style="color: ${color}">${player}</td>`;
+                    html += renderCell(leftGroups[i], j);
                 }
             } else {
                 html += `<td colspan="${mod + 2}" class="text-center px-2 py-1 border border-gray-300"></td>`;
@@ -1018,8 +1060,7 @@ export class QuadrantiLogic {
             // Right side
             if (rightGroups[i]) {
                 for (let j = 0; j < mod; j++) {
-                    const player = rightGroups[i].players[j] || '';
-                    html += `<td class="text-center px-2 py-1 border border-gray-300" style="color: ${color}">${player}</td>`;
+                    html += renderCell(rightGroups[i], j);
                 }
 
                 html += '<td class="text-center px-2 py-1 border border-gray-300 font-medium">10</td>';
@@ -1085,6 +1126,8 @@ export class QuadrantiLogic {
             ? [...femaleGroups, ...maleGroups]
             : [...maleGroups.reverse(), ...femaleGroups.reverse()];
 
+        const showRemove = this.config.nominativo === 'On';
+
         allGroups.forEach((group, index) => {
             tableHTML += '<tr>';
             tableHTML += `<td class="text-center px-2 py-1 border border-gray-300 font-medium">${index + 1}</td>`;
@@ -1093,7 +1136,12 @@ export class QuadrantiLogic {
             for (let j = 0; j < mod; j++) {
                 const player = group.players[j] || '';
                 const style = group.category === 'F' ? 'style="font-style:italic; color:red"' : '';
-                tableHTML += `<td class="text-center px-2 py-1 border border-gray-300" ${style}>${player}</td>`;
+                let cellContent = player;
+                if (showRemove && player !== '') {
+                    const idx = group.playerIndices ? group.playerIndices[j] : '';
+                    cellContent += ` <button type="button" class="qd-remove ml-1 text-xs text-red-600 hover:text-red-800" data-cat="${group.category}" data-idx="${idx}" title="Rimuovi iscritto e ridisegna lo schema">&times;</button>`;
+                }
+                tableHTML += `<td class="text-center px-2 py-1 border border-gray-300" ${style}>${cellContent}</td>`;
             }
 
             tableHTML += `<td class="text-center px-2 py-1 border border-gray-300 font-medium">${currentTime}</td>`;

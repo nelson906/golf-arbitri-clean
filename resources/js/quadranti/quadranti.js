@@ -137,6 +137,11 @@ $('#load-federgolf-btn').on('click', () => this.handleLoadFedergolfGare());
 // Selezione gara
 $('#federgolf-gare-select').on('change', () => this.handleFedergolfGaraSelected());
 
+// Rimozione di un singolo nominativo dalla tabella (modalità Nominativo).
+// Delegato sul container perché la tabella viene rigenerata da generateTable()
+// e i pulsanti × vengono ricreati a ogni render.
+$('#first_table').on('click', '.qd-remove', (e) => this.handleRemovePlayer(e));
+
   }
 
   /**
@@ -236,6 +241,52 @@ $('#federgolf-gare-select').on('change', () => this.handleFedergolfGaraSelected(
 
     this.updateNominativoButtons();
     this.logic.updateConfig(this.config);
+    this.generateTable();
+  }
+
+  /**
+   * Rimuove un singolo iscritto dall'array atleti/atlete e ridisegna lo schema.
+   * In modalità Nominativo (è l'unica in cui viene mostrato il pulsante ×).
+   * Lo schema viene ricalcolato da zero con N-1 giocatori: i flight, gli orari
+   * e i quadranti si riassestano in automatico tramite generateTable().
+   */
+  handleRemovePlayer(e) {
+    e.preventDefault();
+    if (this.config.nominativo !== 'On') return;
+
+    const $btn = $(e.currentTarget);
+    const cat  = $btn.data('cat');                  // 'M' | 'F'
+    const idx  = parseInt($btn.data('idx'), 10);
+    const key  = cat === 'F' ? 'atlete' : 'atleti';
+    const list = (storage.get(key, []) || []).slice();
+
+    if (!Number.isInteger(idx) || idx < 0 || idx >= list.length) {
+      console.warn('handleRemovePlayer: indice non valido', { cat, idx, listLength: list.length });
+      return;
+    }
+
+    const removedName = list[idx];
+    if (!confirm(`Rimuovere "${removedName}" dall'elenco?\nLo schema verrà ridisegnato con ${list.length - 1} ${cat === 'F' ? 'atlete' : 'atleti'}.`)) {
+      return;
+    }
+
+    list.splice(idx, 1);
+    storage.set(key, list);
+
+    if (cat === 'F') {
+      storage.set('storedProetteCount', list.length);
+      storage.set('proette', list.length);
+      this.config.proette = list.length;
+      $('#proette').val(list.length);
+    } else {
+      storage.set('storedPlayersCount', list.length);
+      storage.set('players', list.length);
+      this.config.players = list.length;
+      $('#players').val(list.length);
+    }
+
+    this.logic.updateConfig(this.config);
+    this.toggleCompactOption();
     this.generateTable();
   }
 

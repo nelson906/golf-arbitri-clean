@@ -220,6 +220,28 @@ Esiste `resources/js/quadranti/quadranti-logic.test.js` (Vitest, vedi `vitest.co
 
 ---
 
+## 11. Cancellazione iscritti dopo chiusura iscrizioni
+
+Quando un iscritto si ritira dopo che lo schema è già stato generato, il sistema **non** mantiene il flight orfano: lo schema viene **rigenerato da zero con N−1 giocatori** e i quadranti si riassestano automaticamente. È quanto fa già `generateTable()` quando cambia `players`/`proette`; questa sezione ne espone il trigger sulla tabella.
+
+**Modalità Nominativo (`nominativo === 'On'`):** ogni nome nella tabella è seguito da un pulsante `×`. Il click chiede conferma e poi:
+
+1. rimuove l'iscritto da `localStorage.atleti` o `localStorage.atlete` (l'identificativo è l'**indice originale** nell'array, propagato fin dal render in `playerIndices`, così omonimie e nomi ripetuti non sono un problema);
+2. decrementa `storedPlayersCount` / `storedProetteCount` e i campi `#players` / `#proette` del form;
+3. chiama `generateTable()`, che ricalcola `bilanciaQuadranti` → `limitiQuadranti` → `generatePlayerGroups` con il nuovo totale.
+
+Il risultato è uno schema interamente ridisegnato: 64 → 63 giocatori comportano una nuova distribuzione fra i quadranti, possibile cambio di `difference`, eventuale attivazione/disattivazione della regola "modulo 12", nuovi orari di chiusura. Nessuno stato persistito a metà strada: l'unica fonte di verità restano gli array `atleti` / `atlete` su `localStorage`.
+
+**Modalità Numerico (`nominativo === 'Off'`):** non viene mostrato alcun pulsante × e non serve. Per ridurre il numero di partecipanti basta modificare direttamente i campi *Giocatori Uomini* / *Giocatrici Donne* nel form: `handleFormChange` aggiorna la configurazione e ridisegna lo schema con il nuovo totale.
+
+Implementazione:
+
+- propagazione indice: `quadranti-logic.js → generatePlayerGroups` aggiunge `playerIndices: number[]` a ogni gruppo, allineato con `players`.
+- render del pulsante: `quadranti-logic.js → buildGroupTableRows` (doppio tee) e `generateSingleTee` (tee unico) aggiungono `<button class="qd-remove" data-cat="…" data-idx="…">×</button>` solo quando `nominativo === 'On'`.
+- handler: `quadranti.js → handleRemovePlayer`, agganciato come delegato su `#first_table` per sopravvivere ai re-render.
+
+---
+
 ## Glossario rapido
 
 - **Flight / match**: gruppo di 2-4 giocatori che parte insieme.
