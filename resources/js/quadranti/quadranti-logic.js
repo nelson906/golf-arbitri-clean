@@ -402,17 +402,18 @@ export class QuadrantiLogic {
     const proette = parseInt(this.config.proette) || 0;
     const dayNumber = round === ROUND_TYPES.SECOND ? 2 : 1;
 
-    // Constraint: max 12 orari (uomini + donne) per sessione (Early o Late)
-    const MAX_ORARI_PER_SESSIONE = 12;
-
     // Calcola le donne prima (distribuzione naturale, senza vincoli)
     const femaleGroups = (proette > 0) ? this.generatePlayerGroups(proette, mod, atlete, 'F') : [];
 
     // Ricava quanti orari Early occupano le donne (ogni coppia Tee1+Tee10 = 1 orario)
     const femaleEarlySlots = Math.ceil(femaleGroups.filter(g => g.type === 'Early').length / 2);
 
-    // Il massimo di orari Early consentito per gli uomini rispetta il vincolo combinato
-    const maleMaxEarlySlots = MAX_ORARI_PER_SESSIONE - femaleEarlySlots;
+    // Constraint bilanciamento: Early ≈ Late (differenza max 1 orario)
+    // Il giorno 1 assegna l'orario in più a Early; il giorno 2 (remap) lo avrà in Late.
+    const totalFlights = Math.ceil(players / mod) + Math.ceil(proette / mod);
+    const totalOrari   = totalFlights / 2;
+    const targetEarlySlots  = Math.ceil(totalOrari / 2);   // ceil: il "±1" va a Early il giorno 1
+    const maleMaxEarlySlots = Math.max(0, targetEarlySlots - femaleEarlySlots);
 
     // Calcola gli uomini applicando il constraint
     const maleGroups = (players > 0) ? this.generatePlayerGroups(players, mod, atleti, 'M', maleMaxEarlySlots) : [];
