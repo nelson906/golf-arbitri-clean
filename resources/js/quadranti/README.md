@@ -242,6 +242,15 @@ Implementazione:
 
 ---
 
+## 12. Export della tabella (Excel / PDF)
+
+Due bottoni nel pannello azioni:
+
+- **Excel** → `handleExcelExport` usa [SheetJS](https://github.com/SheetJS/sheetjs) (`xlsx@0.18.5` da jsDelivr) per produrre un **vero file `.xlsx`** (`Partenze_<Prima|Seconda>Giornata_<data>.xlsx`). La funzione clona la `<table>` interna a `#first_table`, rimuove i pulsanti × con `clone.querySelectorAll('.qd-remove').forEach(el => el.remove())` e passa il clone a `XLSX.utils.table_to_book` → `XLSX.writeFile`. Sostituisce la precedente implementazione con `jquery-table2excel`, che generava un `.xls` "fasullo" (HTML rinominato) e faceva comparire l'avviso *"Il formato e l'estensione non corrispondono"* all'apertura.
+- **Stampa / PDF** → `handlePdfPrint` chiama `window.print()`. Le regole `@media print` in `index.blade.php` isolano `#print-area` (titolo verde + box riepilogo orari + tabella) nascondendo il resto della pagina, forzano l'orientamento landscape A4 e preservano i colori di sfondo dei quadranti. Per ottenere un file PDF, nel dialogo di stampa l'utente sceglie "Salva come PDF" come destinazione: il `document.title` viene sostituito temporaneamente con `Partenze_<Prima|Seconda>Giornata_<data>` così il nome del file è significativo. Nessuna libreria esterna.
+
+---
+
 ## Glossario rapido
 
 - **Flight / match**: gruppo di 2-4 giocatori che parte insieme.

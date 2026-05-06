@@ -60,7 +60,7 @@ export class QuadrantiLogic {
     async fetchEphemerisData(geoArea, date) {
         try {
             const response = await $.ajax({
-                url: '/user/quadranti/coordinates',
+                url: ($('meta[name="base-url"]').attr('content') || '') + '/user/quadranti/coordinates',
                 type: 'POST',
                 dataType: 'json',
                 headers: {
@@ -1032,7 +1032,7 @@ export class QuadrantiLogic {
             }
             const idx = group.playerIndices ? group.playerIndices[j] : '';
             const btn = showRemove
-                ? ` <button type="button" class="qd-remove ml-1 text-xs text-red-600 hover:text-red-800" data-cat="${group.category}" data-idx="${idx}" title="Rimuovi iscritto e ridisegna lo schema">&times;</button>`
+                ? ` <button type="button" class="qd-remove excludeThisClass ml-1 text-xs text-red-600 hover:text-red-800" data-cat="${group.category}" data-idx="${idx}" title="Rimuovi iscritto e ridisegna lo schema">&times;</button>`
                 : '';
             return `<td class="text-center px-2 py-1 border border-gray-300" style="color: ${color}">${player}${btn}</td>`;
         };
@@ -1139,7 +1139,7 @@ export class QuadrantiLogic {
                 let cellContent = player;
                 if (showRemove && player !== '') {
                     const idx = group.playerIndices ? group.playerIndices[j] : '';
-                    cellContent += ` <button type="button" class="qd-remove ml-1 text-xs text-red-600 hover:text-red-800" data-cat="${group.category}" data-idx="${idx}" title="Rimuovi iscritto e ridisegna lo schema">&times;</button>`;
+                    cellContent += ` <button type="button" class="qd-remove excludeThisClass ml-1 text-xs text-red-600 hover:text-red-800" data-cat="${group.category}" data-idx="${idx}" title="Rimuovi iscritto e ridisegna lo schema">&times;</button>`;
                 }
                 tableHTML += `<td class="text-center px-2 py-1 border border-gray-300" ${style}>${cellContent}</td>`;
             }
