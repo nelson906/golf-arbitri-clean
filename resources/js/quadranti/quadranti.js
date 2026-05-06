@@ -125,6 +125,7 @@ class QuadrantiApp {
     // Button clicks
     $('#refresh').on('click', () => this.handleReset());
     $('#excel').on('click', () => this.handleExcelExport());
+    $('#pdf').on('click', () => this.handlePdfPrint());
     $('#btnClick').on('click', (e) => this.handleNominativoToggle(e, 'On'));
     $('#btnClock').on('click', (e) => this.handleNominativoToggle(e, 'Off'));
 
@@ -207,19 +208,62 @@ $('#first_table').on('click', '.qd-remove', (e) => this.handleRemovePlayer(e));
   }
 
   /**
-   * Handles Excel export
+   * Esporta la tabella delle partenze in un vero file .xlsx tramite SheetJS.
+   * Sostituisce la vecchia implementazione con jquery-table2excel, che produceva
+   * un .xls "fasullo" (HTML rinominato) facendo apparire l'avviso di Excel
+   * "il formato e l'estensione non corrispondono".
    */
   handleExcelExport() {
-    if (typeof $.fn.table2excel !== 'undefined') {
-      $('#first_table').table2excel({
-        exclude: '.excludeThisClass',
-        name: 'Foglio di Lavoro',
-        filename: 'Simulatore_Partenze.xls',
-        preserveColors: true
-      });
-    } else {
-      alert('La funzione di esportazione Excel non è disponibile');
+    if (typeof XLSX === 'undefined') {
+      alert('La libreria di esportazione Excel non è caricata.');
+      return;
     }
+
+    // Cerca la <table> dentro #first_table (in tee unico è figlia diretta;
+    // in doppio tee è figlia di #first_table dopo il box riepilogo).
+    const target = document.querySelector('#first_table table');
+    if (!target) {
+      alert('Nessuna tabella da esportare.');
+      return;
+    }
+
+    // Cloniamo per rimuovere i pulsanti × dal foglio Excel senza toccare la UI.
+    const clone = target.cloneNode(true);
+    clone.querySelectorAll('.qd-remove').forEach(el => el.remove());
+
+    const wb = XLSX.utils.table_to_book(clone, { sheet: 'Partenze' });
+
+    // Nome file parlante (giornata + data)
+    const giornata = this.config.giornata === 'seconda' ? 'Seconda' : 'Prima';
+    const date = ($('#start').val() || '').replace(/\//g, '-');
+    const filename = `Partenze_${giornata}Giornata${date ? '_' + date : ''}.xlsx`;
+
+    XLSX.writeFile(wb, filename);
+  }
+
+  /**
+   * Apre il dialogo di stampa del browser sulla sola area #print-area.
+   * L'utente può scegliere "Salva come PDF" come destinazione per ottenere
+   * un PDF della tabella senza dipendenze esterne. Il document.title viene
+   * temporaneamente sostituito con un nome significativo perché molti
+   * browser lo usano come nome file di default in "Salva come PDF".
+   */
+  handlePdfPrint() {
+    const originalTitle = document.title;
+    const giornata = this.config.giornata === 'seconda' ? 'Seconda' : 'Prima';
+    const date = ($('#start').val() || '').replace(/\//g, '-');
+    const newTitle = `Partenze_${giornata}Giornata${date ? '_' + date : ''}`;
+    document.title = newTitle;
+
+    const restore = () => {
+      document.title = originalTitle;
+      window.removeEventListener('afterprint', restore);
+    };
+    window.addEventListener('afterprint', restore);
+    // Fallback nel caso afterprint non venga emesso (alcune versioni di Safari)
+    setTimeout(restore, 5000);
+
+    window.print();
   }
 
   /**
@@ -307,7 +351,7 @@ $('#first_table').on('click', '.qd-remove', (e) => this.handleRemovePlayer(e));
 
     try {
       const response = await $.ajax({
-        url: '/user/quadranti/upload-excel',
+        url: ($('meta[name="base-url"]').attr('content') || '') + '/user/quadranti/upload-excel',
         type: 'POST',
         data: formData,
         processData: false,
@@ -431,25 +475,24 @@ $('#first_table').on('click', '.qd-remove', (e) => this.handleRemovePlayer(e));
   }
 
   /**
-   * Generates and displays the tee time table
+   * Generates and displays the tee time table.
+   *
+   * Note: #first_table è ora un <div>. generateDoubleTee ritorna già
+   * (infoBox + <table>...</table>); generateSingleTee ritorna solo
+   * <thead>...<tbody>... e va wrappato esplicitamente in <table>.
    */
   generateTable() {
-    let tableHTML = '';
     const doppiePartenze = this.config.doppiePartenze;
     const giornata = this.config.giornata;
-    const mod = parseInt(this.config.playersPerFlight);
+    let html;
 
-    // Add table header
     if (doppiePartenze === TEE_TYPES.DOUBLE) {
-      tableHTML = this.logic.generateTableHeader(true);
-
-      tableHTML += this.logic.generateDoubleTee(giornata);
+      html = this.logic.generateDoubleTee(giornata);
     } else {
-      tableHTML = this.logic.generateTableHeader(false);
-      tableHTML = this.logic.generateSingleTee(giornata);
+      html = `<table class="min-w-full divide-y divide-gray-200">${this.logic.generateSingleTee(giornata)}</table>`;
     }
 
-    $('#first_table').html(tableHTML);
+    $('#first_table').html(html);
   }
 
 /**
@@ -461,7 +504,7 @@ async handleLoadFedergolfGare() {
     $('#load-federgolf-btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i> Caricamento...');
 
     const response = await $.ajax({
-      url: '/user/federgolf/load-all',
+      url: ($('meta[name="base-url"]').attr('content') || '') + '/user/federgolf/load-all',
       type: 'POST',
       headers: {
         'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -562,7 +605,7 @@ populateFedergolfDropdown(gare) {
     try {
       // Carica prima gara (maschile o mista)
       const response1 = await $.ajax({
-        url: '/user/federgolf/iscritti',
+        url: ($('meta[name="base-url"]').attr('content') || '') + '/user/federgolf/iscritti',
         type: 'POST',
         data: { gara_id: ids[0] },
         headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
@@ -572,7 +615,7 @@ populateFedergolfDropdown(gare) {
       let response2 = null;
       if (ids.length > 1) {
         response2 = await $.ajax({
-          url: '/user/federgolf/iscritti',
+          url: ($('meta[name="base-url"]').attr('content') || '') + '/user/federgolf/iscritti',
           type: 'POST',
           data: { gara_id: ids[1] },
           headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
