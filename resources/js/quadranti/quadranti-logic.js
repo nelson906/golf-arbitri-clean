@@ -194,36 +194,41 @@ export class QuadrantiLogic {
     }
 
     /**
-     * Sets nominativo array based on configuration
-     * @returns {Object} Object containing atleti and atlete arrays
+     * Restituisce gli array di giocatori da usare per la generazione tabella.
+     *
+     * Fonte di verità unica:
+     *   - storage.atleti / storage.atlete  ← nomi (quando nominativo='On')
+     *   - this.config.players / proette    ← conteggio numerico
+     *
+     * I vecchi `storedPlayersCount`/`storedProetteCount` erano ridondanti con
+     * `atleti.length`/`atlete.length` e sono stati rimossi (state sprawl
+     * cleanup, refactor 8 maggio).
+     *
+     * Logica:
+     *   - se nominativo='On' E i nomi salvati combaciano con i counter → usa nomi
+     *   - altrimenti → array numerico [1..N], e se nominativo='Off' pulisce i
+     *     nomi dallo storage
      */
     getPlayerArrays() {
         const nominativo = this.config.nominativo;
-        const players = parseInt(this.config.players);
-        const proette = parseInt(this.config.proette);
+        const players = parseInt(this.config.players) || 0;
+        const proette = parseInt(this.config.proette) || 0;
 
-        let atlete = storage.get('atlete', []);
         let atleti = storage.get('atleti', []);
+        let atlete = storage.get('atlete', []);
 
-        // Check if stored arrays have the correct length or if nominativo is off
-        const storedPlayersCount = storage.get('storedPlayersCount', 0);
-        const storedProetteCount = storage.get('storedProetteCount', 0);
+        const namesValid = (
+            nominativo === 'On' &&
+            atleti.length === players &&
+            atlete.length === proette
+        );
 
-        if (nominativo !== 'On' ||
-            atleti.length !== players ||
-            atlete.length !== proette ||
-            storedPlayersCount !== players ||
-            storedProetteCount !== proette) {
-            // Generate numeric arrays
-            atlete = range(1, proette);
+        if (!namesValid) {
             atleti = range(1, players);
-
-            // If nominativo is off, clear stored names
+            atlete = range(1, proette);
             if (nominativo !== 'On') {
-                storage.remove('atlete');
                 storage.remove('atleti');
-                storage.remove('storedPlayersCount');
-                storage.remove('storedProetteCount');
+                storage.remove('atlete');
             }
         }
 
@@ -1183,61 +1188,69 @@ export function normalizeGaraTitle(title) {
 }
 
 /**
- * Combina le risposte AJAX di una o due gare Federgolf in arrays atleti/atlete
- * pronti per essere salvati nello storage. Funzione pura (no DOM, no jQuery,
- * no AJAX) così i test di regressione possono verificarla in isolamento.
+ * Combina due risposte Federgolf (state-based) in array atleti/atlete + warnings.
  *
- * COMPORTAMENTO:
- *  - MISTA (response2 != null): carica entrambi i generi. Aborta solo se
- *    ENTRAMBE le gare hanno iscrizioni ancora aperte. Se solo una è aperta,
- *    carica il genere chiuso e ritorna un warning per avvisare l'utente.
- *    Questo è il fix per la regressione introdotta in fbddad9: il codice
- *    precedente abortiva l'intero caricamento M+F anche se una sola delle
- *    due gare aveva iscrizioni aperte.
- *  - Singolo M/F (response2 == null): aborta se la gara è aperta.
+ * Funzione pura: niente DOM, niente jQuery, niente AJAX. Riceve risposte già
+ * dispatchate dalla logica di selezione del dropdown (la quale sa quale
+ * response è M e quale F via la struttura dati indicizzata, NON via marker
+ * stringa nel value dell'option).
  *
- * @param {Object} response1 - Prima gara (M o F a seconda di tipo)
- * @param {Object|null} response2 - Seconda gara (donne, in MISTA), null se non MISTA
- * @param {string} tipo - 'MASCHILE' | 'FEMMINILE' | 'MISTA'
- * @returns {{atleti: string[], atlete: string[], abort: boolean, warning: string|null}}
+ * SHAPE atteso per le response (da FedergolfController::getIscritti):
+ *   { state: 'ready'|'open'|'empty'|'error', iscritti: string[], message?: string }
+ *
+ * SEMANTICA degli stati:
+ *   - 'ready'  → usa iscritti
+ *   - 'open'   → iscrizioni non chiuse, nomi non disponibili (warning)
+ *   - 'empty'  → gara senza iscritti (warning informativo)
+ *   - 'error'  → rete/timeout (warning con messaggio)
+ *   - null/missing → side non richiesto (nessun warning)
+ *
+ * REGOLA di merge:
+ *   - Per ogni lato richiesto raccogli i nomi (solo se state='ready')
+ *   - Per ogni lato non-ready raccogli un warning con messaggio diagnostico
+ *   - Il caller decide se applicare i risultati guardando atleti+atlete e
+ *     warnings (semplice e prevedibile, niente flag "abort" da interpretare).
+ *
+ * @param {Object} args
+ * @param {Object|null} args.maschileResponse - Response per la gara maschile (o null se non richiesta)
+ * @param {Object|null} args.femminileResponse - Response per la gara femminile (o null se non richiesta)
+ * @returns {{atleti: string[], atlete: string[], warnings: string[]}}
  */
-export function mergeFedergolfResponses(response1, response2, tipo) {
-    const aperte1 = !!(response1 && response1.iscrizioni_aperte);
-    const aperte2 = !!(response2 && response2.iscrizioni_aperte);
-    const isMista = !!response2;
+export function mergeFedergolfResponses({ maschileResponse = null, femminileResponse = null } = {}) {
+    const dispatch = (response, label) => {
+        if (!response) {
+            return { names: [], warning: null };
+        }
+        switch (response.state) {
+            case 'ready':
+                return { names: response.iscritti || [], warning: null };
+            case 'open':
+                return { names: [], warning: `Iscrizioni gara ${label} non ancora chiuse.` };
+            case 'empty':
+                return { names: [], warning: `Gara ${label} senza iscritti.` };
+            case 'error':
+                return {
+                    names: [],
+                    warning: `Errore caricamento iscritti ${label}: ${response.message || 'rete non disponibile'}`,
+                };
+            default:
+                return {
+                    names: [],
+                    warning: `Risposta ${label} non riconosciuta.`,
+                };
+        }
+    };
 
-    // In MISTA aborta solo se TUTTE e due aperte. In singolo aborta se quella aperta.
-    const tutteAperte = isMista ? (aperte1 && aperte2) : aperte1;
+    const m = dispatch(maschileResponse, 'maschile');
+    const f = dispatch(femminileResponse, 'femminile');
 
-    if (tutteAperte) {
-        return {
-            atleti: [],
-            atlete: [],
-            abort: true,
-            warning: (response1 && response1.message) ||
-                     (response2 && response2.message) ||
-                     'Iscrizioni non ancora chiuse: nessun iscritto ammesso. Riprovare dopo la chiusura.'
-        };
-    }
+    const warnings = [];
+    if (m.warning) warnings.push(m.warning);
+    if (f.warning) warnings.push(f.warning);
 
-    let atleti = [];
-    let atlete = [];
-
-    if (tipo === 'FEMMINILE') {
-        atlete = aperte1 ? [] : ((response1 && response1.iscritti) || []);
-    } else {
-        atleti = aperte1 ? [] : ((response1 && response1.iscritti) || []);
-    }
-
-    if (response2) {
-        atlete = aperte2 ? [] : (response2.iscritti || []);
-    }
-
-    let warning = null;
-    if (isMista && (aperte1 || aperte2)) {
-        const genderAperto = aperte1 ? 'maschile' : 'femminile';
-        warning = `Iscrizioni gara ${genderAperto} non ancora chiuse: caricato solo l'altro genere.`;
-    }
-
-    return { atleti, atlete, abort: false, warning };
+    return {
+        atleti: m.names,
+        atlete: f.names,
+        warnings,
+    };
 }

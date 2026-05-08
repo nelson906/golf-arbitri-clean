@@ -309,192 +309,182 @@ describe('REGRESSIONE — bilanciamento Early ≈ Late (|diff| ≤ 1)', () => {
   });
 });
 
-// ─── REGRESSIONE: caricamento Federgolf MISTA (M+F insieme) ──────────────────
-// Bug introdotto in fbddad9 ("Migliorie quadranti"): selezionando una gara MISTA
-// dal dropdown Federgolf, se anche UNA SOLA delle due gare (M o F) aveva
-// iscrizioni ancora aperte (totale>0 e ammessi=0), l'intero caricamento veniva
-// abortito con `if (aperte1 || aperte2) return`. Il comportamento atteso (e
-// presente fino a 8c0e632) è: in MISTA carica entrambi i generi quando entrambi
-// sono chiusi; se una sola è aperta, carica l'altra; abortisci solo se entrambe
-// sono aperte.
-describe('REGRESSIONE — mergeFedergolfResponses (caricamento MISTA M+F)', () => {
-  // Helper: risposta "iscrizioni chiuse, gara con iscritti ammessi"
-  const ok = (iscritti) => ({
-    success: true,
-    iscritti,
-    totale_iscritti: iscritti.length,
-    ammessi: iscritti.length,
-    iscrizioni_aperte: false,
-    message: null,
-  });
+// ─── mergeFedergolfResponses: state-based dispatch (refactor 8 maggio) ───────
+// La nuova versione riceve {maschileResponse, femminileResponse} e dispaccia
+// per state ('ready'|'open'|'empty'|'error'). Niente flag combinati, niente
+// abort/warning ambiguo: ritorna sempre {atleti, atlete, warnings[]} e il
+// caller decide cosa fare con i warnings e quando NON applicare.
+describe('mergeFedergolfResponses (state-based)', () => {
+  // Helpers per simulare le risposte del controller refactored
+  const ready = (iscritti) => ({ state: 'ready', iscritti, message: null });
+  const open  = () => ({ state: 'open', iscritti: [], message: 'Iscrizioni non ancora chiuse' });
+  const empty = () => ({ state: 'empty', iscritti: [], message: 'Gara senza iscritti' });
+  const error = (msg = 'timeout') => ({ state: 'error', iscritti: [], message: msg });
 
-  // Helper: risposta "iscrizioni ancora aperte" (ci sono righe ma nessuno ammesso)
-  const aperta = () => ({
-    success: true,
-    iscritti: [],
-    totale_iscritti: 5,
-    ammessi: 0,
-    iscrizioni_aperte: true,
-    message: 'Iscrizioni non ancora chiuse: nessun iscritto ammesso. Riprovare dopo la chiusura.',
-  });
-
-  describe('MISTA: response2 presente (M+F insieme)', () => {
-    it('[BUG ORIGINALE] entrambe chiuse → carica M e F insieme senza abortire', () => {
-      const r1 = ok(['Tom', 'Bob']);          // gara maschile
-      const r2 = ok(['Alice', 'Beth']);       // gara femminile
-      const result = mergeFedergolfResponses(r1, r2, 'MISTA');
-
-      expect(result.abort).toBe(false);
+  describe('caso felice', () => {
+    it('M+F ready → carica entrambi, nessun warning', () => {
+      const result = mergeFedergolfResponses({
+        maschileResponse: ready(['Tom', 'Bob']),
+        femminileResponse: ready(['Alice', 'Beth']),
+      });
       expect(result.atleti).toEqual(['Tom', 'Bob']);
       expect(result.atlete).toEqual(['Alice', 'Beth']);
-      expect(result.warning).toBeNull();
+      expect(result.warnings).toEqual([]);
     });
 
-    it('[REGRESSIONE] solo F aperta → NON abortire, carica M con warning', () => {
-      // Era IL BUG: aperte2=true ⇒ if(aperte1||aperte2) return → l'utente non
-      // poteva caricare gli uomini neppure quando le loro iscrizioni erano già
-      // chiuse, perché il check OR azzerava tutto il flow.
-      const r1 = ok(['Tom', 'Bob']);
-      const r2 = aperta();
-      const result = mergeFedergolfResponses(r1, r2, 'MISTA');
-
-      expect(result.abort).toBe(false);
-      expect(result.atleti).toEqual(['Tom', 'Bob']);
-      expect(result.atlete).toEqual([]);
-      expect(result.warning).toContain('femminile');
-    });
-
-    it('[REGRESSIONE] solo M aperta → NON abortire, carica F con warning', () => {
-      const r1 = aperta();
-      const r2 = ok(['Alice', 'Beth']);
-      const result = mergeFedergolfResponses(r1, r2, 'MISTA');
-
-      expect(result.abort).toBe(false);
-      expect(result.atleti).toEqual([]);
-      expect(result.atlete).toEqual(['Alice', 'Beth']);
-      expect(result.warning).toContain('maschile');
-    });
-
-    it('entrambe aperte → abort con messaggio', () => {
-      const r1 = aperta();
-      const r2 = aperta();
-      const result = mergeFedergolfResponses(r1, r2, 'MISTA');
-
-      expect(result.abort).toBe(true);
-      expect(result.atleti).toEqual([]);
-      expect(result.atlete).toEqual([]);
-      expect(result.warning).toBeTruthy();
-    });
-
-    it('iscritti vuoti su entrambe (ma chiuse) → no abort, atleti/atlete vuoti', () => {
-      // Es. gara passata senza partecipanti: lascia che il chiamante gestisca
-      // l'avviso "nessun nominativo trovato" successivamente.
-      const r1 = ok([]);
-      const r2 = ok([]);
-      const result = mergeFedergolfResponses(r1, r2, 'MISTA');
-
-      expect(result.abort).toBe(false);
-      expect(result.atleti).toEqual([]);
-      expect(result.atlete).toEqual([]);
-      expect(result.warning).toBeNull();
-    });
-
-    it('arrays sono indipendenti: 50M+15F caricati in atleti/atlete distinti', () => {
-      const men = Array.from({ length: 50 }, (_, i) => `Uomo${i + 1}`);
-      const women = Array.from({ length: 15 }, (_, i) => `Donna${i + 1}`);
-      const result = mergeFedergolfResponses(ok(men), ok(women), 'MISTA');
-
-      expect(result.atleti).toHaveLength(50);
-      expect(result.atlete).toHaveLength(15);
-      expect(result.atleti[0]).toBe('Uomo1');
-      expect(result.atlete[0]).toBe('Donna1');
-    });
-  });
-
-  describe('Singolo MASCHILE: response2 == null', () => {
-    it('chiusa con iscritti → carica atleti, atlete vuote', () => {
-      const result = mergeFedergolfResponses(ok(['Tom']), null, 'MASCHILE');
-      expect(result.abort).toBe(false);
+    it('solo M ready → atleti popolato, atlete vuote, no warning', () => {
+      const result = mergeFedergolfResponses({
+        maschileResponse: ready(['Tom']),
+      });
       expect(result.atleti).toEqual(['Tom']);
       expect(result.atlete).toEqual([]);
+      expect(result.warnings).toEqual([]);
     });
 
-    it('aperta → abort (singolo non ha fallback su altro genere)', () => {
-      const result = mergeFedergolfResponses(aperta(), null, 'MASCHILE');
-      expect(result.abort).toBe(true);
-      expect(result.warning).toBeTruthy();
-    });
-  });
-
-  describe('Singolo FEMMINILE: response2 == null', () => {
-    it('chiusa con iscritte → carica atlete, atleti vuoti', () => {
-      const result = mergeFedergolfResponses(ok(['Alice']), null, 'FEMMINILE');
-      expect(result.abort).toBe(false);
+    it('solo F ready → atlete popolato, atleti vuoti', () => {
+      const result = mergeFedergolfResponses({
+        femminileResponse: ready(['Alice']),
+      });
       expect(result.atleti).toEqual([]);
       expect(result.atlete).toEqual(['Alice']);
-    });
-
-    it('aperta → abort', () => {
-      const result = mergeFedergolfResponses(aperta(), null, 'FEMMINILE');
-      expect(result.abort).toBe(true);
+      expect(result.warnings).toEqual([]);
     });
   });
 
-  describe('robustezza: input mancanti', () => {
-    it('response1 senza iscritti → trattato come array vuoto', () => {
-      const r1 = { success: true, iscrizioni_aperte: false };
-      const result = mergeFedergolfResponses(r1, null, 'MASCHILE');
-      expect(result.abort).toBe(false);
-      expect(result.atleti).toEqual([]);
-    });
-
-    it('response2 senza iscritti → atlete vuote ma no abort', () => {
-      const r1 = ok(['Tom']);
-      const r2 = { success: true, iscrizioni_aperte: false };
-      const result = mergeFedergolfResponses(r1, r2, 'MISTA');
-      expect(result.abort).toBe(false);
+  describe('una gara non-ready in MISTA', () => {
+    it('[REGRESSIONE M+F] M ready, F open → carica M, warning su F', () => {
+      // Era IL BUG di fbddad9: il flag `aperte1 || aperte2` abortiva tutto.
+      // Ora il dispatch state-based lavora indipendente per lato.
+      const result = mergeFedergolfResponses({
+        maschileResponse: ready(['Tom']),
+        femminileResponse: open(),
+      });
       expect(result.atleti).toEqual(['Tom']);
       expect(result.atlete).toEqual([]);
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0]).toContain('femminile');
+      expect(result.warnings[0]).toContain('non ancora chiuse');
+    });
+
+    it('M open, F ready → carica F, warning su M', () => {
+      const result = mergeFedergolfResponses({
+        maschileResponse: open(),
+        femminileResponse: ready(['Alice']),
+      });
+      expect(result.atleti).toEqual([]);
+      expect(result.atlete).toEqual(['Alice']);
+      expect(result.warnings[0]).toContain('maschile');
+    });
+
+    it('M ready, F error (timeout) → carica M, warning su F con message', () => {
+      const result = mergeFedergolfResponses({
+        maschileResponse: ready(['Tom']),
+        femminileResponse: error('Federgolf.it non risponde (timeout)'),
+      });
+      expect(result.atleti).toEqual(['Tom']);
+      expect(result.atlete).toEqual([]);
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0]).toContain('femminile');
+      expect(result.warnings[0]).toContain('timeout');
+    });
+
+    it('M empty, F ready → carica F, warning informativo su M', () => {
+      const result = mergeFedergolfResponses({
+        maschileResponse: empty(),
+        femminileResponse: ready(['Alice']),
+      });
+      expect(result.atleti).toEqual([]);
+      expect(result.atlete).toEqual(['Alice']);
+      expect(result.warnings[0]).toContain('maschile');
+      expect(result.warnings[0]).toContain('senza iscritti');
     });
   });
 
-  describe('REGRESSIONE — gestione success:false (timeout federgolf.it)', () => {
-    // Quando il controller backend restituisce {success:false, message:...}
-    // (es. cURL timeout 28, federgolf.it non risponde per gare grosse come
-    // "Quercia d'Oro"), il flow handleFedergolfGaraSelected deve mostrare il
-    // messaggio diagnostico SENZA toccare storage o azzerare i campi.
-    // mergeFedergolfResponses non gestisce questo caso direttamente — il check
-    // failed1/failed2 avviene a livello di handler — ma ci assicuriamo che la
-    // risposta di errore non causi crash o stati incoerenti se passata comunque.
-    const failed = (msg) => ({
-      success: false,
-      iscritti: [],
-      totale_iscritti: 0,
-      ammessi: 0,
-      iscrizioni_aperte: false,
-      message: msg,
-    });
-
-    it('response1 con success=false → atleti/atlete vuoti, no crash', () => {
-      const result = mergeFedergolfResponses(
-        failed('Federgolf.it non risponde (timeout)'),
-        null,
-        'MASCHILE'
-      );
-      // mergeFedergolfResponses non vede `success`, ma non deve esplodere
-      // e deve restituire array vuoti.
+  describe('entrambe le gare non-ready', () => {
+    it('M+F entrambe open → atleti/atlete vuoti, 2 warnings', () => {
+      const result = mergeFedergolfResponses({
+        maschileResponse: open(),
+        femminileResponse: open(),
+      });
       expect(result.atleti).toEqual([]);
       expect(result.atlete).toEqual([]);
+      expect(result.warnings).toHaveLength(2);
     });
 
-    it('MISTA con response2 fallita → atleti caricati, atlete vuote', () => {
-      const result = mergeFedergolfResponses(
-        ok(['Tom']),
-        failed('timeout'),
-        'MISTA'
-      );
-      expect(result.atleti).toEqual(['Tom']);
+    it('M+F entrambe error → atleti/atlete vuoti, 2 warnings con message', () => {
+      const result = mergeFedergolfResponses({
+        maschileResponse: error('timeout M'),
+        femminileResponse: error('timeout F'),
+      });
+      expect(result.atleti).toEqual([]);
       expect(result.atlete).toEqual([]);
+      expect(result.warnings).toHaveLength(2);
+      expect(result.warnings.join(' ')).toContain('timeout M');
+      expect(result.warnings.join(' ')).toContain('timeout F');
+    });
+  });
+
+  describe('singoli', () => {
+    it('singolo M error → no crash, warning con messaggio', () => {
+      const result = mergeFedergolfResponses({
+        maschileResponse: error('Federgolf.it non risponde'),
+      });
+      expect(result.atleti).toEqual([]);
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0]).toContain('Federgolf.it non risponde');
+    });
+
+    it('singolo F open → atlete vuote, warning informativo', () => {
+      const result = mergeFedergolfResponses({
+        femminileResponse: open(),
+      });
+      expect(result.atlete).toEqual([]);
+      expect(result.warnings[0]).toContain('femminile');
+    });
+  });
+
+  describe('robustezza', () => {
+    it('nessun argomento → struttura vuota, no crash', () => {
+      const result = mergeFedergolfResponses();
+      expect(result.atleti).toEqual([]);
+      expect(result.atlete).toEqual([]);
+      expect(result.warnings).toEqual([]);
+    });
+
+    it('argomenti null → struttura vuota', () => {
+      const result = mergeFedergolfResponses({
+        maschileResponse: null,
+        femminileResponse: null,
+      });
+      expect(result.atleti).toEqual([]);
+      expect(result.atlete).toEqual([]);
+      expect(result.warnings).toEqual([]);
+    });
+
+    it('state sconosciuto → atleti vuoti + warning', () => {
+      const result = mergeFedergolfResponses({
+        maschileResponse: { state: 'something_else', iscritti: [] },
+      });
+      expect(result.atleti).toEqual([]);
+      expect(result.warnings).toHaveLength(1);
+    });
+
+    it('response ready ma iscritti undefined → array vuoto, no crash', () => {
+      const result = mergeFedergolfResponses({
+        maschileResponse: { state: 'ready' },
+      });
+      expect(result.atleti).toEqual([]);
+    });
+
+    it('arrays indipendenti: 50M+15F finiscono in slot distinti', () => {
+      const men = Array.from({ length: 50 }, (_, i) => `Uomo${i + 1}`);
+      const women = Array.from({ length: 15 }, (_, i) => `Donna${i + 1}`);
+      const result = mergeFedergolfResponses({
+        maschileResponse: ready(men),
+        femminileResponse: ready(women),
+      });
+      expect(result.atleti).toHaveLength(50);
+      expect(result.atlete).toHaveLength(15);
     });
   });
 });
