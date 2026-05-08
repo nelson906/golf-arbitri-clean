@@ -1154,3 +1154,90 @@ export class QuadrantiLogic {
         return tableHTML;
     }
 }
+
+/**
+ * Normalizza il titolo di una gara Federgolf per consentire il raggruppamento
+ * delle versioni MASCHILE-FEMMINILE della stessa gara.
+ *
+ * REGRESSIONE: la vecchia regex (con punteggiatura attorno alla keyword non
+ * gestita) faceva sì che, ad esempio, "TROFEO X - MASCHILE 2026" si
+ * normalizzasse a "TROFEO X -2026" mentre "TROFEO X FEMMINILE 2026" diventava
+ * "TROFEO X 2026". I due titoli risultavano diversi e il dropdown mostrava
+ * voci separate (M) e (F) invece dell'opzione combinata (M+F). Questa
+ * funzione riduce il titolo a soli caratteri alfanumerici minuscoli, dopo
+ * aver rimosso la parola-chiave di genere.
+ *
+ * @param {string} title - Titolo originale della gara
+ * @returns {string} Titolo normalizzato (lowercase, alfanumerico+spazi singoli)
+ */
+export function normalizeGaraTitle(title) {
+    if (!title) return '';
+    return String(title)
+        // 1. Rimuove la parola-chiave di genere ovunque appaia
+        .replace(/(MASCHILE|FEMMINILE)/gi, ' ')
+        // 2. Collassa qualunque sequenza di non-alfanumerici (spazi, dash,
+        //    parentesi, punteggiatura, accenti speciali) in uno spazio
+        .replace(/[^a-zA-Z0-9]+/g, ' ')
+        .trim()
+        .toLowerCase();
+}
+
+/**
+ * Combina le risposte AJAX di una o due gare Federgolf in arrays atleti/atlete
+ * pronti per essere salvati nello storage. Funzione pura (no DOM, no jQuery,
+ * no AJAX) così i test di regressione possono verificarla in isolamento.
+ *
+ * COMPORTAMENTO:
+ *  - MISTA (response2 != null): carica entrambi i generi. Aborta solo se
+ *    ENTRAMBE le gare hanno iscrizioni ancora aperte. Se solo una è aperta,
+ *    carica il genere chiuso e ritorna un warning per avvisare l'utente.
+ *    Questo è il fix per la regressione introdotta in fbddad9: il codice
+ *    precedente abortiva l'intero caricamento M+F anche se una sola delle
+ *    due gare aveva iscrizioni aperte.
+ *  - Singolo M/F (response2 == null): aborta se la gara è aperta.
+ *
+ * @param {Object} response1 - Prima gara (M o F a seconda di tipo)
+ * @param {Object|null} response2 - Seconda gara (donne, in MISTA), null se non MISTA
+ * @param {string} tipo - 'MASCHILE' | 'FEMMINILE' | 'MISTA'
+ * @returns {{atleti: string[], atlete: string[], abort: boolean, warning: string|null}}
+ */
+export function mergeFedergolfResponses(response1, response2, tipo) {
+    const aperte1 = !!(response1 && response1.iscrizioni_aperte);
+    const aperte2 = !!(response2 && response2.iscrizioni_aperte);
+    const isMista = !!response2;
+
+    // In MISTA aborta solo se TUTTE e due aperte. In singolo aborta se quella aperta.
+    const tutteAperte = isMista ? (aperte1 && aperte2) : aperte1;
+
+    if (tutteAperte) {
+        return {
+            atleti: [],
+            atlete: [],
+            abort: true,
+            warning: (response1 && response1.message) ||
+                     (response2 && response2.message) ||
+                     'Iscrizioni non ancora chiuse: nessun iscritto ammesso. Riprovare dopo la chiusura.'
+        };
+    }
+
+    let atleti = [];
+    let atlete = [];
+
+    if (tipo === 'FEMMINILE') {
+        atlete = aperte1 ? [] : ((response1 && response1.iscritti) || []);
+    } else {
+        atleti = aperte1 ? [] : ((response1 && response1.iscritti) || []);
+    }
+
+    if (response2) {
+        atlete = aperte2 ? [] : (response2.iscritti || []);
+    }
+
+    let warning = null;
+    if (isMista && (aperte1 || aperte2)) {
+        const genderAperto = aperte1 ? 'maschile' : 'femminile';
+        warning = `Iscrizioni gara ${genderAperto} non ancora chiuse: caricato solo l'altro genere.`;
+    }
+
+    return { atleti, atlete, abort: false, warning };
+}
