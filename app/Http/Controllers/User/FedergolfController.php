@@ -51,15 +51,52 @@ class FedergolfController extends Controller
     {
         $garaId = $request->input('gara_id');
 
-        $response = Http::asForm()->post(
-            'https://www.federgolf.it/wp-admin/admin-ajax.php',
-            [
-                'action' => 'competition-player-list',
-                'competition_id' => $garaId,
-                'page_number' => 1,
-                'page_size' => 250,
-            ]
-        );
+        // REGRESSIONE: senza User-Agent + timeout esplicito + try/catch, federgolf.it
+        // andava in cURL timeout 28 (30s) per gare con tanti partecipanti
+        // (es. "Quercia d'Oro"), e il 500 risultante mostrava solo un alert
+        // generico "Errore nel caricamento degli iscritti" senza diagnostica.
+        // loadAllCompetitions usa già questi header: allineiamo getIscritti.
+        try {
+            $response = Http::timeout(60)
+                ->connectTimeout(10)
+                ->asForm()
+                ->withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+                    'Accept' => 'application/json',
+                    'X-Requested-With' => 'XMLHttpRequest',
+                ])
+                ->post('https://www.federgolf.it/wp-admin/admin-ajax.php', [
+                    'action' => 'competition-player-list',
+                    'competition_id' => $garaId,
+                    'page_number' => 1,
+                    'page_size' => 250,
+                ]);
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            \Log::warning('Federgolf timeout/connect getIscritti', [
+                'gara_id' => $garaId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'iscritti' => [],
+                'totale_iscritti' => 0,
+                'ammessi' => 0,
+                'iscrizioni_aperte' => false,
+                'message' => 'Federgolf.it non risponde (timeout). Riprovare tra qualche secondo o controllare la connessione.',
+            ], 200);  // 200 + success=false, così il JS può mostrare il message senza finire nel ramo catch
+        }
+
+        if (! $response->successful()) {
+            return response()->json([
+                'success' => false,
+                'iscritti' => [],
+                'totale_iscritti' => 0,
+                'ammessi' => 0,
+                'iscrizioni_aperte' => false,
+                'message' => 'Federgolf.it ha risposto con errore HTTP '.$response->status().'. Riprovare più tardi.',
+            ], 200);
+        }
 
         $data = $response->json();
         $entries = $data['data']['processedData'] ?? [];
@@ -80,7 +117,8 @@ class FedergolfController extends Controller
 
             preg_match('/<span class="nome-giocatore">([^<]+)<\/span>/', $entry[1], $matches);
             if (! empty($matches[1])) {
-                $iscritti[] = trim($matches[1]);
+                // Decodifica entità HTML (es. &#039; → ' nei nomi tipo "D'Oro")
+                $iscritti[] = trim(html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
             }
         }
 

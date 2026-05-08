@@ -18,7 +18,7 @@ import {
   debounce
 } from './utils.js';
 
-import { QuadrantiLogic } from './quadranti-logic.js';
+import { QuadrantiLogic, mergeFedergolfResponses, normalizeGaraTitle } from './quadranti-logic.js';
 
 /**
  * Main Quadranti Application Class
@@ -533,15 +533,21 @@ populateFedergolfDropdown(gare) {
   const $dropdown = $('#federgolf-gare-select');
   $dropdown.empty().append('<option value="">-- Seleziona una gara --</option>');
 
-  // Raggruppa gare per nome base (senza MASCHILE/FEMMINILE)
+  // Raggruppa gare per nome base (senza MASCHILE/FEMMINILE).
+  // REGRESSIONE: usa normalizeGaraTitle per essere tollerante alla punteggiatura
+  // attorno alla parola-chiave di genere (es. "TROFEO X - MASCHILE 2026" e
+  // "TROFEO X FEMMINILE 2026" devono produrre la stessa chiave per essere
+  // raggruppati come [M+F] nel dropdown). Il `nome` mostrato all'utente resta
+  // quello "umano" della prima variante incontrata, per non stravolgere la UI.
   const gruppi = {};
   gare.forEach(gara => {
-    const nomeBase = gara.title.replace(/\s*(MASCHILE|FEMMINILE)\s*/gi, '').trim();
-    const chiave = `${nomeBase}_${gara.date}`;
+    const chiave = `${normalizeGaraTitle(gara.title)}_${gara.date}`;
+    // Versione human-friendly del nome (rimuove solo la parola-chiave + spazi)
+    const nomeUmano = gara.title.replace(/\s*(MASCHILE|FEMMINILE)\s*/gi, ' ').replace(/\s+/g, ' ').trim();
 
     if (!gruppi[chiave]) {
       gruppi[chiave] = {
-        nome: nomeBase,
+        nome: nomeUmano,
         data: gara.date, // già in formato dd/mm/yyyy
         maschile: null,
         femminile: null,
@@ -622,36 +628,41 @@ populateFedergolfDropdown(gare) {
         });
       }
 
-      // ── Iscrizioni non ancora chiuse? ───────────────────────────────────
-      // Il backend restituisce iscrizioni_aperte=true quando ci sono righe
-      // ma nessuna ha l'icona-ammesso. In quel caso NON dobbiamo toccare
-      // né lo storage né i campi #players/#proette: usciamo subito.
-      const aperte1 = !!(response1 && response1.iscrizioni_aperte);
-      const aperte2 = !!(response2 && response2.iscrizioni_aperte);
-
-      if (aperte1 || aperte2) {
-        const msg = (response1 && response1.message) ||
-                    (response2 && response2.message) ||
-                    'Iscrizioni non ancora chiuse: nessun iscritto ammesso. Riprovare dopo la chiusura.';
+      // ── Errore di rete / timeout federgolf.it ───────────────────────────
+      // Il controller restituisce {success:false, message:...} quando la chiamata
+      // a federgolf.it fallisce (es. cURL timeout 28 per gare con molti
+      // iscritti come "Quercia d'Oro"). In quel caso l'utente vede un alert
+      // diagnostico e il flow viene interrotto SENZA toccare lo storage.
+      const failed1 = response1 && response1.success === false;
+      const failed2 = response2 && response2.success === false;
+      if (failed1 || failed2) {
+        const msg = (failed1 && response1.message) ||
+                    (failed2 && response2.message) ||
+                    'Errore nel caricamento degli iscritti da Federgolf.it. Riprovare tra qualche secondo.';
         alert('⚠ ' + msg);
+        $dropdown.val('');
+        return;
+      }
+
+      // ── Combina le risposte (logica pura, testabile in isolamento). ──────
+      // REGRESSIONE FIX: in MISTA non abortire se UNA SOLA delle due gare ha
+      // iscrizioni aperte; carica il genere chiuso (e avvisa). Prima di questo
+      // fix, se solo le donne avevano iscrizioni ancora aperte, l'intera
+      // selezione M+F veniva annullata, obbligando l'utente a caricare solo M.
+      const merged = mergeFedergolfResponses(response1, response2, tipo);
+
+      if (merged.abort) {
+        alert('⚠ ' + merged.warning);
         // Ripristina la voce "Seleziona…" senza far ripartire il flusso.
         $dropdown.val('');
         return;
       }
 
-      // ── Costruisce gli array atleti/atlete ─────────────────────────────
-      let atleti = [];
-      let atlete = [];
-
-      if (tipo === 'FEMMINILE') {
-        atlete = response1.iscritti || [];
-      } else {
-        atleti = response1.iscritti || [];
+      if (merged.warning) {
+        alert('⚠ ' + merged.warning);
       }
 
-      if (response2) {
-        atlete = response2.iscritti || [];
-      }
+      const { atleti, atlete } = merged;
 
       // Anche con icona-ammesso presente potrebbero esserci 0 nomi
       // (es. gara con sole donne caricata come maschile): avvisa e non

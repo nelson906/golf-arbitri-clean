@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { QuadrantiLogic } from './quadranti-logic.js';
+import { QuadrantiLogic, mergeFedergolfResponses, normalizeGaraTitle } from './quadranti-logic.js';
 import { DEFAULT_CONFIG } from './config.js';
 
 // QuadrantiLogic richiede jQuery solo per metodi DOM (initializeDatepicker, fetchEphemerisData).
@@ -306,5 +306,273 @@ describe('REGRESSIONE — bilanciamento Early ≈ Late (|diff| ≤ 1)', () => {
     const all = groups.flatMap(g => g.players);
     expect(all.length).toBe(102);
     expect(new Set(all).size).toBe(102);
+  });
+});
+
+// ─── REGRESSIONE: caricamento Federgolf MISTA (M+F insieme) ──────────────────
+// Bug introdotto in fbddad9 ("Migliorie quadranti"): selezionando una gara MISTA
+// dal dropdown Federgolf, se anche UNA SOLA delle due gare (M o F) aveva
+// iscrizioni ancora aperte (totale>0 e ammessi=0), l'intero caricamento veniva
+// abortito con `if (aperte1 || aperte2) return`. Il comportamento atteso (e
+// presente fino a 8c0e632) è: in MISTA carica entrambi i generi quando entrambi
+// sono chiusi; se una sola è aperta, carica l'altra; abortisci solo se entrambe
+// sono aperte.
+describe('REGRESSIONE — mergeFedergolfResponses (caricamento MISTA M+F)', () => {
+  // Helper: risposta "iscrizioni chiuse, gara con iscritti ammessi"
+  const ok = (iscritti) => ({
+    success: true,
+    iscritti,
+    totale_iscritti: iscritti.length,
+    ammessi: iscritti.length,
+    iscrizioni_aperte: false,
+    message: null,
+  });
+
+  // Helper: risposta "iscrizioni ancora aperte" (ci sono righe ma nessuno ammesso)
+  const aperta = () => ({
+    success: true,
+    iscritti: [],
+    totale_iscritti: 5,
+    ammessi: 0,
+    iscrizioni_aperte: true,
+    message: 'Iscrizioni non ancora chiuse: nessun iscritto ammesso. Riprovare dopo la chiusura.',
+  });
+
+  describe('MISTA: response2 presente (M+F insieme)', () => {
+    it('[BUG ORIGINALE] entrambe chiuse → carica M e F insieme senza abortire', () => {
+      const r1 = ok(['Tom', 'Bob']);          // gara maschile
+      const r2 = ok(['Alice', 'Beth']);       // gara femminile
+      const result = mergeFedergolfResponses(r1, r2, 'MISTA');
+
+      expect(result.abort).toBe(false);
+      expect(result.atleti).toEqual(['Tom', 'Bob']);
+      expect(result.atlete).toEqual(['Alice', 'Beth']);
+      expect(result.warning).toBeNull();
+    });
+
+    it('[REGRESSIONE] solo F aperta → NON abortire, carica M con warning', () => {
+      // Era IL BUG: aperte2=true ⇒ if(aperte1||aperte2) return → l'utente non
+      // poteva caricare gli uomini neppure quando le loro iscrizioni erano già
+      // chiuse, perché il check OR azzerava tutto il flow.
+      const r1 = ok(['Tom', 'Bob']);
+      const r2 = aperta();
+      const result = mergeFedergolfResponses(r1, r2, 'MISTA');
+
+      expect(result.abort).toBe(false);
+      expect(result.atleti).toEqual(['Tom', 'Bob']);
+      expect(result.atlete).toEqual([]);
+      expect(result.warning).toContain('femminile');
+    });
+
+    it('[REGRESSIONE] solo M aperta → NON abortire, carica F con warning', () => {
+      const r1 = aperta();
+      const r2 = ok(['Alice', 'Beth']);
+      const result = mergeFedergolfResponses(r1, r2, 'MISTA');
+
+      expect(result.abort).toBe(false);
+      expect(result.atleti).toEqual([]);
+      expect(result.atlete).toEqual(['Alice', 'Beth']);
+      expect(result.warning).toContain('maschile');
+    });
+
+    it('entrambe aperte → abort con messaggio', () => {
+      const r1 = aperta();
+      const r2 = aperta();
+      const result = mergeFedergolfResponses(r1, r2, 'MISTA');
+
+      expect(result.abort).toBe(true);
+      expect(result.atleti).toEqual([]);
+      expect(result.atlete).toEqual([]);
+      expect(result.warning).toBeTruthy();
+    });
+
+    it('iscritti vuoti su entrambe (ma chiuse) → no abort, atleti/atlete vuoti', () => {
+      // Es. gara passata senza partecipanti: lascia che il chiamante gestisca
+      // l'avviso "nessun nominativo trovato" successivamente.
+      const r1 = ok([]);
+      const r2 = ok([]);
+      const result = mergeFedergolfResponses(r1, r2, 'MISTA');
+
+      expect(result.abort).toBe(false);
+      expect(result.atleti).toEqual([]);
+      expect(result.atlete).toEqual([]);
+      expect(result.warning).toBeNull();
+    });
+
+    it('arrays sono indipendenti: 50M+15F caricati in atleti/atlete distinti', () => {
+      const men = Array.from({ length: 50 }, (_, i) => `Uomo${i + 1}`);
+      const women = Array.from({ length: 15 }, (_, i) => `Donna${i + 1}`);
+      const result = mergeFedergolfResponses(ok(men), ok(women), 'MISTA');
+
+      expect(result.atleti).toHaveLength(50);
+      expect(result.atlete).toHaveLength(15);
+      expect(result.atleti[0]).toBe('Uomo1');
+      expect(result.atlete[0]).toBe('Donna1');
+    });
+  });
+
+  describe('Singolo MASCHILE: response2 == null', () => {
+    it('chiusa con iscritti → carica atleti, atlete vuote', () => {
+      const result = mergeFedergolfResponses(ok(['Tom']), null, 'MASCHILE');
+      expect(result.abort).toBe(false);
+      expect(result.atleti).toEqual(['Tom']);
+      expect(result.atlete).toEqual([]);
+    });
+
+    it('aperta → abort (singolo non ha fallback su altro genere)', () => {
+      const result = mergeFedergolfResponses(aperta(), null, 'MASCHILE');
+      expect(result.abort).toBe(true);
+      expect(result.warning).toBeTruthy();
+    });
+  });
+
+  describe('Singolo FEMMINILE: response2 == null', () => {
+    it('chiusa con iscritte → carica atlete, atleti vuoti', () => {
+      const result = mergeFedergolfResponses(ok(['Alice']), null, 'FEMMINILE');
+      expect(result.abort).toBe(false);
+      expect(result.atleti).toEqual([]);
+      expect(result.atlete).toEqual(['Alice']);
+    });
+
+    it('aperta → abort', () => {
+      const result = mergeFedergolfResponses(aperta(), null, 'FEMMINILE');
+      expect(result.abort).toBe(true);
+    });
+  });
+
+  describe('robustezza: input mancanti', () => {
+    it('response1 senza iscritti → trattato come array vuoto', () => {
+      const r1 = { success: true, iscrizioni_aperte: false };
+      const result = mergeFedergolfResponses(r1, null, 'MASCHILE');
+      expect(result.abort).toBe(false);
+      expect(result.atleti).toEqual([]);
+    });
+
+    it('response2 senza iscritti → atlete vuote ma no abort', () => {
+      const r1 = ok(['Tom']);
+      const r2 = { success: true, iscrizioni_aperte: false };
+      const result = mergeFedergolfResponses(r1, r2, 'MISTA');
+      expect(result.abort).toBe(false);
+      expect(result.atleti).toEqual(['Tom']);
+      expect(result.atlete).toEqual([]);
+    });
+  });
+
+  describe('REGRESSIONE — gestione success:false (timeout federgolf.it)', () => {
+    // Quando il controller backend restituisce {success:false, message:...}
+    // (es. cURL timeout 28, federgolf.it non risponde per gare grosse come
+    // "Quercia d'Oro"), il flow handleFedergolfGaraSelected deve mostrare il
+    // messaggio diagnostico SENZA toccare storage o azzerare i campi.
+    // mergeFedergolfResponses non gestisce questo caso direttamente — il check
+    // failed1/failed2 avviene a livello di handler — ma ci assicuriamo che la
+    // risposta di errore non causi crash o stati incoerenti se passata comunque.
+    const failed = (msg) => ({
+      success: false,
+      iscritti: [],
+      totale_iscritti: 0,
+      ammessi: 0,
+      iscrizioni_aperte: false,
+      message: msg,
+    });
+
+    it('response1 con success=false → atleti/atlete vuoti, no crash', () => {
+      const result = mergeFedergolfResponses(
+        failed('Federgolf.it non risponde (timeout)'),
+        null,
+        'MASCHILE'
+      );
+      // mergeFedergolfResponses non vede `success`, ma non deve esplodere
+      // e deve restituire array vuoti.
+      expect(result.atleti).toEqual([]);
+      expect(result.atlete).toEqual([]);
+    });
+
+    it('MISTA con response2 fallita → atleti caricati, atlete vuote', () => {
+      const result = mergeFedergolfResponses(
+        ok(['Tom']),
+        failed('timeout'),
+        'MISTA'
+      );
+      expect(result.atleti).toEqual(['Tom']);
+      expect(result.atlete).toEqual([]);
+    });
+  });
+});
+
+// ─── REGRESSIONE: normalizeGaraTitle (raggruppamento dropdown M+F) ───────────
+// Bug: la regex /\s*(MASCHILE|FEMMINILE)\s*/gi non gestiva la punteggiatura
+// attorno alla parola-chiave. Conseguenza: gare M ed F dello stesso evento con
+// punteggiatura asimmetrica (es. trattino prima di MASCHILE ma assente prima di
+// FEMMINILE) producevano chiavi diverse e nel dropdown apparivano come voci
+// [M] e [F] separate, senza l'opzione combinata [M+F]. L'utente non poteva
+// quindi caricare i due generi insieme. Questi test garantiscono che le forme
+// più comuni di titolo federgolf.it producano la stessa chiave normalizzata.
+describe('REGRESSIONE — normalizeGaraTitle (raggruppamento dropdown M+F)', () => {
+  it('coppie MASCHILE/FEMMINILE simmetriche → stessa chiave', () => {
+    expect(normalizeGaraTitle('TROFEO XYZ MASCHILE 2026'))
+      .toBe(normalizeGaraTitle('TROFEO XYZ FEMMINILE 2026'));
+  });
+
+  it('[BUG] trattino prima di MASCHILE ma non FEMMINILE → ora stessa chiave', () => {
+    // Vecchia regex: "TROFEO X -2026" vs "TROFEO X 2026" (diverse)
+    // Nuova: entrambe → "trofeo x 2026"
+    expect(normalizeGaraTitle('TROFEO X - MASCHILE 2026'))
+      .toBe(normalizeGaraTitle('TROFEO X FEMMINILE 2026'));
+  });
+
+  it('[BUG] separatori asimmetrici (slash, due punti, virgola) → stessa chiave', () => {
+    expect(normalizeGaraTitle('GARA: MASCHILE'))
+      .toBe(normalizeGaraTitle('GARA, FEMMINILE'));
+  });
+
+  it('[BUG] trattino lungo (em-dash) attorno a MASCHILE → stessa chiave di FEMMINILE plain', () => {
+    expect(normalizeGaraTitle('CAMPIONATO – MASCHILE – 2026'))
+      .toBe(normalizeGaraTitle('CAMPIONATO FEMMINILE 2026'));
+  });
+
+  it('case-insensitive: maschile/MASCHILE/Maschile → stessa chiave', () => {
+    expect(normalizeGaraTitle('Trofeo Maschile 2026'))
+      .toBe(normalizeGaraTitle('TROFEO FEMMINILE 2026'));
+  });
+
+  it('whitespace multipli/diversi → collassati in spazi singoli', () => {
+    expect(normalizeGaraTitle('GARA  MASCHILE   2026'))
+      .toBe(normalizeGaraTitle('GARA\tFEMMINILE\n2026'));
+  });
+
+  it('input vuoto/null/undefined → stringa vuota, non crash', () => {
+    expect(normalizeGaraTitle('')).toBe('');
+    expect(normalizeGaraTitle(null)).toBe('');
+    expect(normalizeGaraTitle(undefined)).toBe('');
+  });
+
+  it('non confonde gare diverse: titoli con prefissi differenti restano distinti', () => {
+    expect(normalizeGaraTitle('GARA REGIONALE U18 MASCHILE'))
+      .not.toBe(normalizeGaraTitle('GARA REGIONALE U16 FEMMINILE'));
+  });
+
+  it('non confonde gare con stesso prefisso ma evento diverso', () => {
+    expect(normalizeGaraTitle('TROFEO PRIMAVERA MASCHILE'))
+      .not.toBe(normalizeGaraTitle('TROFEO ESTATE FEMMINILE'));
+  });
+
+  it('simula raggruppamento dropdown: chiave = nome + data', () => {
+    const garaM = { title: 'CAMPIONATO ITALIANO - MASCHILE', date: '15/06/2026' };
+    const garaF = { title: 'CAMPIONATO ITALIANO FEMMINILE',   date: '15/06/2026' };
+
+    const chiaveM = `${normalizeGaraTitle(garaM.title)}_${garaM.date}`;
+    const chiaveF = `${normalizeGaraTitle(garaF.title)}_${garaF.date}`;
+
+    expect(chiaveM).toBe(chiaveF); // ⇒ il dropdown produrrà l'opzione [M+F]
+  });
+
+  it('date diverse → chiavi diverse anche se titoli identici (eventi distinti)', () => {
+    const garaA = { title: 'TROFEO XYZ MASCHILE', date: '15/06/2026' };
+    const garaB = { title: 'TROFEO XYZ FEMMINILE', date: '22/06/2026' };
+
+    const chiaveA = `${normalizeGaraTitle(garaA.title)}_${garaA.date}`;
+    const chiaveB = `${normalizeGaraTitle(garaB.title)}_${garaB.date}`;
+
+    expect(chiaveA).not.toBe(chiaveB);
   });
 });
