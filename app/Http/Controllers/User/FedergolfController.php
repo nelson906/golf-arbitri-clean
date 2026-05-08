@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class FedergolfController extends Controller
 {
@@ -46,16 +49,45 @@ class FedergolfController extends Controller
         return response()->json(['success' => true, 'gare' => $gare]);
     }
 
-    // Carica iscritti di una gara specifica
+    /**
+     * Carica iscritti di una gara specifica.
+     *
+     * Restituisce un payload con state enum esplicito per eliminare
+     * combinazioni di flag (success/iscrizioni_aperte/iscritti.length) che
+     * il frontend doveva ricomporre. Stati possibili:
+     *
+     *   - 'ready': gara chiusa con iscritti ammessi → usa $iscritti
+     *   - 'open':  ci sono iscritti ma nessuno ancora ammesso (lista non chiusa)
+     *   - 'empty': gara senza iscritti
+     *   - 'error': rete/timeout/HTTP error (federgolf.it non risponde)
+     *
+     * Cache 60s per gara_id: federgolf.it può essere lenta o rate-limit;
+     * cachare il dato per un minuto riduce di ~10× le chiamate durante una
+     * sessione di lavoro normale.
+     */
     public function getIscritti(Request $request)
     {
         $garaId = $request->input('gara_id');
 
-        // REGRESSIONE: senza User-Agent + timeout esplicito + try/catch, federgolf.it
-        // andava in cURL timeout 28 (30s) per gare con tanti partecipanti
-        // (es. "Quercia d'Oro"), e il 500 risultante mostrava solo un alert
-        // generico "Errore nel caricamento degli iscritti" senza diagnostica.
-        // loadAllCompetitions usa già questi header: allineiamo getIscritti.
+        $cacheKey = "federgolf.iscritti.{$garaId}";
+        $payload = Cache::remember($cacheKey, 60, fn () => $this->fetchIscritti($garaId));
+
+        // Errori di rete: NON cachiamo per 60s, sennò "blocchiamo" l'utente.
+        // Cache::remember non sa il nostro state, quindi rileggiamo e invalidiamo.
+        if (($payload['state'] ?? null) === 'error') {
+            Cache::forget($cacheKey);
+        }
+
+        return response()->json($payload);
+    }
+
+    /**
+     * Esegue la chiamata HTTP a federgolf.it e classifica il risultato in
+     * uno dei 4 state. Restituisce un array semplice (non Response) così
+     * Cache::remember può serializzarlo.
+     */
+    protected function fetchIscritti(string|int|null $garaId): array
+    {
         try {
             $response = Http::timeout(60)
                 ->connectTimeout(10)
@@ -71,31 +103,25 @@ class FedergolfController extends Controller
                     'page_number' => 1,
                     'page_size' => 250,
                 ]);
-        } catch (\Illuminate\Http\Client\ConnectionException $e) {
-            \Log::warning('Federgolf timeout/connect getIscritti', [
+        } catch (ConnectionException $e) {
+            Log::warning('Federgolf timeout/connect getIscritti', [
                 'gara_id' => $garaId,
                 'error' => $e->getMessage(),
             ]);
 
-            return response()->json([
-                'success' => false,
+            return [
+                'state' => 'error',
                 'iscritti' => [],
-                'totale_iscritti' => 0,
-                'ammessi' => 0,
-                'iscrizioni_aperte' => false,
-                'message' => 'Federgolf.it non risponde (timeout). Riprovare tra qualche secondo o controllare la connessione.',
-            ], 200);  // 200 + success=false, così il JS può mostrare il message senza finire nel ramo catch
+                'message' => 'Federgolf.it non risponde (timeout). Riprovare tra qualche secondo.',
+            ];
         }
 
         if (! $response->successful()) {
-            return response()->json([
-                'success' => false,
+            return [
+                'state' => 'error',
                 'iscritti' => [],
-                'totale_iscritti' => 0,
-                'ammessi' => 0,
-                'iscrizioni_aperte' => false,
-                'message' => 'Federgolf.it ha risposto con errore HTTP '.$response->status().'. Riprovare più tardi.',
-            ], 200);
+                'message' => 'Federgolf.it ha risposto con errore HTTP '.$response->status().'.',
+            ];
         }
 
         $data = $response->json();
@@ -103,7 +129,7 @@ class FedergolfController extends Controller
 
         $iscritti = [];
         $totale = count($entries);
-        $ammessi = 0; // righe che hanno l'icona-ammesso (lista chiusa)
+        $ammessi = 0;
 
         foreach ($entries as $entry) {
             // Solo iscritti ammessi: l'ammissione è segnalata da `icona-ammesso`
@@ -112,31 +138,34 @@ class FedergolfController extends Controller
             if (! isset($entry[8]) || strpos($entry[8], 'icona-ammesso') === false) {
                 continue;
             }
-
             $ammessi++;
-
-            preg_match('/<span class="nome-giocatore">([^<]+)<\/span>/', $entry[1], $matches);
-            if (! empty($matches[1])) {
+            if (preg_match('/<span class="nome-giocatore">([^<]+)<\/span>/', $entry[1], $matches)) {
                 // Decodifica entità HTML (es. &#039; → ' nei nomi tipo "D'Oro")
                 $iscritti[] = trim(html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
             }
         }
 
-        // Se ci sono righe ma nessun ammesso → iscrizioni non ancora chiuse.
-        // Avvisiamo il client perché NON deve sovrascrivere i campi nominativi
-        // né azzerare i contatori a video.
-        $iscrizioniAperte = ($totale > 0 && $ammessi === 0);
+        // Classifica lo stato in base ai contatori
+        if ($totale === 0) {
+            return [
+                'state' => 'empty',
+                'iscritti' => [],
+                'message' => 'Gara senza iscritti.',
+            ];
+        }
+        if ($ammessi === 0) {
+            return [
+                'state' => 'open',
+                'iscritti' => [],
+                'message' => 'Iscrizioni non ancora chiuse: nessun iscritto ammesso. Riprovare dopo la chiusura.',
+            ];
+        }
 
-        return response()->json([
-            'success'            => true,
-            'iscritti'           => $iscritti,
-            'totale_iscritti'    => $totale,
-            'ammessi'            => $ammessi,
-            'iscrizioni_aperte'  => $iscrizioniAperte,
-            'message'            => $iscrizioniAperte
-                ? 'Iscrizioni non ancora chiuse: nessun iscritto ammesso. Riprovare dopo la chiusura.'
-                : null,
-        ]);
+        return [
+            'state' => 'ready',
+            'iscritti' => $iscritti,
+            'message' => null,
+        ];
     }
 
     public function loadAllCompetitions(Request $request)

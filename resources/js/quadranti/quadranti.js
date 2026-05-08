@@ -28,6 +28,11 @@ class QuadrantiApp {
     this.config = this.loadConfiguration();
     this.logic = new QuadrantiLogic(this.config);
     this.isInitialized = false;
+    // Cache in-memory delle gare Federgolf caricate dal dropdown.
+    // Le option mostrano un indice intero come value; selezionata l'option
+    // l'handler legge questo array per recuperare ID maschile/femminile.
+    // Niente più "value=id1,id2" magico.
+    this.federgolfGare = [];
   }
 
   /**
@@ -290,9 +295,8 @@ $('#first_table').on('click', '.qd-remove', (e) => this.handleRemovePlayer(e));
 
   /**
    * Rimuove un singolo iscritto dall'array atleti/atlete e ridisegna lo schema.
-   * In modalità Nominativo (è l'unica in cui viene mostrato il pulsante ×).
-   * Lo schema viene ricalcolato da zero con N-1 giocatori: i flight, gli orari
-   * e i quadranti si riassestano in automatico tramite generateTable().
+   * Visibile solo in modalità Nominativo. Dopo la rimozione il flow passa per
+   * applyPlayers() — stesso state update di Excel/Federgolf, niente duplicazione.
    */
   handleRemovePlayer(e) {
     e.preventDefault();
@@ -301,8 +305,10 @@ $('#first_table').on('click', '.qd-remove', (e) => this.handleRemovePlayer(e));
     const $btn = $(e.currentTarget);
     const cat  = $btn.data('cat');                  // 'M' | 'F'
     const idx  = parseInt($btn.data('idx'), 10);
-    const key  = cat === 'F' ? 'atlete' : 'atleti';
-    const list = (storage.get(key, []) || []).slice();
+
+    const atleti = (storage.get('atleti', []) || []).slice();
+    const atlete = (storage.get('atlete', []) || []).slice();
+    const list = cat === 'F' ? atlete : atleti;
 
     if (!Number.isInteger(idx) || idx < 0 || idx >= list.length) {
       console.warn('handleRemovePlayer: indice non valido', { cat, idx, listLength: list.length });
@@ -310,27 +316,56 @@ $('#first_table').on('click', '.qd-remove', (e) => this.handleRemovePlayer(e));
     }
 
     const removedName = list[idx];
-    if (!confirm(`Rimuovere "${removedName}" dall'elenco?\nLo schema verrà ridisegnato con ${list.length - 1} ${cat === 'F' ? 'atlete' : 'atleti'}.`)) {
+    const remaining = list.length - 1;
+    const labelGen = cat === 'F' ? 'atlete' : 'atleti';
+    if (!confirm(`Rimuovere "${removedName}" dall'elenco?\nLo schema verrà ridisegnato con ${remaining} ${labelGen}.`)) {
       return;
     }
 
     list.splice(idx, 1);
-    storage.set(key, list);
+    this.applyPlayers({ atleti, atlete });
+  }
 
-    if (cat === 'F') {
-      storage.set('storedProetteCount', list.length);
-      storage.set('proette', list.length);
-      this.config.proette = list.length;
-      $('#proette').val(list.length);
+  /**
+   * Single source of truth per "ho un nuovo set atleti/atlete da applicare".
+   *
+   * Sostituisce la sequenza di 13 righe che era duplicata in handleFileUpload,
+   * handleFedergolfGaraSelected e (parzialmente) handleRemovePlayer. Tutti i
+   * loader passano per qui: storage, config, DOM e tabella sono aggiornati in
+   * un unico posto.
+   *
+   * mode='nominativo' (default): atleti/atlete sono nomi, salva in storage.
+   * mode='numerico': pulisce i nomi dallo storage; il render userà [1..N].
+   *
+   * @param {{atleti?: string[], atlete?: string[], mode?: 'nominativo'|'numerico'}} args
+   */
+  applyPlayers({ atleti = [], atlete = [], mode = 'nominativo' } = {}) {
+    if (mode === 'nominativo') {
+      storage.set('atleti', atleti);
+      storage.set('atlete', atlete);
+      this.config.players = atleti.length;
+      this.config.proette = atlete.length;
+      this.config.nominativo = 'On';
     } else {
-      storage.set('storedPlayersCount', list.length);
-      storage.set('players', list.length);
-      this.config.players = list.length;
-      $('#players').val(list.length);
+      storage.remove('atleti');
+      storage.remove('atlete');
+      this.config.nominativo = 'Off';
+      // players/proette restano com'erano (l'utente li edita manualmente)
     }
 
-    this.logic.updateConfig(this.config);
+    // Persist scalari in storage
+    storage.set('players', this.config.players);
+    storage.set('proette', this.config.proette);
+    storage.set('nominativo', this.config.nominativo);
+
+    // DOM sync
+    $('#players').val(this.config.players);
+    $('#proette').val(this.config.proette);
+
+    // Refresh UI dipendente
+    this.updateNominativoButtons();
     this.toggleCompactOption();
+    this.logic.updateConfig(this.config);
     this.generateTable();
   }
 
@@ -361,35 +396,17 @@ $('#first_table').on('click', '.qd-remove', (e) => this.handleRemovePlayer(e));
         }
       });
 
-      // Response is already JSON from Laravel
-      const data = response;
+      // Controller restituisce un array [atlete, atleti]
+      const atlete = (response && response[0]) || [];
+      const atleti = (response && response[1]) || [];
 
-      if (data && data[0] && data[1]) {
-        const atlete = data[0]; // Già un array, non serve Object.values
-        const atleti = data[1]; // Già un array, non serve Object.values
-
-        storage.set('atlete', atlete);
-        storage.set('atleti', atleti);
-        storage.set('storedPlayersCount', atleti.length);
-        storage.set('storedProetteCount', atlete.length);
-
-        // Aggiorna anche i contatori nell'interfaccia
-        $('#players').val(atleti.length);
-        $('#proette').val(atlete.length);
-        this.config.players = atleti.length;
-        this.config.proette = atlete.length;
-        storage.set('players', atleti.length);
-        storage.set('proette', atlete.length);
-
-        this.config.nominativo = 'On';
-        storage.set('nominativo', 'On');
-
-        this.updateNominativoButtons();
-        this.logic.updateConfig(this.config);
-        this.generateTable();
-
-        alert(`File caricato con successo!\n${atleti.length} atleti\n${atlete.length} atlete`);
+      if (atleti.length === 0 && atlete.length === 0) {
+        alert('⚠ Nessun nominativo trovato nel file Excel.');
+        return;
       }
+
+      this.applyPlayers({ atleti, atlete });
+      alert(`File caricato con successo!\n${atleti.length} atleti\n${atlete.length} atlete`);
     } catch (error) {
       console.error('Error uploading file:', error);
       if (error.responseJSON && error.responseJSON.message) {
@@ -527,70 +544,55 @@ async handleLoadFedergolfGare() {
 }
 
 /**
- * Popola dropdown con gare trovate
+ * Popola il dropdown con le gare e memorizza la struttura dati corrispondente
+ * in `this.federgolfGare`. L'option ha come `value` l'indice nell'array — il
+ * suo handler legge `this.federgolfGare[idx]` per gli ID effettivi.
+ *
+ * Niente più value="id1,id2" + split('','). La struttura dati esplicita
+ * elimina la stringa magica e rende il flow di selezione lineare.
+ *
+ * Raggruppamento M+F: chiave = normalizeGaraTitle(title) + date. La
+ * normalizzazione riduce il titolo a soli caratteri alfanumerici minuscoli,
+ * tollerando punteggiatura asimmetrica attorno a MASCHILE/FEMMINILE.
  */
 populateFedergolfDropdown(gare) {
   const $dropdown = $('#federgolf-gare-select');
   $dropdown.empty().append('<option value="">-- Seleziona una gara --</option>');
 
-  // Raggruppa gare per nome base (senza MASCHILE/FEMMINILE).
-  // REGRESSIONE: usa normalizeGaraTitle per essere tollerante alla punteggiatura
-  // attorno alla parola-chiave di genere (es. "TROFEO X - MASCHILE 2026" e
-  // "TROFEO X FEMMINILE 2026" devono produrre la stessa chiave per essere
-  // raggruppati come [M+F] nel dropdown). Il `nome` mostrato all'utente resta
-  // quello "umano" della prima variante incontrata, per non stravolgere la UI.
+  // 1. Raggruppa per chiave normalizzata
   const gruppi = {};
   gare.forEach(gara => {
     const chiave = `${normalizeGaraTitle(gara.title)}_${gara.date}`;
-    // Versione human-friendly del nome (rimuove solo la parola-chiave + spazi)
-    const nomeUmano = gara.title.replace(/\s*(MASCHILE|FEMMINILE)\s*/gi, ' ').replace(/\s+/g, ' ').trim();
-
     if (!gruppi[chiave]) {
       gruppi[chiave] = {
-        nome: nomeUmano,
-        data: gara.date, // già in formato dd/mm/yyyy
+        nome: gara.title.replace(/\s*(MASCHILE|FEMMINILE)\s*/gi, ' ').replace(/\s+/g, ' ').trim(),
+        data: gara.date,
         maschile: null,
         femminile: null,
-        club: gara.club
+        club: gara.club,
       };
     }
-
-    if (gara.tipo === 'MASCHILE') {
-      gruppi[chiave].maschile = gara.id;
-    } else if (gara.tipo === 'FEMMINILE') {
+    if (gara.tipo === 'FEMMINILE') {
       gruppi[chiave].femminile = gara.id;
     } else {
+      // MASCHILE o MISTA → entrambi vanno nello slot maschile
       gruppi[chiave].maschile = gara.id;
     }
   });
 
-  // Crea opzioni raggruppate
-  Object.values(gruppi).forEach(gruppo => {
-    let label = `${gruppo.nome} - ${gruppo.data}`;
-    if (gruppo.club) {
-      label += ` (${gruppo.club})`;
-    }
+  // 2. Costruisci la struttura dati esposta all'handler di selezione
+  this.federgolfGare = Object.values(gruppi)
+    .filter(g => g.maschile || g.femminile)
+    .map(g => {
+      const tag = (g.maschile && g.femminile) ? '[M+F]' :
+                  (g.maschile ? '[M]' : '[F]');
+      const label = `${g.nome} - ${g.data}${g.club ? ` (${g.club})` : ''} ${tag}`;
+      return { label, maschile: g.maschile, femminile: g.femminile };
+    });
 
-    let value = '';
-    let tipo = '';
-
-    if (gruppo.maschile && gruppo.femminile) {
-      label += ' [M+F]';
-      value = `${gruppo.maschile},${gruppo.femminile}`;
-      tipo = 'MISTA';
-    } else if (gruppo.maschile) {
-      label += ' [M]';
-      value = gruppo.maschile;
-      tipo = 'MASCHILE';
-    } else if (gruppo.femminile) {
-      label += ' [F]';
-      value = gruppo.femminile;
-      tipo = 'FEMMINILE';
-    }
-
-    if (value) {
-      $dropdown.append(`<option value="${value}" data-tipo="${tipo}">${label}</option>`);
-    }
+  // 3. Popola le option (value = indice nell'array)
+  this.federgolfGare.forEach((g, idx) => {
+    $dropdown.append(`<option value="${idx}">${g.label}</option>`);
   });
 
   $('#federgolf-container').show();
@@ -598,107 +600,62 @@ populateFedergolfDropdown(gare) {
 }
 
   /**
-   * Carica iscritti dalla gara selezionata
+   * Carica gli iscritti per la gara selezionata.
+   *
+   * Flow lineare:
+   *   1. Recupera struttura della gara da `this.federgolfGare[idx]`
+   *      (esplicita: maschile, femminile possono essere null o ID).
+   *   2. Fetch in parallelo (Promise.all) per maschile e femminile presenti.
+   *   3. Combina con mergeFedergolfResponses (state-based, niente flag).
+   *   4. Mostra warnings (se ci sono) ma NON aborta solo per quelli.
+   *   5. Se nessun nome è disponibile → notifica e non tocca lo storage.
+   *   6. Altrimenti → applyPlayers (single state update).
    */
   async handleFedergolfGaraSelected() {
     const $dropdown = $('#federgolf-gare-select');
-    const value = $dropdown.val();
-    if (!value) return;
+    const idx = parseInt($dropdown.val(), 10);
+    const gara = this.federgolfGare[idx];
+    if (!gara) return;
 
-    const ids = value.split(',');
-    const tipo = $dropdown.find(':selected').data('tipo');
+    const fetchIscritti = (garaId) => $.ajax({
+      url: ($('meta[name="base-url"]').attr('content') || '') + '/user/federgolf/iscritti',
+      type: 'POST',
+      data: { gara_id: garaId },
+      headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+    });
 
     try {
-      // Carica prima gara (maschile o mista)
-      const response1 = await $.ajax({
-        url: ($('meta[name="base-url"]').attr('content') || '') + '/user/federgolf/iscritti',
-        type: 'POST',
-        data: { gara_id: ids[0] },
-        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
+      // Parallelizziamo: per MISTA eravamo seriali (sommando i tempi),
+      // ora richiediamo M e F insieme.
+      const [maschileResponse, femminileResponse] = await Promise.all([
+        gara.maschile  ? fetchIscritti(gara.maschile)  : Promise.resolve(null),
+        gara.femminile ? fetchIscritti(gara.femminile) : Promise.resolve(null),
+      ]);
+
+      const { atleti, atlete, warnings } = mergeFedergolfResponses({
+        maschileResponse,
+        femminileResponse,
       });
 
-      // Se ci sono due gare (M+F), carica anche la seconda
-      let response2 = null;
-      if (ids.length > 1) {
-        response2 = await $.ajax({
-          url: ($('meta[name="base-url"]').attr('content') || '') + '/user/federgolf/iscritti',
-          type: 'POST',
-          data: { gara_id: ids[1] },
-          headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') }
-        });
+      if (warnings.length) {
+        alert('⚠ ' + warnings.join('\n'));
       }
 
-      // ── Errore di rete / timeout federgolf.it ───────────────────────────
-      // Il controller restituisce {success:false, message:...} quando la chiamata
-      // a federgolf.it fallisce (es. cURL timeout 28 per gare con molti
-      // iscritti come "Quercia d'Oro"). In quel caso l'utente vede un alert
-      // diagnostico e il flow viene interrotto SENZA toccare lo storage.
-      const failed1 = response1 && response1.success === false;
-      const failed2 = response2 && response2.success === false;
-      if (failed1 || failed2) {
-        const msg = (failed1 && response1.message) ||
-                    (failed2 && response2.message) ||
-                    'Errore nel caricamento degli iscritti da Federgolf.it. Riprovare tra qualche secondo.';
-        alert('⚠ ' + msg);
-        $dropdown.val('');
-        return;
-      }
-
-      // ── Combina le risposte (logica pura, testabile in isolamento). ──────
-      // REGRESSIONE FIX: in MISTA non abortire se UNA SOLA delle due gare ha
-      // iscrizioni aperte; carica il genere chiuso (e avvisa). Prima di questo
-      // fix, se solo le donne avevano iscrizioni ancora aperte, l'intera
-      // selezione M+F veniva annullata, obbligando l'utente a caricare solo M.
-      const merged = mergeFedergolfResponses(response1, response2, tipo);
-
-      if (merged.abort) {
-        alert('⚠ ' + merged.warning);
-        // Ripristina la voce "Seleziona…" senza far ripartire il flusso.
-        $dropdown.val('');
-        return;
-      }
-
-      if (merged.warning) {
-        alert('⚠ ' + merged.warning);
-      }
-
-      const { atleti, atlete } = merged;
-
-      // Anche con icona-ammesso presente potrebbero esserci 0 nomi
-      // (es. gara con sole donne caricata come maschile): avvisa e non
-      // sovrascrivere lo stato corrente.
       if (atleti.length === 0 && atlete.length === 0) {
-        alert('⚠ Nessun nominativo trovato per la gara selezionata. ' +
-              'Controllare il sito federgolf.it.');
+        // Nessun dato: NON tocchiamo storage/contatori.
+        if (warnings.length === 0) {
+          alert('⚠ Nessun nominativo trovato per la gara selezionata.');
+        }
         $dropdown.val('');
         return;
       }
 
-      // Salva e aggiorna come fa l'upload Excel
-      storage.set('atlete', atlete);
-      storage.set('atleti', atleti);
-      storage.set('storedPlayersCount', atleti.length);
-      storage.set('storedProetteCount', atlete.length);
-
-      $('#players').val(atleti.length);
-      $('#proette').val(atlete.length);
-      this.config.players = atleti.length;
-      this.config.proette = atlete.length;
-      storage.set('players', atleti.length);
-      storage.set('proette', atlete.length);
-
-      this.config.nominativo = 'On';
-      storage.set('nominativo', 'On');
-
-      this.updateNominativoButtons();
-      this.logic.updateConfig(this.config);
-      this.generateTable();
-
+      this.applyPlayers({ atleti, atlete });
       alert(`Iscritti caricati!\n${atleti.length} atleti\n${atlete.length} atlete`);
 
     } catch (error) {
       console.error('Errore caricamento iscritti:', error);
-      alert('Errore nel caricamento degli iscritti');
+      alert('⚠ Errore di rete nel caricamento degli iscritti.');
     }
   }
 
