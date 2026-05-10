@@ -7,6 +7,7 @@ use App\Enums\UserType;
 use App\Models\Tournament;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Fluent builder per costruire la lista destinatari di una notifica torneo.
@@ -23,7 +24,7 @@ use Illuminate\Support\Collection;
  *       ->build();
  *
  *   $toList  = $recipients['to'];    // array<{email, name}>
- *   $ccArray = $recipients['cc'];    // array<email => name> (formato Laravel Mail cc)
+ *   $ccArray = $recipients['cc'];    // array<{email, name}> (formato canonico Laravel)
  */
 class NotificationRecipientBuilder
 {
@@ -198,7 +199,7 @@ class NotificationRecipientBuilder
      *
      * @return array{
      *   to: array<array{email: string, name: string}>,
-     *   cc: array<string, string>,
+     *   cc: array<array{email: string, name: string}>,
      *   allNames: string[],
      *   total: int,
      *   isEmpty: bool
@@ -206,12 +207,11 @@ class NotificationRecipientBuilder
      */
     public function build(): array
     {
-        // Formato CC per Laravel Mail: [email => name]
-        $ccArray = [];
-        foreach ($this->cc as $recipient) {
-            $ccArray[$recipient['email']] = $recipient['name'];
-        }
-
+        // Formato CC canonico Laravel: array<{email, name}> — stesso del TO.
+        // NOTA: il vecchio formato [email => name] funzionava solo con
+        // Mail::raw + closure (Symfony Message::cc accetta entrambi). Con
+        // Mail::to()->cc()->send(Mailable) il PendingMail::parseAddresses()
+        // itera i VALUE come email e fallisce RFC 2822 sul name.
         $allNames = array_merge(
             array_column($this->to, 'name'),
             array_column($this->cc, 'name')
@@ -219,7 +219,7 @@ class NotificationRecipientBuilder
 
         return [
             'to'       => $this->to,
-            'cc'       => $ccArray,
+            'cc'       => $this->cc,
             'allNames' => $allNames,
             'total'    => count($this->to) + count($this->cc),
             'isEmpty'  => empty($this->to) && empty($this->cc),
@@ -230,16 +230,45 @@ class NotificationRecipientBuilder
 
     private function addTo(string $email, string $name): void
     {
-        if ($email && ! $this->alreadyAdded($this->to, $email)) {
+        if (! $this->isValidEmail($email, $name)) {
+            return;
+        }
+        if (! $this->alreadyAdded($this->to, $email)) {
             $this->to[] = ['email' => $email, 'name' => $name];
         }
     }
 
     private function addCc(string $email, string $name): void
     {
-        if ($email && ! $this->alreadyAdded($this->cc, $email)) {
+        if (! $this->isValidEmail($email, $name)) {
+            return;
+        }
+        if (! $this->alreadyAdded($this->cc, $email)) {
             $this->cc[] = ['email' => $email, 'name' => $name];
         }
+    }
+
+    /**
+     * Valida che la stringa sia un'email RFC-compliant.
+     * Skippa silenziosamente con log warning gli indirizzi malformati
+     * (es. dati corrotti dove un nome finisce nella colonna email).
+     * Evita che un singolo dato cattivo blocchi l'intera notifica.
+     */
+    private function isValidEmail(?string $email, ?string $name): bool
+    {
+        if (empty($email)) {
+            return false;
+        }
+
+        if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            Log::warning('NotificationRecipientBuilder: indirizzo email malformato saltato', [
+                'email' => $email,
+                'name'  => $name,
+            ]);
+            return false;
+        }
+
+        return true;
     }
 
     /**
