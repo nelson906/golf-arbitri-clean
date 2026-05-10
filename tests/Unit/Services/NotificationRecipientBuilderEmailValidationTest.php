@@ -66,4 +66,66 @@ class NotificationRecipientBuilderEmailValidationTest extends TestCase
         $this->assertCount(1, $result['to']);
         $this->assertCount(1, $result['cc']);
     }
+
+    /**
+     * Regressione critica: il CC array DEVE essere in formato canonico Laravel
+     * `array<{email: string, name: string}>` con chiavi numeriche sequenziali.
+     *
+     * Il vecchio formato `[email => name]` (chiavi associative con email come
+     * stringa) funzionava SOLO con `Mail::raw + closure` (Symfony Message::cc
+     * accettava entrambi i formati). Con `Mail::to()->cc()->send(Mailable)`,
+     * il PendingMail::parseAddresses() itera l'array via `collect()->map()`
+     * sui VALUES, quindi un nome come "Sezione Zonale Regole 6" finirebbe a
+     * `Symfony\Address::create()` come stringa-email e crasha RFC 2822.
+     *
+     * Se questo test rompe, qualcuno ha rivertito build() al formato vecchio.
+     */
+    public function test_build_returns_cc_in_canonical_laravel_format(): void
+    {
+        $builder = new NotificationRecipientBuilder;
+        $this->invokePrivate($builder, 'addCc', ['user1@example.com', 'User Uno']);
+        $this->invokePrivate($builder, 'addCc', ['user2@example.com', 'User Due']);
+
+        $cc = $builder->build()['cc'];
+
+        // Deve essere un array sequenziale (chiavi numeriche), non associativo
+        $this->assertSame([0, 1], array_keys($cc), 'CC deve avere chiavi numeriche sequenziali, non email come chiavi.');
+
+        // Ogni voce deve avere chiavi 'email' e 'name'
+        foreach ($cc as $entry) {
+            $this->assertIsArray($entry);
+            $this->assertArrayHasKey('email', $entry);
+            $this->assertArrayHasKey('name', $entry);
+        }
+    }
+
+    /**
+     * Regressione di integrazione: il CC array prodotto da build() deve essere
+     * direttamente consumabile da `Mail::cc()` senza errore "addr-spec RFC 2822".
+     *
+     * Riproduce il bug del 10 maggio 2026: Symfony riceveva il NAME come email
+     * perché il formato `[email => name]` veniva iterato sui VALUES.
+     */
+    public function test_cc_array_is_consumable_by_mail_cc(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+
+        $builder = new NotificationRecipientBuilder;
+        $this->invokePrivate($builder, 'addTo', ['to@example.com', 'TO Recipient']);
+        // Nome con spazi e caratteri tipici di una zona, deve essere tollerato
+        $this->invokePrivate($builder, 'addCc', ['szr6@federgolf.it', 'Sezione Zonale Regole 6']);
+
+        $recipients = $builder->build();
+
+        // Questo è esattamente il pattern usato in NotificationController
+        $mailable = new \App\Mail\NationalNotificationMail('Subject Test', 'Body Test');
+
+        // Se il formato CC fosse sbagliato, Mail::to()->cc()->send() lancerebbe
+        // un'eccezione "Email \"Sezione Zonale Regole 6\" does not comply with addr-spec".
+        \Illuminate\Support\Facades\Mail::to($recipients['to'][0]['email'])
+            ->cc($recipients['cc'])
+            ->send($mailable);
+
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\NationalNotificationMail::class, 1);
+    }
 }

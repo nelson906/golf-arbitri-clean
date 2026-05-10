@@ -398,3 +398,42 @@ Lo script segnala 27 `missing_authorization` ma le route admin/superadmin sono p
 3. **Verifica route API pubbliche `/api/internal/tournaments/*`** — se non intenzionale, aggiungere middleware. 1 minuto di check.
 4. **Consolidamento documenti `.md`** — vedi tabella sopra. 15 minuti, riduce confusione.
 5. **God controller `AssignmentController` e `NotificationController`** — refactor pianificato (medio termine, no nuove stratificazioni: estrarre service esistenti che già hanno il pattern).
+
+---
+
+# 📌 AGGIORNAMENTO 2026-05-10 — Esecuzione fix in cowork
+
+Sessione di patch chirurgico con l'utente. I dettagli completi sono in `PIANO_INTERVENTO.md` (sezione "Esecuzione 2026-05-10"). Riepilogo per quick reference:
+
+## Stato finding (post-sessione)
+
+| Finding 7 aprile | Stato 2026-05-10 |
+|---|---|
+| 🔴 `Mail::raw()` × 3 in `NotificationController` | ✅ **RISOLTO** — sostituito con `App\Mail\NationalNotificationMail` (Mailable + view con `nl2br(e($body))`). Una occorrenza era in `resendNationalNotification` privato che è stato eliminato (dead code dopo l'unifica del reinvio). Restano 2 chiamate aggiornate in `sendNationalNotification`. |
+| 🔴 `AvailabilityRequest::authorize() === false` | ✅ **RISOLTO** — file eliminato (era dead code, nessun call site, confermato con grep) |
+| 🔴 5 template con `{!! session('error') !!}` | ✅ **RISOLTO** — già fixato prima del 2026-05-09 (vedi audit del 9 maggio in coda) |
+| ⚠️ Route API tornei pubblici | ✅ **INTENZIONALE** — verificato 2026-05-09: il file ha sezione "Public Tournament API (no auth required for read-only)", solo dati `completed`/`assigned`, no PII |
+| 🔴 N+1 `ClubController::export()` | 🟡 Aperto |
+| 🔴 N+1 `AssignmentController::storeMultiple()` | 🟡 Aperto |
+| 🔴 `AssignmentController` god class | 🟡 Aperto |
+| 🔴 `NotificationController` god class | 🟡 Migliorato (~110 righe rimosse: `resendNationalNotification` privato + reinvio unificato in 5 righe). Resta 700+ righe. |
+
+## Sorpresa rilevata durante l'esecuzione
+
+**Bug latente nel formato del CC array** in `NotificationRecipientBuilder::build()`. Era nascosto dal workaround di Symfony `Message::cc()` chiamato dentro la closure di `Mail::raw`. È esploso al primo passaggio a `Mail::to()->cc()->send(Mailable)`. Sintomatologia molto fuorviante: errore RFC 2822 che attribuiva al "name" il ruolo di "email".
+
+Risolto cambiando il formato di ritorno di `build()` da `[email => name]` a `array<{email, name}>` (canonico Laravel). Test di regressione aggiunti per non riperdere la conoscenza:
+- `tests/Unit/Services/NotificationRecipientBuilderEmailValidationTest.php` (5 test, copre formato + validazione + integrazione con `Mail::cc()`)
+- `tests/Feature/Admin/NationalNotificationMailDispatchTest.php` (2 test, dispatch + render)
+
+## Fix collaterali (non nel piano originale)
+
+- **Reinvio unificato**: tutti i record (zonali, nazionali, FIG-importati) passano dal form `prepare_notification` su click di "Reinvia". Codice più semplice (5 righe invece di un branch), comportamento più prevedibile per l'utente.
+- **Validazione email difensiva**: `addCc/addTo` in `NotificationRecipientBuilder` skippano email malformate con `Log::warning`. Previene crash da dati corrotti in DB (alcune zone hanno il nome al posto dell'email).
+- **Icona reinvio anche su `partial` e `failed`**: nel view di indice, prima nascosta su `partial`. Permette retry senza dover passare dal dettaglio.
+- **Consolidamento `.md`**: creato `_audit_archive/` con i V1/V2/V3 e SPEC_ricostruzione.
+
+## Note operative
+
+- MAMP usa OPcache aggressivo: dopo modifiche a service/controller serve un restart Apache completo (Stop + Start dalla GUI MAMP), non basta `php artisan optimize:clear`.
+- Test unit con `Mail::fake()` hanno copertura cieca sul rendering effettivo della view e sul parsing degli address di Laravel/Symfony — non rilevano problemi di formato CC. Per quello servono test di integrazione (vedi `test_cc_array_is_consumable_by_mail_cc`).

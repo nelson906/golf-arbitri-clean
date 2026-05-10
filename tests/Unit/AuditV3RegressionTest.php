@@ -515,7 +515,8 @@ class AuditV3RegressionTest extends TestCase
 
         $result = (new NotificationRecipientBuilder)->addNationalAdmins()->build();
 
-        $emails = array_keys($result['cc']);
+        // Formato CC canonico Laravel (post-2026-05-10): array<{email, name}>
+        $emails = array_column($result['cc'], 'email');
         $this->assertContains('natadmin1@test.com', $emails,
             'DUP-03: addNationalAdmins() deve trovare il primo NationalAdmin.');
         $this->assertContains('natadmin2@test.com', $emails,
@@ -537,7 +538,8 @@ class AuditV3RegressionTest extends TestCase
 
         $result = (new NotificationRecipientBuilder)->addZoneAdmins($tournament)->build();
 
-        $emails = array_keys($result['cc']);
+        // Formato CC canonico Laravel (post-2026-05-10): array<{email, name}>
+        $emails = array_column($result['cc'], 'email');
         $this->assertContains('zone1admin@test.com', $emails,
             'DUP-03: addZoneAdmins() deve includere l\'admin della zona del torneo.');
         $this->assertNotContains('zone2admin@test.com', $emails,
