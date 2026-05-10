@@ -331,126 +331,18 @@ class NotificationController extends Controller
     }
 
     /**
-     * Reinvia notifica
+     * Reinvia notifica.
+     *
+     * Comportamento unificato per tutte le notifiche (zonali, nazionali, importate FIG):
+     * il pulsante "Reinvia" reindirizza sempre al form di preparazione
+     * (admin.notifications.prepare_notification) così che l'admin possa rivedere
+     * destinatari, assegnazioni e contenuti prima del nuovo invio.
      */
     public function resend(TournamentNotification $notification)
     {
-        try {
-            // Verifica se è una notifica nazionale (salvata nei metadata)
-            $metadata = is_string($notification->metadata)
-                ? json_decode($notification->metadata, true)
-                : ($notification->metadata ?? []);
-
-            $isNational = $metadata['is_national'] ?? false;
-
-            if ($isNational) {
-                // Reinvio per gare nazionali: usa i destinatari salvati nei metadata
-                return $this->resendNationalNotification($notification, $metadata);
-            }
-
-            // Reinvio standard per gare zonali
-            $this->transactionService->sendWithTransaction($notification, true);
-
-            return redirect()->route('admin.tournament-notifications.index')
-                ->with('success', 'Notifiche reinviate con successo');
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Errore nel reinvio delle notifiche: '.$e->getMessage());
-        }
-    }
-
-    /**
-     * Reinvia notifica per gare nazionali
-     */
-    private function resendNationalNotification(TournamentNotification $notification, array $metadata)
-    {
-        $tournament = $notification->tournament;
-        $notificationType = $metadata['type'] ?? 'crc_referees';
-        $isCrcNotification = $notificationType === 'crc_referees';
-
-        // Prepara destinatari tramite NotificationRecipientBuilder
-        $builtRecipients = (new \App\Services\NotificationRecipientBuilder())
-            ->addCampionati();
-
-        if ($isCrcNotification) {
-            $builtRecipients
-                ->addZone($tournament)
-                ->addZoneAdmins($tournament)
-                ->addAssignedReferees($tournament);
-        } else {
-            $builtRecipients
-                ->addCrc()
-                ->addNationalAdmins()
-                ->addObservers($tournament);
-        }
-
-        $recipients        = $builtRecipients->build();
-        $toRecipients      = $recipients['to'];
-        $ccArray           = $recipients['cc'];
-        $allRecipientNames = $recipients['allNames'];
-        $totalRecipients   = $recipients['total'];
-
-        $subject = $metadata['subject'] ?? 'Designazione Arbitri - '.$tournament->name;
-        $message = $metadata['message'] ?? '';
-
-        $successCount = 0;
-        $errorCount = 0;
-
-        // Invia email
-        foreach ($toRecipients as $recipient) {
-            try {
-                \Illuminate\Support\Facades\Mail::raw($message, function ($mail) use ($recipient, $subject, $ccArray) {
-                    $mail->to($recipient['email'], $recipient['name'])
-                        ->subject($subject);
-
-                    if (! empty($ccArray)) {
-                        $mail->cc($ccArray);
-                    }
-                });
-                $successCount++;
-            } catch (\Exception $e) {
-                Log::error('Errore reinvio email nazionale', [
-                    'recipient' => $recipient['email'],
-                    'error' => $e->getMessage(),
-                ]);
-                $errorCount++;
-            }
-        }
-
-        // Lista nomi e totale destinatari già calcolati dal builder
-        $refereeList = implode(', ', $allRecipientNames);
-
-        // Aggiorna notifica
-        // FIX C-2: 'total_recipients' non è una colonna DB — va salvato nel JSON 'details'.
-        $currentDetails = is_array($notification->details) ? $notification->details : [];
-        $notification->update([
-            'status' => $errorCount === 0 ? 'sent' : 'partial',
-            'sent_at' => now(),
-            'sent_by' => auth()->id(),
-            'referee_list' => $refereeList,
-            'details' => array_merge($currentDetails, [
-                'total_recipients' => $totalRecipients,
-                'success_count' => $successCount,
-                'error_count' => $errorCount,
-            ]),
-            'metadata' => array_merge($metadata, [
-                'success_count' => $successCount,
-                'error_count' => $errorCount,
-                'resent_at' => now()->toIso8601String(),
-                'resent_by' => auth()->user()->name,
-            ]),
-        ]);
-
-        $typeLabel = $isCrcNotification ? 'arbitri designati' : 'osservatori';
-        $totalSent = $successCount + count($ccArray);
-
-        if ($errorCount === 0) {
-            return redirect()->route('admin.tournament-notifications.index')
-                ->with('success', "Notifica {$typeLabel} reinviata con successo a {$totalSent} destinatari.");
-        } else {
-            return redirect()->route('admin.tournament-notifications.index')
-                ->with('warning', "Notifica {$typeLabel} reinviata con {$errorCount} errori su {$totalSent} destinatari.");
-        }
+        return redirect()
+            ->route('admin.tournaments.show-assignment-form', $notification->tournament)
+            ->with('info', 'Rivedi destinatari, assegnazioni e messaggio prima del reinvio.');
     }
 
     /**
