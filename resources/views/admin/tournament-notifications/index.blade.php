@@ -169,8 +169,8 @@
                                         </svg>
                                     </a>
 
-                                    {{-- Reinvia (solo se già inviata) --}}
-                                    @if($primaryNotification->status === 'sent' || $primaryNotification->status === 'failed')
+                                    {{-- Reinvia (anche su parziale/fallita per consentire retry) --}}
+                                    @if(in_array($primaryNotification->status, ['sent', 'failed', 'partial'], true))
                                         <form action="{{ route('admin.tournament-notifications.resend', $primaryNotification) }}"
                                               method="POST" class="inline">
                                             @csrf

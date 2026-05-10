@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\AssignmentRole;
 use App\Enums\UserType;
 use App\Http\Controllers\Controller;
+use App\Mail\NationalNotificationMail;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Services\NotificationDocumentService;
@@ -14,6 +15,7 @@ use App\Traits\HasZoneVisibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * Gestione convocazioni collettive e lettere circoli (solo DOCX)
@@ -635,14 +637,11 @@ class NotificationController extends Controller
             // Invia email con CC
             foreach ($toRecipients as $recipient) {
                 try {
-                    \Illuminate\Support\Facades\Mail::raw($validated['message'], function ($mail) use ($recipient, $validated, $ccArray) {
-                        $mail->to($recipient['email'], $recipient['name'])
-                            ->subject($validated['subject']);
-
-                        if (! empty($ccArray)) {
-                            $mail->cc($ccArray);
-                        }
-                    });
+                    $mailer = Mail::to($recipient['email']);
+                    if (! empty($ccArray)) {
+                        $mailer->cc($ccArray);
+                    }
+                    $mailer->send(new NationalNotificationMail($validated['subject'], $validated['message']));
                     $successCount++;
                 } catch (\Exception $e) {
                     Log::error('Errore invio email', [
@@ -654,18 +653,16 @@ class NotificationController extends Controller
             }
 
             // Se non ci sono TO ma solo CC, usa il primo CC come TO
+            // Formato $ccArray: array<{email, name}>
             if (empty($toRecipients) && ! empty($ccArray)) {
-                $firstEmail  = (string) array_key_first($ccArray);
-                $firstName   = $ccArray[$firstEmail];
-                $remainingCc = array_slice($ccArray, 1, preserve_keys: true);
+                $first       = $ccArray[0];
+                $remainingCc = array_slice($ccArray, 1);
                 try {
-                    \Illuminate\Support\Facades\Mail::raw($validated['message'], function ($mail) use ($firstEmail, $firstName, $validated, $remainingCc) {
-                        $mail->to($firstEmail, $firstName)
-                            ->subject($validated['subject']);
-                        if (! empty($remainingCc)) {
-                            $mail->cc($remainingCc);
-                        }
-                    });
+                    $mailer = Mail::to($first['email']);
+                    if (! empty($remainingCc)) {
+                        $mailer->cc($remainingCc);
+                    }
+                    $mailer->send(new NationalNotificationMail($validated['subject'], $validated['message']));
                     $successCount++;
                 } catch (\Exception $e) {
                     Log::error('Errore invio email (solo CC)', ['error' => $e->getMessage()]);
