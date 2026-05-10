@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
 /**
  * Fluent builder per costruire la lista destinatari di una notifica torneo.
  *
- * Elimina la duplicazione tra sendNationalNotification() e resendNationalNotification()
+ * Centralizza la costruzione dei destinatari per sendNationalNotification()
  * in NotificationController.
  *
  * Uso:

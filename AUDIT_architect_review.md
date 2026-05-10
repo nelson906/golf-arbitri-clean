@@ -325,3 +325,76 @@ Tutti i form POST/PUT/DELETE usano `@csrf`. Le route API v1 che usano `api` midd
 ---
 
 *Report generato tramite analisi statica + lettura diretta del codice — non sostituisce i test di integrazione.*
+
+---
+
+# 📌 AGGIORNAMENTO 2026-05-09 — Verifica delta + nota sulla stratificazione documentale
+
+Verifica eseguita 1 mese dopo, applicando lo stesso script `analyze_laravel.py` usato per il progetto Lupi Grigi (rilettura completa: 67 route, 9 modelli, 48 anomalie / 34 critiche). Risultato: **niente è stato fixato dal 7 aprile**, e si sono accumulati altri due god controller non segnalati ad aprile.
+
+## Stato dei finding del 7 aprile
+
+| Finding | Stato 2026-05-09 |
+|---|---|
+| 🔴 `AssignmentController` god class (860 righe) | **INVARIATO** (oggi 861 righe) |
+| 🔴 `NotificationController` god class (847 righe) | **INVARIATO** (oggi 847 righe) |
+| 🔴 `Mail::raw()` nelle 3 occorrenze del controller (rg 402, 746, 770) | **INVARIATO** — codice identico |
+| 🔴 `AvailabilityRequest::authorize()` restituisce `false` | da verificare in locale |
+| 🔴 5 template con `{!! session('error') !!}` | non più trovato dal grep — possibile **risolto** già (verifica) |
+| 🔴 N+1 in `ClubController::export()` | da verificare in locale |
+| 🔴 N+1 in `AssignmentController::storeMultiple()` | da verificare in locale |
+| ⚠️ Route API tornei pubblici in `routes/api/internal.php` | da verificare se intenzionale |
+
+## God controller emersi dalla verifica di oggi (NON segnalati ad aprile)
+
+| Controller | Righe | Note |
+|---|---|---|
+| `Admin/CareerHistoryController` | 676 | 4° controller più grande del progetto |
+| `User/AvailabilityController` | 605 | gestione disponibilità arbitri |
+| `SuperAdmin/ArubaToolsController` | 603 | dashboard sysadmin (giustificato? = strumenti + pagine + diagnostica in unico file) |
+
+## Pattern XSS in view — verifica nuova
+
+Esaminate tutte le `{!! ... !!}` nel `resources/views/`:
+- ✅ Pattern corretto **ben applicato**: `nl2br(e(...))` per testi e `json_encode(...)` per chart data (Statistics, Communications)
+- ⚠️ `aruba-admin/dashboard.blade.php:106` — HTML hardcoded condizionale, niente user input → SAFE
+- ⚠️ `aruba-admin/phpinfo.blade.php:71` — `{!! phpinfo() !!}` in pagina admin-only → SAFE ma in produzione phpinfo è infosec-leak (paths, env)
+- Il guestbook-style XSS visto su lupi-grigi NON è presente qui — disciplina di escape buona
+
+## Stratificazione documentale (analogia con Lupi Grigi)
+
+Nella root del progetto ci sono **10 documenti `.md` accumulati**:
+
+| File | Data | Stato consigliato |
+|---|---|---|
+| `README.md` | apr 2026 | TIENI |
+| `AUDIT_architect_review.md` | apr 2026 | TIENI (questo, aggiornato) |
+| `AUDIT_report.md` | apr 2026 | archivia |
+| `AUDIT_report_v2.md` | apr 2026 | archivia |
+| `AUDIT_report_v3.md` | apr 2026 | archivia |
+| `AUDIT_notifications_v1.md` | apr 2026 | da valutare (specifico, forse ancora utile) |
+| `dead_code_report.md` | apr 2026 | TIENI (verificalo prossima sessione, come fatto per lupi-grigi) |
+| `DeepTest_Report.md` | apr 2026 | TIENI (output strumento dedicato) |
+| `PIANO_INTERVENTO.md` | apr 2026 | da valutare in funzione dello stato di esecuzione |
+| `SPEC_ricostruzione.md` | apr 2026 | archivia se la ricostruzione non è più in piano |
+
+**Suggerimento (non eseguito oggi):** quando vorrai, applica la stessa procedura usata per Lupi Grigi: cartella `_audit_archive/` con i V1/V2/V3 e SPEC, mantenendo in root solo i 4-5 documenti vivi (vedi sezione "Documentazione tecnica complementare" in `OPERATIONS.md` di Lupi Grigi).
+
+## Distribuzione anomalie con verità sui falsi positivi
+
+Lo script segnala 27 `missing_authorization` ma le route admin/superadmin sono protette via middleware di gruppo (`['auth', 'admin_or_superadmin']` / `['auth', 'super_admin']`). Numeri reali:
+
+| Tipo | N° tool | Reali stimati |
+|---|---|---|
+| `missing_authorization` | 27 | ~3-5 (route API pubbliche `/api/internal/tournaments/*`) |
+| `db_in_controller` | 13 | smell architetturale, non urgente |
+| `missing_validation` | 7 | da verificare endpoint per endpoint |
+| `n_plus_1` | 1 | da verificare con `\DB::listen` in locale |
+
+## Top 5 azioni proposte (per priorità beneficio/sforzo)
+
+1. **`Mail::raw()` nelle 3 occorrenze di `NotificationController`** — sostituire con `Mailable` dedicato. Beneficio: sblocca testabilità (`Mail::fake()`), pattern coerente col resto. Sforzo: 1-2 sessioni.
+2. **Verifica `AvailabilityRequest::authorize() === false`** — se è davvero così, blocca silenziosamente tutte le disponibilità arbitri. 5 minuti per verificare in locale.
+3. **Verifica route API pubbliche `/api/internal/tournaments/*`** — se non intenzionale, aggiungere middleware. 1 minuto di check.
+4. **Consolidamento documenti `.md`** — vedi tabella sopra. 15 minuti, riduce confusione.
+5. **God controller `AssignmentController` e `NotificationController`** — refactor pianificato (medio termine, no nuove stratificazioni: estrarre service esistenti che già hanno il pattern).
