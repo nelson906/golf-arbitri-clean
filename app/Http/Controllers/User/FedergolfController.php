@@ -132,10 +132,11 @@ class FedergolfController extends Controller
         $ammessi = 0;
 
         foreach ($entries as $entry) {
-            // Solo iscritti ammessi: l'ammissione è segnalata da `icona-ammesso`
-            // nella colonna stato (l'ultima). Finché le iscrizioni non sono
-            // chiuse, nessun iscritto ha questa icona → 0 ammessi.
-            if (! isset($entry[8]) || strpos($entry[8], 'icona-ammesso') === false) {
+            // Solo iscritti ammessi o con wildcard: l'ammissione è segnalata da `icona-ammesso`
+            // o `icona-wildcard` nella colonna stato (l'ultima).
+            // Finché le iscrizioni non sono chiuse, nessun iscritto ha questa icona → 0 ammessi.
+            $isAmmesso = isset($entry[8]) && (strpos($entry[8], 'icona-ammesso') !== false || strpos($entry[8], 'icona-wildcard') !== false);
+            if (!$isAmmesso) {
                 continue;
             }
             $ammessi++;
