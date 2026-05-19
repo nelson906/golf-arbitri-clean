@@ -89,6 +89,9 @@ class QuadrantiApp {
     $('#gara_NT').val(this.config.garaNT);
     $('#players').val(this.config.players);
     $('#proette').val(this.config.proette);
+    // Campi qualificati post-taglio (visibili solo nel giro finale)
+    $('#players_cut').val(this.config.playersCut || this.config.players);
+    $('#proette_cut').val(this.config.proetteCut || this.config.proette);
     $('#players_x_flight').val(this.config.playersPerFlight);
     $('#giornata').val(this.config.giornata);
     $('#round').val(this.config.round);
@@ -106,8 +109,92 @@ class QuadrantiApp {
     // Show/hide nominativo buttons
     this.updateNominativoButtons();
 
+    // Show/hide campi taglio (visibili solo quando giornata=finale)
+    this.toggleFinalCutFields();
+
     // Update title based on round
     this.updateTableTitle();
+  }
+
+  /**
+   * Mostra/nasconde i campi del taglio (qualificati uomini/donne) in base alla
+   * giornata selezionata. Visibili solo per giornata='finale'.
+   *
+   * Quando si entra in 'finale', auto-popola i campi cut leggendo la tabella
+   * FIG basata sugli iscritti correnti (players/proette). L'utente può poi
+   * modificare per pari merito; le modifiche saranno preservate finché resta
+   * sul giro finale. Cambiando giornata e tornando indietro, il default viene
+   * ricalcolato (in linea con il principio "default = tabella, override = pari
+   * merito espliciti").
+   */
+  toggleFinalCutFields() {
+    if (this.config.giornata === ROUND_TYPES.FINAL) {
+      $('.finale-only').show();
+      // Auto-popola dal lookup FIG basato sugli iscritti correnti.
+      // L'evento si scatena ogni volta che si entra in 'finale' (cambiando
+      // giornata o cambiando players/proette mentre giornata=finale).
+      this.applyFigCutFormula('M');
+      this.applyFigCutFormula('F');
+    } else {
+      $('.finale-only').hide();
+    }
+  }
+
+  /**
+   * Applica la tabella FIG (allegato regolamento) per il calcolo dei
+   * qualificati al terzo giro.
+   *
+   * Tabella maschile: ammessi al 3° giro = primi 54 + pari merito al 54° posto,
+   * o secondo tabella se iscritti < 67.
+   * Tabella femminile: ammessi al 3° giro = prime 27 + pari merito al 27° posto,
+   * o secondo tabella se iscritte < 33.
+   *
+   * Lookup hardcoded: la formula matematica esatta non è univoca, quindi usiamo
+   * una mappa diretta. Per N > soglia, ritorna 54 (M) o 27 (F).
+   *
+   * @param {'M'|'F'} cat - Categoria da ricalcolare
+   */
+  applyFigCutFormula(cat) {
+    // Tabella maschile FIG (iscritti → ammessi). N >= 67 → 54.
+    const TABELLA_M = {
+      8: 7, 9: 8, 10: 8, 11: 9, 12: 10, 13: 11, 14: 12, 15: 12,
+      16: 13, 17: 14, 18: 15, 19: 16, 20: 16, 21: 17, 22: 18, 23: 19,
+      24: 20, 25: 20, 26: 21, 27: 22, 28: 23, 29: 24, 30: 24, 31: 25,
+      32: 26, 33: 27, 34: 28, 35: 28, 36: 29, 37: 30, 38: 31, 39: 32,
+      40: 32, 41: 33, 42: 34, 43: 35, 44: 36, 45: 36, 46: 37, 47: 38,
+      48: 39, 49: 40, 50: 40, 51: 41, 52: 42, 53: 43, 54: 44, 55: 44,
+      56: 45, 57: 46, 58: 47, 59: 48, 60: 48, 61: 49, 62: 50, 63: 51,
+      64: 52, 65: 52, 66: 53,
+    };
+    // Tabella femminile FIG (iscritte → ammesse). N >= 33 → 27.
+    const TABELLA_F = {
+      8: 7, 9: 8, 10: 8, 11: 9, 12: 10, 13: 11, 14: 12, 15: 12,
+      16: 13, 17: 14, 18: 15, 19: 16, 20: 16, 21: 17, 22: 18, 23: 19,
+      24: 20, 25: 20, 26: 21, 27: 22, 28: 23, 29: 24, 30: 24, 31: 25,
+      32: 26,
+    };
+
+    if (cat === 'M') {
+      const reg = parseInt(this.config.players) || 0;
+      let cut;
+      if (reg <= 0) cut = 0;
+      else if (reg >= 67) cut = 54;
+      else if (reg < 8) cut = reg; // sotto la soglia tabella → tutti passano
+      else cut = TABELLA_M[reg];
+      this.config.playersCut = cut;
+      storage.set('playersCut', cut);
+      $('#players_cut').val(cut);
+    } else {
+      const reg = parseInt(this.config.proette) || 0;
+      let cut;
+      if (reg <= 0) cut = 0;
+      else if (reg >= 33) cut = 27;
+      else if (reg < 8) cut = reg;
+      else cut = TABELLA_F[reg];
+      this.config.proetteCut = cut;
+      storage.set('proetteCut', cut);
+      $('#proette_cut').val(cut);
+    }
   }
 
   /**
@@ -124,8 +211,8 @@ class QuadrantiApp {
     const handleFormChange = debounce(() => this.handleFormChange(), 300);
     $('input[type="text"], select').on('change', handleFormChange);
 
-    // Specific handlers for numeric inputs
-    $('#players, #proette').on('input change', handleFormChange);
+    // Specific handlers for numeric inputs (incluso i campi post-taglio del giro finale)
+    $('#players, #proette, #players_cut, #proette_cut').on('input change', handleFormChange);
 
     // Button clicks
     $('#refresh').on('click', () => this.handleReset());
@@ -175,9 +262,13 @@ $('#first_table').on('click', '.qd-remove', (e) => this.handleRemovePlayer(e));
     // Update configuration from form values - handle empty fields
     const playersVal = $('#players').val();
     const proetteVal = $('#proette').val();
-    
+    const playersCutVal = $('#players_cut').val();
+    const proetteCutVal = $('#proette_cut').val();
+
     this.config.players = playersVal === '' ? 0 : playersVal;
     this.config.proette = proetteVal === '' ? 0 : proetteVal;
+    this.config.playersCut = playersCutVal === '' ? 0 : playersCutVal;
+    this.config.proetteCut = proetteCutVal === '' ? 0 : proetteCutVal;
     this.config.playersPerFlight = $('#players_x_flight').val();
     this.config.giornata = $('#giornata').val();
     this.config.garaNT = $('#gara_NT').val();
@@ -192,6 +283,7 @@ $('#first_table').on('click', '.qd-remove', (e) => this.handleRemovePlayer(e));
 
   // Update UI elements (IMPORTANTE: toggleCompactOption usa doppiePartenze!)
   this.toggleCompactOption();
+  this.toggleFinalCutFields();
   this.updateCrossTime();
   this.updateTableTitle();
 
@@ -486,6 +578,9 @@ $('#first_table').on('click', '.qd-remove', (e) => this.handleRemovePlayer(e));
       if (gara === COMPETITION_TYPES.GARA_36) {
         title += ' per classifica';
       }
+    } else if (giornata === ROUND_TYPES.FINAL) {
+      // Coerente con l'header dell'immagine di riferimento: "3° GIRO PER CLASSIFICA TEE 1"
+      title = '3° Giro per classifica (Tee 1)';
     }
 
     $('#titolo_giornata').html(title);
@@ -501,6 +596,9 @@ $('#first_table').on('click', '.qd-remove', (e) => this.handleRemovePlayer(e));
   generateTable() {
     const doppiePartenze = this.config.doppiePartenze;
     const giornata = this.config.giornata;
+    // Il giro finale supporta entrambe le varianti (doppio tee + tee unico).
+    // L'utente sceglie via #doppie_partenze. Il render discriminerà internamente
+    // il ramo 'finale' in generateDoubleTee / generateSingleTee.
     let html;
 
     if (doppiePartenze === TEE_TYPES.DOUBLE) {

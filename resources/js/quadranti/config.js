@@ -8,6 +8,13 @@ export const DEFAULT_CONFIG = {
   players: 144,
   proette: 48,
   playersPerFlight: 3,
+
+  // Giro finale (post-taglio) — numero di qualificati per il terzo giro.
+  // Validi solo quando giornata === 'finale': sono distinti da players/proette
+  // perché dopo le 36 buche il taglio riduce il campo (es. da 144 a 54 uomini).
+  // Default 0 = nessun taglio impostato (l'utente li edita quando passa al finale).
+  playersCut: 0,
+  proetteCut: 0,
   
   // Competition configuration
   giornata: 'prima',
@@ -65,7 +72,11 @@ export const TEE_TYPES = {
 
 export const ROUND_TYPES = {
   FIRST: 'prima',
-  SECOND: 'seconda'
+  SECOND: 'seconda',
+  // Giro finale 54 buche: tee unico, ordine di classifica, sempre numerico.
+  // Struttura a 3 blocchi (back-half U → donne → front-half U) descritta in
+  // generateSingleTee. Visibile solo quando garaNT === 'Gara 54 buche'.
+  FINAL: 'finale'
 };
 
 export const COMPACT_TYPES = {

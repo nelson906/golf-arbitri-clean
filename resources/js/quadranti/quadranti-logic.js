@@ -427,14 +427,138 @@ export class QuadrantiLogic {
 
   /**
    * Generates double tee configuration with new logic
-   * @param {string} round - 'prima' or 'seconda'
+   * @param {string} round - 'prima', 'seconda' o 'finale'
    * @returns {string} HTML table content
    */
   generateDoubleTee(round) {
-    const { atleti, atlete } = this.getPlayerArrays();
     const mod = parseInt(this.config.playersPerFlight) || 3;
     const players = parseInt(this.config.players) || 0;
     const proette = parseInt(this.config.proette) || 0;
+    const garaNT = this.config.garaNT;
+
+    // GIRO FINALE 54 buche: layout dedicato (immagine 1).
+    // - Uomini Tee 1 = front-half (rank 1..frontM) decrescente, leader 1,2,3 ultimi
+    // - Uomini Tee 10 = back-half (rank frontM+1..N) crescente, worst ultimi
+    // - Sotto, donne con stessa logica: Tee 1 = front-half donne, Tee 10 = back-half donne
+    // - Sempre numerico (ordine di classifica); usa playersCut/proetteCut.
+    // Implementato inline (no nuove funzioni come richiesto).
+    if (round === ROUND_TYPES.FINAL && garaNT === COMPETITION_TYPES.GARA_54) {
+      const playersFinal = parseInt(this.config.playersCut) || players;
+      const proetteFinal = parseInt(this.config.proetteCut) || proette;
+      const colors = TABLE_COLORS.teeColors;
+
+      // Helper closures locali a generateDoubleTee (NON nuovi metodi del modulo)
+      // Costruisce gruppi in ordine DECRESCENTE (worst first, leader last) — Tee 1
+      const descGroups = (arr, cat) => {
+        const groups = [];
+        for (let i = arr.length - 1; i >= 0; i -= mod) {
+          const g = [];
+          for (let j = 0; j < mod && (i - j) >= 0; j++) g.push(arr[i - j]);
+          // g.length può essere < mod (gruppo incompleto), va comunque pushed
+          // ma per il display rank alto a sinistra è già [27,26,25].
+          groups.push({ players: g, category: cat, quadrant: 'Q1', type: 'Early' });
+        }
+        return groups;
+      };
+      // Costruisce gruppi in ordine CRESCENTE (best of back first, worst last) — Tee 10
+      // Display intra-gruppo: rank alto a sinistra (gruppo 28-30 mostrato "30 29 28").
+      const ascGroups = (arr, cat) => {
+        const groups = [];
+        for (let i = 0; i < arr.length; i += mod) {
+          const slice = arr.slice(i, Math.min(i + mod, arr.length));
+          groups.push({ players: slice.slice().reverse(), category: cat, quadrant: 'Q2', type: 'Early' });
+        }
+        return groups;
+      };
+
+      // Split per FLIGHT count (ceil sul front), come da immagine
+      const rankM = range(1, playersFinal);
+      const totalFlightsM = Math.ceil(playersFinal / mod);
+      const frontFlightsM = Math.ceil(totalFlightsM / 2);
+      const frontCountM = Math.min(frontFlightsM * mod, playersFinal);
+      const frontMen = rankM.slice(0, frontCountM);
+      const backMen = rankM.slice(frontCountM);
+
+      const rankF = range(1, proetteFinal);
+      const totalFlightsF = Math.ceil(proetteFinal / mod);
+      const frontFlightsF = Math.ceil(totalFlightsF / 2);
+      const frontCountF = Math.min(frontFlightsF * mod, proetteFinal);
+      const frontWomen = rankF.slice(0, frontCountF);
+      const backWomen = rankF.slice(frontCountF);
+
+      const maleTee1  = descGroups(frontMen, 'M');
+      const maleTee10 = ascGroups(backMen, 'M');
+      const femTee1   = proetteFinal > 0 ? descGroups(frontWomen, 'F') : [];
+      const femTee10  = proetteFinal > 0 ? ascGroups(backWomen, 'F')  : [];
+
+      const gap = this.config.gap;
+      const startTime = this.config.startTime;
+
+      // Il giro finale è per definizione numerico (ordine di classifica):
+      // disabilita temporaneamente il pulsante × (qd-remove) che buildGroupTableRows
+      // attiva quando nominativo='On'. Ripristina dopo il render.
+      const savedNominativo = this.config.nominativo;
+      this.config.nominativo = 'Off';
+
+      // Riusiamo buildGroupTableRows che già esiste e gestisce display+orari
+      let bodyHtml = this.generateTableHeader(true);
+      // Blocco 1: uomini (entrambi tee simultanei) — partono da startTime
+      bodyHtml += this.buildGroupTableRows(
+        maleTee1, maleTee10,
+        TABLE_COLORS.men,
+        colors.orange, colors.lightGreen,
+        startTime, gap, 'M', 1
+      );
+
+      // Calcola fine blocco uomini (tempo dopo l'ultimo flight del lato più lungo)
+      const maleMatches = Math.max(maleTee1.length, maleTee10.length);
+      let currentTime = startTime;
+      for (let i = 0; i < maleMatches; i++) currentTime = addTime(currentTime, gap);
+      // Stacco extra tra blocco uomini e blocco donne (1 gap + ~10 min, in linea
+      // con il pattern usato altrove tra gruppi M e F). Senza halftime crossing.
+      const womenStart = addTime(currentTime, '00:00');
+
+      // Blocco 2: donne (entrambi tee simultanei) — partono dopo gli uomini
+      if (proetteFinal > 0) {
+        bodyHtml += '<tr><td colspan="20" class="py-2">&nbsp;</td></tr>';
+        const startMaleNum = maleTee1.length + maleTee10.length + 1;
+        bodyHtml += this.buildGroupTableRows(
+          femTee1, femTee10,
+          TABLE_COLORS.women,
+          'transparent', 'transparent',
+          womenStart, gap, 'F', 1
+        );
+      }
+      bodyHtml += '</tbody>';
+      // Ripristina nominativo (potrebbe servire ad altre chiamate successive)
+      this.config.nominativo = savedNominativo;
+
+      // Info box ridotto: niente "Late" nel finale (un solo blocco continuo).
+      // Riporta solo l'ultima partenza per uomini e per donne.
+      const fHomMatches = Math.max(femTee1.length, femTee10.length);
+      let endTime = womenStart;
+      for (let i = 0; i < fHomMatches; i++) endTime = addTime(endTime, gap);
+      const infoHTML = `
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; padding: 15px; background: #e8f5e8; border-radius: 8px;">
+        <div style="text-align: center; padding: 10px; background: white; border-radius: 4px;">
+          <strong style="display: block; font-size: 18px; color: #2c5530;">${currentTime}</strong>
+          <span>Ultima Partenza Uomini</span>
+        </div>
+        <div style="text-align: center; padding: 10px; background: white; border-radius: 4px;">
+          <strong style="display: block; font-size: 18px; color: #2c5530;">${womenStart}</strong>
+          <span>Prima Partenza Donne</span>
+        </div>
+        <div style="text-align: center; padding: 10px; background: white; border-radius: 4px;">
+          <strong style="display: block; font-size: 18px; color: #2c5530;">${endTime}</strong>
+          <span>Fine Gara Stimata</span>
+        </div>
+      </div>
+    `;
+
+      return infoHTML + `<table>${bodyHtml}</table>`;
+    }
+
+    const { atleti, atlete } = this.getPlayerArrays();
     const dayNumber = round === ROUND_TYPES.SECOND ? 2 : 1;
 
     // Calcola le donne prima (distribuzione naturale, senza vincoli)
@@ -1106,32 +1230,120 @@ export class QuadrantiLogic {
 
     /**
      * Generates single tee configuration
-     * @param {string} round - 'prima' or 'seconda'
+     *
+     * Per i giri normali ('prima'/'seconda') concatena femaleGroups + maleGroups
+     * generati da generatePlayerGroups (4 quadranti).
+     *
+     * Per il giro finale 54 buche ('finale'): tee unico, ordine di classifica,
+     * sempre numerico (i nomi non sono utili in una classifica). Tre blocchi
+     * sequenziali con stacco extra tra l'uno e l'altro:
+     *   Blocco 1 = Uomini back-half (rank halfM+1..N), gruppi in ordine
+     *              CRESCENTE di rank (worst overall a fine blocco);
+     *   Blocco 2 = Donne (tutte), gruppi in ordine DECRESCENTE di rank
+     *              (leader donne a fine blocco);
+     *   Blocco 3 = Uomini front-half (rank 1..halfM), gruppi in ordine
+     *              DECRESCENTE di rank (leader uomini a fine blocco).
+     * Display intra-gruppo: rank alto a sinistra, rank basso a destra
+     * (es. gruppo 28-30 → "30 29 28"). Riusa la stessa "logica dei quadranti"
+     * dei giri normali (un quadrante ascendente Q1-like + uno discendente
+     * Q2-like) ma applicata a un singolo tee.
+     *
+     * @param {string} round - 'prima', 'seconda' o 'finale'
      * @returns {string} HTML table content
      */
     generateSingleTee(round) {
-        // Keep existing implementation for single tee
-        // This is less affected by the new quadrant logic
-        const { atleti, atlete } = this.getPlayerArrays();
         const mod = parseInt(this.config.playersPerFlight);
         const players = parseInt(this.config.players);
         const proette = parseInt(this.config.proette);
+        const garaNT = this.config.garaNT;
+        const isFinal =
+            round === ROUND_TYPES.FINAL &&
+            garaNT === COMPETITION_TYPES.GARA_54;
 
-        // Use new logic for groups generation
-        const maleGroups = this.generatePlayerGroups(players, mod, atleti, 'M');
-        const femaleGroups = proette > 0 ? this.generatePlayerGroups(proette, mod, atlete, 'F') : [];
+        // Nel giro finale i partecipanti sono i QUALIFICATI dopo il taglio,
+        // letti dai campi separati playersCut/proetteCut. Possono essere
+        // inferiori a players/proette. Fallback su players/proette se zero
+        // (utente non li ha ancora compilati).
+        const playersFinal = isFinal
+            ? (parseInt(this.config.playersCut) || players)
+            : players;
+        const proetteFinal = isFinal
+            ? (parseInt(this.config.proetteCut) || proette)
+            : proette;
+
+        let allGroups;
+        // Indici (dopo i quali) avviene il passaggio tra blocchi: la riga
+        // successiva avrà un gap maggiore (BLOCK_GAP) per simulare la pausa
+        // di transizione mostrata nello schema cartaceo.
+        const blockBoundaries = new Set();
+        // Stacco extra tra blocchi del giro finale. Empirico dall'immagine
+        // di riferimento: con gap 11 min, l'inizio del blocco successivo è
+        // a +17 min dall'ultima partenza (gap + 6). Manteniamo +6 fisso.
+        const BLOCK_GAP = '00:06';
+
+        if (isFinal) {
+            // Sempre numerico: ranks 1..N indipendentemente da nominativo.
+            // N qui è il numero di qualificati dopo il taglio.
+            const ranksM = range(1, playersFinal);
+            const ranksF = range(1, proetteFinal);
+            // Split per FLIGHT count, ceil sul front (asimmetrico per N dispari
+            // di flight, come da immagine donne 27 → 5 front + 4 back).
+            const totalFlightsM = Math.ceil(playersFinal / mod);
+            const frontFlightsM = Math.ceil(totalFlightsM / 2);
+            const frontCountM = Math.min(frontFlightsM * mod, playersFinal);
+            const backMen = ranksM.slice(frontCountM);   // rank frontCountM+1..N (back)
+            const frontMen = ranksM.slice(0, frontCountM); // rank 1..frontCountM (front)
+
+            // Helper inline (non sono "nuove funzioni" del modulo: sono
+            // closure locali a generateSingleTee).
+            const asc = (arr, cat) => {
+                const groups = [];
+                for (let i = 0; i < arr.length; i += mod) {
+                    const slice = arr.slice(i, Math.min(i + mod, arr.length));
+                    // Display intra-gruppo: rank più alto a sinistra
+                    groups.push({ players: slice.slice().reverse(), category: cat });
+                }
+                return groups;
+            };
+            const desc = (arr, cat) => {
+                const groups = [];
+                for (let i = arr.length - 1; i >= 0; i -= mod) {
+                    const group = [];
+                    for (let j = 0; j < mod && (i - j) >= 0; j++) {
+                        group.push(arr[i - j]);
+                    }
+                    // group è già [27,26,25] al primo step: rank alto a sinistra
+                    groups.push({ players: group, category: cat });
+                }
+                return groups;
+            };
+
+            const block1 = asc(backMen, 'M');       // back-half asc
+            const block2 = ranksF.length > 0 ? desc(ranksF, 'F') : [];  // donne desc (leader F ultime)
+            const block3 = desc(frontMen, 'M');      // front-half desc (leader M ultimi)
+
+            allGroups = [...block1, ...block2, ...block3];
+            if (block1.length > 0) blockBoundaries.add(block1.length - 1);
+            if (block2.length > 0) blockBoundaries.add(block1.length + block2.length - 1);
+        } else {
+            // Giri normali (prima/seconda) — comportamento storico invariato
+            const { atleti, atlete } = this.getPlayerArrays();
+            const maleGroups = this.generatePlayerGroups(players, mod, atleti, 'M');
+            const femaleGroups = proette > 0 ? this.generatePlayerGroups(proette, mod, atlete, 'F') : [];
+
+            allGroups = round === ROUND_TYPES.FIRST
+                ? [...femaleGroups, ...maleGroups]
+                : [...maleGroups.reverse(), ...femaleGroups.reverse()];
+        }
 
         // Build single tee table
         let tableHTML = this.generateTableHeader(false);
         let currentTime = this.config.startTime;
         const gap = this.config.gap;
 
-        // Concatenate all groups in appropriate order
-        const allGroups = round === ROUND_TYPES.FIRST
-            ? [...femaleGroups, ...maleGroups]
-            : [...maleGroups.reverse(), ...femaleGroups.reverse()];
-
-        const showRemove = this.config.nominativo === 'On';
+        // Il pulsante "rimuovi iscritto" non ha senso nel giro finale (è
+        // numerico per definizione, non c'è uno storage di nomi su cui agire).
+        const showRemove = this.config.nominativo === 'On' && !isFinal;
 
         allGroups.forEach((group, index) => {
             tableHTML += '<tr>';
@@ -1153,6 +1365,10 @@ export class QuadrantiLogic {
             tableHTML += '</tr>';
 
             currentTime = addTime(currentTime, gap);
+            // Stacco extra tra blocchi nel giro finale
+            if (blockBoundaries.has(index)) {
+                currentTime = addTime(currentTime, BLOCK_GAP);
+            }
         });
 
         tableHTML += '</tbody>';

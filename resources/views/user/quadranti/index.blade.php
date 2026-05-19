@@ -153,6 +153,10 @@
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                                     <option value="prima">Prima Giornata</option>
                                     <option value="seconda">Seconda Giornata</option>
+                                    {{-- Giro finale: visibile/usabile solo per Gara 54 buche + Tee Unico.
+                                         Il JS (generateSingleTee) lo riconosce e produce il layout a 3
+                                         blocchi (back-half U, donne, front-half U) sempre numerico. --}}
+                                    <option value="finale">Giro Finale (classifica)</option>
                                 </select>
                             </div>
 
@@ -170,6 +174,30 @@
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                                     value="48" min="0" max="100">
                             </div>
+
+                            {{-- Campi qualificati post-taglio: visibili solo quando giornata=finale.
+                                 Default calcolato con formula FIG (iscritti − ⌊iscritti/5⌋, capped 54/27).
+                                 Modificabili dall'utente per tenere conto dei pari merito. --}}
+                            <div class="finale-only" style="display:none;">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Qualificati Uomini (post-taglio):
+                                    <span class="text-xs text-gray-500 italic">default formula FIG, modificabile per pari merito</span>
+                                </label>
+                                <input type="number" id="players_cut"
+                                    class="w-full px-3 py-2 border border-orange-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+                                    value="0" min="0" max="200">
+                            </div>
+
+                            <div class="finale-only" style="display:none;">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Qualificate Donne (post-taglio):
+                                    <span class="text-xs text-gray-500 italic">default formula FIG, modificabile per pari merito</span>
+                                </label>
+                                <input type="number" id="proette_cut"
+                                    class="w-full px-3 py-2 border border-orange-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500"
+                                    value="0" min="0" max="100">
+                            </div>
+
 
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Giocatori per Flight:</label>
