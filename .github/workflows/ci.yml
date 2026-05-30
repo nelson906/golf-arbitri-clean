@@ -47,9 +47,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup PHP
+        # NB: composer.lock richiede PHP >= 8.4 (Symfony 8, zipstream-php 3.2.1).
+        # Deve combaciare con la versione PHP usata per l'ultimo `composer update`
+        # e con quella di produzione su Aruba.
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.4'
           extensions: mbstring, pdo, pdo_mysql, bcmath, intl, gd, zip
           coverage: none
           tools: composer:v2
