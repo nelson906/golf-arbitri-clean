@@ -67,6 +67,21 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Build front-end assets
+        # Necessario: diversi test fanno GET di pagine che renderizzano @vite.
+        # Senza public/build/manifest.json le view lanciano
+        # "Vite manifest not found". In locale passa perché gli asset sono già
+        # compilati (public/build è gitignored, quindi assente in CI).
+        run: |
+          npm ci
+          npm run build
+
       - name: Prepare test environment file
         # .env.testing è tarato su MAMP (socket Unix, porta 8889). In CI usiamo
         # il MySQL del service: rimuoviamo il socket e allineiamo porta/password.
