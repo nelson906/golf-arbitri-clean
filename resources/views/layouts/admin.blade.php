@@ -9,6 +9,9 @@
 
     <title>@yield('title', 'Golf Arbitri Admin')</title>
 
+    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
+    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
