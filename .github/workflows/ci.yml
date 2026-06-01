@@ -142,33 +142,33 @@ jobs:
           npm ci
           npm run build
 
-      - name: Deploy incrementale via FTP
-        # SamKirkland/FTP-Deploy-Action carica SOLO i file cambiati: mantiene
-        # .ftp-deploy-sync-state.json sul server e confronta gli hash.
-        # I path in "exclude" NON vengono ne' caricati ne' cancellati:
-        # storage/ (log, backup, upload) e .env del server restano INTATTI.
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          # Deve finire con "/". Es. "/" oppure "/htdocs/" (vedi layout FTP Aruba).
-          server-dir: ${{ secrets.FTP_SERVER_DIR }}
-          # FTP semplice: l'FTPS di Aruba dava "tlsv1 alert decode error" sul
-          # data socket durante upload lunghi. Deploy manuale + filtro IP aperto
-          # solo nella finestra di deploy limitano l'esposizione. Cifrato: protocol: ftps.
-          protocol: ftp
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/.github/**
-            **/node_modules/**
-            **/tests/**
-            **/storage/**
-            **/.env
-            **/.env.*
-            **/public/storage/**
-            **/*.md
-            **/_audit_archive/**
-            **/.scannerwork/**
-            **/.ftp-deploy-sync-state.json
+      - name: Deploy incrementale via lftp (fix passive-mode Aruba)
+        # SamKirkland/basic-ftp non sa forzare PASV (Aruba risponde male all'EPSV
+        # -> "Can't parse EPSV") ne' ignorare l'indirizzo passivo "foreign"
+        # (-> 425 Rejected data connection). lftp ha le manopole giuste:
+        #   ftp:prefer-epsv no     -> usa PASV, niente EPSV
+        #   ftp:fix-pasv-address   -> ignora l'IP passivo del server, niente 425
+        #   ftp:ssl-allow no       -> FTP semplice (l'FTPS Aruba dava TLS decode error)
+        # Incrementale per dimensione (mirror --ignore-time): il checkout git
+        # azzera le mtime, quindi confrontiamo sulla size, non sulla data.
+        # --delete tiene pulito il server. storage/ e .env esclusi -> dati e
+        # config del server restano INTATTI.
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER" <<SCRIPT
+          set ftp:ssl-allow no
+          set ftp:prefer-epsv no
+          set ftp:passive-mode on
+          set ftp:fix-pasv-address yes
+          set net:timeout 15
+          set net:max-retries 3
+          set net:persist-retries 3
+          set mirror:parallel-transfer-count 1
+          mirror -R --ignore-time --delete --no-perms --verbose -x '(^|/)(\.git|\.github|node_modules|tests|storage|_audit_archive|\.scannerwork)(/|\$)' -x '(^|/)public/storage(/|\$)' -x '(^|/)\.env(\.|\$)' -X '*.md' ./ "$FTP_SERVER_DIR"
+          bye
+          SCRIPT
