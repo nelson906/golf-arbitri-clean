@@ -39,9 +39,9 @@ class TournamentManagementTest extends TestCase
             'name' => 'Test Tournament 2026',
             'club_id' => $club->id,
             'tournament_type_id' => $type->id,
-            'start_date' => '2026-06-15',
-            'end_date' => '2026-06-17',
-            'availability_deadline' => '2026-06-01 23:59:59',
+            'start_date' => now()->addDays(14)->format('Y-m-d'),
+            'end_date' => now()->addDays(16)->format('Y-m-d'),
+            'availability_deadline' => now()->addDays(7)->format('Y-m-d H:i:s'),
             'status' => 'open',
         ];
 
@@ -68,9 +68,9 @@ class TournamentManagementTest extends TestCase
             'name' => 'Test Tournament',
             'club_id' => $clubZone2->id,
             'tournament_type_id' => $type->id,
-            'start_date' => '2026-06-15',
-            'end_date' => '2026-06-17',
-            'availability_deadline' => '2026-06-01 23:59:59',
+            'start_date' => now()->addDays(14)->format('Y-m-d'),
+            'end_date' => now()->addDays(16)->format('Y-m-d'),
+            'availability_deadline' => now()->addDays(7)->format('Y-m-d H:i:s'),
         ];
 
         $response = $this->actingAs($admin)
@@ -210,9 +210,9 @@ class TournamentManagementTest extends TestCase
                 'name' => 'Test Tournament',
                 'club_id' => $club->id,
                 'tournament_type_id' => $type->id,
-                'start_date' => '2026-06-20',
-                'end_date' => '2026-06-15', // Prima della start!
-                'availability_deadline' => '2026-06-01 23:59:59',
+                'start_date' => now()->addDays(20)->format('Y-m-d'),
+                'end_date' => now()->addDays(15)->format('Y-m-d'), // Prima della start!
+                'availability_deadline' => now()->addDays(7)->format('Y-m-d H:i:s'),
             ]);
 
         $response->assertSessionHasErrors('end_date');
