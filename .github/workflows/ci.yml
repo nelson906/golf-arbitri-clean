@@ -119,10 +119,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          # Storia completa: serve a `git diff <ultimo_sha_deployato> HEAD`
-          # per calcolare i soli file cambiati (deploy incrementale reale).
-          fetch-depth: 0
 
       - name: Setup PHP 8.5
         uses: shivammathur/setup-php@v2
@@ -146,116 +142,35 @@ jobs:
           npm ci
           npm run build
 
-      - name: Deploy incrementale via lftp (git-diff, fix passive-mode Aruba)
-        # PERCHE' lftp e non SamKirkland/basic-ftp: Aruba risponde male all'EPSV
-        # ("Can't parse response to 'EPSV'") e rifiuta il canale dati passivo se
-        # l'IP non combacia ("425 Rejected data connection from foreign address").
-        # Servono manopole che basic-ftp non espone:
-        #   ftp:prefer-epsv no     -> usa PASV, niente EPSV
-        #   ftp:fix-pasv-address   -> ignora l'IP passivo "foreign", niente 425
-        #   ftp:ssl-allow no       -> FTP semplice (l'FTPS Aruba dava TLS decode error)
-        #
-        # PERCHE' git-diff e non `mirror`: `mirror -R` deve ELENCARE e confrontare
-        # l'intero albero remoto (vendor/ = ~12.5k file) su una sola connessione,
-        # ogni volta, anche per cambiare un solo file -> 40+ minuti di sola
-        # scansione. Qui invece carichiamo SOLO i file che git segna come cambiati
-        # rispetto all'ultimo commit deployato (marker .deploy-state.sha sul
-        # server). Niente scansione dell'albero -> deploy in secondi.
-        #
-        # Generati (gitignored, non compaiono nel diff) gestiti a parte:
-        #   - public/build : sempre rimirrorato (dir piccola, scansione in secondi)
-        #                    cosi' gli asset Vite restano sempre coerenti.
-        #   - vendor       : risincronizzato SOLO quando cambia composer.lock.
-        # storage/ e .env restano INTATTI (gitignored: mai nel diff, mai cancellati).
-        env:
-          FTP_SERVER: ${{ secrets.FTP_SERVER }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
-        run: |
-          set -euo pipefail
-          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
-
-          DIR="$FTP_SERVER_DIR"
-          # Impostazioni lftp comuni (anti-quirk Aruba) riusate in ogni sessione.
-          LFTP_SET="set ftp:ssl-allow no; set ftp:prefer-epsv no; set ftp:passive-mode on; set ftp:fix-pasv-address yes; set net:timeout 15; set net:max-retries 3; set net:persist-retries 3; set mirror:parallel-transfer-count 1;"
-
-          # File da NON caricare/cancellare mai (stesse esclusioni di prima).
-          is_excluded() {
-            case "$1" in
-              .git/*|.github/*|tests/*|_audit_archive/*|.scannerwork/*) return 0 ;;
-              .env|.env.*|storage/*|public/storage/*|public/build/*) return 0 ;;
-              *.md) return 0 ;;
-              *) return 1 ;;
-            esac
-          }
-
-          # 1) Recupera l'ultimo SHA deployato dal marker sul server (se esiste).
-          rm -f prev_sha.txt
-          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER" \
-            -e "$LFTP_SET get \"$DIR/.deploy-state.sha\" -o prev_sha.txt; bye" || true
-          PREV=""
-          if [ -s prev_sha.txt ]; then PREV="$(tr -d ' \t\r\n' < prev_sha.txt)"; fi
-
-          # Marker assente o SHA non piu' in storia (rebase/force-push) -> bootstrap.
-          MODE="incremental"
-          if [ -z "$PREV" ] || ! git cat-file -e "${PREV}^{commit}" 2>/dev/null; then
-            MODE="bootstrap"
-          fi
-          echo "Deploy mode: $MODE (prev=${PREV:-none} head=$GITHUB_SHA)"
-
-          echo "$GITHUB_SHA" > deploy-state.sha
-
-          if [ "$MODE" = "bootstrap" ]; then
-            # Primo deploy / recupero: mirror completo una tantum, poi scrive marker.
-            lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER" <<SCRIPT
-          $LFTP_SET
-          mirror -R --ignore-time --delete --no-perms --verbose -x '(^|/)(\.git|\.github|node_modules|tests|storage|_audit_archive|\.scannerwork)(/|\$)' -x '(^|/)public/storage(/|\$)' -x '(^|/)\.env(\.|\$)' -X '*.md' ./ "$DIR"
-          put deploy-state.sha -o "$DIR/.deploy-state.sha"
-          bye
-          SCRIPT
-            exit 0
-          fi
-
-          # 2) INCREMENTALE: costruisci i comandi lftp dai soli file cambiati.
-          CMDS=""
-          VENDOR_CHANGED=0
-          while IFS=$'\t' read -r status p1 p2; do
-            [ -z "${status:-}" ] && continue
-            case "$status" in
-              R*) old="$p1"; new="$p2"
-                  [ "$old" = "composer.lock" ] && VENDOR_CHANGED=1
-                  [ "$new" = "composer.lock" ] && VENDOR_CHANGED=1
-                  if ! is_excluded "$old"; then CMDS="$CMDS"$'\n'"rm -f \"$DIR/$old\""; fi
-                  if ! is_excluded "$new"; then
-                    CMDS="$CMDS"$'\n'"mkdir -p -f \"$DIR/$(dirname "$new")\""$'\n'"put \"$new\" -o \"$DIR/$new\""
-                  fi ;;
-              D*) p="$p1"
-                  [ "$p" = "composer.lock" ] && VENDOR_CHANGED=1
-                  if ! is_excluded "$p"; then CMDS="$CMDS"$'\n'"rm -f \"$DIR/$p\""; fi ;;
-              *)  p="$p1"
-                  [ "$p" = "composer.lock" ] && VENDOR_CHANGED=1
-                  if ! is_excluded "$p"; then
-                    CMDS="$CMDS"$'\n'"mkdir -p -f \"$DIR/$(dirname "$p")\""$'\n'"put \"$p\" -o \"$DIR/$p\""
-                  fi ;;
-            esac
-          done < <(git diff --name-status -M "$PREV" "$GITHUB_SHA")
-
-          # public/build: sempre risincronizzato (dir piccola) -> Vite coerente.
-          CMDS="$CMDS"$'\n'"mirror -R --delete --no-perms --ignore-time public/build \"$DIR/public/build\""
-
-          # vendor: solo se composer.lock e' cambiato (altrimenti niente scansione 12.5k file).
-          if [ "$VENDOR_CHANGED" = "1" ]; then
-            echo "composer.lock cambiato -> risincronizzo vendor/"
-            CMDS="$CMDS"$'\n'"mirror -R --delete --no-perms --ignore-time vendor \"$DIR/vendor\""
-          fi
-
-          # Aggiorna il marker per il prossimo deploy.
-          CMDS="$CMDS"$'\n'"put deploy-state.sha -o \"$DIR/.deploy-state.sha\""
-
-          # Un'unica sessione lftp (un solo login) con tutti i comandi.
-          lftp -u "$FTP_USERNAME","$FTP_PASSWORD" "$FTP_SERVER" <<SCRIPT
-          $LFTP_SET
-          $CMDS
-          bye
-          SCRIPT
+      - name: Deploy incrementale via FTP (SamKirkland)
+        # SCELTA: basic-ftp/SamKirkland funziona col canale dati PASV di Aruba
+        # (il debug ha mostrato login OK ma lftp falliva SEMPRE sul data channel).
+        # E' incrementale per natura: tiene .ftp-deploy-sync-state.json sul server
+        # e confronta gli hash, quindi dopo il primo sync carica solo i file cambiati.
+        # I path in "exclude" non vengono ne' caricati ne' cancellati: storage/ e
+        # .env del server restano INTATTI.
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          # Sottocartella dell'app sul server. L'FTP Aruba atterra nella web root
+          # del dominio (dove stanno lupigrigi/ arbitrigolf/ partenze/ e index.html),
+          # cioe' lo stesso "/" che prima funzionava quando l'app era alla radice.
+          # Hardcoded per evitare il secret sbagliato che dava "550 ... /app".
+          server-dir: /arbitrigolf/
+          protocol: ftp
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            **/node_modules/**
+            **/tests/**
+            **/storage/**
+            **/.env
+            **/.env.*
+            **/public/storage/**
+            **/*.md
+            **/_audit_archive/**
+            **/.scannerwork/**
+            **/.ftp-deploy-sync-state.json
