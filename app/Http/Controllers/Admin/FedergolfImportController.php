@@ -90,7 +90,7 @@ class FedergolfImportController extends Controller
                     'Accept'           => 'application/json',
                     'X-Requested-With' => 'XMLHttpRequest',
                 ])
-                ->post('https://www.federgolf.it/wp-admin/admin-ajax.php', [
+                ->post(config('golf.fig.ajax_url'), [
                     'action'  => 'competitions-search',
                     'tipo'    => '',
                     'keyword' => '',

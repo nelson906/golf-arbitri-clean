@@ -19,6 +19,12 @@ return [
         'backup_notifications' => env('GOLF_EMAIL_BACKUP', 'backup@federgolf.it'),
     ],
 
+    'fig' => [
+        // Federazione Italiana Golf - endpoint pubblici (sito WordPress)
+        'base' => env('GOLF_FIG_BASE', 'https://www.federgolf.it'),
+        'ajax_url' => env('GOLF_FIG_AJAX_URL', 'https://www.federgolf.it/wp-admin/admin-ajax.php'),
+    ],
+
     'backup' => [
         'retention_days' => env('GOLF_BACKUP_RETENTION', 30),
         'compress' => env('GOLF_BACKUP_COMPRESS', true),

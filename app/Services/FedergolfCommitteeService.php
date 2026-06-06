@@ -16,9 +16,19 @@ use Illuminate\Support\Facades\Log;
  */
 class FedergolfCommitteeService
 {
-    private const FIG_BASE       = 'https://www.federgolf.it';
-    private const FIG_AJAX       = 'https://www.federgolf.it/wp-admin/admin-ajax.php';
     private const MATCH_MIN_SCORE = 60; // % similarità minima per considerare un match
+
+    /** Base URL federgolf.it — da config('golf.fig.base'). */
+    private function figBase(): string
+    {
+        return rtrim(config('golf.fig.base'), '/');
+    }
+
+    /** Endpoint AJAX WordPress federgolf.it — da config('golf.fig.ajax_url'). */
+    private function figAjax(): string
+    {
+        return config('golf.fig.ajax_url');
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // 1. RECUPERO DATI DA FEDERGOLF
@@ -57,7 +67,7 @@ class FedergolfCommitteeService
                     'Accept'          => 'application/json',
                     'X-Requested-With'=> 'XMLHttpRequest',
                 ])
-                ->post(self::FIG_AJAX, [
+                ->post($this->figAjax(), [
                     'action'         => 'competition-details',
                     'competition_id' => $competitionId,
                 ]);
@@ -91,7 +101,7 @@ class FedergolfCommitteeService
     private function fetchViaHtml(string $competitionId): array
     {
         try {
-            $url = self::FIG_BASE . '/attivita-agonistica/dettaglio-gara/' . $competitionId . '/';
+            $url = $this->figBase() . '/attivita-agonistica/dettaglio-gara/' . $competitionId . '/';
 
             $response = Http::timeout(20)
                 ->withHeaders([
