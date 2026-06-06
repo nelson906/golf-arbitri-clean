@@ -17,7 +17,7 @@ class FedergolfController extends Controller
         $keyword = $request->input('keyword', '');
 
         $response = Http::asForm()->post(
-            'https://www.federgolf.it/wp-admin/admin-ajax.php',
+            config('golf.fig.ajax_url'),
             [
                 'action' => 'competitions-search',
                 'tipo' => '',
@@ -97,7 +97,7 @@ class FedergolfController extends Controller
                     'Accept' => 'application/json',
                     'X-Requested-With' => 'XMLHttpRequest',
                 ])
-                ->post('https://www.federgolf.it/wp-admin/admin-ajax.php', [
+                ->post(config('golf.fig.ajax_url'), [
                     'action' => 'competition-player-list',
                     'competition_id' => $garaId,
                     'page_number' => 1,
@@ -179,7 +179,7 @@ class FedergolfController extends Controller
                     'Accept' => 'application/json',
                     'X-Requested-With' => 'XMLHttpRequest',
                 ])
-                ->post('https://www.federgolf.it/wp-admin/admin-ajax.php', [
+                ->post(config('golf.fig.ajax_url'), [
                     'action' => 'competitions-search',
                     'tipo' => '',
                     'keyword' => '',
