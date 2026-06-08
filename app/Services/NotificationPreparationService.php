@@ -215,7 +215,7 @@ class NotificationPreparationService
             'subject' => $metadata['subject'] ?? '',
             'message' => $metadata['message'] ?? '',
             'recipients' => [
-                'club' => ($metadata['recipients']['club'] ?? false) ? $tournament->club->email : null,
+                'club' => ($metadata['recipients']['club'] ?? false) ? $tournament->club?->email : null,
                 'referees' => $tournament->assignments()
                     ->whereIn('user_id', $metadata['recipients']['referees'] ?? [])
                     ->with('user')

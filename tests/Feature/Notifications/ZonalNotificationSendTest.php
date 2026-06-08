@@ -122,20 +122,19 @@ class ZonalNotificationSendTest extends TestCase
     }
 
     /**
-     * Documenta un comportamento a rischio (RISK_ASSESSMENT.md §3 R2-bis):
-     * sendToClub() NON è protetto da try/catch per-destinatario. Un circolo
-     * senza email fa fallire l'INTERA notifica — gli arbitri NON ricevono nulla,
-     * perché l'invio al circolo precede il loop arbitri.
+     * REGRESSIONE FIX C2: sendToClub() è ora protetto da try/catch per-destinatario,
+     * come il loop arbitri. Un circolo senza email NON deve più bloccare l'intera
+     * notifica: gli arbitri assegnati ricevono comunque la convocazione e lo stato
+     * finale è 'partial' (non 'failed').
      *
-     * Se in futuro si avvolge sendToClub in un try/catch (fix consigliato),
-     * questo test andrà aggiornato per asserire stato 'partial' e arbitri serviti.
+     * Sostituisce il precedente test_missing_club_email_blocks_entire_notification,
+     * che documentava il vecchio comportamento difettoso (l'errore circolo abortiva tutto).
      *
      * NOTA: la colonna clubs.email è NOT NULL a livello DB, quindi lo stato
-     * "senza email" si presenta come stringa vuota (dato sporco realistico),
-     * non come NULL. sendToClub usa `if (! $club->email)`, quindi '' è trattato
-     * come mancante esattamente come NULL.
+     * "senza email" si presenta come stringa vuota (dato sporco realistico).
+     * sendToClub usa `if (! $club->email)`, quindi '' è trattato come mancante.
      */
-    public function test_missing_club_email_blocks_entire_notification(): void
+    public function test_missing_club_email_does_not_block_referees(): void
     {
         $club = $this->createClub(['zone_id' => 1, 'email' => '']);
         $tournament = $this->createTournament([
@@ -149,19 +148,20 @@ class ZonalNotificationSendTest extends TestCase
 
         $notification = $this->makeNotification($tournament->id, true, [$ref->id]);
 
-        $threw = false;
-        try {
-            app(NotificationService::class)->send($notification);
-        } catch (\Throwable $e) {
-            $threw = true;
-        }
+        // Non deve lanciare: l'errore circolo è assorbito per-destinatario.
+        app(NotificationService::class)->send($notification);
 
-        $this->assertTrue($threw, 'Un circolo senza email dovrebbe far lanciare send() (comportamento attuale).');
+        // L'arbitro assegnato riceve comunque la convocazione.
+        Mail::assertSent(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('arbitro@example.test'));
+        Mail::assertSent(RefereeAssignmentMail::class, 1);
 
+        // Il circolo (email vuota) NON riceve nulla.
+        Mail::assertNotSent(ClubNotificationMail::class);
+
+        // Invio parziale: un errore (circolo) + un successo (arbitro).
         $notification->refresh();
-        $this->assertEquals('failed', $notification->status);
-
-        // Conseguenza da evidenziare: nemmeno gli arbitri vengono notificati.
-        Mail::assertNotSent(RefereeAssignmentMail::class);
+        $this->assertEquals('partial', $notification->status);
+        $this->assertSame(1, $notification->metadata['error_count'] ?? null);
+        $this->assertSame(1, $notification->metadata['success_count'] ?? null);
     }
 }
