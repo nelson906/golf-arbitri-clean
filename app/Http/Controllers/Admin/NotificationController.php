@@ -100,8 +100,8 @@ class NotificationController extends Controller
                 'primary'               => $isNational
                     ? ($notifications->firstWhere('notification_type', 'crc_referees') ?? $first)
                     : ($notifications->whereNull('notification_type')->first() ?? $first),
-                // Data torneo per ordinamento
-                'tournament_start_date' => $tournament->start_date,
+                // Data torneo per ordinamento (null-safe: notifica orfana senza torneo)
+                'tournament_start_date' => $tournament?->start_date,
                 'created_at'            => $notifications->max('created_at'),
                 'sent_at'               => $notifications->max('sent_at'),
             ];

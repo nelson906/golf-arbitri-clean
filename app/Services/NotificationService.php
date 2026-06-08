@@ -166,9 +166,19 @@ class NotificationService
 
         try {
             // 1. Invia al circolo
+            // Protetto da try/catch per-destinatario come gli arbitri: un circolo
+            // senza email (o errore invio) NON deve bloccare la notifica agli arbitri.
             if (isset($notification->recipients['club']) && $notification->recipients['club']) {
-                $this->sendToClub($notification);
-                $successCount++;
+                try {
+                    $this->sendToClub($notification);
+                    $successCount++;
+                } catch (\Exception $e) {
+                    Log::error('Error sending to club', [
+                        'notification_id' => $notification->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $errorCount++;
+                }
             }
 
             // 2. Invia agli arbitri
