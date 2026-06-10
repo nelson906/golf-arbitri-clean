@@ -365,8 +365,12 @@ class NotificationController extends Controller
     {
         $this->checkNotificationAccess($notification);
 
-        // Se non ci sono metadati salvati, reindirizza al form
-        if (empty($notification->metadata)) {
+        // FIX D2: serve l'intento esplicito del form (metadata.recipients).
+        // I record con metadata "estraneo" (es. import FIG: {source, command})
+        // prima passavano il vecchio check empty(metadata) e "inviavano" a
+        // NESSUNO flashando successo. Ora si reindirizza sempre al form.
+        $metadata = $notification->metadata ?? [];
+        if (empty($metadata['recipients']) || ! is_array($metadata['recipients'])) {
             return redirect()->route('admin.tournaments.show-assignment-form', $notification->tournament)
                 ->with('info', 'Configura i destinatari e il messaggio per l\'invio');
         }
@@ -374,12 +378,30 @@ class NotificationController extends Controller
         try {
             $this->transactionService->sendWithTransaction($notification);
 
-            return redirect()->route('admin.tournament-notifications.index')
-                ->with('success', 'Notifiche inviate con successo');
+            return $this->redirectAfterSend($notification);
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Errore nell\'invio delle notifiche: '.$e->getMessage());
         }
+    }
+
+    /**
+     * FIX D3: il redirect post-invio riflette lo stato reale — un invio
+     * parziale (es. circolo senza email) non deve apparire come pieno successo.
+     */
+    private function redirectAfterSend(TournamentNotification $notification)
+    {
+        $final = $notification->fresh();
+
+        if ($final->status === 'partial') {
+            $lastError = $final->metadata['last_error'] ?? 'destinatario non raggiungibile';
+
+            return redirect()->route('admin.tournament-notifications.index')
+                ->with('warning', "Notifica inviata PARZIALMENTE — {$lastError}. Verificare i destinatari.");
+        }
+
+        return redirect()->route('admin.tournament-notifications.index')
+            ->with('success', 'Notifiche inviate con successo');
     }
 
     /**
@@ -508,6 +530,11 @@ class NotificationController extends Controller
             'fixed_addresses' => 'nullable|array',
             'fixed_addresses.*' => 'exists:institutional_emails,id',
             'send_to_club' => 'boolean',
+            'send_to_section' => 'boolean',
+            'additional_emails' => 'nullable|array',
+            'additional_emails.*' => 'nullable|email',
+            'additional_names' => 'nullable|array',
+            'additional_names.*' => 'nullable|string|max:255',
             'attach_convocation' => 'boolean',
             'clauses' => 'nullable|array',
             'clauses.*' => 'nullable|exists:notification_clauses,id',
@@ -522,6 +549,19 @@ class NotificationController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->firstOrFail();
 
+            // Email aggiuntive libere dal form (FIX: prima il backend le ignorava)
+            $additional = [];
+            $additionalEmails = $request->input('additional_emails', []);
+            $additionalNames = $request->input('additional_names', []);
+            foreach ($additionalEmails as $i => $email) {
+                if (! empty($email)) {
+                    $additional[] = [
+                        'email' => $email,
+                        'name' => $additionalNames[$i] ?? null,
+                    ];
+                }
+            }
+
             // Prepara i dati per il salvataggio
             $metadata = [
                 'subject' => $validated['subject'],
@@ -531,6 +571,9 @@ class NotificationController extends Controller
                     'referees' => $request->input('recipients', []),
                     'club' => $request->boolean('send_to_club', true),
                     'institutional' => $request->input('fixed_addresses', []),
+                    // FIX: "Invia copia alla sezione" — prima il backend lo ignorava
+                    'zone' => $request->boolean('send_to_section', false),
+                    'additional' => $additional,
                 ],
             ];
 
@@ -560,8 +603,8 @@ class NotificationController extends Controller
                 try {
                     $this->transactionService->sendWithTransaction($notification);
 
-                    return redirect()->route('admin.tournament-notifications.index')
-                        ->with('success', 'Notifica inviata con successo a tutti i destinatari!');
+                    // FIX D3: distingue invio pieno da invio parziale
+                    return $this->redirectAfterSend($notification);
                 } catch (\Exception $sendError) {
                     return redirect()->back()
                         ->with('error', 'Errore nell\'invio: '.$sendError->getMessage())

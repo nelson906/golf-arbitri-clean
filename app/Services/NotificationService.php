@@ -4,18 +4,37 @@ namespace App\Services;
 
 use App\Helpers\ZoneHelper;
 use App\Mail\ClubNotificationMail;
-use App\Mail\InstitutionalNotificationMail;
-use App\Mail\RefereeAssignmentMail;
-use App\Models\InstitutionalEmail;
 use App\Models\TournamentNotification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 /**
- * Notification Service - Gestione notifiche tornei
+ * Notification Service - Invio notifiche tornei ZONALI.
+ *
+ * MODELLO UNIFICATO A MAIL SINGOLA (refactor 2026-06, allineato al CRC nazionale):
+ *
+ *   UNA SOLA email per torneo:
+ *     TO (competenza)  = CIRCOLO, con allegati convocazione + lettera (facsimile)
+ *     CC (conoscenza)  = arbitri assegnati selezionati + istituzionali selezionati
+ *                        + sezione di zona (se richiesto) + email aggiuntive
+ *   Se il circolo non è selezionato o è senza email, il primo CC viene
+ *   promosso a TO (stessa logica del flusso nazionale).
+ *
+ *   NB tecnico: in un'unica email gli allegati raggiungono anche i CC —
+ *   è un limite del mezzo, non una scelta. La competenza resta il circolo.
+ *
+ * FIX D1: la fonte dei destinatari è SEMPRE metadata['recipients'] (l'intento
+ *         del form salvato da saveAsDraft). La colonna `recipients` viene
+ *         scritta solo come traccia di ciò che è stato effettivamente usato,
+ *         e non è MAI più letta come input.
+ * FIX D2: se metadata non contiene 'recipients' (es. record import FIG con
+ *         metadata {source, command}), l'invio viene rifiutato con eccezione
+ *         dedicata: il chiamante reindirizza al form di preparazione.
  */
 class NotificationService
 {
+    public const ERR_MISSING_RECIPIENTS = 'Missing notification recipients';
+
     protected $documentService;
 
     public function __construct(DocumentGenerationService $documentService)
@@ -23,72 +42,52 @@ class NotificationService
         $this->documentService = $documentService;
     }
 
-    // NOTA (audit 2026-06): prepareNotification() e generateDocuments() rimossi —
-    // erano duplicati morti di NotificationPreparationService::prepareNotification()
-    // e NotificationDocumentService. Questo service gestisce SOLO l'invio.
-
-    public function send(TournamentNotification $notification, bool $force = false)
+    public function send(TournamentNotification $notification, bool $force = false): void
     {
-        Log::info('Starting notification send', [
-            'notification_id' => $notification->id,
-            'force' => $force,
-            'status' => $notification->status,
-            'metadata' => $notification->metadata,
-            'recipients' => $notification->recipients,
-        ]);
-
-        // Controllo metadata
-        if (empty($notification->metadata)) {
-            throw new \Exception('Missing notification metadata');
-        }
-
-        Log::info('Proceeding with send', ['force' => $force, 'status' => $notification->status]);
-
-        // Normalize recipients from metadata and enforce alignment with current assignments
         $metadata = is_string($notification->metadata)
             ? (json_decode($notification->metadata, true) ?? [])
             : ($notification->metadata ?? []);
 
-        $recipients = $notification->recipients ?: ($metadata['recipients'] ?? [
-            'club' => false,
-            'referees' => [],
-            'institutional' => [],
+        Log::info('Starting notification send', [
+            'notification_id' => $notification->id,
+            'force' => $force,
+            'status' => $notification->status,
+            'metadata_recipients' => $metadata['recipients'] ?? null,
         ]);
 
-        // Get current assignments
+        // FIX D2: serve l'intento esplicito del form. Metadata "estranei"
+        // (es. {source: "Import batch FIG"}) non bastano per inviare.
+        if (empty($metadata['recipients']) || ! is_array($metadata['recipients'])) {
+            throw new \Exception(self::ERR_MISSING_RECIPIENTS);
+        }
+
+        // FIX D1: i destinatari arrivano SOLO dal form (metadata), mai dalla
+        // colonna `recipients` persistita da invii precedenti.
+        $recipients = $metadata['recipients'];
+
         $tournament = $notification->tournament;
         $currentRefereeIds = $tournament->assignments()->pluck('user_id')->toArray();
 
-        // RESEND: use current assignments, ignoring stored recipients
-        if ($force === true) {
-            Log::info('Resend: using current assignments', [
-                'current_assignments' => $currentRefereeIds,
-            ]);
-            $selectedRefereeIds = $currentRefereeIds;
-        }
-        // SEND: use specified recipients, but validate they exist in assignments
-        else {
-            Log::info('Send: using specified recipients', [
-                'recipients' => $recipients,
-            ]);
-            $selectedRefereeIds = isset($recipients['referees']) && is_array($recipients['referees'])
-                ? $recipients['referees']
-                : [];
-        }
+        // RESEND forzato: tutti gli arbitri attualmente assegnati
+        $selectedRefereeIds = $force
+            ? $currentRefereeIds
+            : (is_array($recipients['referees'] ?? null) ? $recipients['referees'] : []);
 
-        // Default to sending to club unless explicitly disabled
-        if (! array_key_exists('club', $recipients)) {
-            $recipients['club'] = true;
-        }
-
-        // Enforce that only currently assigned referees are included
+        // Solo arbitri effettivamente assegnati al torneo
         $finalRefereeIds = array_values(array_intersect($selectedRefereeIds, $currentRefereeIds));
 
-        // Persist back normalized recipients for traceability
+        $sendToClub = (bool) ($recipients['club'] ?? true);
+        $sendToZone = (bool) ($recipients['zone'] ?? false);
+        $institutionalIds = is_array($recipients['institutional'] ?? null) ? $recipients['institutional'] : [];
+        $additional = is_array($recipients['additional'] ?? null) ? $recipients['additional'] : [];
+
+        // Traccia di ciò che verrà usato (solo audit — mai più riletta come input)
         $notification->recipients = [
-            'club' => (bool) ($recipients['club'] ?? false),
+            'club' => $sendToClub,
             'referees' => $finalRefereeIds,
-            'institutional' => is_array($recipients['institutional'] ?? null) ? $recipients['institutional'] : [],
+            'institutional' => $institutionalIds,
+            'zone' => $sendToZone,
+            'additional' => $additional,
         ];
 
         Log::info('Normalized recipients for sending', [
@@ -96,76 +95,80 @@ class NotificationService
             'current_assignments' => $currentRefereeIds,
         ]);
 
+        $subject = $metadata['subject'] ?? null;
+        $content = $metadata['message'] ?? null;
+
         $successCount = 0;
         $errorCount = 0;
+        $errors = [];
 
         try {
-            // 1. Invia al circolo
-            // Protetto da try/catch per-destinatario come gli arbitri: un circolo
-            // senza email (o errore invio) NON deve bloccare la notifica agli arbitri.
-            if (isset($notification->recipients['club']) && $notification->recipients['club']) {
+            // ═══════════════════════════════════════════════════════════
+            // MAIL UNICA — TO circolo (competenza, con allegati),
+            // CC arbitri + istituzionali + sezione di zona + email aggiuntive
+            // ═══════════════════════════════════════════════════════════
+            $builder = new NotificationRecipientBuilder;
+
+            if ($sendToClub) {
+                $builder->addClub($tournament); // TO (skippato se senza email)
+            }
+
+            $builder->addRefereesByIds($finalRefereeIds)
+                ->addInstitutionalsByIds($institutionalIds);
+
+            if ($sendToZone) {
+                $builder->addZone($tournament); // CC sezione di zona
+            }
+
+            foreach ($additional as $extra) {
+                if (! empty($extra['email'])) {
+                    $builder->addCustomCc($extra['email'], $extra['name'] ?? null);
+                }
+            }
+
+            $built = $builder->build();
+
+            // Circolo richiesto ma irraggiungibile (senza email) → errore tracciato
+            if ($sendToClub && empty($built['to'])) {
+                Log::error('Error sending to club', [
+                    'notification_id' => $notification->id,
+                    'error' => 'Club email not found',
+                ]);
+                $errors[] = 'circolo: Club email not found';
+                $errorCount++;
+            }
+
+            if (! $built['isEmpty']) {
                 try {
-                    $this->sendToClub($notification);
-                    $successCount++;
+                    // TO = circolo; in sua assenza il primo CC è promosso a TO
+                    $all = array_merge($built['to'], $built['cc']);
+                    $first = $all[0];
+                    $rest = array_slice($all, 1);
+
+                    $mailer = Mail::to($first['email']);
+                    if (! empty($rest)) {
+                        $mailer->cc($rest);
+                    }
+                    $mailer->send(new ClubNotificationMail(
+                        $tournament,
+                        $content,
+                        $this->buildAttachments($notification),
+                        $subject
+                    ));
+
+                    $successCount += count($all);
                 } catch (\Exception $e) {
-                    Log::error('Error sending to club', [
+                    Log::error('Error sending zonal notification', [
                         'notification_id' => $notification->id,
                         'error' => $e->getMessage(),
                     ]);
+                    $errors[] = 'invio: '.$e->getMessage();
                     $errorCount++;
-                }
-            }
-
-            // 2. Invia agli arbitri
-            Log::info('Processing referee notifications', [
-                'has_referees' => isset($notification->recipients['referees']),
-                'is_array' => isset($notification->recipients['referees']) ? is_array($notification->recipients['referees']) : null,
-                'referees' => $notification->recipients['referees'] ?? null,
-                'raw_recipients' => $notification->recipients,
-            ]);
-
-            if (isset($notification->recipients['referees']) && is_array($notification->recipients['referees'])) {
-                Log::info('Sending to referees', ['referee_ids' => $notification->recipients['referees']]);
-                foreach ($notification->recipients['referees'] as $refereeId) {
-                    try {
-                        $this->sendToReferee($notification, $refereeId);
-                        $successCount++;
-                        Log::info('Successfully sent to referee', ['referee_id' => $refereeId]);
-                    } catch (\Exception $e) {
-                        Log::error('Error sending to referee', [
-                            'referee_id' => $refereeId,
-                            'error' => $e->getMessage(),
-                        ]);
-                        $errorCount++;
-                    }
-                }
-            } else {
-                Log::warning('No referees to notify in recipients array');
-            }
-
-            // 3. Invia istituzionali
-            if (isset($notification->recipients['institutional']) && is_array($notification->recipients['institutional'])) {
-                foreach ($notification->recipients['institutional'] as $emailId) {
-                    try {
-                        $this->sendToInstitutional($notification, $emailId);
-                        $successCount++;
-                    } catch (\Exception $e) {
-                        Log::error('Error sending to institutional', [
-                            'email_id' => $emailId,
-                            'error' => $e->getMessage(),
-                        ]);
-                        $errorCount++;
-                    }
                 }
             }
 
             // Aggiorna stato
             $status = $errorCount > 0 ? 'partial' : 'sent';
-
-            $metadata = $notification->metadata ?? [];
-            if (is_string($metadata)) {
-                $metadata = json_decode($metadata, true) ?? [];
-            }
 
             $notification->update([
                 'status' => $status,
@@ -173,28 +176,24 @@ class NotificationService
                 'metadata' => array_merge($metadata, [
                     'success_count' => $successCount,
                     'error_count' => $errorCount,
-                    'last_error' => null,
+                    'last_error' => empty($errors) ? null : implode(' | ', $errors),
                 ]),
             ]);
 
-            // Log success
             Log::info('Notification sent', [
                 'notification_id' => $notification->id,
                 'success' => $successCount,
                 'errors' => $errorCount,
             ]);
-
         } catch (\Exception $e) {
-            // Log error
             Log::error('Error sending notification', [
                 'notification_id' => $notification->id,
                 'error' => $e->getMessage(),
             ]);
 
-            // Update status
             $notification->update([
                 'status' => 'failed',
-                'metadata' => array_merge($notification->metadata ?? [], [
+                'metadata' => array_merge($metadata, [
                     'last_error' => $e->getMessage(),
                     'success_count' => $successCount,
                     'error_count' => $errorCount,
@@ -205,87 +204,15 @@ class NotificationService
         }
     }
 
-    private function sendToClub(TournamentNotification $notification)
+    /**
+     * Allegati della mail unica: lettera circolo (facsimile) + convocazione.
+     */
+    private function buildAttachments(TournamentNotification $notification): array
     {
-        $tournament = $notification->tournament;
-        $club = $tournament->club;
-
-        if (! $club->email) {
-            throw new \Exception('Club email not found');
-        }
-
-        // Get both club letter and convocation
-        $attachments = array_merge(
+        return array_merge(
             $this->getClubAttachments($notification),
             $this->getRefereeAttachments($notification)
         );
-
-        Log::info('Sending club notification', [
-            'notification_id' => $notification->id,
-            'documents' => $notification->documents,
-            'attachments' => $attachments,
-        ]);
-
-        // Parse metadata for message and flags
-        $metadata = $notification->metadata ?? [];
-        if (is_string($metadata)) {
-            $metadata = json_decode($metadata, true) ?? [];
-        }
-        $content = $metadata['message'] ?? null;
-
-        Log::info('Sending club notification', [
-            'club_email' => $club->email,
-            'attachments' => $attachments,
-            'has_documents' => ! empty($notification->documents),
-            'attach_enabled' => ! empty($metadata['attach_convocation']),
-        ]);
-
-        Mail::to($club->email)
-            ->send(new ClubNotificationMail(
-                $tournament,
-                $content,
-                $attachments
-            ));
-    }
-
-    private function sendToReferee(TournamentNotification $notification, $refereeId)
-    {
-        $tournament = $notification->tournament;
-        $assignment = $tournament->assignments()
-            ->where('user_id', $refereeId)
-            ->first();
-
-        if (! $assignment) {
-            throw new \Exception("Assignment not found for referee {$refereeId}");
-        }
-
-        Mail::to($assignment->user->email)
-            ->send(new RefereeAssignmentMail(
-                $assignment,
-                $tournament,
-                $this->getRefereeAttachments($notification)
-            ));
-    }
-
-    private function sendToInstitutional(TournamentNotification $notification, $emailId)
-    {
-        $institutionalEmail = InstitutionalEmail::find($emailId);
-        if (! $institutionalEmail) {
-            throw new \Exception("Institutional email {$emailId} not found");
-        }
-
-        // Parse metadata for institutional email
-        $metadata = $notification->metadata ?? [];
-        if (is_string($metadata)) {
-            $metadata = json_decode($metadata, true) ?? [];
-        }
-        $notificationType = $metadata['notification_type'] ?? 'Assegnazioni';
-
-        Mail::to($institutionalEmail->email)
-            ->send(new InstitutionalNotificationMail(
-                $notification->tournament,
-                $notificationType
-            ));
     }
 
     private function getClubAttachments(TournamentNotification $notification): array

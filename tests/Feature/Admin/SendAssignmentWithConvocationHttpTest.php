@@ -3,7 +3,6 @@
 namespace Tests\Feature\Admin;
 
 use App\Mail\ClubNotificationMail;
-use App\Mail\RefereeAssignmentMail;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Models\TournamentType;
@@ -126,7 +125,11 @@ class SendAssignmentWithConvocationHttpTest extends TestCase
 
         $response->assertRedirect(route('admin.tournament-notifications.index'));
 
-        Mail::assertQueued(ClubNotificationMail::class, fn ($mail) => $mail->hasTo('circolo@example.test'));
-        Mail::assertQueued(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('arbitro@example.test'));
+        // Mail unica: TO circolo, arbitro in conoscenza (CC)
+        Mail::assertQueued(ClubNotificationMail::class, function ($mail) {
+            return $mail->hasTo('circolo@example.test')
+                && ($mail->hasTo('arbitro@example.test') || $mail->hasCc('arbitro@example.test'));
+        });
+        Mail::assertQueued(ClubNotificationMail::class, 1);
     }
 }

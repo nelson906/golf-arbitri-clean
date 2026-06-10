@@ -50,7 +50,49 @@ class NotificationRecipientBuilder
         return $this;
     }
 
+    /**
+     * Aggiunge il circolo del torneo in TO (flusso zonale unificato).
+     */
+    public function addClub(Tournament $tournament): static
+    {
+        $club = $tournament->club;
+
+        if ($club?->email) {
+            $this->addTo($club->email, $club->name ?? 'Circolo');
+        }
+
+        return $this;
+    }
+
     // ── Metodi CC ─────────────────────────────────────────────────────────────
+
+    /**
+     * Aggiunge gli indirizzi istituzionali (attivi) con ID specifici in CC.
+     *
+     * @param  int[]  $emailIds
+     */
+    public function addInstitutionalsByIds(array $emailIds): static
+    {
+        if (empty($emailIds)) {
+            return $this;
+        }
+
+        \App\Models\InstitutionalEmail::whereIn('id', $emailIds)
+            ->where('is_active', true)
+            ->each(fn ($e) => $this->addCc($e->email, $e->name ?? 'Istituzionale'));
+
+        return $this;
+    }
+
+    /**
+     * Aggiunge un indirizzo libero (email aggiuntiva dal form) in CC.
+     */
+    public function addCustomCc(string $email, ?string $name = null): static
+    {
+        $this->addCc($email, $name ?: $email);
+
+        return $this;
+    }
 
     /**
      * Aggiunge la zona del torneo in CC.

@@ -4,7 +4,6 @@ namespace Tests\Feature\Notifications;
 
 use App\Helpers\ZoneHelper;
 use App\Mail\ClubNotificationMail;
-use App\Mail\RefereeAssignmentMail;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Models\TournamentType;
@@ -15,10 +14,9 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * Verifica che i documenti generati (.docx) vengano EFFETTIVAMENTE allegati alle
- * email: la lettera circolo alla mail del circolo, la convocazione alla mail
- * dell'arbitro. Prima esisteva copertura sull'invio ma non sull'inclusione degli
- * allegati (getClubAttachments / getRefereeAttachments).
+ * MODELLO A MAIL SINGOLA 2026-06: una sola email con TO = circolo e
+ * CC = interessati; gli allegati (lettera circolo + convocazione) sono
+ * sulla mail unica e raggiungono quindi anche i CC (limite del mezzo).
  *
  * NOTA: i Mailable usano file_exists(storage_path(...)) negli attachments(),
  * quindi servono file REALI sul disco public (Storage::fake non intercetta
@@ -80,42 +78,47 @@ class NotificationAttachmentsTest extends TestCase
             'notification_type' => null,
             'status'            => 'pending',
             'documents'         => ['convocation' => $convFile, 'club_letter' => $clubFile],
-            'metadata'          => ['message' => 'In allegato i documenti.'],
-            'recipients'        => [
-                'club'          => true,
-                'referees'      => [$ref->id],
-                'institutional' => [],
+            'metadata'          => [
+                'message'    => 'In allegato i documenti.',
+                'recipients' => [
+                    'club'          => true,
+                    'referees'      => [$ref->id],
+                    'institutional' => [],
+                ],
             ],
         ]);
 
         return [$tournament, $ref, $convPath, $clubPath];
     }
 
-    public function test_club_mail_includes_club_letter_attachment(): void
+    public function test_club_mail_includes_both_attachments(): void
     {
-        Mail::fake();
-        [$tournament, , , $clubPath] = $this->setupWithRealDocuments();
+        [$tournament, , $convPath, $clubPath] = $this->setupWithRealDocuments();
 
         $notification = TournamentNotification::where('tournament_id', $tournament->id)->firstOrFail();
         app(NotificationService::class)->send($notification);
 
-        Mail::assertQueued(ClubNotificationMail::class, function ($mail) use ($clubPath) {
+        Mail::assertQueued(ClubNotificationMail::class, function ($mail) use ($clubPath, $convPath) {
             return $mail->hasTo('circolo@example.test')
-                && $mail->hasAttachment(Attachment::fromPath($clubPath)->as('Lettera_Circolo.docx'));
+                && $mail->hasAttachment(Attachment::fromPath($clubPath)->as('Lettera_Circolo.docx'))
+                && $mail->hasAttachment(Attachment::fromPath($convPath)->as('Convocazione.docx'));
         });
     }
 
-    public function test_referee_mail_includes_convocation_attachment(): void
+    /**
+     * L'arbitro è in CC (conoscenza) della stessa mail indirizzata al circolo.
+     */
+    public function test_referee_is_in_cc_of_club_mail(): void
     {
-        Mail::fake();
-        [$tournament, , $convPath] = $this->setupWithRealDocuments();
+        [$tournament] = $this->setupWithRealDocuments();
 
         $notification = TournamentNotification::where('tournament_id', $tournament->id)->firstOrFail();
         app(NotificationService::class)->send($notification);
 
-        Mail::assertQueued(RefereeAssignmentMail::class, function ($mail) use ($convPath) {
-            return $mail->hasTo('arbitro@example.test')
-                && $mail->hasAttachment(Attachment::fromPath($convPath)->as('Convocazione.docx'));
+        Mail::assertQueued(ClubNotificationMail::class, function ($mail) {
+            return $mail->hasTo('circolo@example.test')
+                && $mail->hasCc('arbitro@example.test');
         });
+        Mail::assertQueued(ClubNotificationMail::class, 1);
     }
 }

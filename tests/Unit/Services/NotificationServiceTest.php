@@ -154,9 +154,10 @@ class NotificationServiceTest extends TestCase
     // ==========================================
 
     /**
-     * Test: send() fallisce senza metadata
+     * Test: send() fallisce senza recipients nel metadata (FIX D2:
+     * vale sia per metadata vuoto sia per metadata "estraneo" tipo import FIG)
      */
-    public function test_send_fails_without_metadata(): void
+    public function test_send_fails_without_metadata_recipients(): void
     {
         $tournament = $this->createTournament();
 
@@ -167,7 +168,7 @@ class NotificationServiceTest extends TestCase
         ]);
 
         $this->expectException(\Exception::class);
-        $this->expectExceptionMessage('Missing notification metadata');
+        $this->expectExceptionMessage(NotificationService::ERR_MISSING_RECIPIENTS);
 
         $this->service->send($notification);
     }

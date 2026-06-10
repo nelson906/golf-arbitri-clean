@@ -10,6 +10,7 @@ use App\Models\TournamentNotification;
 use App\Models\User;
 use App\Models\Zone;
 use App\Services\DocumentGenerationService;
+use App\Services\NotificationPreparationService;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -41,6 +42,8 @@ class NotificationCycleTest extends TestCase
 
     protected NotificationService $notificationService;
 
+    protected NotificationPreparationService $preparationService;
+
     protected ?Tournament $testTournament = null;
 
     protected ?User $testAdmin = null;
@@ -64,6 +67,7 @@ class NotificationCycleTest extends TestCase
         // Inizializza i servizi
         $this->documentService = app(DocumentGenerationService::class);
         $this->notificationService = app(NotificationService::class);
+        $this->preparationService = app(NotificationPreparationService::class);
 
         // Fake mail per non inviare email reali
         Mail::fake();
@@ -289,7 +293,7 @@ class NotificationCycleTest extends TestCase
         }
 
         try {
-            $notification = $this->notificationService->prepareNotification($tournament);
+            $notification = $this->preparationService->prepareNotification($tournament);
 
             $this->assertInstanceOf(TournamentNotification::class, $notification);
             $this->assertEquals($tournament->id, $notification->tournament_id);

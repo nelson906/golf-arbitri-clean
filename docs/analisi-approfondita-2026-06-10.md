@@ -183,6 +183,64 @@ Eliminati: `AvailabilityNotificationService` (249 righe), `TournamentNotificatio
 
 ---
 
+## 4-bis. Bug report 2026-06-10: "notifica zonale arriva solo agli arbitri"
+
+**Sintomo**: invio zonale dal form → arbitri raggiunti, circolo (con allegati convocazione+facsimile) e istituzionali NO.
+
+**Diagnosi** — il percorso "fresco" (record pulito + form) è corretto e coperto dai test; il guasto sta in un cluster di 4 difetti pre-esistenti in `NotificationService::send()` che si attivano sui RE-invii e sui record importati FIG:
+
+- **D1 — Precedenza invertita**: `$notification->recipients ?: $metadata['recipients']`. La colonna `recipients` (persistita da QUALSIASI invio precedente) shadowa per sempre le scelte fresche del form (che `saveAsDraft` scrive solo in `metadata`). Colonna con `club:false / institutional:[]` → ogni reinvio ignora circolo e istituzionali, qualunque cosa selezioni l'admin. Con arbitri presenti in colonna → "arriva solo agli arbitri".
+- **D2 — Guard insufficiente**: `send()` controlla solo `empty($metadata)`. I record FIG (`MarkFigAssignmentsNotified`) hanno metadata `{source, command}` non vuoto ma SENZA `recipients` → fallback `{club:false, referees:[], institutional:[]}` → invio a NESSUNO, flash "successo", e **colonna avvelenata** → innesca D1 per sempre.
+- **D3 — Fallimenti silenziosi**: circolo senza email / istituzionale mancante → catch per-destinatario, status `partial`, ma il controller flasha "inviata con successo".
+- **D4 — Test ciechi**: tutti i test esistenti usano `Mail::fake` → serializzazione queue, render view, allegati e transport mai esercitati.
+
+**Verifica sul dato reale** (per confermare quale catena è scattata):
+```sql
+SELECT id, notification_type, status, recipients, JSON_EXTRACT(metadata,'$.recipients') AS meta_recipients,
+       JSON_EXTRACT(metadata,'$.source') AS fig_source
+FROM tournament_notifications WHERE tournament_id = <ID_TORNEO>;
+```
+Se `recipients` contiene `"club": false` o `"institutional": []` mentre `meta_recipients` ha le scelte del form → D1 confermato. Se `fig_source` non è null → catena D2→D1. Nel log: riga `Normalized recipients for sending` mostra cosa è stato effettivamente usato.
+
+**Regressione**: `tests/Feature/Notifications/ZonalDeliveryRegressionTest.php` — 4 test:
+1. end-to-end REALE senza Mail::fake (sync queue + array transport + allegati su disco): circolo con entrambi gli allegati, arbitri, istituzionale, status coerente;
+2. (SPEC, fallisce finché D1 non è fixato) il form vince sulla colonna stantia;
+3. (SPEC, fallisce finché D2 non è fixato) "Invia" su record FIG → redirect al form, non invio-a-nessuno;
+4. (SPEC, fallisce finché D3 non è fixato) invio parziale ≠ "successo".
+
+## 4-ter. Modello unificato "lettera al circolo + CC interessati" — IMPLEMENTATO
+
+**Conferma dal dato reale** (notifica id 152): `recipients` NULL, `metadata.recipients` NULL, `metadata.source = "Import batch FIG 2025"` → catena D2 confermata.
+
+**Refactor eseguito il 2026-06-10, rivisto su indicazione di Alberto** (la prima versione a 2 mail metteva un arbitro a caso come TO della copia conoscenza — sbagliato):
+
+- **UNA SOLA email**: **TO (competenza) = circolo**, con allegati Convocazione.docx + Lettera_Circolo.docx; **CC (conoscenza) = arbitri selezionati + istituzionali selezionati + sezione di zona + email aggiuntive**. Senza circolo, primo CC promosso a TO. NB: gli allegati raggiungono anche i CC (limite tecnico del mezzo email — impossibile allegare per-destinatario in un solo messaggio).
+- **FIX form**: i campi `send_to_section` ("Invia copia alla sezione") e `additional_emails[]`/`additional_names[]` ("Email Aggiuntive") esistevano nel form ma il backend **non li ha mai letti** — per questo zona e indirizzi aggiunti non partivano. Ora finiscono in `metadata.recipients.zone/.additional` e nel CC.
+- **Fix D1**: i destinatari arrivano SOLO da `metadata['recipients']` (l'intento del form); la colonna `recipients` è scritta come traccia ma mai più riletta come input.
+- **Fix D2**: `send()` rifiuta metadata senza `recipients` (`ERR_MISSING_RECIPIENTS`); il pulsante "Invia" dalla lista reindirizza al form per i record FIG/incompleti.
+- **Fix D3**: `redirectAfterSend()` distingue `sent` (success) da `partial` (warning con causa, es. "circolo: Club email not found").
+- `RefereeAssignmentMail` e `InstitutionalNotificationMail` sono ora `@deprecated` (fuori dal flusso zonale, file mantenuti).
+- `NotificationRecipientBuilder`: aggiunti `addClub()` e `addInstitutionalsByIds()`.
+
+**Test aggiornati al nuovo modello**: ZonalDeliveryRegressionTest (incl. end-to-end reale senza Mail::fake: 2 messaggi, allegati solo sul primo), ZonalNotificationSendTest, InstitutionalNotificationSendTest, NotificationAttachmentsTest (nuovo test: copia conoscenza senza allegati), MailDispatchRegressionTest, SendAssignmentWithConvocationHttpTest, NotificationCycleTest, NotificationServiceTest.
+
+### Proposta originale (riferimento fattibilità)
+
+Richiesta: uniformare lo zonale al modello CRC nazionale — UNA mail con lettera nominativi al **circolo (TO)**, allegati convocazione + facsimile, e **tutti gli interessati in CC** (arbitri assegnati + istituzionali + eventuale zona).
+
+**Fattibile, effort ~1 giorno + aggiornamento test.** I mattoni esistono già:
+
+- `NotificationRecipientBuilder` (usato dal flusso nazionale) ha già: formato CC canonico `array<{email,name}>`, dedupe, validazione RFC con skip+log dei malformati, fallback "primo CC come TO". Vanno aggiunti due metodi: `addClub(Tournament)` (TO) e `addInstitutionalsByIds(array)` (CC).
+- `ClubNotificationMail` resta l'unico Mailable del flusso zonale (con allegati); `RefereeAssignmentMail`/`InstitutionalNotificationMail` escono dal flusso zonale (restano per altri usi o si deprecano).
+- `NotificationService::send()` si riduce a: costruisci destinatari dal **metadata del form** (fix D1 incluso gratis), una `Mail::to($club)->cc($interessati)->send(...)`, un solo esito → niente più `partial` ambiguo (fix D3 semplificato).
+
+**Trade-off da decidere prima di implementare**:
+
+1. *Privacy/visibilità*: in CC tutti vedono gli indirizzi di tutti (il flusso CRC nazionale già funziona così — culturalmente accettato in federazione).
+2. *Personalizzazione persa*: oggi ogni arbitro riceve subject "Convocazione {ruolo} — {torneo}" personalizzato; col CC tutti ricevono la stessa mail intestata al circolo.
+3. *Circolo senza email*: fallback come il nazionale (primo CC promosso a TO) oppure blocco con errore esplicito?
+4. *Un solo invio = un solo punto di fallimento*: se l'SMTP rifiuta la mail, non riceve nessuno (oggi i fallimenti sono indipendenti per destinatario).
+
 ## 5. File chiave (mappa per chi entra nel progetto)
 
 - **Visibilità/permessi**: `app/Support/TournamentVisibility.php` (source of truth), `app/Traits/HasZoneVisibility.php` (bridge), `app/Enums/UserType.php`, `RefereeLevel.php`

@@ -3,8 +3,6 @@
 namespace Tests\Feature\Notifications;
 
 use App\Mail\ClubNotificationMail;
-use App\Mail\InstitutionalNotificationMail;
-use App\Mail\RefereeAssignmentMail;
 use App\Models\InstitutionalEmail;
 use App\Models\TournamentNotification;
 use App\Models\TournamentType;
@@ -13,10 +11,10 @@ use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
- * Copre il TERZO ramo di NotificationService::send() — gli indirizzi
- * ISTITUZIONALI ("indirizzi che si ritiene opportuno inserire", cfr.
- * istruzioni di progetto). Prima esisteva copertura solo su circolo + arbitri:
- * nessun test asseriva che gli istituzionali ricevano davvero l'email.
+ * Copre gli indirizzi ISTITUZIONALI ("indirizzi che si ritiene opportuno
+ * inserire", cfr. istruzioni di progetto) nel MODELLO A MAIL SINGOLA 2026-06:
+ * gli istituzionali selezionati viaggiano in CC della mail al circolo
+ * (primo CC promosso a TO se il circolo manca).
  *
  * Documenti lasciati vuoti (documents = []) → nessuna dipendenza dal filesystem.
  */
@@ -37,54 +35,57 @@ class InstitutionalNotificationSendTest extends TestCase
         ]);
     }
 
+    private function makeNotification(int $tournamentId, bool $club, array $refereeIds, array $institutionalIds): TournamentNotification
+    {
+        return TournamentNotification::create([
+            'tournament_id'     => $tournamentId,
+            'notification_type' => null,
+            'status'            => 'pending',
+            'documents'         => [],
+            'metadata'          => [
+                'message'    => 'Comunicazione di servizio.',
+                'recipients' => [
+                    'club'          => $club,
+                    'referees'      => $refereeIds,
+                    'institutional' => $institutionalIds,
+                ],
+            ],
+        ]);
+    }
+
     /**
-     * Un istituzionale selezionato (per ID nei recipients) riceve la mail dedicata.
+     * Un istituzionale selezionato (per ID nei recipients del form) riceve
+     * la copia conoscenza.
      */
     public function test_send_dispatches_mail_to_configured_institutional_address(): void
     {
-        Mail::fake();
-
         $club = $this->createClub(['zone_id' => 1, 'email' => 'circolo@example.test']);
         $tournament = $this->createTournament([
             'club_id'            => $club->id,
             'tournament_type_id' => $this->zonalType()->id,
             'status'             => 'open',
         ]);
-        $ref = $this->createReferee(['zone_id' => 1, 'email' => 'arbitro@example.test']);
-        $this->createAssignment(['tournament_id' => $tournament->id, 'user_id' => $ref->id]);
 
         $istituzionale = $this->makeInstitutional('ufficio@example.test');
 
-        $notification = TournamentNotification::create([
-            'tournament_id'     => $tournament->id,
-            'notification_type' => null,
-            'status'            => 'pending',
-            'documents'         => [],
-            'metadata'          => ['message' => 'Comunicazione di servizio.'],
-            'recipients'        => [
-                'club'          => false,
-                'referees'      => [],
-                'institutional' => [$istituzionale->id],
-            ],
-        ]);
+        $notification = $this->makeNotification($tournament->id, false, [], [$istituzionale->id]);
 
         app(NotificationService::class)->send($notification);
 
-        Mail::assertQueued(InstitutionalNotificationMail::class, fn ($mail) => $mail->hasTo('ufficio@example.test'));
-        Mail::assertQueued(InstitutionalNotificationMail::class, 1);
+        // Unico destinatario → promosso a TO
+        Mail::assertQueued(ClubNotificationMail::class, fn ($mail) => $mail->hasTo('ufficio@example.test'));
+        Mail::assertQueued(ClubNotificationMail::class, 1);
 
         $notification->refresh();
         $this->assertEquals('sent', $notification->status);
     }
 
     /**
-     * Invio completo: circolo + arbitro + istituzionale ricevono ciascuno la
-     * propria mail nello stesso send(). Verifica che i tre rami coesistano.
+     * Invio completo: circolo (mail dedicata con TO proprio) + arbitro e
+     * istituzionale nella stessa copia conoscenza.
      */
     public function test_institutional_sent_together_with_club_and_referees(): void
     {
-        Mail::fake();
-
         $club = $this->createClub(['zone_id' => 1, 'email' => 'circolo@example.test']);
         $tournament = $this->createTournament([
             'club_id'            => $club->id,
@@ -96,37 +97,32 @@ class InstitutionalNotificationSendTest extends TestCase
 
         $istituzionale = $this->makeInstitutional('ufficio@example.test');
 
-        $notification = TournamentNotification::create([
-            'tournament_id'     => $tournament->id,
-            'notification_type' => null,
-            'status'            => 'pending',
-            'documents'         => [],
-            'metadata'          => ['message' => 'Comunicazione di servizio.'],
-            'recipients'        => [
-                'club'          => true,
-                'referees'      => [$ref->id],
-                'institutional' => [$istituzionale->id],
-            ],
-        ]);
+        $notification = $this->makeNotification($tournament->id, true, [$ref->id], [$istituzionale->id]);
 
         app(NotificationService::class)->send($notification);
 
+        // Mail unica: TO circolo
         Mail::assertQueued(ClubNotificationMail::class, fn ($mail) => $mail->hasTo('circolo@example.test'));
-        Mail::assertQueued(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('arbitro@example.test'));
-        Mail::assertQueued(InstitutionalNotificationMail::class, fn ($mail) => $mail->hasTo('ufficio@example.test'));
+
+        // Stessa mail: arbitro + istituzionale in conoscenza (TO o CC)
+        Mail::assertQueued(ClubNotificationMail::class, function ($mail) {
+            return ($mail->hasTo('arbitro@example.test') || $mail->hasCc('arbitro@example.test'))
+                && ($mail->hasTo('ufficio@example.test') || $mail->hasCc('ufficio@example.test'));
+        });
+
+        Mail::assertQueued(ClubNotificationMail::class, 1);
 
         $notification->refresh();
         $this->assertEquals('sent', $notification->status);
     }
 
     /**
-     * Un istituzionale inesistente (ID non valido) non blocca l'invio: il ramo
-     * è protetto da try/catch per-destinatario → stato 'partial', circolo servito.
+     * Un istituzionale inesistente o disattivato viene semplicemente saltato
+     * dal builder (con dedupe/validazione): il circolo è servito comunque e
+     * l'invio resta pieno (nessun destinatario fantasma = nessun errore).
      */
     public function test_invalid_institutional_id_does_not_block_other_recipients(): void
     {
-        Mail::fake();
-
         $club = $this->createClub(['zone_id' => 1, 'email' => 'circolo@example.test']);
         $tournament = $this->createTournament([
             'club_id'            => $club->id,
@@ -134,25 +130,15 @@ class InstitutionalNotificationSendTest extends TestCase
             'status'             => 'open',
         ]);
 
-        $notification = TournamentNotification::create([
-            'tournament_id'     => $tournament->id,
-            'notification_type' => null,
-            'status'            => 'pending',
-            'documents'         => [],
-            'metadata'          => ['message' => 'Comunicazione di servizio.'],
-            'recipients'        => [
-                'club'          => true,
-                'referees'      => [],
-                'institutional' => [999999], // id inesistente
-            ],
-        ]);
+        $notification = $this->makeNotification($tournament->id, true, [], [999999]); // id inesistente
 
         app(NotificationService::class)->send($notification);
 
+        // Solo il circolo in TO: l'istituzionale fantasma è skippato dal builder
         Mail::assertQueued(ClubNotificationMail::class, 1);
-        Mail::assertNotQueued(InstitutionalNotificationMail::class);
+        Mail::assertQueued(ClubNotificationMail::class, fn ($mail) => $mail->hasTo('circolo@example.test'));
 
         $notification->refresh();
-        $this->assertEquals('partial', $notification->status);
+        $this->assertEquals('sent', $notification->status);
     }
 }
