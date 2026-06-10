@@ -99,7 +99,7 @@ class NotificationAttachmentsTest extends TestCase
         $notification = TournamentNotification::where('tournament_id', $tournament->id)->firstOrFail();
         app(NotificationService::class)->send($notification);
 
-        Mail::assertSent(ClubNotificationMail::class, function ($mail) use ($clubPath) {
+        Mail::assertQueued(ClubNotificationMail::class, function ($mail) use ($clubPath) {
             return $mail->hasTo('circolo@example.test')
                 && $mail->hasAttachment(Attachment::fromPath($clubPath)->as('Lettera_Circolo.docx'));
         });
@@ -113,7 +113,7 @@ class NotificationAttachmentsTest extends TestCase
         $notification = TournamentNotification::where('tournament_id', $tournament->id)->firstOrFail();
         app(NotificationService::class)->send($notification);
 
-        Mail::assertSent(RefereeAssignmentMail::class, function ($mail) use ($convPath) {
+        Mail::assertQueued(RefereeAssignmentMail::class, function ($mail) use ($convPath) {
             return $mail->hasTo('arbitro@example.test')
                 && $mail->hasAttachment(Attachment::fromPath($convPath)->as('Convocazione.docx'));
         });

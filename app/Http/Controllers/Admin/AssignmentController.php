@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\AssignmentRole;
 use App\Enums\RefereeLevel;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AssignmentRequest;
 use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
@@ -109,6 +110,9 @@ class AssignmentController extends Controller
             $tournament = Tournament::with(['assignments.user', 'availabilities.user'])->find($request->tournament_id);
 
             if ($tournament instanceof Tournament) {
+                // Verifica accesso zona al torneo (IDOR fix)
+                $this->checkTournamentAccess($tournament);
+
                 // IDs arbitri già assegnati a questo torneo
                 $assignedRefereeIds = $tournament->assignments()->pluck('user_id')->toArray();
 
@@ -148,15 +152,20 @@ class AssignmentController extends Controller
 
     /**
      * Store singola assegnazione
+     *
+     * NOTA (audit 2026-06): usa AssignmentRequest (prima era FormRequest orfana,
+     * mai cablata): authorize() verifica ruolo+zona, rules() aggiunge controlli
+     * business (stato torneo, max arbitri, livello richiesto, stessa zona).
      */
-    public function store(Request $request)
+    public function store(AssignmentRequest $request)
     {
-        $validated = $request->validate([
-            'tournament_id' => 'required|exists:tournaments,id',
-            'user_id' => 'required|exists:users,id',
-            'role'  => ['nullable', Rule::enum(AssignmentRole::class)],
-            'notes' => 'nullable|string',
-        ]);
+        $validated = $request->validated();
+
+        // Difesa in profondità: oltre ad authorize() della FormRequest,
+        // applica le regole di visibilità complete (es. national admin
+        // limitato ai tornei nazionali) — IDOR fix
+        $tournament = Tournament::findOrFail($validated['tournament_id']);
+        $this->checkTournamentAccess($tournament);
 
         $exists = Assignment::where('tournament_id', $validated['tournament_id'])
             ->where('user_id', $validated['user_id'])
@@ -327,6 +336,9 @@ class AssignmentController extends Controller
      */
     public function assignReferees(Tournament $tournament)
     {
+        // Verifica accesso zona al torneo (IDOR fix: il middleware controlla solo il ruolo)
+        $this->checkTournamentAccess($tournament);
+
         $user = auth()->user();
 
         // Carica relazioni base del torneo
@@ -492,6 +504,9 @@ class AssignmentController extends Controller
      */
     public function storeMultiple(Request $request, Tournament $tournament)
     {
+        // Verifica accesso zona al torneo (IDOR fix: il middleware controlla solo il ruolo)
+        $this->checkTournamentAccess($tournament);
+
         $request->validate([
             'referee_ids' => 'required|array',
             'referee_ids.*' => 'exists:users,id',
@@ -588,6 +603,9 @@ class AssignmentController extends Controller
      */
     public function removeFromTournament(Tournament $tournament, User $referee)
     {
+        // Verifica accesso zona al torneo (IDOR fix: il middleware controlla solo il ruolo)
+        $this->checkTournamentAccess($tournament);
+
         $assignment = Assignment::where('tournament_id', $tournament->id)
             ->where('user_id', $referee->id)
             ->first();

@@ -126,6 +126,6 @@ class NotificationRecipientBuilderEmailValidationTest extends TestCase
             ->cc($recipients['cc'])
             ->send($mailable);
 
-        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\NationalNotificationMail::class, 1);
+        \Illuminate\Support\Facades\Mail::assertQueued(\App\Mail\NationalNotificationMail::class, 1);
     }
 }

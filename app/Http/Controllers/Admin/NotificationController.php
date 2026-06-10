@@ -31,6 +31,58 @@ class NotificationController extends Controller
     ) {}
 
     /**
+     * Verifica accesso zona al torneo (IDOR fix: il middleware controlla solo il ruolo).
+     */
+    private function checkTournamentAccess(Tournament $tournament): void
+    {
+        if (! $this->canAccessTournament($tournament)) {
+            abort(403, 'Non autorizzato a gestire le notifiche di questo torneo');
+        }
+    }
+
+    /**
+     * Verifica accesso zona alla notifica tramite il torneo associato.
+     */
+    private function checkNotificationAccess(TournamentNotification $notification): void
+    {
+        if ($notification->tournament) {
+            $this->checkTournamentAccess($notification->tournament);
+        }
+    }
+
+    /**
+     * Aggiorna in modo atomico la chiave $type del JSON `documents`.
+     *
+     * FIX A6: il read-modify-write senza lock permetteva a due richieste AJAX
+     * concorrenti (es. genera convocazione + upload lettera) di sovrascriversi
+     * a vicenda. Qui si rilegge il record con lockForUpdate dentro transazione.
+     *
+     * @param  string|null  $fileName  null = rimuove la chiave
+     */
+    private function updateNotificationDocument(TournamentNotification $notification, string $type, ?string $fileName): void
+    {
+        DB::transaction(function () use ($notification, $type, $fileName) {
+            /** @var TournamentNotification $fresh */
+            $fresh = TournamentNotification::lockForUpdate()->findOrFail($notification->id);
+
+            $documents = is_string($fresh->documents)
+                ? (json_decode($fresh->documents, true) ?? [])
+                : ($fresh->documents ?? []);
+
+            if ($fileName === null) {
+                unset($documents[$type]);
+            } else {
+                $documents[$type] = $fileName;
+            }
+
+            $fresh->update(['documents' => $documents]);
+
+            // Allinea l'istanza già in memoria
+            $notification->setAttribute('documents', $documents);
+        });
+    }
+
+    /**
      * Lista notifiche con gestione documenti
      * Per gare nazionali, raggruppa CRC e Zona in una singola riga
      */
@@ -38,51 +90,59 @@ class NotificationController extends Controller
     {
         $user = auth()->user();
 
-        $query = TournamentNotification::with([
-            'tournament.club',
-            'tournament.zone',
-            'tournament.tournamentType',   // fonte di verità per is_national
-            'tournament.assignments.user',
-        ]);
+        // ═══════════════════════════════════════════════════════════════════
+        // FIX M2 (audit 2026-06): paginazione DB-side.
+        // Prima: get() di TUTTE le notifiche + groupBy + forPage in memoria —
+        // degradava linearmente con lo storico. Ora si paginano i TORNEI con
+        // notifiche (20 per pagina) e si caricano solo le loro notifiche.
+        // NB: eventuali notifiche orfane (tournament_id inesistente) non
+        // compaiono più in lista — prima comparivano come righe senza torneo.
+        // ═══════════════════════════════════════════════════════════════════
+        $tournamentsQuery = Tournament::with(['club', 'zone', 'tournamentType', 'assignments.user'])
+            ->whereHas('notifications');
 
         // Filtro visibilità per zona/ruolo (centralizzato nel trait)
-        $this->applyTournamentRelationVisibility($query, $user, 'tournament');
+        $this->applyTournamentVisibility($tournamentsQuery, $user);
 
         // Filtro anno (sulla data del torneo)
         if ($request->filled('anno')) {
-            $anno = (int) $request->anno;
-            $query->whereHas('tournament', fn ($q) => $q->whereYear('start_date', $anno));
+            $tournamentsQuery->whereYear('start_date', (int) $request->anno);
         }
 
         // Filtro ricerca nome torneo
         if ($request->filled('cerca')) {
-            $cerca = $request->cerca;
-            $query->whereHas('tournament', fn ($q) => $q->where('name', 'like', "%{$cerca}%"));
+            $tournamentsQuery->where('name', 'like', '%'.$request->cerca.'%');
         }
 
         // Ordina per data torneo ascendente (cronologia crescente)
-        $query->join('tournaments', 'tournament_notifications.tournament_id', '=', 'tournaments.id')
-              ->orderBy('tournaments.start_date', 'asc')
-              ->select('tournament_notifications.*');
+        $tournamentsPage = $tournamentsQuery->orderBy('start_date', 'asc')->paginate(20)->withQueryString();
 
-        $allNotifications = $query->get();
+        // Notifiche solo dei tornei in pagina
+        $notificationsByTournament = TournamentNotification::whereIn(
+            'tournament_id',
+            $tournamentsPage->getCollection()->pluck('id')
+        )->get()->groupBy('tournament_id');
 
         // RIMOSSO: updateRecipientInfo() in loop causava N+1 UPDATE queries ad ogni visualizzazione.
         // referee_list e details.total_recipients vengono ora aggiornati dall'AssignmentObserver
         // al momento della creazione/eliminazione delle assegnazioni (single source of truth).
 
-        // Raggruppa per tournament_id: gare nazionali hanno CRC + Zona nella stessa riga.
+        // Raggruppa per torneo: gare nazionali hanno CRC + Zona nella stessa riga.
         //
         // FONTE DI VERITÀ: tournament.tournamentType.is_national determina se il torneo
         // è nazionale o zonale. NON si usa notification_type per questa decisione,
         // perché i record di notifica possono avere il tipo errato (es. import batch FIG
         // che assegna crc_referees a tutti i tornei indiscriminatamente).
-        $grouped = $allNotifications->groupBy('tournament_id')->map(function ($notifications) {
-            $first      = $notifications->first();
-            $tournament = $first->tournament;
+        $tournamentNotifications = $tournamentsPage->through(function ($tournament) use ($notificationsByTournament) {
+            $notifications = $notificationsByTournament->get($tournament->id, collect());
+
+            // Collega il torneo (già eager-loaded) alle notifiche per evitare lazy-load nella view
+            $notifications->each->setRelation('tournament', $tournament);
+
+            $first = $notifications->first();
 
             // Fonte di verità: is_national dal tipo torneo, non dalla notifica
-            $isNational = $tournament?->tournamentType?->is_national ?? false;
+            $isNational = $tournament->tournamentType?->is_national ?? false;
 
             return (object) [
                 'tournament'            => $tournament,
@@ -100,26 +160,11 @@ class NotificationController extends Controller
                 'primary'               => $isNational
                     ? ($notifications->firstWhere('notification_type', 'crc_referees') ?? $first)
                     : ($notifications->whereNull('notification_type')->first() ?? $first),
-                // Data torneo per ordinamento (null-safe: notifica orfana senza torneo)
-                'tournament_start_date' => $tournament?->start_date,
+                'tournament_start_date' => $tournament->start_date,
                 'created_at'            => $notifications->max('created_at'),
                 'sent_at'               => $notifications->max('sent_at'),
             ];
-        })->sortBy('tournament_start_date');
-
-        // Paginazione manuale
-        $page = $request->get('page', 1);
-        $perPage = 20;
-        $total = $grouped->count();
-        $items = $grouped->forPage($page, $perPage)->values();
-
-        $tournamentNotifications = new \Illuminate\Pagination\LengthAwarePaginator(
-            $items,
-            $total,
-            $perPage,
-            $page,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
+        });
 
         // Anni disponibili per il filtro (ricavati dai tornei con notifiche)
         $anniDisponibili = TournamentNotification::join('tournaments', 'tournament_notifications.tournament_id', '=', 'tournaments.id')
@@ -137,6 +182,8 @@ class NotificationController extends Controller
      */
     public function showAssignmentForm(Tournament $tournament)
     {
+        $this->checkTournamentAccess($tournament);
+
         // Verifica che il torneo abbia assegnazioni
         if ($tournament->assignments->isEmpty()) {
             return redirect()->back()
@@ -181,6 +228,8 @@ class NotificationController extends Controller
      */
     public function documentsStatus(TournamentNotification $notification)
     {
+        $this->checkNotificationAccess($notification);
+
         try {
             $status = $this->documentService->getDocumentsStatus($notification);
 
@@ -200,6 +249,8 @@ class NotificationController extends Controller
      */
     public function generateDocument(TournamentNotification $notification, $type)
     {
+        $this->checkNotificationAccess($notification);
+
         // Validazione whitelist per evitare path traversal e input arbitrari
         if (! in_array($type, ['convocation', 'club_letter'], true)) {
             return response()->json(['success' => false, 'message' => 'Tipo documento non valido.'], 422);
@@ -208,14 +259,11 @@ class NotificationController extends Controller
         try {
             $fileName = $this->documentService->generateDocument($notification, $type);
 
-            // Aggiorna i documenti della notifica
-            $documents = is_string($notification->documents) ?
-                json_decode($notification->documents, true) : ($notification->documents ?? []);
-            $documents[$type] = $fileName;
-            $notification->update(['documents' => $documents]);
+            // Aggiorna i documenti della notifica (atomico, FIX A6)
+            $this->updateNotificationDocument($notification, $type, $fileName);
 
-            // Get updated document status for UI refresh
-            $status = $this->documentsStatus($notification)->getData();
+            // Get updated document status for UI refresh (M5: chiamata diretta al service)
+            $status = $this->documentService->getDocumentsStatus($notification);
 
             return response()->json([
                 'success' => true,
@@ -241,6 +289,8 @@ class NotificationController extends Controller
      */
     public function deleteDocument(TournamentNotification $notification, $type)
     {
+        $this->checkNotificationAccess($notification);
+
         // Validazione whitelist per evitare path traversal e input arbitrari
         if (! in_array($type, ['convocation', 'club_letter'], true)) {
             return response()->json(['success' => false, 'message' => 'Tipo documento non valido.'], 422);
@@ -249,15 +299,11 @@ class NotificationController extends Controller
         try {
             $this->documentService->deleteDocument($notification, $type);
 
-            // Aggiorna i documenti della notifica
-            $documents = is_string($notification->documents)
-                ? json_decode($notification->documents, true)
-                : ($notification->documents ?? []);
-            unset($documents[$type]);
-            $notification->update(['documents' => $documents]);
+            // Aggiorna i documenti della notifica (atomico, FIX A6)
+            $this->updateNotificationDocument($notification, $type, null);
 
-            // Ritorna lo stato aggiornato per aggiornare il modal
-            $status = $this->documentsStatus($notification)->getData();
+            // Ritorna lo stato aggiornato per aggiornare il modal (M5: chiamata diretta al service)
+            $status = $this->documentService->getDocumentsStatus($notification);
 
             return response()->json([
                 'success' => true,
@@ -280,6 +326,8 @@ class NotificationController extends Controller
      */
     public function downloadDocument(TournamentNotification $notification, $type)
     {
+        $this->checkNotificationAccess($notification);
+
         // Validazione whitelist per evitare path traversal e input arbitrari
         if (! in_array($type, ['convocation', 'club_letter'], true)) {
             abort(422, 'Tipo documento non valido.');
@@ -315,6 +363,8 @@ class NotificationController extends Controller
      */
     public function send(TournamentNotification $notification)
     {
+        $this->checkNotificationAccess($notification);
+
         // Se non ci sono metadati salvati, reindirizza al form
         if (empty($notification->metadata)) {
             return redirect()->route('admin.tournaments.show-assignment-form', $notification->tournament)
@@ -342,6 +392,8 @@ class NotificationController extends Controller
      */
     public function resend(TournamentNotification $notification)
     {
+        $this->checkNotificationAccess($notification);
+
         return redirect()
             ->route('admin.tournaments.show-assignment-form', $notification->tournament)
             ->with('info', 'Rivedi destinatari, assegnazioni e messaggio prima del reinvio.');
@@ -352,6 +404,8 @@ class NotificationController extends Controller
      */
     public function show(TournamentNotification $notification)
     {
+        $this->checkNotificationAccess($notification);
+
         $tournamentNotification = $notification->load(['tournament.club', 'tournament.zone', 'tournament.assignments.user']);
 
         return view('admin.tournament-notifications.show', ['tournamentNotification' => $tournamentNotification]);
@@ -362,6 +416,8 @@ class NotificationController extends Controller
      */
     public function edit(TournamentNotification $notification)
     {
+        $this->checkNotificationAccess($notification);
+
         $tournamentNotification = $notification;
 
         return view('admin.tournament-notifications.edit', compact('tournamentNotification'));
@@ -372,6 +428,8 @@ class NotificationController extends Controller
      */
     public function destroy(TournamentNotification $notification)
     {
+        $this->checkNotificationAccess($notification);
+
         try {
             $this->transactionService->deleteWithCleanup($notification);
 
@@ -388,6 +446,8 @@ class NotificationController extends Controller
      */
     public function destroyTournament(Tournament $tournament)
     {
+        $this->checkTournamentAccess($tournament);
+
         try {
             $notifications = TournamentNotification::where('tournament_id', $tournament->id)->get();
 
@@ -407,6 +467,8 @@ class NotificationController extends Controller
      */
     public function saveClauses(Request $request, TournamentNotification $notification)
     {
+        $this->checkNotificationAccess($notification);
+
         $validated = $request->validate([
             'clauses' => 'nullable|array',
             'clauses.*' => 'nullable|exists:notification_clauses,id',
@@ -436,6 +498,8 @@ class NotificationController extends Controller
      */
     public function sendAssignmentWithConvocation(Request $request, Tournament $tournament)
     {
+        $this->checkTournamentAccess($tournament);
+
         $validated = $request->validate([
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
@@ -518,6 +582,8 @@ class NotificationController extends Controller
      */
     public function findByTournament(Tournament $tournament)
     {
+        $this->checkTournamentAccess($tournament);
+
         $notification = TournamentNotification::where('tournament_id', $tournament->id)
             ->latest()
             ->first();
@@ -532,6 +598,8 @@ class NotificationController extends Controller
      */
     public function uploadDocument(Request $request, TournamentNotification $notification, $type)
     {
+        $this->checkNotificationAccess($notification);
+
         // Validazione whitelist per evitare path traversal e input arbitrari
         if (! in_array($type, ['convocation', 'club_letter'], true)) {
             return response()->json(['success' => false, 'message' => 'Tipo documento non valido.'], 422);
@@ -546,14 +614,11 @@ class NotificationController extends Controller
             $file = $request->file('document');
             $filename = $this->documentService->uploadDocument($notification, $type, $file);
 
-            // Aggiorna i documenti della notifica
-            $documents = is_string($notification->documents) ?
-                json_decode($notification->documents, true) : ($notification->documents ?? []);
-            $documents[$type] = $filename;
-            $notification->update(['documents' => $documents]);
+            // Aggiorna i documenti della notifica (atomico, FIX A6)
+            $this->updateNotificationDocument($notification, $type, $filename);
 
-            // Ritorna lo stato aggiornato per aggiornare il modal
-            $status = $this->documentsStatus($notification)->getData();
+            // Ritorna lo stato aggiornato per aggiornare il modal (M5: chiamata diretta al service)
+            $status = $this->documentService->getDocumentsStatus($notification);
 
             return response()->json([
                 'success' => true,
@@ -580,6 +645,8 @@ class NotificationController extends Controller
      */
     public function sendNationalNotification(Request $request, Tournament $tournament)
     {
+        $this->checkTournamentAccess($tournament);
+
         $validated = $request->validate([
             'notification_type' => 'required|string|in:crc_referees,zone_observers',
             'subject' => 'required|string|max:255',

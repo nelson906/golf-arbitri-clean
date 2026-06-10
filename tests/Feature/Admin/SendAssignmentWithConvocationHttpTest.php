@@ -75,7 +75,7 @@ class SendAssignmentWithConvocationHttpTest extends TestCase
         $response->assertJson(['success' => true]);
         $response->assertJsonPath('preview.subject', 'Anteprima Convocazione');
 
-        Mail::assertNothingSent();
+        Mail::assertNothingOutgoing();
     }
 
     public function test_save_action_persists_draft_without_sending(): void
@@ -103,7 +103,7 @@ class SendAssignmentWithConvocationHttpTest extends TestCase
         $this->assertEquals('Bozza Convocazione', $notification->metadata['subject'] ?? null);
         $this->assertTrue((bool) $notification->is_prepared);
 
-        Mail::assertNothingSent();
+        Mail::assertNothingOutgoing();
     }
 
     public function test_send_action_dispatches_and_redirects_to_index(): void
@@ -126,7 +126,7 @@ class SendAssignmentWithConvocationHttpTest extends TestCase
 
         $response->assertRedirect(route('admin.tournament-notifications.index'));
 
-        Mail::assertSent(ClubNotificationMail::class, fn ($mail) => $mail->hasTo('circolo@example.test'));
-        Mail::assertSent(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('arbitro@example.test'));
+        Mail::assertQueued(ClubNotificationMail::class, fn ($mail) => $mail->hasTo('circolo@example.test'));
+        Mail::assertQueued(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('arbitro@example.test'));
     }
 }

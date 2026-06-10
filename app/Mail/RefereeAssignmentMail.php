@@ -6,15 +6,17 @@ use App\Helpers\ZoneHelper;
 use App\Models\Assignment;
 use App\Models\Tournament;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class RefereeAssignmentMail extends Mailable
+class RefereeAssignmentMail extends Mailable implements ShouldQueue
 {
     use Queueable;
     use SerializesModels;
+
 
     /**
      * L'assegnazione dell'arbitro
@@ -39,6 +41,11 @@ class RefereeAssignmentMail extends Mailable
         $this->assignment = $assignment;
         $this->tournament = $tournament;
         $this->attachmentPaths = $attachmentPaths;
+
+        // FIX A4: dispatch solo dopo il commit della transazione DB attiva
+        // (evita invii orfani in caso di rollback). NB: $afterCommit è
+        // proprietà del trait Queueable — non ridichiararla nella classe.
+        $this->afterCommit();
     }
 
     /**

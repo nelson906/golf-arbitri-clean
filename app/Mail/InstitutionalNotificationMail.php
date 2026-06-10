@@ -3,16 +3,28 @@
 namespace App\Mail;
 
 use App\Models\Tournament;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 
-class InstitutionalNotificationMail extends Mailable
+class InstitutionalNotificationMail extends Mailable implements ShouldQueue
 {
+    use Queueable;
+    use SerializesModels;
+
+
     public function __construct(
         public Tournament $tournament,
         public string $notificationType
-    ) {}
+    ) {
+        // FIX A4: dispatch solo dopo il commit della transazione DB attiva
+        // (evita invii orfani in caso di rollback). NB: $afterCommit è
+        // proprietà del trait Queueable — non ridichiararla nella classe.
+        $this->afterCommit();
+    }
 
     public function envelope(): Envelope
     {

@@ -346,27 +346,22 @@ class AuditV3RegressionTest extends TestCase
     }
 
     // ====================================================================
-    // BUG-04 — prepareAndSend() ha rimosso il parametro $data inutilizzato
+    // BUG-04 — prepareAndSend() rimosso (audit 2026-06: dead code)
     // ====================================================================
 
     /**
-     * prepareAndSend() deve accettare solo $notification, senza $data.
-     * Un secondo parametro obbligatorio sarebbe rotto rispetto a tutti i call site.
+     * prepareAndSend() era dead code (mai chiamato: il flusso reale è
+     * saveAsDraft() + sendWithTransaction()) ed è stato rimosso.
+     * Questo test impedisce che venga reintrodotto.
      */
-    public function test_bug04_prepare_and_send_has_single_required_parameter(): void
+    public function test_bug04_prepare_and_send_removed_as_dead_code(): void
     {
-        $method = new ReflectionMethod(NotificationTransactionService::class, 'prepareAndSend');
-        $params = $method->getParameters();
+        $rc = new \ReflectionClass(NotificationTransactionService::class);
 
-        $this->assertCount(1, $params,
-            'BUG-04: prepareAndSend() deve avere esattamente 1 parametro (TournamentNotification).');
-        $this->assertEquals('notification', $params[0]->getName(),
-            'BUG-04: Il parametro unico deve chiamarsi $notification.');
-
-        $type = $params[0]->getType();
-        $this->assertNotNull($type, 'BUG-04: $notification deve avere un type hint.');
-        $this->assertEquals(TournamentNotification::class, $type->getName(),
-            'BUG-04: Il type hint deve essere TournamentNotification.');
+        $this->assertFalse(
+            $rc->hasMethod('prepareAndSend'),
+            'BUG-04/DEAD: prepareAndSend() è dead code rimosso — usare saveAsDraft() + sendWithTransaction().'
+        );
     }
 
     // ====================================================================

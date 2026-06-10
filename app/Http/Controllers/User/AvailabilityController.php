@@ -198,7 +198,15 @@ class AvailabilityController extends Controller
             abort(403);
         }
 
+        $tournament = $availability->tournament;
+
         $availability->delete();
+
+        // FIX A5: notifica arbitro + SZR/CRC anche su questo percorso di rimozione
+        // (prima solo store(available=false) notificava — workflow asimmetrico)
+        if ($tournament) {
+            $this->handleSingleNotification($user, $tournament, 'removed');
+        }
 
         return back()->with('success', 'Disponibilità rimossa con successo.');
     }
@@ -259,8 +267,11 @@ class AvailabilityController extends Controller
             // Aggiungi le nuove disponibilità selezionate
             // Verifica visibilità per ciascun torneo per prevenire IDOR:
             // un utente non dovrebbe poter dichiarare disponibilità per tornei fuori dalla sua zona.
+            // FIX M3: una sola query whereIn invece di Tournament::find() in loop
+            $selectedModels = Tournament::whereIn('id', $selectedTournaments)->get()->keyBy('id');
+
             foreach ($selectedTournaments as $tournamentId) {
-                $tournament = Tournament::find($tournamentId);
+                $tournament = $selectedModels->get($tournamentId);
                 if (! $tournament || ! $this->canDeclareAvailability($user, $tournament)) {
                     continue; // Salta tornei non accessibili silenziosamente
                 }
@@ -570,23 +581,25 @@ class AvailabilityController extends Controller
      */
     private function collectZoneAdminEmails($tournaments): array
     {
-        $emails = [];
+        // FIX M3: raccoglie prima tutti gli zone_id, poi una sola query whereIn
+        // (prima: una query per torneo)
+        $zoneIds = collect($tournaments)
+            ->map(fn ($tournament) => $tournament->club->zone_id ?? $tournament->zone_id)
+            ->filter()
+            ->unique()
+            ->values();
 
-        foreach ($tournaments as $tournament) {
-            $zoneId = $tournament->club->zone_id ?? $tournament->zone_id;
-
-            if ($zoneId) {
-                // FIX: uso UserType::ZoneAdmin->value invece della stringa 'admin' per robustezza
-                $zoneAdmins = User::where('zone_id', $zoneId)
-                    ->where('user_type', UserType::ZoneAdmin->value)
-                    ->where('is_active', true)
-                    ->whereNotNull('email')
-                    ->pluck('email')
-                    ->toArray();
-
-                $emails = array_merge($emails, $zoneAdmins);
-            }
+        if ($zoneIds->isEmpty()) {
+            return [];
         }
+
+        // Uso UserType::ZoneAdmin->value invece della stringa 'admin' per robustezza
+        $emails = User::whereIn('zone_id', $zoneIds)
+            ->where('user_type', UserType::ZoneAdmin->value)
+            ->where('is_active', true)
+            ->whereNotNull('email')
+            ->pluck('email')
+            ->toArray();
 
         return array_unique(array_filter($emails));
     }

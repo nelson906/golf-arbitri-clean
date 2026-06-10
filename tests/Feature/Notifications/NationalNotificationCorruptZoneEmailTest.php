@@ -65,10 +65,10 @@ class NationalNotificationCorruptZoneEmailTest extends TestCase
             'Una zona con email corrotta ha fatto crashare l\'invio nazionale (regressione del bug 10/05).');
 
         // La notifica parte comunque
-        Mail::assertSent(NationalNotificationMail::class);
+        Mail::assertQueued(NationalNotificationMail::class);
 
         // Verso i destinatari validi, e MAI verso la stringa corrotta
-        Mail::assertSent(NationalNotificationMail::class, function ($mail) {
+        Mail::assertQueued(NationalNotificationMail::class, function ($mail) {
             return $mail->hasTo('campionati@federgolf.it')
                 && $mail->hasCc('arbitro.naz@example.test')
                 && ! $mail->hasCc('Sezione Zonale Regole 6');
@@ -111,6 +111,6 @@ class NationalNotificationCorruptZoneEmailTest extends TestCase
         );
 
         $this->assertNotEquals(500, $response->status());
-        Mail::assertSent(NationalNotificationMail::class, fn ($mail) => $mail->hasCc('szr3@federgolf.it'));
+        Mail::assertQueued(NationalNotificationMail::class, fn ($mail) => $mail->hasCc('szr3@federgolf.it'));
     }
 }

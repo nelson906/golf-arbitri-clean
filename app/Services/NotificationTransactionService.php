@@ -17,7 +17,13 @@ class NotificationTransactionService
     ) {}
 
     /**
-     * Invia una notifica con gestione transazionale
+     * Invia una notifica con gestione transazionale.
+     *
+     * NOTA (FIX A3/A4): i Mailable implementano ShouldQueue con $afterCommit = true.
+     * Dentro questa transazione le email vengono solo ACCODATE: i job partono
+     * esclusivamente dopo il commit; in caso di rollback vengono scartati.
+     * Nessuna email viene quindi inviata per notifiche il cui stato DB è stato
+     * annullato. Richiede un queue worker attivo (vedi routes/console.php).
      */
     public function sendWithTransaction(
         TournamentNotification $notification,
@@ -90,38 +96,8 @@ class NotificationTransactionService
         }
     }
 
-    /**
-     * Prepara e invia una notifica in un'unica transazione
-     */
-    public function prepareAndSend(
-        TournamentNotification $notification
-    ): void {
-        DB::beginTransaction();
-
-        try {
-            // Rigenera i documenti con le clausole aggiornate
-            $documents = $this->documentService->regenerateAllDocuments($notification);
-            $notification->update(['documents' => $documents]);
-
-            // Invia la notifica
-            $this->notificationService->send($notification);
-
-            DB::commit();
-
-            Log::info('Notification prepared and sent successfully', [
-                'notification_id' => $notification->id,
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            Log::error('Error preparing and sending notification', [
-                'notification_id' => $notification->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            throw $e;
-        }
-    }
+    // NOTA (audit 2026-06): prepareAndSend() rimosso — mai chiamato
+    // (il flusso reale è saveAsDraft() + sendWithTransaction()).
 
     /**
      * Salva una notifica come bozza con tutti i dati

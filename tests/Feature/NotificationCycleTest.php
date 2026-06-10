@@ -305,7 +305,7 @@ class NotificationCycleTest extends TestCase
     public function test_notification_send_is_mocked(): void
     {
         // Verifica che Mail::fake() sia attivo
-        Mail::assertNothingSent();
+        Mail::assertNothingOutgoing();
 
         // Questo test conferma che le email non verranno inviate durante i test
         $this->assertTrue(true);
@@ -368,7 +368,7 @@ class NotificationCycleTest extends TestCase
         }
 
         // Step 4: Verifica che le email non siano state inviate (sono fake)
-        Mail::assertNothingSent();
+        Mail::assertNothingOutgoing();
 
         // Test completato con successo
         $this->assertTrue(true, 'Ciclo di notifica completato con successo');

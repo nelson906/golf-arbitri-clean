@@ -2,8 +2,8 @@
 
 namespace App\Services\Statistics;
 
-use App\Models\Notification;
 use App\Models\Tournament;
+use App\Models\TournamentNotification;
 use App\Models\User;
 use App\Traits\HasZoneVisibility;
 use Illuminate\Support\Collection;
@@ -136,7 +136,10 @@ class TournamentStatsService
      */
     public function getWithNotifications(?User $user = null): int
     {
-        return Notification::query()->distinct()->count('tournament_id');
+        // FIX (audit 2026-06): contava sulla tabella legacy `notifications`
+        // (mai scritta dal flusso attuale → sempre 0). Ora conta i tornei
+        // con notifiche reali in `tournament_notifications`.
+        return TournamentNotification::query()->distinct()->count('tournament_id');
     }
 
     /**

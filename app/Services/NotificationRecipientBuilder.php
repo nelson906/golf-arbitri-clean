@@ -82,6 +82,9 @@ class NotificationRecipientBuilder
 
     /**
      * Aggiunge gli admin zonali della zona del torneo in CC.
+     *
+     * @api Non usato nei flussi correnti (le route usano le varianti *ByIds);
+     *      mantenuto come API del builder, coperto dai test AuditV3RegressionTest.
      */
     public function addZoneAdmins(Tournament $tournament): static
     {
@@ -95,6 +98,9 @@ class NotificationRecipientBuilder
 
     /**
      * Aggiunge gli admin nazionali in CC.
+     *
+     * @api Non usato nei flussi correnti (le route usano le varianti *ByIds);
+     *      mantenuto come API del builder, coperto dai test AuditV3RegressionTest.
      */
     public function addNationalAdmins(): static
     {
@@ -124,6 +130,9 @@ class NotificationRecipientBuilder
 
     /**
      * Aggiunge gli arbitri assegnati al torneo in CC.
+     *
+     * @api Non usato nei flussi correnti (le route usano le varianti *ByIds);
+     *      mantenuto come API del builder, coperto dai test AuditV3RegressionTest.
      */
     public function addAssignedReferees(Tournament $tournament): static
     {
@@ -159,6 +168,9 @@ class NotificationRecipientBuilder
 
     /**
      * Aggiunge gli osservatori (ruolo Osservatore) del torneo in CC.
+     *
+     * @api Non usato nei flussi correnti (le route usano le varianti *ByIds);
+     *      mantenuto come API del builder, coperto dai test AuditV3RegressionTest.
      */
     public function addObservers(Tournament $tournament): static
     {

@@ -74,7 +74,6 @@ class ZombieMailStubsDeletedTest extends TestCase
         $activeClasses = [
             \App\Mail\BatchAvailabilityAdminNotification::class,
             \App\Mail\BatchAvailabilityNotification::class,
-            \App\Mail\TournamentNotificationMail::class,
             \App\Mail\ClubNotificationMail::class,
             \App\Mail\RefereeAssignmentMail::class,
             \App\Mail\InstitutionalNotificationMail::class,
@@ -86,6 +85,21 @@ class ZombieMailStubsDeletedTest extends TestCase
                 "La classe Mail attiva {$class} non deve essere eliminata."
             );
         }
+    }
+
+    /**
+     * TournamentNotificationMail deve essere eliminata (audit 2026-06).
+     *
+     * Era dead code: mai istanziata in produzione — i flussi reali usano
+     * ClubNotificationMail / RefereeAssignmentMail / InstitutionalNotificationMail
+     * / NationalNotificationMail.
+     */
+    public function test_tournament_notification_mail_file_does_not_exist(): void
+    {
+        $this->assertFalse(
+            file_exists(app_path('Mail/TournamentNotificationMail.php')),
+            'Il file TournamentNotificationMail.php deve essere eliminato: era dead code, mai istanziato.'
+        );
     }
 
     /**

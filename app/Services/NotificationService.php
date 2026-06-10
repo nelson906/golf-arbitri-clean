@@ -7,7 +7,6 @@ use App\Mail\ClubNotificationMail;
 use App\Mail\InstitutionalNotificationMail;
 use App\Mail\RefereeAssignmentMail;
 use App\Models\InstitutionalEmail;
-use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -24,73 +23,9 @@ class NotificationService
         $this->documentService = $documentService;
     }
 
-    public function prepareNotification(Tournament $tournament): TournamentNotification
-    {
-        // Fonte di verità: is_national dal tipo torneo
-        $isNational = $tournament->tournamentType?->is_national ?? false;
-        $notificationType = $isNational ? 'crc_referees' : null;
-
-        // Crea nuova notifica o recupera esistente (chiave include notification_type)
-        $notification = TournamentNotification::firstOrCreate(
-            [
-                'tournament_id'     => $tournament->id,
-                'notification_type' => $notificationType,
-            ],
-            [
-                'status' => 'pending',
-                'recipients' => [
-                    'club' => true,
-                    'referees' => $tournament->assignments->pluck('user_id')->toArray(),
-                    'institutional' => [],
-                ],
-            ]
-        );
-
-        // Genera documenti se non esistono
-        if (empty($notification->documents)) {
-            $this->generateDocuments($notification);
-        }
-
-        return $notification;
-    }
-
-    public function generateDocuments(TournamentNotification $notification)
-    {
-        $tournament = $notification->tournament;
-
-        try {
-            // Genera convocazione
-            $convocationData = $this->documentService->generateConvocationForTournament(
-                $tournament,
-                $notification
-            );
-
-            // Genera lettera circolo
-            $clubLetterData = $this->documentService->generateClubDocument(
-                $tournament,
-                $notification
-            );
-
-            // Salva riferimenti documenti
-            $notification->update([
-                'documents' => [
-                    'convocation' => isset($convocationData['path']) ? basename($convocationData['path']) : null,
-                    'club_letter' => isset($clubLetterData['path']) ? basename($clubLetterData['path']) : null,
-                ],
-            ]);
-
-            Log::info('Documents generated for notification', [
-                'notification_id' => $notification->id,
-                'tournament_id' => $tournament->id,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Error generating documents', [
-                'notification_id' => $notification->id,
-                'error' => $e->getMessage(),
-            ]);
-            throw $e;
-        }
-    }
+    // NOTA (audit 2026-06): prepareNotification() e generateDocuments() rimossi —
+    // erano duplicati morti di NotificationPreparationService::prepareNotification()
+    // e NotificationDocumentService. Questo service gestisce SOLO l'invio.
 
     public function send(TournamentNotification $notification, bool $force = false)
     {

@@ -107,19 +107,19 @@ class MailDispatchRegressionTest extends TestCase
         app(NotificationService::class)->send($notification);
 
         // Mail::assertSent() accetta come secondo arg solo callable|int|null — non una stringa.
-        // Usiamo assertTrue con Mail::sent() per poter allegare messaggi di errore descrittivi.
+        // Usiamo assertTrue con Mail::queued() per poter allegare messaggi di errore descrittivi.
         $this->assertTrue(
-            Mail::sent(RefereeAssignmentMail::class)->isNotEmpty(),
-            'DISPATCH-01: RefereeAssignmentMail deve essere inviata per le notifiche arbitri.'
+            Mail::queued(RefereeAssignmentMail::class)->isNotEmpty(),
+            'DISPATCH-01: RefereeAssignmentMail deve essere accodata per le notifiche arbitri.'
         );
         $this->assertTrue(
-            Mail::sent(AssignmentNotification::class)->isEmpty(),
+            Mail::queued(AssignmentNotification::class)->isEmpty(),
             'DISPATCH-01: AssignmentNotification non deve mai essere inviata (è dead code).'
         );
     }
 
     /**
-     * RefereeAssignmentMail deve essere inviata all'indirizzo email dell'arbitro.
+     * RefereeAssignmentMail deve essere accodata all'indirizzo email dell'arbitro.
      */
     public function test_referee_assignment_mail_sent_to_referee_email(): void
     {
@@ -147,12 +147,12 @@ class MailDispatchRegressionTest extends TestCase
         app(NotificationService::class)->send($notification);
 
         // assertSent() con callable non accetta un terzo parametro messaggio.
-        $sentToReferee = Mail::sent(RefereeAssignmentMail::class, function ($mail) use ($referee) {
+        $sentToReferee = Mail::queued(RefereeAssignmentMail::class, function ($mail) use ($referee) {
             return $mail->hasTo($referee->email);
         });
         $this->assertTrue(
             $sentToReferee->isNotEmpty(),
-            "DISPATCH-01: La mail deve essere inviata all'indirizzo email dell'arbitro ({$referee->email})."
+            "DISPATCH-01: La mail deve essere accodata all'indirizzo email dell'arbitro ({$referee->email})."
         );
     }
 
@@ -161,7 +161,7 @@ class MailDispatchRegressionTest extends TestCase
     // ====================================================================
 
     /**
-     * Quando recipients['club'] = true, deve essere inviata ClubNotificationMail.
+     * Quando recipients['club'] = true, deve essere accodata ClubNotificationMail.
      */
     public function test_send_to_club_dispatches_club_notification_mail(): void
     {
@@ -183,8 +183,8 @@ class MailDispatchRegressionTest extends TestCase
         app(NotificationService::class)->send($notification);
 
         $this->assertTrue(
-            Mail::sent(ClubNotificationMail::class)->isNotEmpty(),
-            'DISPATCH-02: ClubNotificationMail deve essere inviata quando recipients.club = true.'
+            Mail::queued(ClubNotificationMail::class)->isNotEmpty(),
+            'DISPATCH-02: ClubNotificationMail deve essere accodata quando recipients.club = true.'
         );
     }
 }

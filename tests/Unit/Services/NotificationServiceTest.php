@@ -5,13 +5,25 @@ namespace Tests\Unit\Services;
 use App\Models\Assignment;
 use App\Models\TournamentNotification;
 use App\Services\DocumentGenerationService;
+use App\Services\NotificationPreparationService;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
+/**
+ * Test del percorso di invio (NotificationService::send) e della
+ * preparazione notifiche (NotificationPreparationService::prepareNotification).
+ *
+ * NOTA (audit 2026-06): NotificationService::prepareNotification() e
+ * generateDocuments() erano duplicati morti di NotificationPreparationService /
+ * NotificationDocumentService e sono stati rimossi. I test di preparazione
+ * puntano ora al service canonico.
+ */
 class NotificationServiceTest extends TestCase
 {
     protected NotificationService $service;
+
+    protected NotificationPreparationService $preparationService;
 
     protected DocumentGenerationService $documentService;
 
@@ -24,7 +36,6 @@ class NotificationServiceTest extends TestCase
         // Mock DocumentGenerationService per ritornare dati fake
         $this->documentService = $this->createMock(DocumentGenerationService::class);
 
-        // Mock generateConvocationForTournament
         $this->documentService->method('generateConvocationForTournament')
             ->willReturn([
                 'path' => '/tmp/fake_convocation.docx',
@@ -32,7 +43,6 @@ class NotificationServiceTest extends TestCase
                 'type' => 'convocation',
             ]);
 
-        // Mock generateClubDocument
         $this->documentService->method('generateClubDocument')
             ->willReturn([
                 'path' => '/tmp/fake_club_letter.docx',
@@ -41,10 +51,11 @@ class NotificationServiceTest extends TestCase
             ]);
 
         $this->service = new NotificationService($this->documentService);
+        $this->preparationService = new NotificationPreparationService;
     }
 
     // ==========================================
-    // PREPARE NOTIFICATION TESTS
+    // PREPARE NOTIFICATION TESTS (NotificationPreparationService)
     // ==========================================
 
     /**
@@ -57,7 +68,7 @@ class NotificationServiceTest extends TestCase
 
         Assignment::factory()->forUser($referee)->forTournament($tournament)->create();
 
-        $notification = $this->service->prepareNotification($tournament);
+        $notification = $this->preparationService->prepareNotification($tournament->fresh());
 
         $this->assertInstanceOf(TournamentNotification::class, $notification);
         $this->assertEquals($tournament->id, $notification->tournament_id);
@@ -81,16 +92,17 @@ class NotificationServiceTest extends TestCase
             'recipients' => ['club' => true, 'referees' => [], 'institutional' => []],
         ]);
 
-        $notification = $this->service->prepareNotification($tournament);
+        $notification = $this->preparationService->prepareNotification($tournament);
 
         $this->assertEquals($existing->id, $notification->id);
         $this->assertEquals('sent', $notification->status);
     }
 
     /**
-     * Test: prepareNotification include referee IDs
+     * Test: prepareNotification traccia gli arbitri assegnati
+     * (referee_list + details.total_recipients = arbitri + circolo)
      */
-    public function test_prepare_notification_includes_referee_ids(): void
+    public function test_prepare_notification_includes_referee_info(): void
     {
         $tournament = $this->createTournament();
         $referee1 = $this->createReferee();
@@ -99,13 +111,11 @@ class NotificationServiceTest extends TestCase
         Assignment::factory()->forUser($referee1)->forTournament($tournament)->create();
         Assignment::factory()->forUser($referee2)->forTournament($tournament)->create();
 
-        $notification = $this->service->prepareNotification($tournament);
+        $notification = $this->preparationService->prepareNotification($tournament->fresh());
 
-        $this->assertIsArray($notification->recipients);
-        $this->assertArrayHasKey('referees', $notification->recipients);
-        $this->assertCount(2, $notification->recipients['referees']);
-        $this->assertContains($referee1->id, $notification->recipients['referees']);
-        $this->assertContains($referee2->id, $notification->recipients['referees']);
+        $this->assertEquals(3, $notification->details['total_recipients'] ?? null); // 2 arbitri + circolo
+        $this->assertStringContainsString($referee1->name, (string) $notification->referee_list);
+        $this->assertStringContainsString($referee2->name, (string) $notification->referee_list);
     }
 
     // ==========================================
@@ -194,8 +204,8 @@ class NotificationServiceTest extends TestCase
             // Potrebbe fallire per altri motivi, va bene
         }
 
-        // Verifica che nessuna email sia stata inviata
-        Mail::assertNothingSent();
+        // Verifica che nessuna email sia stata inviata né accodata
+        Mail::assertNothingOutgoing();
     }
 
     // ==========================================
@@ -220,11 +230,11 @@ class NotificationServiceTest extends TestCase
     {
         $tournament = $this->createTournament();
 
-        $notification = $this->service->prepareNotification($tournament);
+        $notification = $this->preparationService->prepareNotification($tournament);
 
         $this->assertInstanceOf(TournamentNotification::class, $notification);
-        $this->assertArrayHasKey('referees', $notification->recipients);
-        $this->assertCount(0, $notification->recipients['referees']);
+        $this->assertEquals(1, $notification->details['total_recipients'] ?? null); // solo circolo
+        $this->assertSame('', (string) $notification->referee_list);
     }
 
     // ==========================================
@@ -244,9 +254,9 @@ class NotificationServiceTest extends TestCase
             Assignment::factory()->forUser($referee)->forTournament($tournament)->create();
         }
 
-        $notification = $this->service->prepareNotification($tournament);
+        $notification = $this->preparationService->prepareNotification($tournament->fresh());
 
-        $this->assertCount(10, $notification->recipients['referees']);
+        $this->assertEquals(11, $notification->details['total_recipients'] ?? null); // 10 arbitri + circolo
     }
 
     /**

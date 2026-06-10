@@ -6,7 +6,6 @@ use App\Helpers\RefereeLevelsHelper;
 use App\Helpers\SystemOperations;
 use App\Http\Controllers\Admin\TournamentController;
 use App\Http\Controllers\Admin\TournamentTypeController;
-use App\Mail\TournamentNotificationMail;
 use ReflectionClass;
 use Tests\TestCase;
 
@@ -98,20 +97,20 @@ class DeadCodeRegressionTest extends TestCase
     }
 
     // ====================================================================
-    // DEAD-04 — TournamentNotificationMail::fromMetadata()
+    // DEAD-04 — TournamentNotificationMail (intera classe rimossa, audit 2026-06)
     // ====================================================================
 
     /**
-     * TournamentNotificationMail::fromMetadata() NON deve esistere.
-     * Nessun controller o service la chiama — il flusso resend usa un percorso diverso.
+     * TournamentNotificationMail NON deve esistere: era dead code
+     * (mai istanziata — flussi reali su ClubNotificationMail / RefereeAssignmentMail).
      */
-    public function test_dead04_from_metadata_not_in_tournament_notification_mail(): void
+    public function test_dead04_tournament_notification_mail_removed(): void
     {
-        $rc = new ReflectionClass(TournamentNotificationMail::class);
-
+        // NB: file_exists e non class_exists — quest'ultimo, con classmap
+        // autoload stantio, emette un warning sull'include del file mancante.
         $this->assertFalse(
-            $rc->hasMethod('fromMetadata'),
-            'DEAD-04: fromMetadata() è dead code — nessun call site nel codice produzione.'
+            file_exists(app_path('Mail/TournamentNotificationMail.php')),
+            'DEAD-04: TournamentNotificationMail è stata rimossa come dead code e non deve essere reintrodotta.'
         );
     }
 
