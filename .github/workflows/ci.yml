@@ -16,20 +16,11 @@ jobs:
   tests:
     runs-on: ubuntu-latest
 
-    # MySQL effimero per il job. Accessibile su 127.0.0.1:3306.
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: golf_arbitri_clean_test
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=10
+    # NOTA (fix 2026-06): niente più service container mysql:8.0 — il pull da
+    # Docker Hub falliva a intermittenza ("context deadline exceeded": outage o
+    # rate-limit sugli IP condivisi dei runner). I runner ubuntu-latest hanno
+    # MySQL 8 PREINSTALLATO (root/root su 127.0.0.1:3306): lo avviamo come step,
+    # zero dipendenze di rete, avvio più rapido.
 
     env:
       # Variabili reali del processo: avendo precedenza sul file .env.testing
@@ -46,6 +37,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Start MySQL (preinstallato sul runner, niente Docker Hub)
+        run: |
+          sudo systemctl start mysql.service
+          mysql -h127.0.0.1 -uroot -proot -e "CREATE DATABASE IF NOT EXISTS golf_arbitri_clean_test;"
 
       - name: Setup PHP
         # Allineato all'ambiente reale: MAMP locale 8.5.6, Aruba (produzione) 8.5.5.
