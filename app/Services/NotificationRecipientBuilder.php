@@ -2,29 +2,33 @@
 
 namespace App\Services;
 
-use App\Enums\AssignmentRole;
 use App\Enums\UserType;
+use App\Models\InstitutionalEmail;
 use App\Models\Tournament;
 use App\Models\User;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Fluent builder per costruire la lista destinatari di una notifica torneo.
  *
- * Centralizza la costruzione dei destinatari per sendNationalNotification()
- * in NotificationController.
+ * Usato da:
+ *  - NotificationController::sendNationalNotification() (flusso CRC/SZR nazionale)
+ *  - NotificationService::send() (flusso zonale a mail singola:
+ *    TO = circolo, CC = arbitri + istituzionali + zona + email aggiuntive)
  *
  * Uso:
  *   $recipients = (new NotificationRecipientBuilder())
- *       ->addCampionati()
+ *       ->addClub($tournament)
+ *       ->addRefereesByIds([1, 2])
+ *       ->addInstitutionalsByIds([3])
  *       ->addZone($tournament)
- *       ->addZoneAdmins($tournament)
- *       ->addAssignedReferees($tournament)
  *       ->build();
  *
  *   $toList  = $recipients['to'];    // array<{email, name}>
  *   $ccArray = $recipients['cc'];    // array<{email, name}> (formato canonico Laravel)
+ *
+ * NOTA (razionalizzazione 2026-06): rimossi addAssignedReferees() e
+ * addObservers() — mai usati né testati; le route usano le varianti *ByIds.
  */
 class NotificationRecipientBuilder
 {
@@ -77,7 +81,7 @@ class NotificationRecipientBuilder
             return $this;
         }
 
-        \App\Models\InstitutionalEmail::whereIn('id', $emailIds)
+        InstitutionalEmail::whereIn('id', $emailIds)
             ->where('is_active', true)
             ->each(fn ($e) => $this->addCc($e->email, $e->name ?? 'Istituzionale'));
 
@@ -171,27 +175,6 @@ class NotificationRecipientBuilder
     }
 
     /**
-     * Aggiunge gli arbitri assegnati al torneo in CC.
-     *
-     * @api Non usato nei flussi correnti (le route usano le varianti *ByIds);
-     *      mantenuto come API del builder, coperto dai test AuditV3RegressionTest.
-     */
-    public function addAssignedReferees(Tournament $tournament): static
-    {
-        $assignments = $tournament->relationLoaded('assignments')
-            ? $tournament->assignments
-            : $tournament->assignments()->with('user')->get();
-
-        $assignments->each(function ($assignment) {
-            if ($assignment->user) {
-                $this->addCc($assignment->user->email, $assignment->user->name);
-            }
-        });
-
-        return $this;
-    }
-
-    /**
      * Aggiunge arbitri con ID specifici in CC.
      *
      * @param  int[]  $userIds
@@ -204,27 +187,6 @@ class NotificationRecipientBuilder
 
         User::whereIn('id', $userIds)
             ->each(fn (User $u) => $this->addCc($u->email, $u->name));
-
-        return $this;
-    }
-
-    /**
-     * Aggiunge gli osservatori (ruolo Osservatore) del torneo in CC.
-     *
-     * @api Non usato nei flussi correnti (le route usano le varianti *ByIds);
-     *      mantenuto come API del builder, coperto dai test AuditV3RegressionTest.
-     */
-    public function addObservers(Tournament $tournament): static
-    {
-        $assignments = $tournament->relationLoaded('assignments')
-            ? $tournament->assignments->where('role', AssignmentRole::Observer->value)
-            : $tournament->assignments()->where('role', AssignmentRole::Observer->value)->with('user')->get();
-
-        $assignments->each(function ($assignment) {
-            if ($assignment->user) {
-                $this->addCc($assignment->user->email, $assignment->user->name);
-            }
-        });
 
         return $this;
     }
@@ -319,6 +281,7 @@ class NotificationRecipientBuilder
                 'email' => $email,
                 'name'  => $name,
             ]);
+
             return false;
         }
 

@@ -4,7 +4,6 @@ namespace Tests\Unit\Services;
 
 use App\Models\Assignment;
 use App\Models\TournamentNotification;
-use App\Services\DocumentGenerationService;
 use App\Services\NotificationPreparationService;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\Mail;
@@ -25,32 +24,16 @@ class NotificationServiceTest extends TestCase
 
     protected NotificationPreparationService $preparationService;
 
-    protected DocumentGenerationService $documentService;
-
     protected function setUp(): void
     {
         parent::setUp();
 
         Mail::fake(); // Fake email sending
 
-        // Mock DocumentGenerationService per ritornare dati fake
-        $this->documentService = $this->createMock(DocumentGenerationService::class);
-
-        $this->documentService->method('generateConvocationForTournament')
-            ->willReturn([
-                'path' => '/tmp/fake_convocation.docx',
-                'filename' => 'fake_convocation.docx',
-                'type' => 'convocation',
-            ]);
-
-        $this->documentService->method('generateClubDocument')
-            ->willReturn([
-                'path' => '/tmp/fake_club_letter.docx',
-                'filename' => 'fake_club_letter.docx',
-                'type' => 'club_letter',
-            ]);
-
-        $this->service = new NotificationService($this->documentService);
+        // RAZIONALIZZAZIONE 2026-06: NotificationService non dipende più da
+        // DocumentGenerationService (la generazione vive in
+        // NotificationDocumentService) — niente più mock.
+        $this->service = new NotificationService;
         $this->preparationService = new NotificationPreparationService;
     }
 
@@ -214,14 +197,11 @@ class NotificationServiceTest extends TestCase
     // ==========================================
 
     /**
-     * Test: Service è istanziabile con DocumentGenerationService
+     * Test: Service è istanziabile senza dipendenze
      */
     public function test_service_is_instantiable(): void
     {
-        $docService = new DocumentGenerationService;
-        $service = new NotificationService($docService);
-
-        $this->assertInstanceOf(NotificationService::class, $service);
+        $this->assertInstanceOf(NotificationService::class, new NotificationService);
     }
 
     /**

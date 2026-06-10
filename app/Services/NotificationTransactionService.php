@@ -25,21 +25,18 @@ class NotificationTransactionService
      * Nessuna email viene quindi inviata per notifiche il cui stato DB è stato
      * annullato. Richiede un queue worker attivo (vedi routes/console.php).
      */
-    public function sendWithTransaction(
-        TournamentNotification $notification,
-        bool $forceResend = false
-    ): void {
+    public function sendWithTransaction(TournamentNotification $notification): void
+    {
         DB::beginTransaction();
 
         try {
             Log::info('Sending notification', [
                 'notification_id' => $notification->id,
-                'force_resend' => $forceResend,
                 'metadata' => $notification->metadata,
             ]);
 
             // Invia tramite il servizio notifiche
-            $this->notificationService->send($notification, $forceResend);
+            $this->notificationService->send($notification);
 
             DB::commit();
 
