@@ -5,42 +5,53 @@ namespace Tests\Unit\Mail;
 use App\Enums\AssignmentRole;
 use App\Mail\AssignmentNotification;
 use App\Mail\ClubNotificationMail;
-use App\Mail\RefereeAssignmentMail;
 use App\Models\TournamentNotification;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 /**
- * Regressione per la pulizia del layer Mail (Audit v4).
+ * Regressione layer Mail (Audit v4, aggiornato al MODELLO A MAIL SINGOLA 2026-06:
+ * TO = circolo con allegati, CC = arbitri/istituzionali/zona/aggiuntivi).
  *
  * Verifiche:
  *  DEAD-MAIL-02  AssignmentNotification non ha call site nel codice app/
- *  DISPATCH-01   NotificationService::send() usa RefereeAssignmentMail per gli arbitri
- *  DISPATCH-02   NotificationService::send() usa ClubNotificationMail per il circolo
+ *  DISPATCH-01   L'arbitro selezionato è raggiunto (TO promosso o CC)
+ *  DISPATCH-02   La mail parte verso il circolo quando recipients['club'] = true
  *
- * I test DISPATCH-* coprono anche il comportamento atteso dopo la rimozione
- * di AssignmentNotification: il sistema continua a funzionare correttamente.
+ * NB: i destinatari vivono in metadata['recipients'] (fonte di verità del
+ * form, fix D1) — la colonna `recipients` non è più letta come input.
  */
 class MailDispatchRegressionTest extends TestCase
 {
+    private function makeNotification(int $tournamentId, bool $club, array $refereeIds): TournamentNotification
+    {
+        return TournamentNotification::create([
+            'tournament_id' => $tournamentId,
+            'status'        => 'pending',
+            'metadata'      => [
+                'type'       => 'zone_referees',
+                'recipients' => [
+                    'club'          => $club,
+                    'referees'      => $refereeIds,
+                    'institutional' => [],
+                ],
+            ],
+        ]);
+    }
+
     // ====================================================================
     // DEAD-MAIL-02 — AssignmentNotification non è usata nel codice app/
     // ====================================================================
 
     /**
      * AssignmentNotification non deve essere istanziata in nessun file
-     * del codice applicativo (app/). L'unico file che può citarla è la
-     * definizione della classe stessa.
-     *
-     * Se questo test rompe significa che qualcuno ha reintrodotto un
-     * call site per la classe obsoleta.
+     * del codice applicativo (app/).
      */
     public function test_assignment_notification_has_no_call_sites_in_app_code(): void
     {
         $appDir = app_path();
 
-        // Raccoglie tutti i file PHP in app/ tranne la definizione della classe
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($appDir, \RecursiveDirectoryIterator::SKIP_DOTS)
         );
@@ -50,19 +61,17 @@ class MailDispatchRegressionTest extends TestCase
                 continue;
             }
 
-            // Salta la definizione della classe stessa
             if (str_ends_with($file->getPathname(), 'Mail/AssignmentNotification.php')) {
                 continue;
             }
 
             $content = file_get_contents($file->getPathname());
-            $relPath = str_replace($appDir . DIRECTORY_SEPARATOR, '', $file->getPathname());
+            $relPath = str_replace($appDir.DIRECTORY_SEPARATOR, '', $file->getPathname());
 
             $this->assertStringNotContainsString(
                 'new AssignmentNotification(',
                 $content,
-                "DEAD-MAIL-02: AssignmentNotification è ancora istanziata in app/{$relPath}. "
-                . 'Usare RefereeAssignmentMail al suo posto.'
+                "DEAD-MAIL-02: AssignmentNotification è ancora istanziata in app/{$relPath}."
             );
 
             $this->assertStringNotContainsString(
@@ -74,57 +83,11 @@ class MailDispatchRegressionTest extends TestCase
     }
 
     // ====================================================================
-    // DISPATCH-01 — NotificationService usa RefereeAssignmentMail
+    // DISPATCH-01 — La copia conoscenza raggiunge l'arbitro
     // ====================================================================
 
-    /**
-     * NotificationService::send() deve usare RefereeAssignmentMail quando
-     * i destinatari includono un arbitro. Non deve mai usare AssignmentNotification.
-     */
-    public function test_send_to_referee_dispatches_referee_assignment_mail(): void
+    public function test_send_to_referee_dispatches_cc_copy(): void
     {
-        Mail::fake();
-
-        $tournament = $this->createTournament();
-        $referee    = $this->createReferee();
-        $this->createAssignment([
-            'tournament_id' => $tournament->id,
-            'user_id'       => $referee->id,
-            'role'          => AssignmentRole::Referee->value,
-        ]);
-
-        $notification = TournamentNotification::create([
-            'tournament_id' => $tournament->id,
-            'status'        => 'pending',
-            'metadata'      => ['type' => 'zone_referees'],
-            'recipients'    => [
-                'club'          => false,
-                'referees'      => [$referee->id],
-                'institutional' => [],
-            ],
-        ]);
-
-        app(NotificationService::class)->send($notification);
-
-        // Mail::assertSent() accetta come secondo arg solo callable|int|null — non una stringa.
-        // Usiamo assertTrue con Mail::queued() per poter allegare messaggi di errore descrittivi.
-        $this->assertTrue(
-            Mail::queued(RefereeAssignmentMail::class)->isNotEmpty(),
-            'DISPATCH-01: RefereeAssignmentMail deve essere accodata per le notifiche arbitri.'
-        );
-        $this->assertTrue(
-            Mail::queued(AssignmentNotification::class)->isEmpty(),
-            'DISPATCH-01: AssignmentNotification non deve mai essere inviata (è dead code).'
-        );
-    }
-
-    /**
-     * RefereeAssignmentMail deve essere accodata all'indirizzo email dell'arbitro.
-     */
-    public function test_referee_assignment_mail_sent_to_referee_email(): void
-    {
-        Mail::fake();
-
         $tournament = $this->createTournament();
         $referee    = $this->createReferee(['email' => 'arbitro@test.com']);
         $this->createAssignment([
@@ -133,52 +96,56 @@ class MailDispatchRegressionTest extends TestCase
             'role'          => AssignmentRole::Referee->value,
         ]);
 
-        $notification = TournamentNotification::create([
-            'tournament_id' => $tournament->id,
-            'status'        => 'pending',
-            'metadata'      => ['type' => 'zone_referees'],
-            'recipients'    => [
-                'club'          => false,
-                'referees'      => [$referee->id],
-                'institutional' => [],
-            ],
-        ]);
+        $notification = $this->makeNotification($tournament->id, false, [$referee->id]);
 
         app(NotificationService::class)->send($notification);
 
-        // assertSent() con callable non accetta un terzo parametro messaggio.
-        $sentToReferee = Mail::queued(RefereeAssignmentMail::class, function ($mail) use ($referee) {
-            return $mail->hasTo($referee->email);
+        $ccCopy = Mail::queued(ClubNotificationMail::class, function ($mail) use ($referee) {
+            return $mail->hasTo($referee->email) || $mail->hasCc($referee->email);
         });
         $this->assertTrue(
-            $sentToReferee->isNotEmpty(),
-            "DISPATCH-01: La mail deve essere accodata all'indirizzo email dell'arbitro ({$referee->email})."
+            $ccCopy->isNotEmpty(),
+            'DISPATCH-01: la copia conoscenza deve raggiungere l\'arbitro selezionato.'
+        );
+
+        $this->assertTrue(
+            Mail::queued(AssignmentNotification::class)->isEmpty(),
+            'DISPATCH-01: AssignmentNotification non deve mai essere inviata (è dead code).'
         );
     }
 
+    /**
+     * Mail unica senza documenti generati: nessun allegato fantasma.
+     */
+    public function test_mail_without_documents_has_no_attachments(): void
+    {
+        $tournament = $this->createTournament();
+        $referee    = $this->createReferee(['email' => 'arbitro@test.com']);
+        $this->createAssignment([
+            'tournament_id' => $tournament->id,
+            'user_id'       => $referee->id,
+            'role'          => AssignmentRole::Referee->value,
+        ]);
+
+        $notification = $this->makeNotification($tournament->id, false, [$referee->id]);
+
+        app(NotificationService::class)->send($notification);
+
+        Mail::assertQueued(ClubNotificationMail::class, function ($mail) use ($referee) {
+            return ($mail->hasTo($referee->email) || $mail->hasCc($referee->email))
+                && empty($mail->attachmentPaths);
+        });
+    }
+
     // ====================================================================
-    // DISPATCH-02 — NotificationService usa ClubNotificationMail per il circolo
+    // DISPATCH-02 — La mail circolo parte quando recipients.club = true
     // ====================================================================
 
-    /**
-     * Quando recipients['club'] = true, deve essere accodata ClubNotificationMail.
-     */
     public function test_send_to_club_dispatches_club_notification_mail(): void
     {
-        Mail::fake();
-
         $tournament = $this->createTournament();
 
-        $notification = TournamentNotification::create([
-            'tournament_id' => $tournament->id,
-            'status'        => 'pending',
-            'metadata'      => ['type' => 'zone_referees'],
-            'recipients'    => [
-                'club'          => true,
-                'referees'      => [],
-                'institutional' => [],
-            ],
-        ]);
+        $notification = $this->makeNotification($tournament->id, true, []);
 
         app(NotificationService::class)->send($notification);
 

@@ -26,14 +26,18 @@ class ClubNotificationMail extends Mailable implements ShouldQueue
 
     public $content;
 
+    /** Oggetto personalizzato dal form (null = default "Arbitri Assegnati - ...") */
+    public $subjectLine;
+
     /**
      * Create a new message instance.
      */
-    public function __construct(Tournament $tournament, ?string $content = null, array $attachmentPaths = [])
+    public function __construct(Tournament $tournament, ?string $content = null, array $attachmentPaths = [], ?string $subjectLine = null)
     {
         $this->tournament = $tournament;
         $this->content = $content;
         $this->attachmentPaths = $attachmentPaths;
+        $this->subjectLine = $subjectLine;
 
         // ORDINA GLI ARBITRI PER GERARCHIA (Direttore → Arbitro → Osservatore)
         $this->sortedAssignments = AssignmentRole::sortCollection($tournament->assignments);
@@ -50,7 +54,7 @@ class ClubNotificationMail extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Arbitri Assegnati - {$this->tournament->name}",
+            subject: $this->subjectLine ?: "Arbitri Assegnati - {$this->tournament->name}",
         );
     }
 

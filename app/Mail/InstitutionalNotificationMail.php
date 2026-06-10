@@ -10,6 +10,12 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 
+/**
+ * @deprecated Refactor CC unificato 2026-06: il flusso zonale invia ora
+ *             Mail circolo (con allegati) + copia conoscenza in CC via
+ *             ClubNotificationMail. Questa classe non è più usata da
+ *             NotificationService; mantenuta solo per compatibilità.
+ */
 class InstitutionalNotificationMail extends Mailable implements ShouldQueue
 {
     use Queueable;
