@@ -171,11 +171,8 @@ Route::prefix('api')->name('api.')->group(function () {
     // Internal API per chiamate AJAX
     require __DIR__.'/api/internal.php';
 
-    // Versioned API per integrazioni esterne
-    Route::prefix('v1')->name('v1.')->group(function () {
-        require __DIR__.'/api/v1/tournaments.php';
-        require __DIR__.'/api/v1/notifications.php';
-    });
+    // NOTA (audit 2026-06): rimosso il gruppo api/v1 — file vuoti,
+    // scheletro di API versionata mai implementata.
 });
 require __DIR__.'/maintenance.php';
 

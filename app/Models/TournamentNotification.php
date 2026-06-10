@@ -26,8 +26,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read string $status_formatted
  * @property-read string $templates_formatted
  * @property-read string $time_ago
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Notification> $individualNotifications
- * @property-read int|null $individual_notifications_count
  * @property-read \App\Models\User|null $sentBy
  * @property-read \App\Models\Tournament $tournament
  *
@@ -111,18 +109,8 @@ class TournamentNotification extends Model
         return $this->belongsTo(User::class, 'sent_by');
     }
 
-    /**
-     * 📧 Relazione con notifiche individuali per dettagli
-     */
-    public function individualNotifications(): HasMany
-    {
-        return $this->hasMany(Notification::class, 'tournament_id', 'tournament_id')
-            ->when($this->sent_at, function ($query) {
-                $sentAt = $this->sent_at->copy();
-                $query->where('created_at', '>=', $sentAt->subMinutes(5))
-                    ->where('created_at', '<=', $sentAt->addMinutes(10));
-            });
-    }
+    // NOTA (audit 2026-06): rimossa individualNotifications() — puntava al
+    // model legacy Notification (eliminato); relazione mai letta in app/view.
 
     /**
      * 📊 Scope: Solo notifiche inviate con successo

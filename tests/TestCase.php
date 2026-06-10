@@ -80,8 +80,8 @@ abstract class TestCase extends BaseTestCase
      * quanti test sono stati eseguiti prima — i test che usano zone_id=1, 2, 3
      * trovano sempre le righe corrispondenti.
      *
-     * Le email sono incluse perché AvailabilityNotificationService::getZoneEmail()
-     * le legge dal DB (dopo FIX A-1 — rimozione array hardcoded).
+     * Le email delle zone sono incluse perché alcuni flussi di notifica
+     * le leggono dal DB (es. NotificationRecipientBuilder::addZone()).
      */
     protected function seedZones(): void
     {

@@ -70,8 +70,8 @@ class InstitutionalNotificationSendTest extends TestCase
 
         app(NotificationService::class)->send($notification);
 
-        Mail::assertSent(InstitutionalNotificationMail::class, fn ($mail) => $mail->hasTo('ufficio@example.test'));
-        Mail::assertSent(InstitutionalNotificationMail::class, 1);
+        Mail::assertQueued(InstitutionalNotificationMail::class, fn ($mail) => $mail->hasTo('ufficio@example.test'));
+        Mail::assertQueued(InstitutionalNotificationMail::class, 1);
 
         $notification->refresh();
         $this->assertEquals('sent', $notification->status);
@@ -111,9 +111,9 @@ class InstitutionalNotificationSendTest extends TestCase
 
         app(NotificationService::class)->send($notification);
 
-        Mail::assertSent(ClubNotificationMail::class, fn ($mail) => $mail->hasTo('circolo@example.test'));
-        Mail::assertSent(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('arbitro@example.test'));
-        Mail::assertSent(InstitutionalNotificationMail::class, fn ($mail) => $mail->hasTo('ufficio@example.test'));
+        Mail::assertQueued(ClubNotificationMail::class, fn ($mail) => $mail->hasTo('circolo@example.test'));
+        Mail::assertQueued(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('arbitro@example.test'));
+        Mail::assertQueued(InstitutionalNotificationMail::class, fn ($mail) => $mail->hasTo('ufficio@example.test'));
 
         $notification->refresh();
         $this->assertEquals('sent', $notification->status);
@@ -149,8 +149,8 @@ class InstitutionalNotificationSendTest extends TestCase
 
         app(NotificationService::class)->send($notification);
 
-        Mail::assertSent(ClubNotificationMail::class, 1);
-        Mail::assertNotSent(InstitutionalNotificationMail::class);
+        Mail::assertQueued(ClubNotificationMail::class, 1);
+        Mail::assertNotQueued(InstitutionalNotificationMail::class);
 
         $notification->refresh();
         $this->assertEquals('partial', $notification->status);

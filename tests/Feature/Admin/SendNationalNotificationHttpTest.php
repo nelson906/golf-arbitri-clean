@@ -52,7 +52,7 @@ class SendNationalNotificationHttpTest extends TestCase
         );
 
         $response->assertSessionHas('error');
-        Mail::assertNotSent(NationalNotificationMail::class);
+        Mail::assertNotQueued(NationalNotificationMail::class);
 
         // Nessun record nazionale creato per questo torneo.
         $this->assertDatabaseMissing('tournament_notifications', [
@@ -87,7 +87,7 @@ class SendNationalNotificationHttpTest extends TestCase
         );
 
         $response->assertSessionHas('error');
-        Mail::assertNotSent(NationalNotificationMail::class);
+        Mail::assertNotQueued(NationalNotificationMail::class);
     }
 
     public function test_success_creates_national_record_and_deletes_zonal_draft(): void
@@ -124,7 +124,7 @@ class SendNationalNotificationHttpTest extends TestCase
         );
 
         $this->assertNotEquals(500, $response->status());
-        Mail::assertSent(NationalNotificationMail::class);
+        Mail::assertQueued(NationalNotificationMail::class);
 
         // La bozza zonale è stata eliminata.
         $this->assertDatabaseMissing('tournament_notifications', ['id' => $draft->id]);

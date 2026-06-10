@@ -49,37 +49,9 @@ class NotificationPreparationService
         );
     }
 
-    /**
-     * Aggiorna i metadati della notifica (destinatari, messaggio, ecc.)
-     */
-    public function updateNotificationMetadata(
-        TournamentNotification $notification,
-        array $data
-    ): TournamentNotification {
-        $metadata = [
-            'recipients' => [],
-            'subject' => $data['subject'],
-            'message' => $data['message'],
-            'attach_convocation' => $data['attach_convocation'] ?? true,
-        ];
-
-        // Gestisci arbitri
-        if (isset($data['recipients'])) {
-            $metadata['recipients']['referees'] = $data['recipients'];
-        }
-
-        // Gestisci club
-        $metadata['recipients']['club'] = $data['send_to_club'] ?? true;
-
-        // Gestisci email istituzionali
-        if (isset($data['fixed_addresses'])) {
-            $metadata['recipients']['institutional'] = $data['fixed_addresses'];
-        }
-
-        $notification->update(['metadata' => $metadata]);
-
-        return $notification->fresh();
-    }
+    // NOTA (audit 2026-06): rimossi i metodi morti updateNotificationMetadata(),
+    // updateRecipientInfo() (sostituito da AssignmentObserver),
+    // validateTournamentForNotification() e markAsPrepared() — nessun caller.
 
     /**
      * Salva le clausole selezionate per una notifica
@@ -122,51 +94,6 @@ class NotificationPreparationService
             ]);
             throw $e;
         }
-    }
-
-    /**
-     * Aggiorna la lista arbitri e il totale destinatari per una notifica
-     */
-    public function updateRecipientInfo(TournamentNotification $notification): void
-    {
-        $tournament = $notification->tournament;
-
-        $refereeNames = $tournament->assignments
-            ->map(fn ($assignment) => $assignment->user->name)
-            ->implode(', ');
-
-        $total = $tournament->assignments->count() + 1; // arbitri + circolo
-
-        // Aggiorna solo se necessario
-        $currentDetails = $notification->details ?? [];
-        if (empty($notification->referee_list) || ($currentDetails['total_recipients'] ?? 0) != $total) {
-            $notification->update([
-                'referee_list' => $refereeNames,
-                'details' => array_merge($currentDetails, ['total_recipients' => $total]),
-            ]);
-        }
-    }
-
-    /**
-     * Valida che un torneo sia pronto per l'invio notifiche
-     */
-    public function validateTournamentForNotification(Tournament $tournament): array
-    {
-        $errors = [];
-
-        if ($tournament->assignments->isEmpty()) {
-            $errors[] = 'Il torneo non ha arbitri assegnati';
-        }
-
-        if (! $tournament->club) {
-            $errors[] = 'Il torneo non ha un circolo associato';
-        }
-
-        if (! $tournament->start_date) {
-            $errors[] = 'Il torneo non ha una data di inizio';
-        }
-
-        return $errors;
     }
 
     /**
@@ -232,13 +159,5 @@ class NotificationPreparationService
             ],
             'documents' => $notification->documents,
         ];
-    }
-
-    /**
-     * Marca una notifica come preparata
-     */
-    public function markAsPrepared(TournamentNotification $notification): void
-    {
-        $notification->update(['is_prepared' => true]);
     }
 }

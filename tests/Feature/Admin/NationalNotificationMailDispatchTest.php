@@ -56,13 +56,13 @@ class NationalNotificationMailDispatchTest extends TestCase
 
         // Asserzione principale: la NationalNotificationMail è stata dispatched
         $this->assertTrue(
-            Mail::sent(NationalNotificationMail::class)->isNotEmpty(),
+            Mail::queued(NationalNotificationMail::class)->isNotEmpty(),
             'NationalNotificationMail non è stata dispatched. '
             .'Il refactor Mail::raw → Mailable è regredito.'
         );
 
         // Verifica subject + body integri
-        Mail::assertSent(NationalNotificationMail::class, function ($mail) {
+        Mail::assertQueued(NationalNotificationMail::class, function ($mail) {
             return $mail->subjectLine === 'Test Designazione Arbitri'
                 && str_contains($mail->body, 'Si comunicano i nominativi');
         });

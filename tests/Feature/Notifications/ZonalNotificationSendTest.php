@@ -21,7 +21,7 @@ use Tests\TestCase;
  * business per cui si notifica solo agli arbitri ANCORA assegnati.
  *
  * Questi test esercitano NotificationService::send() reale (no mock del
- * builder destinatari) e asseriscono il targeting via Mail::assertSent.
+ * builder destinatari) e asseriscono il targeting via Mail::assertQueued.
  *
  * NOTA: i documenti sono lasciati vuoti di proposito (documents = [])
  * così getClubAttachments/getRefereeAttachments ritornano [] e non c'è
@@ -78,12 +78,12 @@ class ZonalNotificationSendTest extends TestCase
         app(NotificationService::class)->send($notification);
 
         // Il circolo riceve la lettera all'indirizzo corretto
-        Mail::assertSent(ClubNotificationMail::class, fn ($mail) => $mail->hasTo('circolo@example.test'));
+        Mail::assertQueued(ClubNotificationMail::class, fn ($mail) => $mail->hasTo('circolo@example.test'));
 
         // Entrambi gli arbitri ricevono la convocazione
-        Mail::assertSent(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('arbitroA@example.test'));
-        Mail::assertSent(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('arbitroB@example.test'));
-        Mail::assertSent(RefereeAssignmentMail::class, 2);
+        Mail::assertQueued(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('arbitroA@example.test'));
+        Mail::assertQueued(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('arbitroB@example.test'));
+        Mail::assertQueued(RefereeAssignmentMail::class, 2);
 
         $notification->refresh();
         $this->assertEquals('sent', $notification->status);
@@ -116,9 +116,9 @@ class ZonalNotificationSendTest extends TestCase
 
         app(NotificationService::class)->send($notification);
 
-        Mail::assertSent(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('assegnato@example.test'));
-        Mail::assertNotSent(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('fantasma@example.test'));
-        Mail::assertSent(RefereeAssignmentMail::class, 1);
+        Mail::assertQueued(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('assegnato@example.test'));
+        Mail::assertNotQueued(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('fantasma@example.test'));
+        Mail::assertQueued(RefereeAssignmentMail::class, 1);
     }
 
     /**
@@ -152,11 +152,11 @@ class ZonalNotificationSendTest extends TestCase
         app(NotificationService::class)->send($notification);
 
         // L'arbitro assegnato riceve comunque la convocazione.
-        Mail::assertSent(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('arbitro@example.test'));
-        Mail::assertSent(RefereeAssignmentMail::class, 1);
+        Mail::assertQueued(RefereeAssignmentMail::class, fn ($mail) => $mail->hasTo('arbitro@example.test'));
+        Mail::assertQueued(RefereeAssignmentMail::class, 1);
 
         // Il circolo (email vuota) NON riceve nulla.
-        Mail::assertNotSent(ClubNotificationMail::class);
+        Mail::assertNotQueued(ClubNotificationMail::class);
 
         // Invio parziale: un errore (circolo) + un successo (arbitro).
         $notification->refresh();
