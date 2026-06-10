@@ -75,8 +75,6 @@ class ZombieMailStubsDeletedTest extends TestCase
             \App\Mail\BatchAvailabilityAdminNotification::class,
             \App\Mail\BatchAvailabilityNotification::class,
             \App\Mail\ClubNotificationMail::class,
-            \App\Mail\RefereeAssignmentMail::class,
-            \App\Mail\InstitutionalNotificationMail::class,
         ];
 
         foreach ($activeClasses as $class) {
@@ -100,6 +98,21 @@ class ZombieMailStubsDeletedTest extends TestCase
             file_exists(app_path('Mail/TournamentNotificationMail.php')),
             'Il file TournamentNotificationMail.php deve essere eliminato: era dead code, mai istanziato.'
         );
+    }
+
+    /**
+     * RefereeAssignmentMail e InstitutionalNotificationMail eliminate
+     * (razionalizzazione 2026-06): il flusso zonale usa la MAIL UNICA
+     * ClubNotificationMail (TO circolo + CC arbitri/istituzionali/zona).
+     */
+    public function test_per_recipient_zonal_mailables_do_not_exist(): void
+    {
+        foreach (['RefereeAssignmentMail', 'InstitutionalNotificationMail'] as $class) {
+            $this->assertFalse(
+                file_exists(app_path("Mail/{$class}.php")),
+                "Il file {$class}.php deve restare eliminato: sostituito dalla mail unica ClubNotificationMail."
+            );
+        }
     }
 
     /**

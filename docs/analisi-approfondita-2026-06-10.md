@@ -224,6 +224,19 @@ Se `recipients` contiene `"club": false` o `"institutional": []` mentre `meta_re
 
 **Test aggiornati al nuovo modello**: ZonalDeliveryRegressionTest (incl. end-to-end reale senza Mail::fake: 2 messaggi, allegati solo sul primo), ZonalNotificationSendTest, InstitutionalNotificationSendTest, NotificationAttachmentsTest (nuovo test: copia conoscenza senza allegati), MailDispatchRegressionTest, SendAssignmentWithConvocationHttpTest, NotificationCycleTest, NotificationServiceTest.
 
+### Razionalizzazione post-refactor (2026-06-10, su domanda "si è creato dead code?")
+
+Censimento dopo il passaggio alla mail singola — 6 voci trovate e risolte:
+
+1. **`RefereeAssignmentMail` + `InstitutionalNotificationMail`**: zero call site dopo il refactor → **eliminate** (la view `tournament_assignment_generic` è condivisa con `ClubNotificationMail`, nessuna view orfana). `ZombieMailStubsDeletedTest` aggiornato a guardia dell'assenza.
+2. **`NotificationService`**: la dipendenza `DocumentGenerationService` nel costruttore non era più usata da nessun metodo → **rimossa** (costruttore vuoto; la generazione documenti vive in `NotificationDocumentService`).
+3. **Parametro `$force`** in `send()`/`sendWithTransaction()`: nessun caller lo passava (il reinvio passa sempre dal form) → **rimosso**.
+4. **`NotificationRecipientBuilder`**: `addAssignedReferees()` e `addObservers()` mai usati né testati → **eliminati**. Restano `addZoneAdmins()`/`addNationalAdmins()` (annotati `@api`, coperti da AuditV3RegressionTest).
+5. **Flag `attach_convocation`**: validato e salvato dal form ma **mai letto** dall'invio → ora **onorato** in `buildAttachments()` (false → niente convocazione allegata, la lettera circolo viaggia comunque). Test dedicato aggiunto.
+6. **`getClubAttachments()`/`getRefereeAttachments()`**: la divisione per-destinatario non aveva più senso con la mail unica → **fusi** in un solo `buildAttachments()`.
+
+Razionalizzazioni possibili ma NON eseguite (decidere a parte): rinominare `ClubNotificationMail` → `ZonalNotificationMail` (nome più onesto ora che è LA mail zonale — churn su molti test, valore solo cosmetico); unificare il percorso nazionale (`sendNationalNotification`, 180 righe nel controller) sullo stesso builder+service del flusso zonale (M1 del report, ~1 giorno, ora più facile perché i due flussi condividono già il builder).
+
 ### Proposta originale (riferimento fattibilità)
 
 Richiesta: uniformare lo zonale al modello CRC nazionale — UNA mail con lettera nominativi al **circolo (TO)**, allegati convocazione + facsimile, e **tutti gli interessati in CC** (arbitri assegnati + istituzionali + eventuale zona).

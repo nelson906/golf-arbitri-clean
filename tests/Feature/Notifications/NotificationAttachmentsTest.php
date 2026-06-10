@@ -121,4 +121,26 @@ class NotificationAttachmentsTest extends TestCase
         });
         Mail::assertQueued(ClubNotificationMail::class, 1);
     }
+
+    /**
+     * Il flag attach_convocation del form (prima salvato e MAI letto) ora è
+     * onorato: false → solo la lettera circolo, niente convocazione.
+     */
+    public function test_attach_convocation_false_skips_convocation(): void
+    {
+        [$tournament, , $convPath, $clubPath] = $this->setupWithRealDocuments();
+
+        $notification = TournamentNotification::where('tournament_id', $tournament->id)->firstOrFail();
+        $metadata = $notification->metadata;
+        $metadata['attach_convocation'] = false;
+        $notification->update(['metadata' => $metadata]);
+
+        app(NotificationService::class)->send($notification->fresh());
+
+        Mail::assertQueued(ClubNotificationMail::class, function ($mail) use ($clubPath, $convPath) {
+            return $mail->hasTo('circolo@example.test')
+                && $mail->hasAttachment(Attachment::fromPath($clubPath)->as('Lettera_Circolo.docx'))
+                && ! $mail->hasAttachment(Attachment::fromPath($convPath)->as('Convocazione.docx'));
+        });
+    }
 }

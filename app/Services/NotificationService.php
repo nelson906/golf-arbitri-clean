@@ -30,19 +30,18 @@ use Illuminate\Support\Facades\Mail;
  * FIX D2: se metadata non contiene 'recipients' (es. record import FIG con
  *         metadata {source, command}), l'invio viene rifiutato con eccezione
  *         dedicata: il chiamante reindirizza al form di preparazione.
+ *
+ * RAZIONALIZZAZIONE 2026-06: rimossi la dipendenza DocumentGenerationService
+ * (inutilizzata dopo il refactor — la generazione vive in
+ * NotificationDocumentService), il parametro $force (nessun caller: il
+ * reinvio passa sempre dal form) e i Mailable RefereeAssignmentMail /
+ * InstitutionalNotificationMail (sostituiti dalla mail unica).
  */
 class NotificationService
 {
     public const ERR_MISSING_RECIPIENTS = 'Missing notification recipients';
 
-    protected $documentService;
-
-    public function __construct(DocumentGenerationService $documentService)
-    {
-        $this->documentService = $documentService;
-    }
-
-    public function send(TournamentNotification $notification, bool $force = false): void
+    public function send(TournamentNotification $notification): void
     {
         $metadata = is_string($notification->metadata)
             ? (json_decode($notification->metadata, true) ?? [])
@@ -50,7 +49,6 @@ class NotificationService
 
         Log::info('Starting notification send', [
             'notification_id' => $notification->id,
-            'force' => $force,
             'status' => $notification->status,
             'metadata_recipients' => $metadata['recipients'] ?? null,
         ]);
@@ -68,12 +66,8 @@ class NotificationService
         $tournament = $notification->tournament;
         $currentRefereeIds = $tournament->assignments()->pluck('user_id')->toArray();
 
-        // RESEND forzato: tutti gli arbitri attualmente assegnati
-        $selectedRefereeIds = $force
-            ? $currentRefereeIds
-            : (is_array($recipients['referees'] ?? null) ? $recipients['referees'] : []);
-
-        // Solo arbitri effettivamente assegnati al torneo
+        // Solo arbitri selezionati E ancora effettivamente assegnati al torneo
+        $selectedRefereeIds = is_array($recipients['referees'] ?? null) ? $recipients['referees'] : [];
         $finalRefereeIds = array_values(array_intersect($selectedRefereeIds, $currentRefereeIds));
 
         $sendToClub = (bool) ($recipients['club'] ?? true);
@@ -97,6 +91,7 @@ class NotificationService
 
         $subject = $metadata['subject'] ?? null;
         $content = $metadata['message'] ?? null;
+        $attachConvocation = (bool) ($metadata['attach_convocation'] ?? true);
 
         $successCount = 0;
         $errorCount = 0;
@@ -152,7 +147,7 @@ class NotificationService
                     $mailer->send(new ClubNotificationMail(
                         $tournament,
                         $content,
-                        $this->buildAttachments($notification),
+                        $this->buildAttachments($notification, $attachConvocation),
                         $subject
                     ));
 
@@ -206,56 +201,44 @@ class NotificationService
 
     /**
      * Allegati della mail unica: lettera circolo (facsimile) + convocazione.
+     *
+     * Il flag attach_convocation del form (prima salvato e mai letto) ora
+     * è onorato: se false, la convocazione non viene allegata (la lettera
+     * circolo viaggia comunque).
+     *
+     * @return array<array{path: string, name: string}>
      */
-    private function buildAttachments(TournamentNotification $notification): array
+    private function buildAttachments(TournamentNotification $notification, bool $attachConvocation = true): array
     {
-        return array_merge(
-            $this->getClubAttachments($notification),
-            $this->getRefereeAttachments($notification)
-        );
-    }
-
-    private function getClubAttachments(TournamentNotification $notification): array
-    {
-        if (empty($notification->documents) || empty($notification->documents['club_letter'])) {
+        $documents = $notification->documents ?? [];
+        if (empty($documents)) {
             return [];
         }
 
-        $attachments = [];
         $zone = ZoneHelper::getFolderCodeForTournament($notification->tournament);
         $basePath = storage_path("app/public/convocazioni/{$zone}/generated/");
 
-        // Aggiungi lettera circolo
-        if (! empty($notification->documents['club_letter'])) {
-            $fullPath = $basePath.$notification->documents['club_letter'];
-            if (file_exists($fullPath)) {
-                $attachments[] = [
-                    'path' => $fullPath,
-                    'name' => 'Lettera_Circolo.docx',
-                ];
+        $attachments = [];
+
+        $candidates = [
+            'club_letter' => 'Lettera_Circolo.docx',
+            'convocation' => 'Convocazione.docx',
+        ];
+
+        foreach ($candidates as $key => $displayName) {
+            if ($key === 'convocation' && ! $attachConvocation) {
+                continue;
             }
-        }
 
-        return $attachments;
-    }
+            if (empty($documents[$key])) {
+                continue;
+            }
 
-    private function getRefereeAttachments(TournamentNotification $notification): array
-    {
-        if (empty($notification->documents) || empty($notification->documents['convocation'])) {
-            return [];
-        }
-
-        $attachments = [];
-        $zone = ZoneHelper::getFolderCodeForTournament($notification->tournament);
-        $basePath = storage_path("app/public/convocazioni/{$zone}/generated/");
-
-        // Aggiungi convocazione
-        if (! empty($notification->documents['convocation'])) {
-            $fullPath = $basePath.$notification->documents['convocation'];
+            $fullPath = $basePath.$documents[$key];
             if (file_exists($fullPath)) {
                 $attachments[] = [
                     'path' => $fullPath,
-                    'name' => 'Convocazione.docx',
+                    'name' => $displayName,
                 ];
             }
         }
