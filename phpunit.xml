@@ -25,6 +25,10 @@
         <env name="DB_CONNECTION" value="mysql"/>
         <env name="DB_DATABASE" value="golf_arbitri_clean_test"/>
         <env name="MAIL_MAILER" value="array"/>
+        <!-- DOCX dei test segregati in storage/app/public/testing e storage/testing
+             (svuotati a ogni run da TestCase::setUp) — niente proliferazione nei percorsi reali -->
+        <env name="GOLF_DOCS_STORAGE_PATH" value="testing/convocazioni"/>
+        <env name="GOLF_DOCS_TEMP_PATH" value="testing/temp"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

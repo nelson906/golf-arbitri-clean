@@ -235,6 +235,8 @@ Censimento dopo il passaggio alla mail singola — 6 voci trovate e risolte:
 5. **Flag `attach_convocation`**: validato e salvato dal form ma **mai letto** dall'invio → ora **onorato** in `buildAttachments()` (false → niente convocazione allegata, la lettera circolo viaggia comunque). Test dedicato aggiunto.
 6. **`getClubAttachments()`/`getRefereeAttachments()`**: la divisione per-destinatario non aveva più senso con la mail unica → **fusi** in un solo `buildAttachments()`.
 
+**Segregazione DOCX di test (2026-06-10)**: i test generavano docx con nomi fittizi direttamente in `storage/app/public/convocazioni/<zona>/generated/` e `storage/app/temp/`, mescolandoli ai documenti reali. Il path era hardcoded in 16 punti benché `config('golf.documents.storage_path')` esistesse già (mai usato). Ora: tutti i servizi (NotificationDocumentService, NotificationService, DocumentGenerationService) leggono `config('golf.documents.storage_path'/'temp_path')`, env-overridabili; `phpunit.xml` li punta a `testing/convocazioni` e `testing/temp`; `TestCase::setUp()` svuota `storage/app/public/testing` e `storage/testing` a ogni run. Risultato: zero docx di test nei percorsi reali, residui limitati all'ultima run in cartelle dedicate.
+
 Razionalizzazioni possibili ma NON eseguite (decidere a parte): rinominare `ClubNotificationMail` → `ZonalNotificationMail` (nome più onesto ora che è LA mail zonale — churn su molti test, valore solo cosmetico); unificare il percorso nazionale (`sendNationalNotification`, 180 righe nel controller) sullo stesso builder+service del flusso zonale (M1 del report, ~1 giorno, ora più facile perché i due flussi condividono già il builder).
 
 ### Proposta originale (riferimento fattibilità)

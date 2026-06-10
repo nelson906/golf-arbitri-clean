@@ -120,8 +120,13 @@ return [
     ],
 
     'documents' => [
-        // Configurazioni generazione documenti
-        'storage_path' => 'convocazioni',
+        // Configurazioni generazione documenti.
+        // storage_path: radice (sul disk public) dei DOCX generati.
+        // temp_path:    cartella (relativa a storage/) dei file temporanei.
+        // In TESTING vengono puntati a una cartella dedicata (vedi phpunit.xml)
+        // svuotata a ogni run, per evitare la proliferazione di docx fittizi.
+        'storage_path' => env('GOLF_DOCS_STORAGE_PATH', 'convocazioni'),
+        'temp_path' => env('GOLF_DOCS_TEMP_PATH', 'app/temp'),
         'templates_path' => 'templates',
     ],
 ];

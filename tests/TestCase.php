@@ -30,6 +30,12 @@ abstract class TestCase extends BaseTestCase
         // Fake mail per tutti i test
         Mail::fake();
 
+        // Svuota le cartelle dei documenti di test (GOLF_DOCS_*_PATH in
+        // phpunit.xml): i docx generati dai test restano segregati lì e
+        // vengono azzerati a ogni run — niente proliferazione in storage.
+        \Illuminate\Support\Facades\File::deleteDirectory(storage_path('app/public/testing'));
+        \Illuminate\Support\Facades\File::deleteDirectory(storage_path('testing'));
+
         // Seed dati base se necessari
         $this->seedBaseData();
     }

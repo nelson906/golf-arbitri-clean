@@ -62,7 +62,7 @@ class NotificationAttachmentsTest extends TestCase
         $this->createAssignment(['tournament_id' => $tournament->id, 'user_id' => $ref->id]);
 
         $zone = ZoneHelper::getFolderCodeForTournament($tournament);
-        $this->dir = "convocazioni/{$zone}/generated";
+        $this->dir = config('golf.documents.storage_path')."/{$zone}/generated";
 
         $convFile = 'Convocazione_real.docx';
         $clubFile = 'Lettera_real.docx';

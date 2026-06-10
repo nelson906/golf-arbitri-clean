@@ -216,7 +216,8 @@ class NotificationService
         }
 
         $zone = ZoneHelper::getFolderCodeForTournament($notification->tournament);
-        $basePath = storage_path("app/public/convocazioni/{$zone}/generated/");
+        $docsRoot = config('golf.documents.storage_path', 'convocazioni');
+        $basePath = storage_path("app/public/{$docsRoot}/{$zone}/generated/");
 
         $attachments = [];
 

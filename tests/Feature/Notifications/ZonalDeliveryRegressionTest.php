@@ -87,7 +87,8 @@ class ZonalDeliveryRegressionTest extends TestCase
         // Documenti reali su disco nel percorso che NotificationService usa
         // per costruire gli allegati (convocazione + lettera circolo).
         $zoneCode = ZoneHelper::getFolderCodeForTournament($tournament->fresh(['club', 'tournamentType']));
-        $dir = storage_path("app/public/convocazioni/{$zoneCode}/generated");
+        $docsRoot = config('golf.documents.storage_path');
+        $dir = storage_path("app/public/{$docsRoot}/{$zoneCode}/generated");
         File::ensureDirectoryExists($dir);
         file_put_contents($dir.'/test_convocation.docx', 'fake-docx-convocazione');
         file_put_contents($dir.'/test_club_letter.docx', 'fake-docx-lettera');

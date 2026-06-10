@@ -42,7 +42,7 @@ class NotificationDeleteCleanupTest extends TestCase
         ]);
 
         $zone = \App\Helpers\ZoneHelper::getFolderCodeForTournament($tournament);
-        $dir  = "convocazioni/{$zone}/generated";
+        $dir  = config('golf.documents.storage_path')."/{$zone}/generated";
         Storage::disk('public')->put("$dir/Convocazione_x.docx", 'FAKE');
         Storage::disk('public')->put("$dir/Lettera_x.docx", 'FAKE');
 
