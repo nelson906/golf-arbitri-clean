@@ -80,7 +80,7 @@ class DocumentGenerationService
             $tournamentName = preg_replace('/[^A-Za-z0-9\-]/', '_', $tournament->name);
             $tournamentName = substr($tournamentName, 0, 50);
             $filename = "convocazione_{$tournament->id}_{$tournamentName}.docx";
-            $outputPath = storage_path('app/temp/'.$filename);
+            $outputPath = storage_path(config('golf.documents.temp_path', 'app/temp').'/'.$filename);
 
             // Carica template, sostituisci variabili e aggiungi arbitri (docType: referee)
             $this->processTemplateWithReferees($templatePath, $variables, $tournament, $outputPath, 'referee');
@@ -292,7 +292,7 @@ class DocumentGenerationService
             $tournamentName = preg_replace('/[^A-Za-z0-9\-]/', '_', $tournament->name);
             $tournamentName = substr($tournamentName, 0, 50);
             $filename = "lettera_circolo_{$tournament->id}_{$tournamentName}.docx";
-            $tempPath = storage_path('app/temp/'.$filename);
+            $tempPath = storage_path(config('golf.documents.temp_path', 'app/temp').'/'.$filename);
 
             if (! is_dir(dirname($tempPath))) {
                 mkdir(dirname($tempPath), 0777, true);

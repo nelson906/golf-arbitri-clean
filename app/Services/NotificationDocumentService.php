@@ -32,7 +32,7 @@ class NotificationDocumentService
             // Genera convocazione DOCX
             $convocationData = $this->documentService->generateConvocationForTournament($tournament);
             $convFileName = basename($convocationData['path']);
-            $convDestPath = "convocazioni/{$zone}/generated/{$convFileName}";
+            $convDestPath = $this->docsRoot()."/{$zone}/generated/{$convFileName}";
 
             $this->ensureDirectoryExists($convDestPath);
             $this->copyDocument($convocationData['path'], $convDestPath);
@@ -41,7 +41,7 @@ class NotificationDocumentService
             // Genera lettera circolo DOCX
             $clubDocData = $this->documentService->generateClubDocument($tournament);
             $clubFileName = basename($clubDocData['path']);
-            $clubDestPath = "convocazioni/{$zone}/generated/{$clubFileName}";
+            $clubDestPath = $this->docsRoot()."/{$zone}/generated/{$clubFileName}";
 
             $this->copyDocument($clubDocData['path'], $clubDestPath);
             $documents['club_letter'] = $clubFileName;
@@ -76,7 +76,7 @@ class NotificationDocumentService
         if ($type === 'convocation') {
             $data = $this->documentService->generateConvocationForTournament($tournament, $notification);
             $fileName = basename($data['path']);
-            $destPath = "convocazioni/{$zone}/generated/{$fileName}";
+            $destPath = $this->docsRoot()."/{$zone}/generated/{$fileName}";
 
             $this->ensureDirectoryExists($destPath);
             $this->copyDocument($data['path'], $destPath);
@@ -87,7 +87,7 @@ class NotificationDocumentService
         if ($type === 'club_letter') {
             $data = $this->documentService->generateClubDocument($tournament, $notification);
             $fileName = basename($data['path']);
-            $destPath = "convocazioni/{$zone}/generated/{$fileName}";
+            $destPath = $this->docsRoot()."/{$zone}/generated/{$fileName}";
 
             $this->ensureDirectoryExists($destPath);
             $this->copyDocument($data['path'], $destPath);
@@ -111,7 +111,7 @@ class NotificationDocumentService
             // Convocazione
             $convocationData = $this->documentService->generateConvocationForTournament($tournament, $notification);
             $convFileName = basename($convocationData['path']);
-            $convDest = "convocazioni/{$zone}/generated/{$convFileName}";
+            $convDest = $this->docsRoot()."/{$zone}/generated/{$convFileName}";
 
             $this->ensureDirectoryExists($convDest);
             $this->copyDocument($convocationData['path'], $convDest);
@@ -120,7 +120,7 @@ class NotificationDocumentService
             // Lettera circolo
             $clubDocData = $this->documentService->generateClubDocument($tournament, $notification);
             $clubFileName = basename($clubDocData['path']);
-            $clubDest = "convocazioni/{$zone}/generated/{$clubFileName}";
+            $clubDest = $this->docsRoot()."/{$zone}/generated/{$clubFileName}";
 
             $this->copyDocument($clubDocData['path'], $clubDest);
             $documents['club_letter'] = $clubFileName;
@@ -150,7 +150,7 @@ class NotificationDocumentService
         }
 
         $zone = ZoneHelper::getFolderCodeForTournament($tournament);
-        $path = "convocazioni/{$zone}/generated/{$documents[$type]}";
+        $path = $this->docsRoot()."/{$zone}/generated/{$documents[$type]}";
 
         if (Storage::disk('public')->exists($path)) {
             Storage::disk('public')->delete($path);
@@ -175,7 +175,7 @@ class NotificationDocumentService
         }
 
         $zone = ZoneHelper::getFolderCodeForTournament($tournament);
-        $basePath = "convocazioni/{$zone}/generated/";
+        $basePath = $this->docsRoot()."/{$zone}/generated/";
 
         Log::info('Attempting to delete all documents', [
             'zone' => $zone,
@@ -208,7 +208,7 @@ class NotificationDocumentService
         $zone = ZoneHelper::getFolderCodeForTournament($tournament);
 
         $filename = str_replace(' ', '_', $file->getClientOriginalName());
-        $file->storeAs("convocazioni/{$zone}/generated", $filename, 'public');
+        $file->storeAs($this->docsRoot()."/{$zone}/generated", $filename, 'public');
 
         Log::info('Document uploaded', [
             'notification_id' => $notification->id,
@@ -237,7 +237,7 @@ class NotificationDocumentService
 
         // Check convocazione
         if (! empty($documents['convocation'])) {
-            $path = "convocazioni/{$zone}/generated/{$documents['convocation']}";
+            $path = $this->docsRoot()."/{$zone}/generated/{$documents['convocation']}";
             if (Storage::disk('public')->exists($path)) {
                 $response['convocation'] = [
                     'filename' => $documents['convocation'],
@@ -251,7 +251,7 @@ class NotificationDocumentService
 
         // Check lettera circolo
         if (! empty($documents['club_letter'])) {
-            $path = "convocazioni/{$zone}/generated/{$documents['club_letter']}";
+            $path = $this->docsRoot()."/{$zone}/generated/{$documents['club_letter']}";
             if (Storage::disk('public')->exists($path)) {
                 $response['club_letter'] = [
                     'filename' => $documents['club_letter'],
@@ -277,9 +277,9 @@ class NotificationDocumentService
 
         return [
             'hasConvocation' => isset($documents['convocation']) &&
-                Storage::disk('public')->exists("convocazioni/{$zone}/generated/{$documents['convocation']}"),
+                Storage::disk('public')->exists($this->docsRoot()."/{$zone}/generated/{$documents['convocation']}"),
             'hasClubLetter' => isset($documents['club_letter']) &&
-                Storage::disk('public')->exists("convocazioni/{$zone}/generated/{$documents['club_letter']}"),
+                Storage::disk('public')->exists($this->docsRoot()."/{$zone}/generated/{$documents['club_letter']}"),
         ];
     }
 
@@ -298,7 +298,7 @@ class NotificationDocumentService
         }
 
         $zone = ZoneHelper::getFolderCodeForTournament($tournament);
-        $path = "convocazioni/{$zone}/generated/{$documents[$type]}";
+        $path = $this->docsRoot()."/{$zone}/generated/{$documents[$type]}";
         $fullPath = storage_path('app/public/'.$path);
 
         if (! file_exists($fullPath)) {
@@ -356,5 +356,15 @@ class NotificationDocumentService
         }
 
         return round($bytes, $precision).' '.$units[$i];
+    }
+
+    /**
+     * Radice dei documenti generati sul disk public.
+     * Centralizzata in config (override in testing per evitare
+     * proliferazione di docx nei percorsi reali).
+     */
+    private function docsRoot(): string
+    {
+        return config('golf.documents.storage_path', 'convocazioni');
     }
 }
