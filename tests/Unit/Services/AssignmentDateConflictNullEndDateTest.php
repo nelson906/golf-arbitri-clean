@@ -11,7 +11,7 @@ use Tests\TestCase;
 
 /**
  * Test di REGRESSIONE per il fix del bug "Carbon::parse(null)" in
- * AssignmentValidationService::datesOverlap() (vedi DeepTest_Report.md, Mutante 1).
+ * AssignmentValidationService::datesOverlap() (vedi docs/STORICO.md, DeepTest 2026-03-22, Mutante 1).
  *
  * IMPORTANTE — precisazione emersa eseguendo i test:
  * la colonna `tournaments.end_date` è `date()` NOT NULL a livello di schema,
