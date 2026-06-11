@@ -126,6 +126,55 @@ class NotificationPreparationService
             // Array di ID InstitutionalEmail già selezionati nella notifica corrente.
             // Usato dalla view per pre-spuntare le checkbox. Vuoto = prima volta (usa is_default).
             'savedInstitutionalIds' => $savedInstitutionalIds,
+            'preflight' => $this->buildPreflight($tournament),
+        ];
+    }
+
+    /**
+     * Pre-flight dei destinatari: stessa validazione dell'invio reale
+     * (NotificationRecipientBuilder usa filter_var FILTER_VALIDATE_EMAIL e
+     * SCARTA silenziosamente i malformati con un Log::warning).
+     * Qui la rendiamo visibile all'admin PRIMA del send, così un destinatario
+     * scartato è una decisione consapevole e non un fallimento silenzioso.
+     *
+     * @return array{entries: array<int, array{type: string, name: string, email: ?string, valid: bool}>, invalid: int}
+     */
+    public function buildPreflight(Tournament $tournament): array
+    {
+        $isValid = fn (?string $email): bool => $email !== null
+            && $email !== ''
+            && filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+
+        $entries = [];
+
+        $club = $tournament->club;
+        $entries[] = [
+            'type' => 'Circolo (TO)',
+            'name' => $club->name ?? 'N/A',
+            'email' => $club->email ?? null,
+            'valid' => $isValid($club->email ?? null),
+        ];
+
+        $zone = $club->zone ?? null;
+        $entries[] = [
+            'type' => 'Sezione di zona (CC)',
+            'name' => $zone->name ?? 'N/A',
+            'email' => $zone->email ?? null,
+            'valid' => $isValid($zone->email ?? null),
+        ];
+
+        foreach ($tournament->referees()->get() as $referee) {
+            $entries[] = [
+                'type' => 'Arbitro (CC)',
+                'name' => $referee->name,
+                'email' => $referee->email,
+                'valid' => $isValid($referee->email),
+            ];
+        }
+
+        return [
+            'entries' => $entries,
+            'invalid' => count(array_filter($entries, fn ($e) => ! $e['valid'])),
         ];
     }
 

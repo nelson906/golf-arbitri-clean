@@ -486,6 +486,45 @@
                                     </div>
                                 </div>
 
+                                {{-- PRE-FLIGHT DESTINATARI: validità email verificata con la stessa
+                                     regola dell'invio reale (filter_var). I destinatari segnati in
+                                     rosso verranno SCARTATI silenziosamente dal RecipientBuilder. --}}
+                                @if (isset($preflight))
+                                    <div class="rounded-lg shadow-md mb-6 overflow-hidden border {{ $preflight['invalid'] > 0 ? 'border-red-300' : 'border-green-200' }}">
+                                        <div class="px-6 py-3 {{ $preflight['invalid'] > 0 ? 'bg-red-50' : 'bg-green-50' }}">
+                                            <h5 class="text-lg font-semibold text-gray-800">
+                                                @if ($preflight['invalid'] > 0)
+                                                    🛑 Pre-flight destinatari: {{ $preflight['invalid'] }} verranno scartati all'invio
+                                                @else
+                                                    ✅ Pre-flight destinatari: tutte le email sono valide
+                                                @endif
+                                            </h5>
+                                            @if ($preflight['invalid'] > 0)
+                                                <small class="text-red-700">Le email segnate in rosso non sono valide:
+                                                    l'invio proseguirà <strong>senza</strong> questi destinatari e senza errori visibili.
+                                                    Correggere l'anagrafica prima di inviare.</small>
+                                            @endif
+                                        </div>
+                                        <div class="px-6 py-3 bg-white text-sm divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                                            @foreach ($preflight['entries'] as $entry)
+                                                <div class="flex items-center justify-between py-1.5 {{ $entry['valid'] ? '' : 'text-red-600 font-medium' }}">
+                                                    <span>
+                                                        {{ $entry['valid'] ? '✓' : '✗' }}
+                                                        <span class="text-gray-500 text-xs mr-1">{{ $entry['type'] }}</span>
+                                                        {{ $entry['name'] }}
+                                                    </span>
+                                                    <span class="{{ $entry['valid'] ? 'text-gray-500' : 'text-red-600' }} text-xs">
+                                                        {{ $entry['email'] ?: '— email mancante —' }}
+                                                        @unless ($entry['valid'])
+                                                            <span class="ml-1 uppercase">scartato</span>
+                                                        @endunless
+                                                    </span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
                                 {{-- ACCORDION: Destinatari Arbitri --}}
                                 <div class="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
                                     <button type="button"

@@ -1,7 +1,7 @@
 # Analisi Approfondita — Golf Arbitri
 *Generata il: 2026-06-10 — Laravel 12 — flow analysis + audit stratificazioni/dead code*
 
-> Aggiorna e integra `docs/laravel-flow-analysis.md` (2026-03-25). Combina scansione statica automatica (67 route) con lettura manuale di controller, service, trait e model dei workflow core, più audit dedicato a codice morto e stratificazioni.
+> Aggiorna e integra la flow analysis del 2026-03-25 (ora condensata in `docs/STORICO.md`). Combina scansione statica automatica (67 route) con lettura manuale di controller, service, trait e model dei workflow core, più audit dedicato a codice morto e stratificazioni.
 
 ---
 

@@ -10,7 +10,7 @@ use Tests\TestCase;
 
 /**
  * Test di integrazione per il rischio "dati sporchi → notifica sbagliata"
- * (RISK_ASSESSMENT.md §3 R2).
+ * (docs/STORICO.md, risk assessment 2026-05-30, R2).
  *
  * In produzione alcune righe di `zones` hanno il NOME al posto dell'email
  * (dato corrotto). Il bug del 10 maggio era esattamente questo: una stringa
