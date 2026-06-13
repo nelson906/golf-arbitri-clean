@@ -7,7 +7,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- jQuery UI Theme -->
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.3/themes/base/jquery-ui.css"
-          integrity="sha256-DcjZoj+4EdXndbnrXsdWkiAgx9N0PiUYY0cPl2ni7vg=" crossorigin="anonymous">
+        integrity="sha256-DcjZoj+4EdXndbnrXsdWkiAgx9N0PiUYY0cPl2ni7vg=" crossorigin="anonymous">
     <style>
         /* Custom styles to integrate jQuery UI with Tailwind */
         .ui-datepicker {
@@ -35,10 +35,10 @@
         }
 
         /* ── Stampa / PDF ──────────────────────────────────────────────────────
-           In stampa nasconde tutto tranne #print-area (titolo verde + tabella +
-           riepilogo orari). I pulsanti × accanto ai nomi e tutti i bottoni del
-           pannello configurazione spariscono. Pagina A4 orizzontale per ospitare
-           la tabella doppio tee senza tagli. */
+               In stampa nasconde tutto tranne #print-area (titolo verde + tabella +
+               riepilogo orari). I pulsanti × accanto ai nomi e tutti i bottoni del
+               pannello configurazione spariscono. Pagina A4 orizzontale per ospitare
+               la tabella doppio tee senza tagli. */
         @media print {
             body * {
                 visibility: hidden;
@@ -156,6 +156,7 @@
                                     <option value="Trofeo Giovanile Federale">Trofeo Giovanile Federale</option>
                                     <option value="Gara Giovanile">Gara Giovanile</option>
                                     <option value="Teodoro Soldati">Teodoro Soldati</option>
+                                    <option value="Prova di gioco">Prova di gioco SNP</option>
                                 </select>
                             </div>
 
@@ -194,7 +195,8 @@
                             <div class="finale-only" style="display:none;">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Qualificati Uomini (post-taglio):
-                                    <span class="text-xs text-gray-500 italic">default formula FIG, modificabile per pari merito</span>
+                                    <span class="text-xs text-gray-500 italic">default formula FIG, modificabile per pari
+                                        merito</span>
                                 </label>
                                 <input type="number" id="players_cut"
                                     class="w-full px-3 py-2 border border-orange-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500"
@@ -204,7 +206,8 @@
                             <div class="finale-only" style="display:none;">
                                 <label class="block text-sm font-medium text-gray-700 mb-2">
                                     Qualificate Donne (post-taglio):
-                                    <span class="text-xs text-gray-500 italic">default formula FIG, modificabile per pari merito</span>
+                                    <span class="text-xs text-gray-500 italic">default formula FIG, modificabile per pari
+                                        merito</span>
                                 </label>
                                 <input type="number" id="proette_cut"
                                     class="w-full px-3 py-2 border border-orange-300 rounded-md focus:outline-none focus:ring-orange-500 focus:border-orange-500"
@@ -254,7 +257,8 @@
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Intervallo tra Partenze:</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Intervallo tra
+                                    Partenze:</label>
                                 <select id="gap"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                                     @foreach (['00:08', '00:09', '00:10', '00:11', '00:12', '00:13', '00:14', '00:15'] as $gap)
@@ -286,8 +290,8 @@
                                 <form id="upload-form" method="POST" enctype="multipart/form-data"
                                     action="{{ route('user.quadranti.upload-excel') }}">
                                     @csrf
-                                    <input type="file" id="file" name="file" class="mb-2 text-sm text-gray-600"
-                                        accept=".xlsx,.xls,.csv">
+                                    <input type="file" id="file" name="file"
+                                        class="mb-2 text-sm text-gray-600" accept=".xlsx,.xls,.csv">
                                     <button type="submit" id="upload"
                                         class="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-md">
                                         <i class="fas fa-upload mr-2"></i> Carica File
@@ -367,7 +371,8 @@
                             {{-- Avviso modalità nominativa: visibile solo quando nominativo='On' --}}
                             <div id="nominativo-hint" style="display:none;"
                                 class="mb-3 px-3 py-2 bg-amber-50 border border-amber-300 rounded text-sm text-amber-800">
-                                <i class="fas fa-circle text-red-600 mr-1" style="font-size:9px; vertical-align:middle;"></i>
+                                <i class="fas fa-circle text-red-600 mr-1"
+                                    style="font-size:9px; vertical-align:middle;"></i>
                                 Modalità Nominativo: per eliminare un iscritto clicca sulla
                                 <span class="text-red-600 font-bold">&times;</span> rossa accanto al nome.
                                 Lo schema verrà ricalcolato automaticamente.
@@ -389,8 +394,10 @@
     {{-- Modal Vista FIG: tabella Giro 1 + Giro 2 in stile orario ufficiale FIG,
          da affiancare al PDF pubblicato per la verifica. --}}
     <div id="fig-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:50;">
-        <div style="background:#fff; max-width:920px; margin:32px auto; border-radius:8px; max-height:86vh; display:flex; flex-direction:column;">
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid #e2e8f0;">
+        <div
+            style="background:#fff; max-width:920px; margin:32px auto; border-radius:8px; max-height:86vh; display:flex; flex-direction:column;">
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-bottom:1px solid #e2e8f0;">
                 <strong style="color:#1e293b;">
                     <i class="fas fa-table-list mr-1"></i> Vista FIG — Orario di partenza Giro 1 e Giro 2
                 </strong>
@@ -404,7 +411,8 @@
     {{-- Overlay di caricamento full-screen (attese lunghe Federgolf) --}}
     <div id="loading-overlay"
         style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:60; align-items:center; justify-content:center;">
-        <div style="background:#fff; padding:24px 32px; border-radius:10px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+        <div
+            style="background:#fff; padding:24px 32px; border-radius:10px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
             <i class="fas fa-spinner fa-spin" style="font-size:32px; color:#4f46e5;"></i>
             <div id="loading-overlay-text" style="margin-top:12px; color:#1e293b; font-weight:500;">Caricamento…</div>
         </div>
@@ -414,11 +422,11 @@
 @push('scripts')
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
-            integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
 
     <!-- jQuery UI for datepicker -->
     <script src="https://code.jquery.com/ui/1.13.3/jquery-ui.min.js"
-            integrity="sha256-sw0iNNXmOJbQhYFuC9OF2kOlD5KQKe1y5lfBn4C9Sjg=" crossorigin="anonymous"></script>
+        integrity="sha256-sw0iNNXmOJbQhYFuC9OF2kOlD5KQKe1y5lfBn4C9Sjg=" crossorigin="anonymous"></script>
 
     <!-- SheetJS (xlsx) per export Excel: produce un vero file .xlsx (no avviso "formato non corrispondente") -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
