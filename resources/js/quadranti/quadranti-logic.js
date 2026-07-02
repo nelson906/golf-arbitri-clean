@@ -114,17 +114,16 @@ export class QuadrantiLogic {
             Q4 += overflow;
         }
 
-        // Apply special rules based on player count modulo
-        const rem12 = players % 12;
-
-        if (mod === 3) {
-            if ((rem12 === 1 || rem12 === 2 || rem12 === 3) && Q3 > 0) {
-                Q3--;
-                Q2++;
-            }
-        } else if (mod === 4) {
-            const rem16 = players % 16;
-            if ((rem16 === 1 || rem16 === 2 || rem16 === 3 || rem16 === 4) && Q3 > 0) {
+        // Regola speciale storica sul modulo del campo — SOLO mod 3 e 4
+        // (verificata sui PDF ufficiali): se il resto di players % (mod·4)
+        // è in 1..mod, sposta un volo da Q3 a Q2. Formula identica alle
+        // regole storiche esplicite (mod 3: rem12 1-3; mod 4: rem16 1-4).
+        // NON si applica ai flight da 2: sbilancerebbe Early/Late senza
+        // motivo (es. 33 giocatori → 10/7 invece del naturale 9/8 —
+        // segnalato da Alberto 02/07/2026, nessun PDF a supporto per mod 2).
+        if (mod >= 3) {
+            const remQ = players % (mod * 4);
+            if (remQ >= 1 && remQ <= mod && Q3 > 0) {
                 Q3--;
                 Q2++;
             }

@@ -2300,8 +2300,10 @@ describe('Prova di gioco SNP — Appendice F', () => {
     expect(f.rounds[1].early).toBe('S-L/R');
     expect(f.rounds[1].late).toBe('UR-L/R');
     expect(f.rounds[1].earlyHalf).toBe('alta');
-    // Giri 1-2 solo doppio tee; giri 3-4 solo tee unico, a coppie.
-    expect(f.rounds[0].tee).toEqual(['double']);
+    // Giri 1-2: doppio tee + tee unico (dal 02/07/2026, logica 54 buche);
+    // giri 3-4 solo tee unico, a coppie.
+    expect(f.rounds[0].tee).toEqual(['double', 'single']);
+    expect(f.rounds[1].tee).toEqual(['double', 'single']);
     expect(f.rounds[2].tee).toEqual(['single']);
     expect(f.rounds[2].coppie).toEqual({ mod: 2, pausaOgni: 8, pausaExtra: '00:05' });
     expect(f.rounds[3].coppie).toEqual({ mod: 2, pausaOgni: 8, pausaExtra: '00:05' });
