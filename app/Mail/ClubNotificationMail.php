@@ -50,12 +50,64 @@ class ClubNotificationMail extends Mailable implements ShouldQueue
 
     /**
      * Get the message envelope.
+     *
+     * FIX (2026-07): il mittente non è più quello generico di config
+     * mail.from — il display name e il Reply-To identificano la sezione
+     * competente: SZR di zona per i tornei zonali, CRC per i nazionali.
+     * L'ADDRESS del from resta quello autenticato (mail.from.address)
+     * per non rompere SPF/DKIM/DMARC con lo smarthost.
      */
     public function envelope(): Envelope
     {
+        [$senderName, $replyToEmail] = $this->resolveSender();
+
         return new Envelope(
+            from: new \Illuminate\Mail\Mailables\Address(
+                config('mail.from.address'),
+                $senderName
+            ),
+            replyTo: $replyToEmail
+                ? [new \Illuminate\Mail\Mailables\Address($replyToEmail, $senderName)]
+                : [],
             subject: $this->subjectLine ?: "Arbitri Assegnati - {$this->tournament->name}",
         );
+    }
+
+    /**
+     * Determina nome mittente e reply-to in base alla competenza del torneo.
+     *
+     * @return array{0: string, 1: string|null} [nome, email reply-to]
+     */
+    private function resolveSender(): array
+    {
+        // Torneo nazionale → mittente CRC
+        if (ZoneHelper::isTournamentNational($this->tournament)) {
+            $crcEmail = config('golf.emails.crc');
+
+            return [
+                'CRC - Comitato Regole e Campionati',
+                filter_var($crcEmail, FILTER_VALIDATE_EMAIL) ? $crcEmail : null,
+            ];
+        }
+
+        // Torneo zonale → mittente sezione zonale (SZR)
+        $zoneId = $this->tournament->club->zone_id ?? $this->tournament->zone_id;
+        $zone = $this->tournament->zone ?? $this->tournament->club?->zone;
+
+        $code = ZoneHelper::getFolderCode($zoneId); // es. SZR6
+        $senderName = $zone && $zone->name
+            ? "{$code} - {$zone->name}"
+            : "{$code} - Sezione Zonale Regole";
+
+        // Email di zona dal DB se valida, altrimenti pattern szrN@federgolf.it.
+        // (Il campo zones.email in alcuni record contiene il NOME della
+        // sezione, non un indirizzo — v. warning "indirizzo email malformato".)
+        $zoneEmail = $zone?->email;
+        if (! $zoneEmail || ! filter_var($zoneEmail, FILTER_VALIDATE_EMAIL)) {
+            $zoneEmail = $zoneId ? ZoneHelper::getEmailPattern($zoneId) : null;
+        }
+
+        return [$senderName, $zoneEmail];
     }
 
     /**
