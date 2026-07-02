@@ -32,9 +32,24 @@ class NationalNotificationMail extends Mailable implements ShouldQueue
         $this->afterCommit();
     }
 
+    /**
+     * FIX (2026-07): mittente identificato come CRC (display name + Reply-To)
+     * invece del from generico di config. L'ADDRESS resta mail.from.address
+     * per non rompere SPF/DKIM/DMARC con lo smarthost.
+     */
     public function envelope(): Envelope
     {
+        $crcEmail = config('golf.emails.crc');
+        $senderName = 'CRC - Comitato Regole e Campionati';
+
         return new Envelope(
+            from: new \Illuminate\Mail\Mailables\Address(
+                config('mail.from.address'),
+                $senderName
+            ),
+            replyTo: filter_var($crcEmail, FILTER_VALIDATE_EMAIL)
+                ? [new \Illuminate\Mail\Mailables\Address($crcEmail, $senderName)]
+                : [],
             subject: $this->subjectLine,
         );
     }

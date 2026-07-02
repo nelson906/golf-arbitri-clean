@@ -346,10 +346,11 @@
                 </button>
             </div>
             <div class="py-4">
-                <p class="mb-4">Sei sicuro di voler reinviare tutte le notifiche per questo torneo?</p>
+                <p class="mb-4">Vuoi procedere con il reinvio delle notifiche per questo torneo?</p>
                 <p class="text-yellow-600 flex items-center">
                     <i class="fas fa-exclamation-triangle mr-2"></i>
-                    Questo sostituirà le notifiche precedenti e invierà nuovamente tutte le email.
+                    Verrai portato alla schermata di preparazione: nulla viene inviato
+                    finché non rivedi destinatari e messaggio e confermi l'invio.
                 </p>
             </div>
             <div class="flex justify-end space-x-4 pt-2">
