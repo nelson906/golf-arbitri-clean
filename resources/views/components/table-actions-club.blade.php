@@ -23,9 +23,10 @@
 
     {{-- Attiva/Disattiva --}}
     @if($club->is_active)
-        <form action="{{ route('admin.clubs.deactivate', $club) }}" method="POST" class="inline"
+        <form action="{{ route('admin.clubs.toggle-active', $club) }}" method="POST" class="inline"
             onsubmit="return confirm('Sei sicuro di voler disattivare questo club?');">
             @csrf
+            @method('PATCH')
             <button type="submit" class="text-yellow-600 hover:text-yellow-900" title="Disattiva">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -37,6 +38,7 @@
         <form action="{{ route('admin.clubs.toggle-active', $club) }}" method="POST" class="inline"
             onsubmit="return confirm('Sei sicuro di voler attivare questo club?');">
             @csrf
+            @method('PATCH')
             <button type="submit" class="text-green-600 hover:text-green-900" title="Attiva">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

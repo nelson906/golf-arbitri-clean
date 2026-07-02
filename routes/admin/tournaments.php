@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\TournamentController;
-use App\Http\Controllers\Admin\TournamentTypeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -45,10 +44,6 @@ Route::prefix('tournaments/{tournament}')->name('tournaments.')->group(function 
         ->name('send-assignment-with-convocation');
 });
 
-// Tournament Types Management (fully functional)
-Route::prefix('tournament-management')->name('tournament-management.')->group(function () {
-
-    Route::resource('types', TournamentTypeController::class)->except(['show']);
-    Route::post('types/{tournamentType}/toggle-active', [TournamentTypeController::class, 'toggleActive'])
-        ->name('types.toggle-active');
-});
+// NOTA (audit 2026-07, fix G1): rimosso il blocco duplicato 'tournament-management/types'.
+// La gestione tipi torneo è SOLO in routes/super-admin.php (middleware super_admin):
+// qui era raggiungibile da qualsiasi admin senza authorize nel controller.

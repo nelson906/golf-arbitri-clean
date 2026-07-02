@@ -36,11 +36,6 @@
             📧 Email Istituzionali
         </x-nav-link>
 
-        {{-- System Settings --}}
-        <x-nav-link :href="route('super-admin.settings.index')" :active="request()->routeIs('super-admin.settings.*')">
-            ⚙️ Impostazioni Sistema
-        </x-nav-link>
-
         {{-- System Monitoring --}}
         <x-nav-link :href="route('super-admin.monitoring.dashboard')" :active="request()->routeIs('super-admin.monitoring.*')">
             🖥️ Monitoraggio Sistema
@@ -301,9 +296,6 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('super-admin.institutional-emails.index')" :active="request()->routeIs('super-admin.institutional-emails.*')">
                     📧 Email Istituzionali
-                </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('super-admin.settings.index')" :active="request()->routeIs('super-admin.settings.*')">
-                    ⚙️ Impostazioni Sistema
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('super-admin.monitoring.logs')" :active="request()->routeIs('super-admin.monitoring.*')">
                     📊 Monitoraggio Sistema
