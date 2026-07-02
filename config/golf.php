@@ -121,10 +121,14 @@ return [
 
     'documents' => [
         // Configurazioni generazione documenti.
-        // storage_path: radice (sul disk public) dei DOCX generati.
+        // disk:         disk Laravel dei DOCX generati (FIX M2 audit 2026-07:
+        //               'docs' = privato, nessuna URL pubblica — prima 'public'
+        //               li esponeva via /storage/convocazioni/... senza login).
+        // storage_path: radice (sul disk) dei DOCX generati.
         // temp_path:    cartella (relativa a storage/) dei file temporanei.
         // In TESTING vengono puntati a una cartella dedicata (vedi phpunit.xml)
         // svuotata a ogni run, per evitare la proliferazione di docx fittizi.
+        'disk' => env('GOLF_DOCS_DISK', 'docs'),
         'storage_path' => env('GOLF_DOCS_STORAGE_PATH', 'convocazioni'),
         'temp_path' => env('GOLF_DOCS_TEMP_PATH', 'app/temp'),
         'templates_path' => 'templates',

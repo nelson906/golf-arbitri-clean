@@ -179,7 +179,12 @@ class NotificationPreparationService
     }
 
     /**
-     * Prepara i dati per l'anteprima email
+     * Prepara i dati per l'anteprima email.
+     *
+     * FIX M4 (audit 2026-07): la preview ora riflette l'invio reale —
+     * aggiunte sezione di zona ed email aggiuntive (prima inviate ma
+     * invisibili in anteprima) e filtro is_active sugli istituzionali
+     * (stesso filtro del NotificationRecipientBuilder in fase di invio).
      */
     public function prepareEmailPreview(
         TournamentNotification $notification,
@@ -204,7 +209,11 @@ class NotificationPreparationService
                 'institutional' => InstitutionalEmail::whereIn(
                     'id',
                     $metadata['recipients']['institutional'] ?? []
-                )->pluck('email'),
+                )->where('is_active', true)->pluck('email'),
+                'zone' => ($metadata['recipients']['zone'] ?? false)
+                    ? $tournament->club?->zone?->email
+                    : null,
+                'additional' => $metadata['recipients']['additional'] ?? [],
             ],
             'documents' => $notification->documents,
         ];

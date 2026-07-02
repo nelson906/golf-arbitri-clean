@@ -166,12 +166,14 @@ In questo modo chi ha giocato Late il giorno 1 gioca Early il giorno 2 (e viceve
 
 ## 6. Tee unico
 
-`generateSingleTee()` ignora il bilanciamento Early/Late e concatena:
+> ⚠️ **Aggiornato (vedi §13).** Il tee unico di qualificazione ora passa dal motore
+> a quadranti (`costruisciQuadrantiSingleTee` + `renderQuadranti`), con terzetti
+> in ordine **crescente** (ordine di merito) e il twosome in testa alla sezione
+> di apertura. Il giro finale tee unico usa `buildFinaleTees`/`renderQuadranti`.
 
-- 1ª giornata: `[...femaleGroups, ...maleGroups]`
-- 2ª giornata: `[...maleGroups.reverse(), ...femaleGroups.reverse()]`
-
-I gruppi sono comunque calcolati con `generatePlayerGroups`, quindi mantengono l'ordine letto dai quattro quadranti, ma vengono stampati su un'unica colonna.
+`generateSingleTee()` concatena le sezioni (uomini/donne, alte/basse) su un'unica
+colonna; i gruppi sono prodotti dal motore (§13), non più dalla semplice
+concatenazione di `generatePlayerGroups`.
 
 ---
 
@@ -248,6 +250,73 @@ Due bottoni nel pannello azioni:
 
 - **Excel** → `handleExcelExport` usa [SheetJS](https://github.com/SheetJS/sheetjs) (`xlsx@0.18.5` da jsDelivr) per produrre un **vero file `.xlsx`** (`Partenze_<Prima|Seconda>Giornata_<data>.xlsx`). La funzione clona la `<table>` interna a `#first_table`, rimuove i pulsanti × con `clone.querySelectorAll('.qd-remove').forEach(el => el.remove())` e passa il clone a `XLSX.utils.table_to_book` → `XLSX.writeFile`. Sostituisce la precedente implementazione con `jquery-table2excel`, che generava un `.xls` "fasullo" (HTML rinominato) e faceva comparire l'avviso *"Il formato e l'estensione non corrispondono"* all'apertura.
 - **Stampa / PDF** → `handlePdfPrint` chiama `window.print()`. Le regole `@media print` in `index.blade.php` isolano `#print-area` (titolo verde + box riepilogo orari + tabella) nascondendo il resto della pagina, forzano l'orientamento landscape A4 e preservano i colori di sfondo dei quadranti. Per ottenere un file PDF, nel dialogo di stampa l'utente sceglie "Salva come PDF" come destinazione: il `document.title` viene sostituito temporaneamente con `Partenze_<Prima|Seconda>Giornata_<data>` così il nome del file è significativo. Nessuna libreria esterna.
+
+---
+
+## 13. Motore a quadranti (aggiornamento 2026-06)
+
+Refactoring per ridurre i renderer paralleli a un **core unico** che applica la
+regola §3.1 una volta sola. Documenti collegati: `AUDIT_QUADRANTI.md` (diagnosi),
+test `quadranti-engine.test.js` (fixture PDF) e `quadranti-regression.test.js`
+(invarianti universali).
+
+### 13.1 Funzioni del motore
+
+- **`espandiSezione(lo, hi, mod, internal, groupOrder)`** — CORE. Espande
+  l'intervallo di ranghi in righe (gruppi da `mod`): il volo incompleto (twosome,
+  `mod-1` giocatori) prende i ranghi più alti ed è messo in **testa**; `internal`
+  = ordine dentro il terzetto (`asc`/`desc`); `groupOrder` = ordine dei gruppi.
+  **Mai un giocatore solo** (d=1 → un volo da 2; d=2 → due voli da 2).
+- **`buildURQuadrants(N, mod, source, internal, earlyFlights)`** — costruisce i 4
+  quadranti a forma ∩ (U-rovesciata): `Q1`=Tee1 Early (alto-sx, twosome),
+  `Q2`=Tee10 Early, `Q3`=Tee1 Late (basso-sx, riga vuota), `Q4`=Tee10 Late.
+- **`renderQuadranti(quadranti, mod)`** — espande una lista di Quadrante in gruppi
+  pronti (usato da tee unico e finale).
+- **`costruisciQuadrantiSingleTee(...)`** — sezioni del tee unico di qualificazione.
+
+### 13.2 Regole (confermate sui PDF + dall'utente)
+
+- **Ordine interno del terzetto PER-TEE** (= striscia FIG): il **Tee 10** (gruppi
+  crescenti) è **sempre crescente**; il **Tee 1** (gruppi decrescenti) è
+  `reversed`/decrescente nei giri di **classifica**, crescente nei giri di
+  **merito**. `asc`/`desc` si riferiscono alla direzione del **blocco**, e il
+  terzetto la segue.
+- **Twosome** (§3.1): in testa a **Q1** (alto-sx); con `difference=2` due voli da
+  2 **consecutivi**. Mai un giocatore solo.
+- **Riga vuota**: in coda a **Q3** (basso-sx, Late Tee 1).
+- **Early/Late bilanciato**: `earlyFlights` è forzato **pari** così l'Early ha
+  Tee1=Tee10 e il volo residuo/vuoto cade sempre in Late Tee 1.
+
+### 13.3 Quale path usa ogni formato (stato attuale)
+
+| Formato / giro | Path |
+|---|---|
+| Giovanile, Teodoro (∩) · uomini+donne | `buildURQuadrants` |
+| Trofei, Patrocinate 2° (∩ classifica) · uomini+donne | `buildURQuadrants` (`internal='desc'`) |
+| Tee unico qualificazione | `costruisciQuadrantiSingleTee` + `renderQuadranti` |
+| Finale per classifica (single + double) | `buildFinaleTees` + `renderQuadranti` |
+| 54/72 1°/2° giro doppie (cerchio/clessidra) | `buildURQuadrants` (layout `cerchio`) + `renderBlocchi` |
+| Prova di gioco 1°/2° (sessioni-miste, forma S) | `buildURQuadrants` (layout `sessioni-miste`) + `renderBlocchi` |
+| Prova di gioco 3°/4° (coppie, classifica inversa) | ramo dedicato in `generateSingleTee` (non a quadranti) |
+
+> **MOTORE UNICO completo per il doppio tee**: UN builder `buildURQuadrants`
+> (geometria via `forma:{early,late}` UR/U/S, `verso`, `earlyIsHigh`) + UN renderer
+> `renderBlocchi` (numerazione `assegnaFlightUnificato`, orari con incrocio, info
+> box 3 campi, striscia FIG). Coprono giovanili, trofei/patrocinate (1° e 2°),
+> 54/72 (cerchio/clessidra), Prova (sessioni-miste). `arco`, `chunk`,
+> `generate54HoleTableNew`, `generate36HoleTableNew` e `calculateTimingInfo` sono
+> stati RIMOSSI. Resta fuori dal motore solo il giro "a coppie" (Prova 3°/4°),
+> che non è uno schema a quadranti. Gara non in COMPETITION_FORMATS → errore esplicito.
+
+### 13.4 Come aggiungere uno schema nuovo
+
+1. Aggiungi la voce in `COMPETITION_FORMATS` (`config.js`) col descrittore del
+   giro: `early`/`late` (stringa `FORMA-VERSO`), `reversed`, `tee`, `gender`,
+   `type`, e `layout` (es. `'giovanili'`, `'reversed-interleaved'`).
+2. Se la forma è ∩ già coperta, **non serve codice**: `buildURQuadrants` si adatta
+   coi parametri `internal` (da `reversed`) ed `earlyFlights`.
+3. Se è una geometria nuova (non ∩/cerchio), aggiungi un builder in
+   `blocchiBuilders` che produce i blocchi `{cat, session, tee1, tee10}`.
 
 ---
 

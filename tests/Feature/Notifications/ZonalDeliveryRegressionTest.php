@@ -88,7 +88,9 @@ class ZonalDeliveryRegressionTest extends TestCase
         // per costruire gli allegati (convocazione + lettera circolo).
         $zoneCode = ZoneHelper::getFolderCodeForTournament($tournament->fresh(['club', 'tournamentType']));
         $docsRoot = config('golf.documents.storage_path');
-        $dir = storage_path("app/public/{$docsRoot}/{$zoneCode}/generated");
+        // FIX M2 (audit 2026-07): documenti sul disk privato, non più app/public
+        $dir = \Illuminate\Support\Facades\Storage::disk(config('golf.documents.disk', 'docs'))
+            ->path("{$docsRoot}/{$zoneCode}/generated");
         File::ensureDirectoryExists($dir);
         file_put_contents($dir.'/test_convocation.docx', 'fake-docx-convocazione');
         file_put_contents($dir.'/test_club_letter.docx', 'fake-docx-lettera');
@@ -193,6 +195,12 @@ class ZonalDeliveryRegressionTest extends TestCase
         $html = $mailable->render();
         $this->assertStringContainsString($tournament->club->name, $html,
             'REGRESSIONE: il corpo email non contiene il nome del circolo.');
+
+        // FIX C2 (audit 2026-07): il messaggio dell'admin (metadata['message'])
+        // deve comparire nel corpo — la view legge $message_content, che prima
+        // nessuno passava (partiva sempre il testo di default).
+        $this->assertStringContainsString('Si comunicano le assegnazioni.', $html,
+            'REGRESSIONE C2: il messaggio personalizzato dell\'admin non è nel corpo email.');
 
         // ROUNDTRIP DI SERIALIZZAZIONE (SerializesModels): è ciò che accade
         // quando il Mailable passa dalla coda. Dopo il roundtrip deve ancora

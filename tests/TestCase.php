@@ -33,6 +33,9 @@ abstract class TestCase extends BaseTestCase
         // Svuota le cartelle dei documenti di test (GOLF_DOCS_*_PATH in
         // phpunit.xml): i docx generati dai test restano segregati lì e
         // vengono azzerati a ogni run — niente proliferazione in storage.
+        // FIX M2 (audit 2026-07): i documenti vivono su storage/app/docs
+        // (disk privato); app/public/testing resta per pulizia residui vecchi.
+        \Illuminate\Support\Facades\File::deleteDirectory(storage_path('app/docs/testing'));
         \Illuminate\Support\Facades\File::deleteDirectory(storage_path('app/public/testing'));
         \Illuminate\Support\Facades\File::deleteDirectory(storage_path('testing'));
 

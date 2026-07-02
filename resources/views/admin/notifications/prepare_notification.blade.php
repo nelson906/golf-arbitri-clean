@@ -693,6 +693,10 @@
                                     </label>
                                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
                                         <div class="flex items-center">
+                                            {{-- FIX C3 (audit 2026-07): senza hidden, checkbox deselezionata =
+                                                 chiave assente = $request->boolean('send_to_club', true) → true:
+                                                 il circolo riceveva la mail comunque. --}}
+                                            <input type="hidden" name="send_to_club" value="0">
                                             <input type="checkbox" name="send_to_club" id="send_to_club" value="1"
                                                 checked
                                                 class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
@@ -909,6 +913,31 @@
             const clubName = '{{ $tournament->club->name ?? 'N/A' }}';
             const clubEmail = '{{ $tournament->club->email ?? 'N/A' }}';
 
+            // FIX M4 (audit 2026-07): la preview ignorava sezione di zona,
+            // istituzionali ed email aggiuntive — che però venivano inviate.
+            // Ora mostra TUTTI i destinatari reali.
+            const sendToSection = document.getElementById('send_to_section')?.checked;
+            const zoneName = '{{ $tournament->club->zone->name ?? 'N/A' }}';
+            const zoneEmail = '{{ $tournament->club->zone->email ?? '' }}';
+
+            const institutionals = [];
+            document.querySelectorAll('input[name="fixed_addresses[]"]:checked').forEach(cb => {
+                const label = cb.closest('.flex')?.querySelector('label');
+                if (label) {
+                    institutionals.push(label.textContent.trim());
+                }
+            });
+
+            const additionals = [];
+            document.querySelectorAll('input[name="additional_emails[]"]').forEach(inp => {
+                if (inp.value.trim()) {
+                    additionals.push(inp.value.trim());
+                }
+            });
+
+            const totalRecipients = referees.length + (sendToClub ? 1 : 0) +
+                (sendToSection ? 1 : 0) + institutionals.length + additionals.length;
+
             // Costruisci HTML preview
             let html = `
         <div class="space-y-4">
@@ -923,18 +952,33 @@
             </div>
 
             <div class="bg-blue-50 p-4 rounded-lg">
-                <h4 class="font-medium text-blue-700 mb-2">Destinatari (${referees.length + (sendToClub ? 1 : 0)}):</h4>
+                <h4 class="font-medium text-blue-700 mb-2">Destinatari (${totalRecipients}):</h4>
                 <ul class="text-sm text-gray-700 space-y-1">
     `;
 
             if (sendToClub) {
                 html +=
-                    `<li class="flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>Circolo: ${escapeHtml(clubName)} (${escapeHtml(clubEmail)})</li>`;
+                    `<li class="flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>Circolo (TO): ${escapeHtml(clubName)} (${escapeHtml(clubEmail)})</li>`;
             }
 
             referees.forEach(ref => {
                 html +=
                     `<li class="flex items-center"><span class="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>${escapeHtml(ref)}</li>`;
+            });
+
+            if (sendToSection) {
+                html +=
+                    `<li class="flex items-center"><span class="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>Sezione di zona: ${escapeHtml(zoneName)}${zoneEmail ? ' (' + escapeHtml(zoneEmail) + ')' : ''}</li>`;
+            }
+
+            institutionals.forEach(inst => {
+                html +=
+                    `<li class="flex items-center"><span class="w-2 h-2 bg-yellow-500 rounded-full mr-2"></span>Istituzionale: ${escapeHtml(inst)}</li>`;
+            });
+
+            additionals.forEach(extra => {
+                html +=
+                    `<li class="flex items-center"><span class="w-2 h-2 bg-gray-500 rounded-full mr-2"></span>Email aggiuntiva: ${escapeHtml(extra)}</li>`;
             });
 
             html += `

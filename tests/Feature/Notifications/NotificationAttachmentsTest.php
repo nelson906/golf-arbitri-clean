@@ -18,22 +18,30 @@ use Tests\TestCase;
  * CC = interessati; gli allegati (lettera circolo + convocazione) sono
  * sulla mail unica e raggiungono quindi anche i CC (limite del mezzo).
  *
- * NOTA: i Mailable usano file_exists(storage_path(...)) negli attachments(),
- * quindi servono file REALI sul disco public (Storage::fake non intercetta
- * storage_path). I file creati vengono rimossi in tearDown.
+ * NOTA: i Mailable usano file_exists(...) negli attachments(), quindi servono
+ * file REALI sul disco documenti (Storage::fake non intercetta i path assoluti).
+ * I file creati vengono rimossi in tearDown.
+ *
+ * FIX M2 (audit 2026-07): i documenti vivono sul disk PRIVATO
+ * config('golf.documents.disk') (default 'docs') — non più sul disk public.
  */
 class NotificationAttachmentsTest extends TestCase
 {
-    /** @var string[] percorsi relativi (disk public) da ripulire */
+    /** @var string[] percorsi relativi (disk documenti) da ripulire */
     private array $createdFiles = [];
 
     private string $dir = '';
 
+    private function docsDisk(): \Illuminate\Contracts\Filesystem\Filesystem
+    {
+        return Storage::disk(config('golf.documents.disk', 'docs'));
+    }
+
     protected function tearDown(): void
     {
         foreach ($this->createdFiles as $relPath) {
-            if (Storage::disk('public')->exists($relPath)) {
-                Storage::disk('public')->delete($relPath);
+            if ($this->docsDisk()->exists($relPath)) {
+                $this->docsDisk()->delete($relPath);
             }
         }
         parent::tearDown();
@@ -66,12 +74,12 @@ class NotificationAttachmentsTest extends TestCase
 
         $convFile = 'Convocazione_real.docx';
         $clubFile = 'Lettera_real.docx';
-        Storage::disk('public')->put("{$this->dir}/{$convFile}", 'FAKE-DOCX');
-        Storage::disk('public')->put("{$this->dir}/{$clubFile}", 'FAKE-DOCX');
+        $this->docsDisk()->put("{$this->dir}/{$convFile}", 'FAKE-DOCX');
+        $this->docsDisk()->put("{$this->dir}/{$clubFile}", 'FAKE-DOCX');
         $this->createdFiles = ["{$this->dir}/{$convFile}", "{$this->dir}/{$clubFile}"];
 
-        $convPath = storage_path("app/public/{$this->dir}/{$convFile}");
-        $clubPath = storage_path("app/public/{$this->dir}/{$clubFile}");
+        $convPath = $this->docsDisk()->path("{$this->dir}/{$convFile}");
+        $clubPath = $this->docsDisk()->path("{$this->dir}/{$clubFile}");
 
         TournamentNotification::create([
             'tournament_id'     => $tournament->id,
@@ -142,5 +150,32 @@ class NotificationAttachmentsTest extends TestCase
                 && $mail->hasAttachment(Attachment::fromPath($clubPath)->as('Lettera_Circolo.docx'))
                 && ! $mail->hasAttachment(Attachment::fromPath($convPath)->as('Convocazione.docx'));
         });
+    }
+
+    /**
+     * FIX M3 (audit 2026-07): documento registrato in `documents` ma assente
+     * dal disco → errore tracciato (status 'partial', last_error esplicito).
+     * Prima: skip silenzioso, la mail partiva senza convocazione con status
+     * 'sent' e l'admin non lo sapeva. La mail parte comunque (con i soli
+     * allegati esistenti) ma l'esito non è più un falso "sent".
+     */
+    public function test_missing_attachment_file_marks_partial_with_error(): void
+    {
+        [$tournament] = $this->setupWithRealDocuments();
+
+        // Rimuovi la convocazione dal disco (resta registrata in `documents`)
+        $this->docsDisk()->delete("{$this->dir}/Convocazione_real.docx");
+
+        $notification = TournamentNotification::where('tournament_id', $tournament->id)->firstOrFail();
+        app(NotificationService::class)->send($notification);
+
+        // La mail parte comunque (una sola), con la sola lettera circolo
+        Mail::assertQueued(ClubNotificationMail::class, 1);
+
+        $final = $notification->fresh();
+        $this->assertEquals('partial', $final->status,
+            'REGRESSIONE M3: allegato mancante deve produrre status partial, non sent.');
+        $this->assertStringContainsString('allegato mancante',
+            $final->metadata['last_error'] ?? '');
     }
 }

@@ -17,7 +17,7 @@ use Tests\TestCase;
  *  - endpoint HTTP destroy (singola) e destroy-tournament (tutte le notifiche
  *    di un torneo)
  *
- * deleteAllDocuments usa Storage::disk('public'), quindi Storage::fake è sufficiente.
+ * deleteAllDocuments usa il disk documenti config('golf.documents.disk') (FIX M2: privato, default 'docs'), quindi Storage::fake('docs') è sufficiente.
  */
 class NotificationDeleteCleanupTest extends TestCase
 {
@@ -33,7 +33,7 @@ class NotificationDeleteCleanupTest extends TestCase
 
     public function test_delete_with_cleanup_removes_documents_record_and_clauses(): void
     {
-        Storage::fake('public');
+        Storage::fake(config('golf.documents.disk', 'docs'));
 
         $club = $this->createClub(['zone_id' => 1]);
         $tournament = $this->createTournament([
@@ -43,8 +43,8 @@ class NotificationDeleteCleanupTest extends TestCase
 
         $zone = \App\Helpers\ZoneHelper::getFolderCodeForTournament($tournament);
         $dir  = config('golf.documents.storage_path')."/{$zone}/generated";
-        Storage::disk('public')->put("$dir/Convocazione_x.docx", 'FAKE');
-        Storage::disk('public')->put("$dir/Lettera_x.docx", 'FAKE');
+        Storage::disk(config('golf.documents.disk', 'docs'))->put("$dir/Convocazione_x.docx", 'FAKE');
+        Storage::disk(config('golf.documents.disk', 'docs'))->put("$dir/Lettera_x.docx", 'FAKE');
 
         $notification = TournamentNotification::create([
             'tournament_id'     => $tournament->id,
@@ -77,13 +77,13 @@ class NotificationDeleteCleanupTest extends TestCase
         // Cascade FK su tournament_notification_id elimina anche le selezioni clausole.
         $this->assertDatabaseMissing('notification_clause_selections', ['id' => $selection->id]);
 
-        Storage::disk('public')->assertMissing("$dir/Convocazione_x.docx");
-        Storage::disk('public')->assertMissing("$dir/Lettera_x.docx");
+        Storage::disk(config('golf.documents.disk', 'docs'))->assertMissing("$dir/Convocazione_x.docx");
+        Storage::disk(config('golf.documents.disk', 'docs'))->assertMissing("$dir/Lettera_x.docx");
     }
 
     public function test_destroy_endpoint_deletes_single_notification(): void
     {
-        Storage::fake('public');
+        Storage::fake(config('golf.documents.disk', 'docs'));
 
         $tournament = $this->createTournament([
             'tournament_type_id' => $this->zonalType()->id,
@@ -106,7 +106,7 @@ class NotificationDeleteCleanupTest extends TestCase
 
     public function test_destroy_tournament_endpoint_deletes_all_notifications(): void
     {
-        Storage::fake('public');
+        Storage::fake(config('golf.documents.disk', 'docs'));
 
         $tournament = $this->createTournament([
             'tournament_type_id' => $this->nationalType()->id,

@@ -158,7 +158,11 @@ class NotificationRecipientBuilder
     }
 
     /**
-     * Aggiunge gli admin zonali con ID specifici in CC.
+     * Aggiunge gli admin zonali (o nazionali: stessa implementazione,
+     * il chiamante passa gli ID) con ID specifici in CC.
+     *
+     * FIX M1 (audit 2026-07): filtro user_type admin + is_active — prima
+     * whereIn nudo: qualunque ID utente del DB finiva in CC.
      *
      * @param  int[]  $userIds
      */
@@ -169,6 +173,12 @@ class NotificationRecipientBuilder
         }
 
         User::whereIn('id', $userIds)
+            ->whereIn('user_type', [
+                UserType::ZoneAdmin->value,
+                UserType::NationalAdmin->value,
+                UserType::SuperAdmin->value,
+            ])
+            ->where('is_active', true)
             ->each(fn (User $u) => $this->addCc($u->email, $u->name));
 
         return $this;
@@ -176,6 +186,10 @@ class NotificationRecipientBuilder
 
     /**
      * Aggiunge arbitri con ID specifici in CC.
+     *
+     * FIX M1 (audit 2026-07): aggiunto is_active (coerente con
+     * addInstitutionalsByIds). Nessun filtro user_type: nel flusso zonale
+     * gli ID arrivano già intersecati con le assegnazioni correnti.
      *
      * @param  int[]  $userIds
      */
@@ -186,6 +200,7 @@ class NotificationRecipientBuilder
         }
 
         User::whereIn('id', $userIds)
+            ->where('is_active', true)
             ->each(fn (User $u) => $this->addCc($u->email, $u->name));
 
         return $this;
@@ -193,6 +208,8 @@ class NotificationRecipientBuilder
 
     /**
      * Aggiunge osservatori con ID specifici in CC.
+     *
+     * FIX M1 (audit 2026-07): aggiunto is_active.
      *
      * @param  int[]  $userIds
      */
@@ -203,6 +220,7 @@ class NotificationRecipientBuilder
         }
 
         User::whereIn('id', $userIds)
+            ->where('is_active', true)
             ->each(fn (User $u) => $this->addCc($u->email, $u->name));
 
         return $this;

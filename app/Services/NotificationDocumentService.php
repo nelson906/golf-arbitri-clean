@@ -152,8 +152,8 @@ class NotificationDocumentService
         $zone = ZoneHelper::getFolderCodeForTournament($tournament);
         $path = $this->docsRoot()."/{$zone}/generated/{$documents[$type]}";
 
-        if (Storage::disk('public')->exists($path)) {
-            Storage::disk('public')->delete($path);
+        if ($this->disk()->exists($path)) {
+            $this->disk()->delete($path);
         }
 
         Log::info("Deleted document: {$type}", [
@@ -186,8 +186,8 @@ class NotificationDocumentService
         foreach (['convocation', 'club_letter'] as $type) {
             if (! empty($documents[$type])) {
                 $path = $basePath.$documents[$type];
-                if (Storage::disk('public')->exists($path)) {
-                    Storage::disk('public')->delete($path);
+                if ($this->disk()->exists($path)) {
+                    $this->disk()->delete($path);
                     Log::info("Deleted document: {$type}", ['path' => $path]);
                 } else {
                     Log::warning("Document not found: {$type}", ['path' => $path]);
@@ -208,7 +208,8 @@ class NotificationDocumentService
         $zone = ZoneHelper::getFolderCodeForTournament($tournament);
 
         $filename = str_replace(' ', '_', $file->getClientOriginalName());
-        $file->storeAs($this->docsRoot()."/{$zone}/generated", $filename, 'public');
+        // FIX M2: disk privato (era hardcoded 'public')
+        $file->storeAs($this->docsRoot()."/{$zone}/generated", $filename, config('golf.documents.disk', 'docs'));
 
         Log::info('Document uploaded', [
             'notification_id' => $notification->id,
@@ -238,13 +239,13 @@ class NotificationDocumentService
         // Check convocazione
         if (! empty($documents['convocation'])) {
             $path = $this->docsRoot()."/{$zone}/generated/{$documents['convocation']}";
-            if (Storage::disk('public')->exists($path)) {
+            if ($this->disk()->exists($path)) {
                 $response['convocation'] = [
                     'filename' => $documents['convocation'],
                     'generated_at' => Carbon::createFromTimestamp(
-                        Storage::disk('public')->lastModified($path)
+                        $this->disk()->lastModified($path)
                     )->format('d/m/Y H:i'),
-                    'size' => $this->formatBytes(Storage::disk('public')->size($path)),
+                    'size' => $this->formatBytes($this->disk()->size($path)),
                 ];
             }
         }
@@ -252,13 +253,13 @@ class NotificationDocumentService
         // Check lettera circolo
         if (! empty($documents['club_letter'])) {
             $path = $this->docsRoot()."/{$zone}/generated/{$documents['club_letter']}";
-            if (Storage::disk('public')->exists($path)) {
+            if ($this->disk()->exists($path)) {
                 $response['club_letter'] = [
                     'filename' => $documents['club_letter'],
                     'generated_at' => Carbon::createFromTimestamp(
-                        Storage::disk('public')->lastModified($path)
+                        $this->disk()->lastModified($path)
                     )->format('d/m/Y H:i'),
-                    'size' => $this->formatBytes(Storage::disk('public')->size($path)),
+                    'size' => $this->formatBytes($this->disk()->size($path)),
                 ];
             }
         }
@@ -277,9 +278,9 @@ class NotificationDocumentService
 
         return [
             'hasConvocation' => isset($documents['convocation']) &&
-                Storage::disk('public')->exists($this->docsRoot()."/{$zone}/generated/{$documents['convocation']}"),
+                $this->disk()->exists($this->docsRoot()."/{$zone}/generated/{$documents['convocation']}"),
             'hasClubLetter' => isset($documents['club_letter']) &&
-                Storage::disk('public')->exists($this->docsRoot()."/{$zone}/generated/{$documents['club_letter']}"),
+                $this->disk()->exists($this->docsRoot()."/{$zone}/generated/{$documents['club_letter']}"),
         ];
     }
 
@@ -299,7 +300,7 @@ class NotificationDocumentService
 
         $zone = ZoneHelper::getFolderCodeForTournament($tournament);
         $path = $this->docsRoot()."/{$zone}/generated/{$documents[$type]}";
-        $fullPath = storage_path('app/public/'.$path);
+        $fullPath = $this->disk()->path($path);
 
         if (! file_exists($fullPath)) {
             throw new \Exception('File non trovato sul server');
@@ -325,7 +326,7 @@ class NotificationDocumentService
      */
     private function ensureDirectoryExists(string $path): void
     {
-        $fullDestDir = Storage::disk('public')->path(dirname($path));
+        $fullDestDir = $this->disk()->path(dirname($path));
         if (! is_dir($fullDestDir)) {
             mkdir($fullDestDir, 0755, true);
         }
@@ -336,7 +337,7 @@ class NotificationDocumentService
      */
     private function copyDocument(string $sourcePath, string $destPath): void
     {
-        $fullDestPath = Storage::disk('public')->path($destPath);
+        $fullDestPath = $this->disk()->path($destPath);
         copy($sourcePath, $fullDestPath);
 
         if (file_exists($sourcePath)) {
@@ -359,12 +360,25 @@ class NotificationDocumentService
     }
 
     /**
-     * Radice dei documenti generati sul disk public.
+     * Radice dei documenti generati sul disk documenti.
      * Centralizzata in config (override in testing per evitare
      * proliferazione di docx nei percorsi reali).
      */
     private function docsRoot(): string
     {
         return config('golf.documents.storage_path', 'convocazioni');
+    }
+
+    /**
+     * Disk dei documenti generati.
+     *
+     * FIX M2 (audit 2026-07): disk 'docs' PRIVATO (storage/app/docs) — prima
+     * 'public': i DOCX erano scaricabili senza login via /storage/... con
+     * nomi prevedibili. L'accesso ora passa solo da downloadDocument (auth
+     * + check zona) e dagli allegati email.
+     */
+    private function disk(): \Illuminate\Contracts\Filesystem\Filesystem
+    {
+        return Storage::disk(config('golf.documents.disk', 'docs'));
     }
 }
