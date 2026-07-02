@@ -75,6 +75,11 @@ class ClubNotificationMail extends Mailable implements ShouldQueue
         return new Content(
             view: 'emails.tournament_assignment_generic',
             with: [
+                // FIX C2 (audit 2026-07): la view legge $message_content, ma
+                // nessuno lo passava — il messaggio scritto dall'admin nel form
+                // (metadata['message']) veniva silenziosamente scartato e
+                // partiva sempre il testo di default.
+                'message_content' => $this->content,
                 'recipient_name' => $this->tournament->club->name,
                 'tournament_name' => $this->tournament->name,
                 'tournament_dates' => $this->tournament->date_range,

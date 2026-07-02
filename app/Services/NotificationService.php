@@ -31,6 +31,12 @@ use Illuminate\Support\Facades\Mail;
  *         metadata {source, command}), l'invio viene rifiutato con eccezione
  *         dedicata: il chiamante reindirizza al form di preparazione.
  *
+ * FIX C1 (audit 2026-07): l'invio NON avviene più dentro una transazione DB
+ * (vedi NotificationTransactionService::sendWithTransaction). Con QUEUE=sync
+ * il Mailable (ShouldQueue+afterCommit) viene ora eseguito INLINE dentro
+ * $mailer->send(): il try/catch qui sotto cattura davvero gli errori SMTP e
+ * status/success_count/last_error riflettono l'esito reale dell'invio.
+ *
  * RAZIONALIZZAZIONE 2026-06: rimossi la dipendenza DocumentGenerationService
  * (inutilizzata dopo il refactor — la generazione vive in
  * NotificationDocumentService), il parametro $force (nessun caller: il
@@ -134,6 +140,18 @@ class NotificationService
             }
 
             if (! $built['isEmpty']) {
+                // FIX M3: allegati registrati ma assenti dal disco = errore
+                // tracciato (prima: skip silenzioso, mail senza convocazione)
+                $builtAttachments = $this->buildAttachments($notification, $attachConvocation);
+                foreach ($builtAttachments['missing'] as $missingDoc) {
+                    Log::error('Attachment registered but missing from disk', [
+                        'notification_id' => $notification->id,
+                        'document' => $missingDoc,
+                    ]);
+                    $errors[] = "allegato mancante: {$missingDoc}";
+                    $errorCount++;
+                }
+
                 try {
                     // TO = circolo; in sua assenza il primo CC è promosso a TO
                     $all = array_merge($built['to'], $built['cc']);
@@ -147,7 +165,7 @@ class NotificationService
                     $mailer->send(new ClubNotificationMail(
                         $tournament,
                         $content,
-                        $this->buildAttachments($notification, $attachConvocation),
+                        $builtAttachments['attachments'],
                         $subject
                     ));
 
@@ -160,10 +178,23 @@ class NotificationService
                     $errors[] = 'invio: '.$e->getMessage();
                     $errorCount++;
                 }
+            } else {
+                // FIX M5 (audit 2026-07): builder vuoto = NESSUNA mail partita.
+                // Prima (con club non richiesto) terminava status 'sent' con
+                // success_count 0 — lo storico mentiva.
+                Log::error('No valid recipients for zonal notification', [
+                    'notification_id' => $notification->id,
+                ]);
+                $errors[] = 'nessun destinatario valido';
+                $errorCount++;
             }
 
-            // Aggiorna stato
-            $status = $errorCount > 0 ? 'partial' : 'sent';
+            // Aggiorna stato in base all'esito REALE:
+            //   tutto ok → sent; errori con almeno un invio → partial;
+            //   errori senza alcun invio → failed (FIX M5)
+            $status = $errorCount > 0
+                ? ($successCount > 0 ? 'partial' : 'failed')
+                : 'sent';
 
             $notification->update([
                 'status' => $status,
@@ -206,20 +237,29 @@ class NotificationService
      * è onorato: se false, la convocazione non viene allegata (la lettera
      * circolo viaggia comunque).
      *
-     * @return array<array{path: string, name: string}>
+     * FIX M2 (audit 2026-07): path dal disk privato config('golf.documents.disk')
+     * — prima hardcoded su storage/app/public (file esposti via /storage).
+     * FIX M3 (audit 2026-07): i documenti REGISTRATI ma assenti dal disco non
+     * vengono più skippati in silenzio — tornano in 'missing' e il chiamante
+     * li traccia come errore (status partial). Prima la mail partiva senza
+     * convocazione con status 'sent' e admin ignaro.
+     *
+     * @return array{attachments: array<array{path: string, name: string}>, missing: string[]}
      */
     private function buildAttachments(TournamentNotification $notification, bool $attachConvocation = true): array
     {
         $documents = $notification->documents ?? [];
         if (empty($documents)) {
-            return [];
+            return ['attachments' => [], 'missing' => []];
         }
 
         $zone = ZoneHelper::getFolderCodeForTournament($notification->tournament);
         $docsRoot = config('golf.documents.storage_path', 'convocazioni');
-        $basePath = storage_path("app/public/{$docsRoot}/{$zone}/generated/");
+        $disk = \Illuminate\Support\Facades\Storage::disk(config('golf.documents.disk', 'docs'));
+        $basePath = $disk->path("{$docsRoot}/{$zone}/generated/");
 
         $attachments = [];
+        $missing = [];
 
         $candidates = [
             'club_letter' => 'Lettera_Circolo.docx',
@@ -241,9 +281,11 @@ class NotificationService
                     'path' => $fullPath,
                     'name' => $displayName,
                 ];
+            } else {
+                $missing[] = $displayName;
             }
         }
 
-        return $attachments;
+        return ['attachments' => $attachments, 'missing' => $missing];
     }
 }

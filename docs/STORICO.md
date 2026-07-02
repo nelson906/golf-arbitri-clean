@@ -37,6 +37,9 @@ Verdetto 🟡: prodotto **già live** su Aruba (`arbitrigolf.golfrating.it`, SMT
 ### 2026-06-10 — Analisi approfondita + refactor mail unica (documento vivo)
 Vedi `docs/analisi-approfondita-2026-06-10.md`: difetti D1–D4 su reinvii/record FIG, refactor "lettera al circolo (TO) + interessati in CC", campi form `send_to_section`/`additional_emails` finalmente letti dal backend, dead code purgato (`RefereeAssignmentMail`, `InstitutionalNotificationMail`, `addAssignedReferees`, `addObservers`, parametro `$force`), flag `attach_convocation` onorato, segregazione DOCX di test via `config('golf.documents.*')`.
 
+### 2026-07-02 — Audit comunicazioni esterne: C1–C3 + M1–M5 fixati (suite verde)
+Vedi `docs/audit-comunicazioni-esterne-2026-07-02.md`. Critici: **C1** QUEUE=sync + afterCommit + transazione = try/catch SMTP morto e status `sent` committato prima dell'invio reale (fix: niente transazione attorno agli invii — regola da non violare); **C2** messaggio admin mai renderizzato (`$message_content` vs `$content`); **C3** checkbox circolo senza hidden input. Medi: cc_* nazionali validati, DOCX spostati su disk privato `docs` (deploy: FTP move `storage/app/public/convocazioni` → `storage/app/docs/convocazioni`), allegati mancanti → `partial`, preview fedele all'invio, zero destinatari → `failed`. Restano aperti gli 11 minori del report. Suite verde su MAMP 2026-07-02.
+
 ---
 
 ## Documenti operativi assorbiti (traccia)

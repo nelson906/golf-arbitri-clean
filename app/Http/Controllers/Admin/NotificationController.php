@@ -400,6 +400,15 @@ class NotificationController extends Controller
                 ->with('warning', "Notifica inviata PARZIALMENTE — {$lastError}. Verificare i destinatari.");
         }
 
+        // FIX M5 (audit 2026-07): nessuna mail partita (es. nessun destinatario
+        // valido) → errore esplicito, non "successo"
+        if ($final->status === 'failed') {
+            $lastError = $final->metadata['last_error'] ?? 'nessun destinatario valido';
+
+            return redirect()->route('admin.tournament-notifications.index')
+                ->with('error', "Notifica NON inviata — {$lastError}.");
+        }
+
         return redirect()->route('admin.tournament-notifications.index')
             ->with('success', 'Notifiche inviate con successo');
     }
@@ -690,10 +699,22 @@ class NotificationController extends Controller
     {
         $this->checkTournamentAccess($tournament);
 
+        // FIX M1 (audit 2026-07): prima i cc_* non erano validati — nessun
+        // check exists/array: ID arbitrari finivano in User::whereIn() nudo
+        // (CC a qualunque utente del DB) e un input scalare causava TypeError
+        // 500 in addRefereesByIds(array). Il filtro is_active è nel builder.
         $validated = $request->validate([
             'notification_type' => 'required|string|in:crc_referees,zone_observers',
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
+            'cc_zone_admins' => 'nullable|array',
+            'cc_zone_admins.*' => 'integer|exists:users,id',
+            'cc_referees' => 'nullable|array',
+            'cc_referees.*' => 'integer|exists:users,id',
+            'cc_national_admins' => 'nullable|array',
+            'cc_national_admins.*' => 'integer|exists:users,id',
+            'cc_observers' => 'nullable|array',
+            'cc_observers.*' => 'integer|exists:users,id',
         ]);
 
         $notificationType = $validated['notification_type'];
@@ -720,15 +741,15 @@ class NotificationController extends Controller
                 if ($request->has('send_to_zone')) {
                     $builder->addZone($tournament); // null-safe internamente
                 }
-                $builder->addZoneAdminsByIds($request->input('cc_zone_admins', []))
-                        ->addRefereesByIds($request->input('cc_referees', []));
+                $builder->addZoneAdminsByIds($validated['cc_zone_admins'] ?? [])
+                        ->addRefereesByIds($validated['cc_referees'] ?? []);
             } else {
                 if ($request->has('send_to_crc')) {
                     $builder->addCrc();
                 }
                 // cc_national_admins sono passati come IDs: addZoneAdminsByIds ha la stessa implementazione
-                $builder->addZoneAdminsByIds($request->input('cc_national_admins', []))
-                        ->addObserversByIds($request->input('cc_observers', []));
+                $builder->addZoneAdminsByIds($validated['cc_national_admins'] ?? [])
+                        ->addObserversByIds($validated['cc_observers'] ?? []);
             }
 
             $recipients   = $builder->build();

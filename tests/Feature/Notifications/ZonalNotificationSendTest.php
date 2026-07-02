@@ -222,4 +222,33 @@ class ZonalNotificationSendTest extends TestCase
         $this->assertSame(1, $notification->metadata['error_count'] ?? null);
         $this->assertSame(1, $notification->metadata['success_count'] ?? null);
     }
+
+    /**
+     * FIX M5 (audit 2026-07): nessun destinatario valido → NESSUNA mail e
+     * status 'failed'. Prima terminava 'sent' con success_count 0: lo storico
+     * mentiva ("inviato a nessuno").
+     */
+    public function test_no_valid_recipients_ends_failed_not_sent(): void
+    {
+        $club = $this->createClub(['zone_id' => 1, 'email' => 'circolo@example.test']);
+        $tournament = $this->createTournament([
+            'club_id'            => $club->id,
+            'tournament_type_id' => $this->zonalType()->id,
+            'status'             => 'open',
+        ]);
+
+        // club deselezionato, nessun arbitro selezionato → builder vuoto
+        $notification = $this->makeNotification($tournament->id, false, []);
+
+        app(NotificationService::class)->send($notification);
+
+        Mail::assertNothingQueued();
+
+        $notification->refresh();
+        $this->assertEquals('failed', $notification->status,
+            'REGRESSIONE M5: invio a zero destinatari non deve risultare "sent".');
+        $this->assertSame(0, $notification->metadata['success_count'] ?? null);
+        $this->assertStringContainsString('nessun destinatario',
+            $notification->metadata['last_error'] ?? '');
+    }
 }

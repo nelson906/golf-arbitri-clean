@@ -17,35 +17,39 @@ class NotificationTransactionService
     ) {}
 
     /**
-     * Invia una notifica con gestione transazionale.
+     * Invia una notifica.
      *
-     * NOTA (FIX A3/A4): i Mailable implementano ShouldQueue con $afterCommit = true.
-     * Dentro questa transazione le email vengono solo ACCODATE: i job partono
-     * esclusivamente dopo il commit; in caso di rollback vengono scartati.
-     * Nessuna email viene quindi inviata per notifiche il cui stato DB è stato
-     * annullato. Richiede un queue worker attivo (vedi routes/console.php).
+     * FIX C1 (audit 2026-07): NIENTE transazione attorno all'invio.
+     *
+     * Prima qui c'era DB::beginTransaction()/commit(). Con QUEUE_CONNECTION=sync
+     * e Mailable ShouldQueue+afterCommit, SyncQueue::push() DIFFERISCE il job
+     * SMTP a dentro DB::commit(): il try/catch attorno a Mail::send() in
+     * NotificationService non poteva mai catturare gli errori SMTP, e lo stato
+     * 'sent' + success_count veniva committato PRIMA dell'invio reale. Un
+     * fallimento SMTP lasciava il DB a 'sent' mostrando però errore all'admin.
+     *
+     * Senza transazione attiva, afterCommit esegue il job SUBITO (inline, sync):
+     * gli errori SMTP tornano catturabili e lo stato riflette l'esito reale.
+     * L'update dello stato è una singola riga: non serve atomicità multi-statement.
+     * Se un giorno si passa a un queue driver reale (redis/database + worker),
+     * questo resta corretto: il job parte subito dopo il dispatch.
      */
     public function sendWithTransaction(TournamentNotification $notification): void
     {
-        DB::beginTransaction();
-
         try {
             Log::info('Sending notification', [
                 'notification_id' => $notification->id,
                 'metadata' => $notification->metadata,
             ]);
 
-            // Invia tramite il servizio notifiche
+            // Invia tramite il servizio notifiche (gestisce internamente
+            // stato sent/partial/failed in base all'esito reale)
             $this->notificationService->send($notification);
-
-            DB::commit();
 
             Log::info('Notification sent successfully', [
                 'notification_id' => $notification->id,
             ]);
         } catch (\Exception $e) {
-            DB::rollBack();
-
             Log::error('Error sending notification', [
                 'notification_id' => $notification->id,
                 'error' => $e->getMessage(),

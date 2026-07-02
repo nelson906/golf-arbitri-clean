@@ -38,6 +38,21 @@ return [
             'report' => false,
         ],
 
+        // FIX M2 (audit 2026-07): disk PRIVATO per convocazioni/lettere circolo.
+        // Prima erano su disk 'public' → scaricabili senza login via
+        // /storage/convocazioni/... con nomi file prevedibili (dati personali
+        // arbitri). Nessun symlink, nessuna URL pubblica: accesso solo via
+        // route autenticate (downloadDocument) e allegati email.
+        // DEPLOY (Aruba, via FTP): spostare storage/app/public/convocazioni →
+        // storage/app/docs/convocazioni, poi rimuovere la vecchia cartella.
+        'docs' => [
+            'driver' => 'local',
+            'root' => storage_path('app/docs'),
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
