@@ -52,10 +52,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{tournament}', [TournamentController::class, 'show'])->name('show');
     });
 
-    // Reports placeholder
-    Route::get('reports', function () {
-        return view('admin.placeholder', ['title' => 'Reports']);
-    })->name('reports.dashboard');
+    // NOTA (audit 2026-07): rimosso placeholder 'reports.dashboard'
+    // (view placeholder, link in navigation già commentati).
 });
 Route::middleware(['auth'])->prefix('user/federgolf')->group(function () {
     Route::post('/load-all', [FedergolfController::class, 'loadAllCompetitions']);
@@ -87,10 +85,8 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
         // Quick stats API (route diretta)
         Route::get('/quick-stats', [App\Http\Controllers\Admin\DashboardController::class, 'quickStats'])->name('quick-stats');
 
-        // Settings placeholder (route diretta)
-        Route::get('settings', function () {
-            return view('admin.placeholder', ['title' => 'Settings']);
-        })->name('settings');
+        // NOTA (audit 2026-07): rimosso placeholder 'admin.settings'
+        // (view placeholder, link in navigation già commentati).
 
         // ===== MODULAR ADMIN ROUTES =====
         require __DIR__.'/admin/tournaments.php';

@@ -215,6 +215,7 @@
                     </a>
                     <form action="{{ route('admin.clubs.toggle-active', $club) }}" method="POST" class="w-full">
                         @csrf
+                        @method('PATCH')
                         <button type="submit"
                                 class="block w-full text-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
                                 onclick="return confirm('Sei sicuro di voler {{ $club->is_active ? 'disattivare' : 'attivare' }} questo club?')">

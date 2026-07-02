@@ -11,10 +11,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('super-admin')->name('super-admin.')->middleware(['auth', 'super_admin'])->group(function () {
 
-    // Users Management
-    Route::get('/users', function () {
-        return view('admin.placeholder', ['title' => 'Gestione Utenti Sistema']);
-    })->name('users.index');
+    // Users Management — la gestione reale è quella unificata admin.users
+    // (audit 2026-07: sostituito placeholder con redirect).
+    Route::get('/users', fn () => redirect()->route('admin.users.index'))->name('users.index');
 
     // Tournament Types
     Route::resource('tournament-types', TournamentTypeController::class);
@@ -29,10 +28,8 @@ Route::prefix('super-admin')->name('super-admin.')->middleware(['auth', 'super_a
     Route::get('institutional-emails-export', [\App\Http\Controllers\SuperAdmin\InstitutionalEmailController::class, 'export'])
         ->name('institutional-emails.export');
 
-    // Settings
-    Route::get('/settings', function () {
-        return view('admin.placeholder', ['title' => 'Impostazioni Sistema']);
-    })->name('settings.index');
+    // NOTA (audit 2026-07): rimosso placeholder 'settings.index'
+    // (view placeholder mai implementata; rimossi anche i link in navigation).
 
     // Notification Clauses
     Route::controller(\App\Http\Controllers\SuperAdmin\NotificationClauseController::class)->group(function () {

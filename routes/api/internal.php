@@ -34,41 +34,6 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-/*
-|--------------------------------------------------------------------------
-| Public Tournament API (no auth required for read-only)
-|--------------------------------------------------------------------------
-*/
-
-Route::prefix('tournaments')->group(function () {
-
-    // Public Read-Only Endpoints (inline closures - working)
-    Route::get('/', function () {
-        return \App\Models\Tournament::with(['club', 'zone', 'tournamentType'])
-            ->where('status', 'completed')
-            ->where('start_date', '>=', now()->subMonths(6))
-            ->paginate(20);
-    });
-
-    Route::get('/{tournament}', function (\App\Models\Tournament $tournament) {
-        if (! in_array($tournament->status, ['completed', 'assigned'])) {
-            abort(404);
-        }
-
-        return $tournament->load(['club', 'zone', 'tournamentType', 'assignments.user']);
-    });
-
-    // Statistics (Public - inline closure)
-    Route::get('/stats/summary', function () {
-        $currentYear = now()->year;
-
-        return response()->json([
-            'tournaments_completed' => \App\Models\Tournament::where('status', 'completed')
-                ->whereYear('start_date', $currentYear)->count(),
-            'total_assignments' => \App\Models\Assignment::whereHas('tournament', function ($q) use ($currentYear) {
-                $q->whereYear('start_date', $currentYear);
-            })->count(),
-            'zones_active' => \App\Models\Zone::active()->count(),
-        ]);
-    });
-});
+// NOTA (audit 2026-07, fix G2): rimossa la "Public Tournament API" senza auth.
+// GET /api/tournaments/{id} caricava assignments.user esponendo email/telefono
+// degli arbitri a chiunque. Endpoint mai referenziati da views/JS.

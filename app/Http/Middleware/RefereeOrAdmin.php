@@ -61,8 +61,12 @@ class RefereeOrAdmin
             $this->checkRefereeAccess($request, $user);
         }
 
-        // For zone/national admins (not super_admin), apply zone restrictions
-        if (($user->isZoneAdmin() || $userType === UserType::NationalAdmin) && $user->zone_id) {
+        // Solo gli admin ZONALI sono vincolati alla propria zona.
+        // FIX (audit 2026-07, G3): il national_admin NON va filtrato per zona —
+        // il CRC vede tutti i tornei nazionali a prescindere da un eventuale
+        // zone_id valorizzato sul suo utente (la visibilità dati è gestita
+        // da TournamentVisibility / scopeVisible).
+        if ($user->isZoneAdmin() && $user->zone_id) {
             $this->checkZoneAccess($request, $user);
         }
 

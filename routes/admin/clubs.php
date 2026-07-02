@@ -6,7 +6,6 @@
 |--------------------------------------------------------------------------
 */
 
-use App\Http\Controllers\Admin\ClubController;
 use Illuminate\Support\Facades\Route;
 
 // CLUBS MANAGEMENT
@@ -23,12 +22,11 @@ Route::prefix('clubs')->name('clubs.')->group(function () {
         ->name('edit');
     Route::put('/{club}', [App\Http\Controllers\Admin\ClubController::class, 'update'])
         ->name('update');
-    Route::post('/{club}/deactivate', action: [ClubController::class, 'deactivate'])->name('deactivate');
-
     Route::delete('/{club}', [App\Http\Controllers\Admin\ClubController::class, 'destroy'])
         ->name('destroy');
     Route::patch('/{club}/toggle-active', [App\Http\Controllers\Admin\ClubController::class, 'toggleActive'])
         ->name('toggle-active');
-    Route::get('/export', [App\Http\Controllers\Admin\ClubController::class, 'export'])
-        ->name('export');
+
+    // NOTA (audit 2026-07): rimosse 'deactivate' (doppione di toggle-active)
+    // ed 'export' (definita dopo /{club} → sempre irraggiungibile, mai linkata).
 });

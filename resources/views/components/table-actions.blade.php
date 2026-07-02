@@ -29,6 +29,7 @@
           class="inline"
           onsubmit="return confirm('Sei sicuro di voler {{ $club->is_active ? 'disattivare' : 'attivare' }} questo club?');">
         @csrf
+        @method('PATCH')
         <button type="submit"
                 class="text-{{ $club->is_active ? 'yellow' : 'green' }}-600 hover:text-{{ $club->is_active ? 'yellow' : 'green' }}-900"
                 title="{{ $club->is_active ? 'Disattiva' : 'Attiva' }}">

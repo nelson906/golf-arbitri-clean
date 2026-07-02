@@ -51,8 +51,5 @@ Route::prefix('admins')->name('admins.')->group(function () {
     })->name('national');
 });
 
-// User validation & verification
-Route::prefix('validation')->name('validation.')->group(function () {});
-
-// Mass communication to users
-Route::prefix('mass-communication')->name('mass-communication.')->group(function () {});
+// NOTA (audit 2026-07): rimossi i gruppi vuoti 'validation' e 'mass-communication'
+// (closure senza route — scheletro mai implementato).

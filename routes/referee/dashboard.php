@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\User\DashboardController;
-use App\Http\Controllers\User\QuadrantiController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,14 +13,13 @@ use Illuminate\Support\Facades\Route;
 |
 | FIX: aggiunto middleware auth — in precedenza mancante (rischio accesso
 | non autenticato). Vedere test: RefereeDashboardAuthTest.
+|
+| NOTA (audit 2026-07): rimosso il blocco legacy /referee/quadranti/* —
+| mai referenziato da views/JS; la versione attiva è user.quadranti.*
+| (routes/user/quadranti.php). referee.dashboard resta: è il target del
+| redirect di DashboardController per gli arbitri.
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'referee_or_admin'])->group(function () {
     Route::get('/referee/dashboard', [DashboardController::class, 'index'])->name('referee.dashboard');
-
-    // Quadranti (Starting Times Simulator)
-    Route::prefix('/referee/quadranti')->name('referee.quadranti.')->group(function () {
-        Route::get('/', [QuadrantiController::class, 'index'])->name('index');
-        Route::post('/upload-excel', [QuadrantiController::class, 'uploadExcel'])->name('upload-excel');
-    });
 });

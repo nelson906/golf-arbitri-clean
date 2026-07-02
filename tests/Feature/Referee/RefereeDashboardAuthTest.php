@@ -5,19 +5,22 @@ namespace Tests\Feature\Referee;
 use Tests\TestCase;
 
 /**
- * Test di regressione — Bug: route /referee/dashboard e /referee/quadranti
- * erano definite senza middleware 'auth', esponendo potenzialmente le view
- * a utenti non autenticati.
+ * Test di regressione — Bug: route /referee/dashboard era definita senza
+ * middleware 'auth', esponendo potenzialmente le view a utenti non autenticati.
  *
  * Fix applicato: aggiunto middleware ['auth', 'referee_or_admin'] al gruppo
  * in routes/referee/dashboard.php.
+ *
+ * AGGIORNAMENTO (audit 2026-07): le route legacy /referee/quadranti/* sono
+ * state RIMOSSE (mai referenziate; la versione attiva è user.quadranti.*).
+ * I test relativi ora verificano che NON esistano più.
  *
  * @see routes/referee/dashboard.php
  */
 class RefereeDashboardAuthTest extends TestCase
 {
     // ============================================================
-    // SEZIONE 1 — Accesso NON autenticato (devono redirectare a /login)
+    // SEZIONE 1 — Accesso NON autenticato (deve redirectare a /login)
     // ============================================================
 
     /**
@@ -29,28 +32,6 @@ class RefereeDashboardAuthTest extends TestCase
         $response = $this->get('/referee/dashboard');
 
         // Deve redirectare (302) — non 200 né 500
-        $response->assertRedirect(route('login'));
-    }
-
-    /**
-     * Regressione: GET /referee/quadranti senza autenticazione
-     * deve redirectare al login.
-     */
-    public function test_unauthenticated_user_is_redirected_from_referee_quadranti(): void
-    {
-        $response = $this->get('/referee/quadranti');
-
-        $response->assertRedirect(route('login'));
-    }
-
-    /**
-     * POST /referee/quadranti/upload-excel senza autenticazione
-     * deve redirectare al login.
-     */
-    public function test_unauthenticated_user_cannot_post_to_quadranti_upload(): void
-    {
-        $response = $this->post('/referee/quadranti/upload-excel', []);
-
         $response->assertRedirect(route('login'));
     }
 
@@ -67,19 +48,6 @@ class RefereeDashboardAuthTest extends TestCase
 
         $response = $this->actingAs($referee)
             ->get('/referee/dashboard');
-
-        $response->assertStatus(200);
-    }
-
-    /**
-     * Un arbitro autenticato deve poter accedere alla pagina quadranti.
-     */
-    public function test_authenticated_referee_can_access_quadranti_page(): void
-    {
-        $referee = $this->createReferee();
-
-        $response = $this->actingAs($referee)
-            ->get('/referee/quadranti');
 
         $response->assertStatus(200);
     }
@@ -103,7 +71,7 @@ class RefereeDashboardAuthTest extends TestCase
     }
 
     // ============================================================
-    // SEZIONE 4 — Named routes esistono ancora dopo il fix
+    // SEZIONE 4 — Named routes dopo il refactoring
     // ============================================================
 
     /**
@@ -119,13 +87,19 @@ class RefereeDashboardAuthTest extends TestCase
     }
 
     /**
-     * Verifica che il nome di route 'referee.quadranti.index' sia ancora definito.
+     * Regressione inversa (audit 2026-07): le route legacy quadranti
+     * NON devono più esistere — la versione attiva è user.quadranti.*.
      */
-    public function test_referee_quadranti_named_route_is_defined(): void
+    public function test_legacy_referee_quadranti_routes_are_removed(): void
     {
-        $this->assertTrue(
+        $this->assertFalse(
             \Illuminate\Support\Facades\Route::has('referee.quadranti.index'),
-            "La named route 'referee.quadranti.index' deve esistere"
+            "La route legacy 'referee.quadranti.index' deve essere stata rimossa"
+        );
+
+        $this->assertTrue(
+            \Illuminate\Support\Facades\Route::has('user.quadranti.index'),
+            "La route attiva 'user.quadranti.index' deve esistere"
         );
     }
 }
