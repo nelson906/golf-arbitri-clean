@@ -1,5 +1,3 @@
-ver
-
 # Modulo Quadranti — Simulatore Tempi di Partenza
 
 Questo modulo calcola lo schema delle partenze (tee times) di una gara di golf su 36 / 54 buche, in singolo tee oppure in doppio tee (1 e 10), seguendo la logica tecnica federale dei "quadranti".
@@ -86,12 +84,12 @@ limit3 = players - playersQ3             // inizio Q3
 
 L'array di giocatori viene quindi sezionato così:
 
-| Sezione               | Indici                     | Ordine letto da`generatePlayerGroups`             | Quadrante         |
-| --------------------- | -------------------------- | --------------------------------------------------- | ----------------- |
-| `[0, limit1)`       | giocatori 1..limit1        | **decrescente** (dai più alti ai più bassi) | Q2 (Early, Tee10) |
-| `[limit1, limit2)`  | giocatori limit1+1..limit2 | crescente, gestendo la`difference`                | Q1 (Early, Tee1)  |
-| `[limit2, limit3)`  | giocatori limit2+1..limit3 | crescente                                           | Q4 (Late, Tee10)  |
-| `[limit3, players)` | ultimi giocatori           | **decrescente**, troncato se difference=3     | Q3 (Late, Tee1)   |
+| Sezione | Indici | Ordine letto da `generatePlayerGroups` | Quadrante |
+|---|---|---|---|
+| `[0, limit1)` | giocatori 1..limit1 | **decrescente** (dai più alti ai più bassi) | Q2 (Early, Tee10) |
+| `[limit1, limit2)` | giocatori limit1+1..limit2 | crescente, gestendo la `difference` | Q1 (Early, Tee1) |
+| `[limit2, limit3)` | giocatori limit2+1..limit3 | crescente | Q4 (Late, Tee10) |
+| `[limit3, players)` | ultimi giocatori | **decrescente**, troncato se difference=3 | Q3 (Late, Tee1) |
 
 > Nota: i numeri "alti" (es. tester di pari classifica) finiscono in Q2 e Q3, quelli "bassi" in Q1 e Q4. È così per disegno: la coppia Q2/Q3 raccoglie le code dell'ordine, la coppia Q1/Q4 raccoglie le teste.
 
@@ -99,12 +97,12 @@ L'array di giocatori viene quindi sezionato così:
 
 `difference = fullPlayers - players` può valere 0, 1, 2, 3. Indica quanti posti restano scoperti. La logica scelta:
 
-| difference | Comportamento                                                                   |
-| ---------- | ------------------------------------------------------------------------------- |
-| 0          | Tutti i flight pieni.                                                           |
-| 1          | **Primo flight di Q1** ha 2 giocatori invece di `mod`.                  |
-| 2          | **Primi due flight di Q1** hanno 2 giocatori invece di `mod`.           |
-| 3 (mod=3)  | Q1 resta pieno; viene tagliato l'**ultimo flight di Q3** (caso speciale). |
+| difference | Comportamento |
+|---|---|
+| 0 | Tutti i flight pieni. |
+| 1 | **Primo flight di Q1** ha 2 giocatori invece di `mod`. |
+| 2 | **Primi due flight di Q1** hanno 2 giocatori invece di `mod`. |
+| 3 (mod=3) | Q1 resta pieno; viene tagliato l'**ultimo flight di Q3** (caso speciale). |
 
 Questo è ciò che fa `generatePlayerGroups()` nel ramo `q1Groups` e nel taglio di `q3Players`.
 
@@ -143,9 +141,11 @@ Il box riepilogativo in cima alla tabella (`infoHTML`) mostra:
 
 ---
 
-## 5. Giorno 2 (`dayNumber = 2`) — remap
+## 5. Giorno 2 — remap
 
-`remapQuadrant`:
+Rotazione speculare implementata dalla closure `remap()` in `quadranti-logic.js`
+(scambio strutturale `early.tee1 ↔ late.tee10`, `early.tee10 ↔ late.tee1`).
+Equivalente concettuale:
 
 ```
 Q1 ↔ Q4    (Early Tee1   ↔ Late Tee10)
@@ -179,16 +179,11 @@ concatenazione di `generatePlayerGroups`.
 
 ---
 
-## 7. Limiti tecnici (`config.js → TECHNICAL_LIMITS`)
+## 7. Limiti tecnici
 
-```
-maxMenDoubleTee       = 36   // soglia "tipica" per uomini in doppio tee
-maxWomenDoubleTee     = 18
-maxSingleTeeRecommended = 93
-minSingleTeeMandatory   = 78
-```
-
-Oggi questi limiti sono solo informativi: non bloccano la generazione, servono come riferimento documentale.
+Riferimento documentale (non applicati in codice): max uomini doppio tee 36,
+max donne doppio tee 18, tee unico raccomandato ≤ 93, tee unico obbligatorio da 78.
+(La costante `TECHNICAL_LIMITS` è stata rimossa perché mai usata — audit 2026-07-02.)
 
 L'unico limite UI applicato è `toggleCompactOption()`: l'opzione "Modalità compatto" viene mostrata solo se `players + proette ≤ mod * 32`.
 
@@ -207,12 +202,12 @@ Non c'è (oggi) persistenza lato server dello schema generato: ogni reload ricos
 
 ## 9. Endpoint usati
 
-| URL                              | Metodo | Chi lo chiama                   | Scopo                                         |
-| -------------------------------- | ------ | ------------------------------- | --------------------------------------------- |
-| `/user/quadranti/coordinates`  | POST   | `fetchEphemerisData`          | alba/tramonto per zona geografica             |
-| `/user/quadranti/upload-excel` | POST   | `handleFileUpload`            | parsing Excel iscritti                        |
-| `/user/federgolf/load-all`     | POST   | `handleLoadFedergolfGare`     | elenco gare aperte su federgolf.it            |
-| `/user/federgolf/iscritti`     | POST   | `handleFedergolfGaraSelected` | iscritti ammessi (richiede iscrizioni chiuse) |
+| URL | Metodo | Chi lo chiama | Scopo |
+|---|---|---|---|
+| `/user/quadranti/coordinates` | POST | `fetchEphemerisData` | alba/tramonto per zona geografica |
+| `/user/quadranti/upload-excel` | POST | `handleFileUpload` | parsing Excel iscritti |
+| `/user/federgolf/load-all` | POST | `handleLoadFedergolfGare` | elenco gare aperte su federgolf.it |
+| `/user/federgolf/iscritti` | POST | `handleFedergolfGaraSelected` | iscritti ammessi (richiede iscrizioni chiuse) |
 
 Il flag `iscrizioni_aperte` ritornato da `/user/federgolf/iscritti` interrompe l'import: significa che la gara è ancora aperta e il sistema non ha ancora una lista ammessi definitiva.
 
@@ -291,15 +286,15 @@ test `quadranti-engine.test.js` (fixture PDF) e `quadranti-regression.test.js`
 
 ### 13.3 Quale path usa ogni formato (stato attuale)
 
-| Formato / giro                                          | Path                                                                 |
-| ------------------------------------------------------- | -------------------------------------------------------------------- |
-| Giovanile, Teodoro (∩) · uomini+donne                 | `buildURQuadrants`                                                 |
-| Trofei, Patrocinate 2° (∩ classifica) · uomini+donne | `buildURQuadrants` (`internal='desc'`)                           |
-| Tee unico qualificazione                                | `costruisciQuadrantiSingleTee` + `renderQuadranti`               |
-| Finale per classifica (single + double)                 | `buildFinaleTees` + `renderQuadranti`                            |
-| 54/72 1°/2° giro doppie (cerchio/clessidra)           | `buildURQuadrants` (layout `cerchio`) + `renderBlocchi`        |
-| Prova di gioco 1°/2° (sessioni-miste, forma S)        | `buildURQuadrants` (layout `sessioni-miste`) + `renderBlocchi` |
-| Prova di gioco 3°/4° (coppie, classifica inversa)     | ramo dedicato in`generateSingleTee` (non a quadranti)              |
+| Formato / giro | Path |
+|---|---|
+| Giovanile, Teodoro (∩) · uomini+donne | `buildURQuadrants` |
+| Trofei, Patrocinate 2° (∩ classifica) · uomini+donne | `buildURQuadrants` (`internal='desc'`) |
+| Tee unico qualificazione | `costruisciQuadrantiSingleTee` + `renderQuadranti` |
+| Finale per classifica (single + double) | `buildFinaleTees` + `renderQuadranti` |
+| 54/72 1°/2° giro doppie (cerchio/clessidra) | `buildURQuadrants` (layout `cerchio`) + `renderBlocchi` |
+| Prova di gioco 1°/2° (sessioni-miste, forma S) | `buildURQuadrants` (layout `sessioni-miste`) + `renderBlocchi` |
+| Prova di gioco 3°/4° (coppie, classifica inversa) | ramo dedicato in `generateSingleTee` (non a quadranti) |
 
 > **MOTORE UNICO completo per il doppio tee**: UN builder `buildURQuadrants`
 > (geometria via `forma:{early,late}` UR/U/S, `verso`, `earlyIsHigh`) + UN renderer

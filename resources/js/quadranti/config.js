@@ -266,14 +266,6 @@ export const TABLE_COLORS = {
   }
 };
 
-// Limits for Technical Rules
-export const TECHNICAL_LIMITS = {
-  maxMenDoubleTee: 36,
-  maxWomenDoubleTee: 18,
-  maxSingleTeeRecommended: 93,
-  minSingleTeeMandatory: 78
-};
-
 // Datepicker Italian localization
 export const DATEPICKER_IT = {
   closeText: "Chiudi",
