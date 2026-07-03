@@ -179,28 +179,6 @@ export class QuadrantiLogic {
     }
 
     /**
-     * NEW: Remaps quadrants for day 2 rotation
-     * @param {string} originalQuadrant - Original quadrant (Q1-Q4)
-     * @param {number} dayNumber - Day number (1 or 2)
-     * @returns {string} Remapped quadrant
-     */
-    remapQuadrant(originalQuadrant, dayNumber) {
-        if (dayNumber === 1) {
-            return originalQuadrant;
-        }
-
-        // Day 2 mapping: Q1->Q4, Q2->Q3, Q3->Q1, Q4->Q2
-        const mapping = {
-            'Q1': 'Q4',
-            'Q2': 'Q3',
-            'Q3': 'Q1',
-            'Q4': 'Q2'
-        };
-
-        return mapping[originalQuadrant] || originalQuadrant;
-    }
-
-    /**
      * Restituisce gli array di giocatori da usare per la generazione tabella.
      *
      * Fonte di verità unica:
@@ -1406,19 +1384,6 @@ export class QuadrantiLogic {
      * Per ogni flight mostra Match/Ora/Tee del giro 1 e del giro 2 (con la
      * rotazione), così da poter confrontare a vista con il PDF ufficiale.
      * ════════════════════════════════════════════════════════════════════ */
-
-    /**
-     * Estrae i numeri "FIG" di tutti i giocatori di un gruppo (salta i vuoti).
-     */
-    figGroupNumbers(group) {
-        const nums = [];
-        for (let j = 0; j < group.players.length; j++) {
-            const p = group.players[j];
-            if (p === '' || p == null) continue;
-            nums.push(this.figPlayerNumber(group, j));
-        }
-        return nums;
-    }
 
     /**
      * Etichette dei giocatori di un gruppo COSÌ COME VANNO MOSTRATE: i nomi
