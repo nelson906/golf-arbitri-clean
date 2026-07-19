@@ -22,6 +22,7 @@
         "barryvdh/laravel-debugbar": "^3.16",
         "fakerphp/faker": "^1.23",
         "friendsofphp/php-cs-fixer": "^3.92",
+        "infection/infection": "^0.34.0",
         "larastan/larastan": "^3.8",
         "laravel/pail": "^1.1",
         "laravel/pint": "^1.13",
@@ -79,6 +80,7 @@
         "preferred-install": "dist",
         "sort-packages": true,
         "allow-plugins": {
+            "infection/extension-installer": true,
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
         }
