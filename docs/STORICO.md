@@ -40,6 +40,31 @@ Vedi `docs/analisi-approfondita-2026-06-10.md`: difetti D1–D4 su reinvii/recor
 ### 2026-07-02 — Audit comunicazioni esterne: C1–C3 + M1–M5 fixati (suite verde)
 Vedi `docs/audit-comunicazioni-esterne-2026-07-02.md`. Critici: **C1** QUEUE=sync + afterCommit + transazione = try/catch SMTP morto e status `sent` committato prima dell'invio reale (fix: niente transazione attorno agli invii — regola da non violare); **C2** messaggio admin mai renderizzato (`$message_content` vs `$content`); **C3** checkbox circolo senza hidden input. Medi: cc_* nazionali validati, DOCX spostati su disk privato `docs` (deploy: FTP move `storage/app/public/convocazioni` → `storage/app/docs/convocazioni`), allegati mancanti → `partial`, preview fedele all'invio, zero destinatari → `failed`. Restano aperti gli 11 minori del report. Suite verde su MAMP 2026-07-02.
 
+### 2026-08-28 — Federgolf: id gara GUID + messaggi d'errore veri (da laravel-schema-partenze)
+
+Portato dal mirror `_overrides_quadranti`. **Causa radice:** `competition_id` di
+federgolf non è più un intero ma un GUID
+(`6b01aebc-f3f1-f011-8406-7ced8d5cadb4`); la regola `gara_id => 'required|integer'`
+bocciava con 422 tutte le gare nuove e il frontend mostrava "⚠ Errore di rete nel
+caricamento degli iscritti". Ora l'id è trattato come **token opaco** (nessun
+vincolo di formato: solo scalare, non vuoto, ≤200 char, niente caratteri di
+controllo) e la chiave di cache passa per `sha1` in `cacheKeyFor()`.
+
+Contorno: nuovi stati `unpublished` (lista non ancora pubblicata, o admin-ajax che
+risponde `0`) e `not_found` (404) — prima finivano entrambi in `empty` → "Gara
+senza iscritti", falso a iscrizioni aperte; `httpErrorPayload()` distingue
+404/429/401-403/5xx; `open` riporta i conteggi ("12 iscritti, nessuno ammesso");
+ammessi senza nomi leggibili → `error/parse` invece di `ready` vuoto; `error` e
+`not_found` non cacheati; `loadAllCompetitions` restituisce `reason` + messaggio
+specifico invece di "Errore connessione", con l'eccezione solo nel log.
+
+Lato JS: `describeAjaxFailure()` distingue abort/timeout/status 0/419/401/403/404/
+422/429/5xx (status 0 è l'**unico** vero errore di rete); `mergeFedergolfResponses`
+usa il `message` del backend e ritorna `severity` (ℹ per le condizioni normali
+della gara, ⚠ per i guasti); il catch non avvolge più anche il rendering;
+l'overlay mostra i secondi trascorsi. Nuovo `tests/Feature/FedergolfTest.php`
+(35 test) e suite JS 444 verdi.
+
 ---
 
 ## Documenti operativi assorbiti (traccia)
