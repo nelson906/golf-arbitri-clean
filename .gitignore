@@ -28,3 +28,4 @@ _ide_helper_models.php
 .scannerwork/report-task.txt
 phpstan.neon
 .scannerwork/*
+vendor.zip
