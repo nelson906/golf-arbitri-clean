@@ -1,0 +1,60 @@
+
+    ____      ____          __  _
+   /  _/___  / __/__  _____/ /_(_)___  ____
+   / // __ \/ /_/ _ \/ ___/ __/ / __ \/ __ \
+ _/ // / / / __/  __/ /__/ /_/ / /_/ / / / /
+/___/_/ /_/_/  \___/\___/\__/_/\____/_/ /_/
+
+#StandWithUkraine
+
+Infection - PHP Mutation Testing Framework version 0.34.0
+
+[notice] Running Infection with 9 threads.
+
+Running initial tests with PHPUnit version 11.5.53
+
+.: killed by tests, A: killed by SA, M: escaped, U: uncovered
+E: fatal error, X: syntax error, T: timed out, S: skipped, I: ignored
+
+
+Generate mutants...
+
+Processing source code files...
+..................................................   (   50)
+................I.................I...............   (  100)
+..I.......I..............I...............I........   (  150)
+..................................................   (  200)
+...................I..............................   (  250)
+..................................................   (  300)
+..................................................   (  350)
+..................................................   (  400)
+..................................................   (  450)
+..................................................   (  500)
+..................................................   (  550)
+..................................................   (  600)
+..................................................   (  650)
+..................................................   (  700)
+..................................................   (  750)
+..................................................   (  800)
+..........................................I.......   (  850)
+I........II................I................I.....   (  900)
+...I..............................................   (  950)
+..................................................   ( 1000)
+.......
+
+1007 mutations were generated:
+     993 mutants were killed by Test Framework
+      14 mutants were configured to be ignored
+
+Metrics:
+         Mutation Code Coverage: 100%
+         Covered Code MSI: 100%
+
+Please note that some mutants will inevitably be harmless (i.e. false positives).
+
+Generated Reports:
+         - /Users/iMac/Sites/golf-arbitri-clean/storage/logs/infection.log
+         - /Users/iMac/Sites/golf-arbitri-clean/storage/logs/infection.html
+         - /Users/iMac/Sites/golf-arbitri-clean/storage/logs/infection-summary.log
+
+Time: 3m 1s. Memory: 0.13GB. Threads: 9

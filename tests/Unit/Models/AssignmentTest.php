@@ -101,7 +101,7 @@ class AssignmentTest extends TestCase
         Assignment::factory()->forUser($user)->forTournament($tournament1)->create();
         Assignment::factory()->forUser($user)->forTournament($tournament2)->create();
 
-        $this->assertCount(2, $user->fresh()->assignments);
+        $this->assertCount(2, $user->refresh()->assignments);
     }
 
     /**
@@ -116,7 +116,7 @@ class AssignmentTest extends TestCase
         Assignment::factory()->forUser($user1)->forTournament($tournament)->create();
         Assignment::factory()->forUser($user2)->forTournament($tournament)->create();
 
-        $this->assertCount(2, $tournament->fresh()->assignments);
+        $this->assertCount(2, $tournament->refresh()->assignments);
     }
 
     // ==========================================

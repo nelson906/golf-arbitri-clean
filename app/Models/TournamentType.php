@@ -6,11 +6,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TournamentType extends Model
 {
+    /** @use HasFactory<\Database\Factories\TournamentTypeFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -34,32 +37,41 @@ class TournamentType extends Model
         'settings' => 'array',
     ];
 
+    // ── RELAZIONI ───────────────────────────────────────────────────
     /**
-     * RELAZIONI
+     * @return HasMany<Tournament, $this>
      */
-    public function tournaments()
+    public function tournaments(): HasMany
     {
         return $this->hasMany(Tournament::class);
     }
 
     /**
      * Scope a query to only include active types.
+     *
+     * @param  Builder<TournamentType>  $query
+     * @return Builder<TournamentType>
      */
-    public function scopeActive($query)
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
     }
 
     /**
      * Scope a query to order by sort order.
+     *
+     * @param  Builder<TournamentType>  $query
+     * @return Builder<TournamentType>
      */
-    public function scopeOrdered($query)
+    public function scopeOrdered(Builder $query): Builder
     {
         return $query->orderBy('sort_order')->orderBy('name');
     }
 
     /**
      * Get available for zones
+     *
+     * @param  int|null  $zoneId
      */
     public function isAvailableForZone($zoneId): bool
     {

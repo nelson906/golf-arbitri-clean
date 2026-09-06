@@ -13,16 +13,20 @@ Route::get('/dev/view-test-all', function () {
     $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($viewsPath));
 
     foreach ($iterator as $file) {
+        if (! $file instanceof \SplFileInfo) {
+            continue;
+        }
+
         if (! $file->isFile() || $file->getExtension() !== 'php') {
             continue;
         }
 
-        $relativePath = str_replace($viewsPath.'/', '', $file->getPathname());
+        $relativePath = str_replace($viewsPath.'/', '', (string) $file->getPathname());
         if (! str_contains($relativePath, '.blade.php')) {
             continue;
         }
 
-        $viewName = str_replace('.blade.php', '', $relativePath);
+        $viewName = str_replace('.blade.php', '', (string) $relativePath);
         $viewName = str_replace('/', '.', $viewName);
 
         // ⚠️ NUOVO: Forza SEMPRE success, ignora errori

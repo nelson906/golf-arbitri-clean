@@ -13,22 +13,31 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 /**
  * @property int $id
- * @property int|null $club_id
+ * @property int|null $club_id  null = torneo T.B.A. (circolo da assegnare)
  * @property string $name
- * @property int|null $tournament_type_id
+ * @property int $tournament_type_id
  * @property int|null $zone_id
- * @property Carbon|null $start_date
- * @property Carbon|null $end_date
- * @property Carbon|null $availability_deadline
+ * @property Carbon $start_date
+ * @property Carbon|null $end_date  a schema e' NOT NULL, ma
+ *   tests/Unit/Services/AssignmentDateConflictNullEndDateTest lo mette a null
+ *   in memoria per coprire il fallback di datesOverlap(): resta nullable
+ * @property Carbon $availability_deadline
  * @property TournamentStatus $status
  * @property string|null $notes
  * @property int|null $created_by
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * @property-read Club|null $club
+ * @property-read Club|null $club  null sui tornei T.B.A. e finche' la relation non e' caricata
+ *   su model non persistiti o forzata con setRelation() — vedi
+ *   tests/Unit/Services/NotificationPreviewNullClubTest.php (FIX C3)
  * @property-read Zone|null $zone
  * @property-read TournamentType|null $tournamentType
  * @property-read Collection<int, Assignment> $assignments
@@ -39,12 +48,17 @@ use Illuminate\Database\Eloquent\Model;
  * @property-read int $required_referees
  * @property-read Collection<int, User> $assignedReferees
  *
+ * Attributo NON persistito, calcolato e iniettato da
+ * TournamentControllerTrait::addDeadlineInfo() prima del render della view.
+ * @property int|null $days_until_deadline
+ *
  * @method static Builder|Tournament visible(?User $user = null)
  * @method static Builder|Tournament upcoming()
  * @method static Builder|Tournament active()
  */
 class Tournament extends Model
 {
+    /** @use HasFactory<\Database\Factories\TournamentFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -126,13 +140,19 @@ class Tournament extends Model
      */
 
     // Relazione con circolo
-    public function club()
+    /**
+     * @return BelongsTo<Club, $this>
+     */
+    public function club(): BelongsTo
     {
         return $this->belongsTo(Club::class);
     }
 
     // Relazione con zona (attraverso il club)
-    public function zone()
+    /**
+     * @return HasOneThrough<Zone, Club, $this>
+     */
+    public function zone(): HasOneThrough
     {
         return $this->hasOneThrough(
             Zone::class,
@@ -162,8 +182,9 @@ class Tournament extends Model
         }
 
         // Se c'è un valore nel DB, usalo (evita query extra)
-        if (isset($this->attributes['zone_id'])) {
-            return $this->attributes['zone_id'];
+        $stored = $this->attributes['zone_id'] ?? null;
+        if (is_int($stored) || (is_string($stored) && is_numeric($stored))) {
+            return (int) $stored;
         }
 
         // Fallback: carica il club per ottenere la zona
@@ -177,25 +198,37 @@ class Tournament extends Model
     }
 
     // Relazione con tipo torneo
-    public function tournamentType()
+    /**
+     * @return BelongsTo<TournamentType, $this>
+     */
+    public function tournamentType(): BelongsTo
     {
         return $this->belongsTo(TournamentType::class);
     }
 
     // Alias
-    public function type()
+    /**
+     * @return BelongsTo<TournamentType, $this>
+     */
+    public function type(): BelongsTo
     {
         return $this->tournamentType();
     }
 
     // Assegnazioni
-    public function assignments()
+    /**
+     * @return HasMany<Assignment, $this>
+     */
+    public function assignments(): HasMany
     {
         return $this->hasMany(Assignment::class);
     }
 
     // Arbitri assegnati
-    public function referees()
+    /**
+     * @return BelongsToMany<User, $this>
+     */
+    public function referees(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'assignments', 'tournament_id', 'user_id')
             ->withPivot('role', 'notes')
@@ -203,25 +236,37 @@ class Tournament extends Model
     }
 
     // Disponibilità dichiarate
-    public function availabilities()
+    /**
+     * @return HasMany<Availability, $this>
+     */
+    public function availabilities(): HasMany
     {
         return $this->hasMany(Availability::class);
     }
 
     // Notifiche del torneo
-    public function notifications()
+    /**
+     * @return HasMany<TournamentNotification, $this>
+     */
+    public function notifications(): HasMany
     {
         return $this->hasMany(TournamentNotification::class);
     }
 
     // Ultima notifica (relazione comoda) - per gare zonali
-    public function notification()
+    /**
+     * @return HasOne<TournamentNotification, $this>
+     */
+    public function notification(): HasOne
     {
         return $this->hasOne(TournamentNotification::class)->latestOfMany();
     }
 
     // Notifica CRC per gare nazionali (arbitri designati)
-    public function crcNotification()
+    /**
+     * @return HasOne<TournamentNotification, $this>
+     */
+    public function crcNotification(): HasOne
     {
         return $this->hasOne(TournamentNotification::class)
             ->where('notification_type', 'crc_referees')
@@ -229,7 +274,10 @@ class Tournament extends Model
     }
 
     // Notifica ZONA per gare nazionali (osservatori)
-    public function zoneNotification()
+    /**
+     * @return HasOne<TournamentNotification, $this>
+     */
+    public function zoneNotification(): HasOne
     {
         return $this->hasOne(TournamentNotification::class)
             ->where('notification_type', 'zone_observers')
@@ -245,8 +293,10 @@ class Tournament extends Model
             ->exists();
     }
 
+    // ── SCOPES ──────────────────────────────────────────────────────
     /**
-     * SCOPES
+     * @param  Builder<Tournament>  $query
+     * @return Builder<Tournament>
      */
     public function scopeActive(Builder $query): Builder
     {
@@ -255,8 +305,11 @@ class Tournament extends Model
 
     /**
      * Scope a query to only include upcoming tournaments.
+     *
+     * @param  Builder<Tournament>  $query
+     * @return Builder<Tournament>
      */
-    public function scopeUpcoming($query)
+    public function scopeUpcoming(Builder $query): Builder
     {
         return $query->where('start_date', '>=', Carbon::today());
     }
@@ -266,6 +319,8 @@ class Tournament extends Model
      * Delega a TournamentVisibility (single source of truth).
      *
      * @see \App\Support\TournamentVisibility per le regole complete
+     * @param  Builder<Tournament>  $query
+     * @return Builder<Tournament>
      */
     public function scopeVisible(Builder $query, ?User $user = null): Builder
     {
@@ -302,7 +357,7 @@ class Tournament extends Model
      */
     public function getRequiredRefereesAttribute(): int
     {
-        return $this->tournamentType?->min_referees ?? 1;
+        return $this->tournamentType->min_referees ?? 1;
     }
 
     /**

@@ -261,7 +261,7 @@ class AssignmentManagementTest extends TestCase
 
         $assignment = Assignment::where('user_id', $referee->id)
             ->where('tournament_id', $tournament->id)
-            ->first();
+            ->firstOrFail();
 
         $this->assertNotNull($assignment->assigned_at);
     }

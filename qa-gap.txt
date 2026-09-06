@@ -1,0 +1,911 @@
+   0/229 [░░░░░░░░░░░░░░░░░░░░░░░░░░░░]   0%[1G[2K  20/229 [▓▓░░░░░░░░░░░░░░░░░░░░░░░░░░]   8%[1G[2K  40/229 [▓▓▓▓░░░░░░░░░░░░░░░░░░░░░░░░]  17%[1G[2K  60/229 [▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░░░]  26%[1G[2K  80/229 [▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░]  34%[1G[2K 100/229 [▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░]  43%[1G[2K 120/229 [▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░]  52%[1G[2K 140/229 [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░]  61%[1G[2K 149/229 [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░]  65%[1G[2K 169/229 [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░]  73%[1G[2K 189/229 [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░]  82%[1G[2K 209/229 [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░]  91%[1G[2K 229/229 [▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓] 100%
+
+ ------ --------------------------------------------------------------------------------------- 
+  Line   app/Console/Commands/ManageCareerEntry.php                                             
+ ------ --------------------------------------------------------------------------------------- 
+  99     Parameter #1 $value of function count expects array|Countable, mixed given.            
+         🪪  argument.type                                                                      
+  100    Parameter #1 $value of function count expects array|Countable, mixed given.            
+         🪪  argument.type                                                                      
+  101    Parameter #1 $value of function count expects array|Countable, mixed given.            
+         🪪  argument.type                                                                      
+  128    Argument of an invalid type mixed supplied for foreach, only iterables are supported.  
+         🪪  foreach.nonIterable                                                                
+  130    Cannot access offset 'id' on mixed.                                                    
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  131    Cannot access offset 'name' on mixed.                                                  
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  132    Cannot access offset 'club_name' on mixed.                                             
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  133    Cannot access offset 'start_date' on mixed.                                            
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  134    Cannot access offset 'end_date' on mixed.                                              
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  150    Argument of an invalid type mixed supplied for foreach, only iterables are supported.  
+         🪪  foreach.nonIterable                                                                
+  152    Cannot access offset 'tournament_id' on mixed.                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  153    Cannot access offset 'tournament_name' on mixed.                                       
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  154    Cannot access offset 'role' on mixed.                                                  
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  155    Cannot access offset 'assigned_at' on mixed.                                           
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  211    Cannot access an offset on mixed.                                                      
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+ ------ --------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------ 
+  Line   app/Helpers/SystemOperations.php                                                                      
+ ------ ------------------------------------------------------------------------------------------------------ 
+  76     Method App\Helpers\SystemOperations::findComposerPath() should return string|null but returns mixed.  
+         🪪  return.type                                                                                       
+ ------ ------------------------------------------------------------------------------------------------------ 
+
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  Line   app/Http/Controllers/Admin/AssignmentController.php                                                                
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  274    Cannot access offset 'user_id' on mixed.                                                                           
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  274    Cannot cast mixed to int.                                                                                          
+         🪪  cast.int                                                                                                       
+  276    Cannot access offset 'user_id' on mixed.                                                                           
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  288    Parameter #1 $attributes of method Illuminate\Database\Eloquent\Model::update() expects array<string, mixed>, mix  
+         ed given.                                                                                                          
+         🪪  argument.type                                                                                                  
+  459    Method App\Http\Controllers\Admin\AssignmentController::getPossibleReferees() should return                        
+         Illuminate\Support\Collection<int, App\Models\User> but returns Illuminate\Support\Collection<(int|string), mixed  
+         >.                                                                                                                 
+         🪪  return.type                                                                                                    
+  499    Method App\Http\Controllers\Admin\AssignmentController::getNationalReferees() should return                        
+         Illuminate\Support\Collection<int, App\Models\User> but returns Illuminate\Support\Collection<(int|string), mixed  
+         >.                                                                                                                 
+         🪪  return.type                                                                                                    
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+
+ ------ -------------------------------------------------------------------------- 
+  Line   app/Http/Controllers/Admin/CareerHistoryController.php                    
+ ------ -------------------------------------------------------------------------- 
+  320    Cannot access an offset on mixed.                                         
+         🪪  offsetAccess.nonOffsetAccessible                                      
+  391    Cannot access an offset on mixed.                                         
+         🪪  offsetAccess.nonOffsetAccessible                                      
+  446    Parameter #1 $array of function array_filter expects array, mixed given.  
+         🪪  argument.type                                                         
+  447    Cannot access offset 'tournament_id' on mixed.                            
+         🪪  offsetAccess.nonOffsetAccessible                                      
+ ------ -------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  Line   app/Http/Controllers/Admin/ClubController.php                                                                      
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  139    Cannot access offset 'is_active' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  140    Cannot access offset 'is_active' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  143    Parameter #1 $attributes of static method Illuminate\Database\Eloquent\Builder<App\Models\Club>::create() expects  
+          array<string, mixed>, mixed given.                                                                                
+         🪪  argument.type                                                                                                  
+  201    Parameter #1 $attributes of method Illuminate\Database\Eloquent\Model::update() expects array<string, mixed>, mix  
+         ed given.                                                                                                          
+         🪪  argument.type                                                                                                  
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  Line   app/Http/Controllers/Admin/CommunicationController.php                                                             
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  96     Cannot access offset 'author_id' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  102    Cannot access offset 'zone_id' on mixed.                                                                           
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  105    Parameter #1 $attributes of static method Illuminate\Database\Eloquent\Builder<App\Models\Communication>::create(  
+         ) expects array<string, mixed>, mixed given.                                                                       
+         🪪  argument.type                                                                                                  
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  Line   app/Http/Controllers/Admin/NotificationController.php                                                              
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  409    Part $lastError (mixed) of encapsed string cannot be cast to string.                                               
+         🪪  encapsedStringPart.nonString                                                                                   
+  418    Part $lastError (mixed) of encapsed string cannot be cast to string.                                               
+         🪪  encapsedStringPart.nonString                                                                                   
+  520    Cannot access offset 'clauses' on mixed.                                                                           
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  520    Parameter #2 $clauses of method App\Services\NotificationPreparationService::saveClauseSelections() expects array  
+         <string, mixed>, mixed given.                                                                                      
+         🪪  argument.type                                                                                                  
+  589    Cannot access offset 'subject' on mixed.                                                                           
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  590    Cannot access offset 'message' on mixed.                                                                           
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  606    Parameter #3 $clauses of method App\Services\NotificationTransactionService::saveAsDraft() expects array<string,   
+         mixed>, array given.                                                                                               
+         🪪  argument.type                                                                                                  
+  735    Cannot access offset 'notification_type' on mixed.                                                                 
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  759    Cannot access offset 'cc_zone_admins' on mixed.                                                                    
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  759    Parameter #1 $userIds of method App\Services\NotificationRecipientBuilder::addZoneAdminsByIds() expects array<int  
+         >, mixed given.                                                                                                    
+         🪪  argument.type                                                                                                  
+  760    Cannot access offset 'cc_referees' on mixed.                                                                       
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  760    Parameter #1 $userIds of method App\Services\NotificationRecipientBuilder::addRefereesByIds() expects array<int>,  
+          mixed given.                                                                                                      
+         🪪  argument.type                                                                                                  
+  766    Cannot access offset 'cc_national_admins' on mixed.                                                                
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  766    Parameter #1 $userIds of method App\Services\NotificationRecipientBuilder::addZoneAdminsByIds() expects array<int  
+         >, mixed given.                                                                                                    
+         🪪  argument.type                                                                                                  
+  767    Cannot access offset 'cc_observers' on mixed.                                                                      
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  767    Parameter #1 $userIds of method App\Services\NotificationRecipientBuilder::addObserversByIds() expects array<int>  
+         , mixed given.                                                                                                     
+         🪪  argument.type                                                                                                  
+  790    Cannot access offset 'message' on mixed.                                                                           
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  790    Cannot access offset 'subject' on mixed.                                                                           
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  790    Parameter #1 $subjectLine of class App\Mail\NationalNotificationMail constructor expects string, mixed given.      
+         🪪  argument.type                                                                                                  
+  790    Parameter #2 $body of class App\Mail\NationalNotificationMail constructor expects string, mixed given.             
+         🪪  argument.type                                                                                                  
+  811    Cannot access offset 'message' on mixed.                                                                           
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  811    Cannot access offset 'subject' on mixed.                                                                           
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  811    Parameter #1 $subjectLine of class App\Mail\NationalNotificationMail constructor expects string, mixed given.      
+         🪪  argument.type                                                                                                  
+  811    Parameter #2 $body of class App\Mail\NationalNotificationMail constructor expects string, mixed given.             
+         🪪  argument.type                                                                                                  
+  853    Cannot access offset 'subject' on mixed.                                                                           
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  854    Cannot access offset 'message' on mixed.                                                                           
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+
+ ------ -------------------------------------------------------- 
+  Line   app/Http/Controllers/Admin/RefereeCareerController.php  
+ ------ -------------------------------------------------------- 
+  53     Cannot cast mixed to string.                            
+         🪪  cast.string                                         
+ ------ -------------------------------------------------------- 
+
+ ------ ----------------------------------------------------- 
+  Line   app/Http/Controllers/Admin/TournamentController.php  
+ ------ ----------------------------------------------------- 
+  367    Cannot call method with() on mixed.                  
+         🪪  method.nonObject                                 
+ ------ ----------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  Line   app/Http/Controllers/Admin/TournamentTypeController.php                                                            
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  53     Cannot access offset 'code' on mixed.                                                                              
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  54     Cannot access offset 'code' on mixed.                                                                              
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  54     Cannot access offset 'name' on mixed.                                                                              
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  54     Parameter #1 $title of static method Illuminate\Support\Str::slug() expects string, mixed given.                   
+         🪪  argument.type                                                                                                  
+  60     Cannot access offset 'sort_order' on mixed.                                                                        
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  60     Cannot access offset 'sort_order' on mixed.                                                                        
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  61     Cannot access offset 'is_active' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  61     Cannot access offset 'is_active' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  62     Cannot access offset 'is_national' on mixed.                                                                       
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  62     Cannot access offset 'is_national' on mixed.                                                                       
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  63     Cannot access offset 'calendar_color' on mixed.                                                                    
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  63     Cannot access offset 'calendar_color' on mixed.                                                                    
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  63     Cannot access offset 'name' on mixed.                                                                              
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  63     Parameter #1 $string of function md5 expects string, mixed given.                                                  
+         🪪  argument.type                                                                                                  
+  65     Parameter #1 $attributes of static method Illuminate\Database\Eloquent\Builder<App\Models\TournamentType>::create  
+         () expects array<string, mixed>, mixed given.                                                                      
+         🪪  argument.type                                                                                                  
+  98     Cannot access offset 'is_national' on mixed.                                                                       
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  100    Parameter #1 $attributes of method Illuminate\Database\Eloquent\Model::update() expects array<string, mixed>, mix  
+         ed given.                                                                                                          
+         🪪  argument.type                                                                                                  
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  Line   app/Http/Controllers/Admin/UserController.php                                                                      
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  205    Cannot access offset 'password' on mixed.                                                                          
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  208    Binary operation "." between mixed and ' ' results in an error.                                                    
+         🪪  binaryOp.invalid                                                                                               
+  208    Binary operation "." between non-falsy-string and mixed results in an error.                                       
+         🪪  binaryOp.invalid                                                                                               
+  208    Cannot access offset 'first_name' on mixed.                                                                        
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  208    Cannot access offset 'last_name' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  208    Cannot access offset 'name' on mixed.                                                                              
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  211    Cannot access offset 'user_type' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  214    Cannot access offset 'is_active' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  217    Cannot access offset 'referee_code' on mixed.                                                                      
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  220    Cannot access offset 'referee_code' on mixed.                                                                      
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  224    Parameter #1 $attributes of static method Illuminate\Database\Eloquent\Builder<App\Models\User>::create() expects  
+          array<string, mixed>, mixed given.                                                                                
+         🪪  argument.type                                                                                                  
+  306    Cannot access offset 'password' on mixed.                                                                          
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  306    Cannot access offset 'password' on mixed.                                                                          
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  306    Parameter #1 $value of static method Illuminate\Support\Facades\Hash::make() expects string, mixed given.          
+         🪪  argument.type                                                                                                  
+  310    Binary operation "." between mixed and ' ' results in an error.                                                    
+         🪪  binaryOp.invalid                                                                                               
+  310    Binary operation "." between non-falsy-string and mixed results in an error.                                       
+         🪪  binaryOp.invalid                                                                                               
+  310    Cannot access offset 'first_name' on mixed.                                                                        
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  310    Cannot access offset 'last_name' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  310    Cannot access offset 'name' on mixed.                                                                              
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  313    Cannot access offset 'is_active' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  316    Parameter #1 $attributes of method Illuminate\Database\Eloquent\Model::update() expects array<string, mixed>, mix  
+         ed given.                                                                                                          
+         🪪  argument.type                                                                                                  
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------------------------------------------- 
+  Line   app/Http/Controllers/Auth/PasswordController.php                                                           
+ ------ ----------------------------------------------------------------------------------------------------------- 
+  24     Cannot access offset 'password' on mixed.                                                                  
+         🪪  offsetAccess.nonOffsetAccessible                                                                       
+  24     Parameter #1 $value of static method Illuminate\Support\Facades\Hash::make() expects string, mixed given.  
+         🪪  argument.type                                                                                          
+ ------ ----------------------------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  Line   app/Http/Controllers/SuperAdmin/InstitutionalEmailController.php                                                   
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  81     Cannot access offset 'is_active' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  81     Cannot access offset 'is_active' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  83     Parameter #1 $attributes of static method Illuminate\Database\Eloquent\Builder<App\Models\InstitutionalEmail>::cr  
+         eate() expects array<string, mixed>, mixed given.                                                                  
+         🪪  argument.type                                                                                                  
+  114    Cannot access offset 'is_active' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  114    Cannot access offset 'is_active' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  116    Parameter #1 $attributes of method Illuminate\Database\Eloquent\Model::update() expects array<string, mixed>, mix  
+         ed given.                                                                                                          
+         🪪  argument.type                                                                                                  
+  183    Parameter #2 $fields of function fputcsv expects array<int|string, bool|float|int|string|null>, array<int, mixed>  
+         given.                                                                                                             
+         🪪  argument.type                                                                                                  
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  Line   app/Http/Controllers/SuperAdmin/NotificationClauseController.php                                                   
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  95     Cannot access offset 'is_active' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  95     Cannot access offset 'is_active' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  96     Cannot access offset 'sort_order' on mixed.                                                                        
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  96     Cannot access offset 'sort_order' on mixed.                                                                        
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  99     Parameter #1 $attributes of static method Illuminate\Database\Eloquent\Builder<App\Models\NotificationClause>::cr  
+         eate() expects array<string, mixed>, mixed given.                                                                  
+         🪪  argument.type                                                                                                  
+  153    Cannot access offset 'is_active' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  153    Cannot access offset 'is_active' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  156    Parameter #1 $attributes of method Illuminate\Database\Eloquent\Model::update() expects array<string, mixed>, mix  
+         ed given.                                                                                                          
+         🪪  argument.type                                                                                                  
+  238    Argument of an invalid type mixed supplied for foreach, only iterables are supported.                              
+         🪪  foreach.nonIterable                                                                                            
+  238    Cannot access offset 'items' on mixed.                                                                             
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  239    Cannot access offset 'id' on mixed.                                                                                
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  240    Cannot access offset 'sort_order' on mixed.                                                                        
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  Line   app/Http/Controllers/User/AvailabilityController.php                                                               
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  620    Method App\Http\Controllers\User\AvailabilityController::collectZoneAdminEmails() should return array<string, mix  
+         ed> but returns array<mixed>.                                                                                      
+         🪪  return.type                                                                                                    
+  630    Method App\Http\Controllers\User\AvailabilityController::collectNationalAdminEmails() should return array<string,  
+          mixed> but returns array<mixed>.                                                                                  
+         🪪  return.type                                                                                                    
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+
+ ------ --------------------------------------------------- 
+  Line   app/Http/Controllers/User/FedergolfController.php  
+ ------ --------------------------------------------------- 
+  120    Cannot access offset 'gara_id' on mixed.           
+         🪪  offsetAccess.nonOffsetAccessible               
+  120    Cannot cast mixed to string.                       
+         🪪  cast.string                                    
+ ------ --------------------------------------------------- 
+
+ ------ ---------------------------------------------------------------------------------------------------------------- 
+  Line   app/Http/Middleware/AdminOrSuperAdmin.php                                                                       
+ ------ ---------------------------------------------------------------------------------------------------------------- 
+  25     Method App\Http\Middleware\AdminOrSuperAdmin::handle() should return Symfony\Component\HttpFoundation\Response  
+         but returns mixed.                                                                                              
+         🪪  return.type                                                                                                 
+ ------ ---------------------------------------------------------------------------------------------------------------- 
+
+ ------ ----------------------------------------------------------------------------------------------------------------- 
+  Line   app/Http/Middleware/EnsureUserIsActive.php                                                                       
+ ------ ----------------------------------------------------------------------------------------------------------------- 
+  32     Method App\Http\Middleware\EnsureUserIsActive::handle() should return Symfony\Component\HttpFoundation\Response  
+         but returns mixed.                                                                                               
+         🪪  return.type                                                                                                  
+ ------ ----------------------------------------------------------------------------------------------------------------- 
+
+ ------ -------------------------------------------------------------------------------------------------------------- 
+  Line   app/Http/Middleware/RefereeOrAdmin.php                                                                        
+ ------ -------------------------------------------------------------------------------------------------------------- 
+  102    Parameter #2 $resourceId of method App\Http\Middleware\RefereeOrAdmin::isRefereeRestrictedResource() expects  
+         int|string, mixed given.                                                                                      
+         🪪  argument.type                                                                                             
+  126    Parameter #2 $resourceId of method App\Http\Middleware\RefereeOrAdmin::isZoneRestrictedResource() expects     
+         int|string, mixed given.                                                                                      
+         🪪  argument.type                                                                                             
+ ------ -------------------------------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------------- 
+  Line   app/Http/Middleware/SuperAdmin.php                                                                           
+ ------ ------------------------------------------------------------------------------------------------------------- 
+  19     Method App\Http\Middleware\SuperAdmin::handle() should return Symfony\Component\HttpFoundation\Response but  
+         returns mixed.                                                                                               
+         🪪  return.type                                                                                              
+ ------ ------------------------------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------- 
+  Line   app/Http/Requests/TournamentRequest.php          
+ ------ ------------------------------------------------- 
+  66     Trying to invoke mixed but it's not a callable.  
+         🪪  callable.nonCallable                         
+  72     Trying to invoke mixed but it's not a callable.  
+         🪪  callable.nonCallable                         
+  82     Cannot cast mixed to int.                        
+         🪪  cast.int                                     
+  84     Trying to invoke mixed but it's not a callable.  
+         🪪  callable.nonCallable                         
+  90     Trying to invoke mixed but it's not a callable.  
+         🪪  callable.nonCallable                         
+  120    Trying to invoke mixed but it's not a callable.  
+         🪪  callable.nonCallable                         
+  125    Trying to invoke mixed but it's not a callable.  
+         🪪  callable.nonCallable                         
+ ------ ------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------------------ 
+  Line   app/Models/RefereeCareerHistory.php                                                                               
+ ------ ------------------------------------------------------------------------------------------------------------------ 
+  56     Method App\Models\RefereeCareerHistory::getTournamentsForYear() should return array<mixed> but returns mixed.     
+         🪪  return.type                                                                                                   
+  64     Method App\Models\RefereeCareerHistory::getAssignmentsForYear() should return array<mixed> but returns mixed.     
+         🪪  return.type                                                                                                   
+  72     Method App\Models\RefereeCareerHistory::getAvailabilitiesForYear() should return array<mixed> but returns mixed.  
+         🪪  return.type                                                                                                   
+  97     Parameter #1 $value of function count expects array|Countable, mixed given.                                       
+         🪪  argument.type                                                                                                 
+ ------ ------------------------------------------------------------------------------------------------------------------ 
+
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  Line   app/Models/TournamentNotification.php                                                                              
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  385    Method App\Models\TournamentNotification::getSelectedClausesAttribute() should return array<string, mixed> but re  
+         turns array<mixed>.                                                                                                
+         🪪  return.type                                                                                                    
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  Line   app/Services/AssignmentValidationService.php                                                                       
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  191    Method App\Services\AssignmentValidationService::findMissingRequirements() should return                           
+         Illuminate\Support\Collection<int, array<string, mixed>> but returns Illuminate\Support\Collection<(int|string),   
+         mixed>.                                                                                                            
+         🪪  return.type                                                                                                    
+  203    Cannot call method whereHas() on mixed.                                                                            
+         🪪  method.nonObject                                                                                               
+  204    Cannot call method whereIn() on mixed.                                                                             
+         🪪  method.nonObject                                                                                               
+  204    Cannot call method whereYear() on mixed.                                                                           
+         🪪  method.nonObject                                                                                               
+  216    Cannot call method whereHas() on mixed.                                                                            
+         🪪  method.nonObject                                                                                               
+  216    Cannot call method with() on mixed.                                                                                
+         🪪  method.nonObject                                                                                               
+  217    Cannot call method whereIn() on mixed.                                                                             
+         🪪  method.nonObject                                                                                               
+  217    Cannot call method whereYear() on mixed.                                                                           
+         🪪  method.nonObject                                                                                               
+  253    Cannot call method whereHas() on mixed.                                                                            
+         🪪  method.nonObject                                                                                               
+  254    Cannot call method whereIn() on mixed.                                                                             
+         🪪  method.nonObject                                                                                               
+  254    Cannot call method whereYear() on mixed.                                                                           
+         🪪  method.nonObject                                                                                               
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+
+ ------ --------------------------------------------------------------------------------------- 
+  Line   app/Services/CareerHistoryService.php                                                  
+ ------ --------------------------------------------------------------------------------------- 
+  215    Argument of an invalid type mixed supplied for foreach, only iterables are supported.  
+         🪪  foreach.nonIterable                                                                
+  216    Cannot access offset 'id' on mixed.                                                    
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  217    Cannot access offset mixed on mixed.                                                   
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  217    Parameter #1 ...$arrays of function array_merge expects array, mixed given.            
+         🪪  argument.type                                                                      
+  266    Cannot access an offset on mixed.                                                      
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  292    Parameter #1 $array of function array_filter expects array, mixed given.               
+         🪪  argument.type                                                                      
+  293    Cannot access offset 'id' on mixed.                                                    
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  322    Argument of an invalid type mixed supplied for foreach, only iterables are supported.  
+         🪪  foreach.nonIterable                                                                
+  323    Cannot access offset 'id' on mixed.                                                    
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  324    Cannot access offset 'days_count' on mixed.                                            
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  324    Cannot access offset mixed on mixed.                                                   
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  402    Cannot cast mixed to int.                                                              
+         🪪  cast.int                                                                           
+  405    Cannot access an offset on mixed.                                                      
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+  409    Cannot access an offset on mixed.                                                      
+         🪪  offsetAccess.nonOffsetAccessible                                                   
+ ------ --------------------------------------------------------------------------------------- 
+
+ ------ --------------------------------------------------------------------------------------------------------------- 
+  Line   app/Services/Monitoring/SystemHealthService.php                                                                
+ ------ --------------------------------------------------------------------------------------------------------------- 
+  212    Cannot access property $Value on mixed.                                                                        
+         🪪  property.nonObject                                                                                         
+  212    Method App\Services\Monitoring\SystemHealthService::getDatabaseConnections() should return string but returns  
+         mixed.                                                                                                         
+         🪪  return.type                                                                                                
+ ------ --------------------------------------------------------------------------------------------------------------- 
+
+ ------ ---------------------------------------------------------------------------------------------------------------- 
+  Line   app/Services/Monitoring/SystemMetricsService.php                                                                
+ ------ ---------------------------------------------------------------------------------------------------------------- 
+  227    Cannot access property $Value on mixed.                                                                         
+         🪪  property.nonObject                                                                                          
+  227    Method App\Services\Monitoring\SystemMetricsService::getDatabaseConnections() should return string but returns  
+         mixed.                                                                                                          
+         🪪  return.type                                                                                                 
+ ------ ---------------------------------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------- 
+  Line   app/Services/NotificationPreparationService.php  
+ ------ ------------------------------------------------- 
+  118    Cannot access offset 'institutional' on mixed.   
+         🪪  offsetAccess.nonOffsetAccessible             
+  205    Cannot access offset 'club' on mixed.            
+         🪪  offsetAccess.nonOffsetAccessible             
+  207    Cannot access offset 'referees' on mixed.        
+         🪪  offsetAccess.nonOffsetAccessible             
+  217    Cannot access offset 'institutional' on mixed.   
+         🪪  offsetAccess.nonOffsetAccessible             
+  219    Cannot access offset 'zone' on mixed.            
+         🪪  offsetAccess.nonOffsetAccessible             
+  222    Cannot access offset 'additional' on mixed.      
+         🪪  offsetAccess.nonOffsetAccessible             
+ ------ ------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  Line   app/Services/NotificationService.php                                                                               
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  173    Parameter #2 $content of class App\Mail\ClubNotificationMail constructor expects string|null, mixed given.         
+         🪪  argument.type                                                                                                  
+  174    Parameter #3 $attachmentPaths of class App\Mail\ClubNotificationMail constructor expects array<int, array{path: s  
+         tring, name: string}>, array<array{path: string, name: string}> given.                                             
+         🪪  argument.type                                                                                                  
+  175    Parameter #4 $subjectLine of class App\Mail\ClubNotificationMail constructor expects string|null, mixed given.     
+         🪪  argument.type                                                                                                  
+  284    Binary operation "." between string and mixed results in an error.                                                 
+         🪪  binaryOp.invalid                                                                                               
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  Line   app/Services/RefereeCareerService.php                                                                              
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  94     Parameter #1 $assignments of method App\Services\RefereeCareerService::getYearSummary() expects array<int, array<  
+         string, mixed>>, mixed given.                                                                                      
+         🪪  argument.type                                                                                                  
+  94     Parameter #3 $tournaments of method App\Services\RefereeCareerService::getYearSummary() expects array<int, array<  
+         string, mixed>>, mixed given.                                                                                      
+         🪪  argument.type                                                                                                  
+  151    Parameter #1 $array of function end expects array|object, mixed given.                                             
+         🪪  argument.type                                                                                                  
+  152    Cannot access offset 'new_level' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  169    Parameter #1 $value of function count expects array|Countable, mixed given.                                        
+         🪪  argument.type                                                                                                  
+  170    Parameter #1 $array of function array_column expects array, mixed given.                                           
+         🪪  argument.type                                                                                                  
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  Line   app/Services/Statistics/ZoneStatsService.php                                                                       
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  33     Method App\Services\Statistics\ZoneStatsService::getAllZonesStats() should return array<string, mixed> but return  
+         s array<mixed>.                                                                                                    
+         🪪  return.type                                                                                                    
+  144    Method App\Services\Statistics\ZoneStatsService::getZonesSummary() should return array<string, mixed> but returns  
+          array<mixed>.                                                                                                     
+         🪪  return.type                                                                                                    
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+
+ ------ ---------------------------------------------------------------------------------------------------------------- 
+  Line   app/Traits/TournamentControllerTrait.php (in context of class App\Http\Controllers\Admin\TournamentController)  
+ ------ ---------------------------------------------------------------------------------------------------------------- 
+  147    Cannot access property $status on mixed.                                                                        
+         🪪  property.nonObject                                                                                          
+  147    Cannot access property $value on mixed.                                                                         
+         🪪  property.nonObject                                                                                          
+  147    Cannot call method groupBy() on mixed.                                                                          
+         🪪  method.nonObject                                                                                            
+  151    Cannot call method count() on mixed.                                                                            
+         🪪  method.nonObject                                                                                            
+  151    Cannot call method get() on mixed.                                                                              
+         🪪  method.nonObject                                                                                            
+  152    Cannot call method count() on mixed.                                                                            
+         🪪  method.nonObject                                                                                            
+  152    Cannot call method get() on mixed.                                                                              
+         🪪  method.nonObject                                                                                            
+  153    Cannot call method count() on mixed.                                                                            
+         🪪  method.nonObject                                                                                            
+  153    Cannot call method get() on mixed.                                                                              
+         🪪  method.nonObject                                                                                            
+  154    Cannot call method count() on mixed.                                                                            
+         🪪  method.nonObject                                                                                            
+  154    Cannot call method get() on mixed.                                                                              
+         🪪  method.nonObject                                                                                            
+  155    Cannot call method count() on mixed.                                                                            
+         🪪  method.nonObject                                                                                            
+  155    Cannot call method get() on mixed.                                                                              
+         🪪  method.nonObject                                                                                            
+ ------ ---------------------------------------------------------------------------------------------------------------- 
+
+ ------ ---------------------------------------------------------------------------------------------------------- 
+  Line   app/Traits/TournamentControllerTrait.php (in context of class App\Http\Controllers\TournamentController)  
+ ------ ---------------------------------------------------------------------------------------------------------- 
+  147    Cannot access property $status on mixed.                                                                  
+         🪪  property.nonObject                                                                                    
+  147    Cannot access property $value on mixed.                                                                   
+         🪪  property.nonObject                                                                                    
+  147    Cannot call method groupBy() on mixed.                                                                    
+         🪪  method.nonObject                                                                                      
+  151    Cannot call method count() on mixed.                                                                      
+         🪪  method.nonObject                                                                                      
+  151    Cannot call method get() on mixed.                                                                        
+         🪪  method.nonObject                                                                                      
+  152    Cannot call method count() on mixed.                                                                      
+         🪪  method.nonObject                                                                                      
+  152    Cannot call method get() on mixed.                                                                        
+         🪪  method.nonObject                                                                                      
+  153    Cannot call method count() on mixed.                                                                      
+         🪪  method.nonObject                                                                                      
+  153    Cannot call method get() on mixed.                                                                        
+         🪪  method.nonObject                                                                                      
+  154    Cannot call method count() on mixed.                                                                      
+         🪪  method.nonObject                                                                                      
+  154    Cannot call method get() on mixed.                                                                        
+         🪪  method.nonObject                                                                                      
+  155    Cannot call method count() on mixed.                                                                      
+         🪪  method.nonObject                                                                                      
+  155    Cannot call method get() on mixed.                                                                        
+         🪪  method.nonObject                                                                                      
+ ------ ---------------------------------------------------------------------------------------------------------- 
+
+ ------ ---------------------------------------------- 
+  Line   database/factories/TournamentTypeFactory.php  
+ ------ ---------------------------------------------- 
+  24     Cannot use ++ on mixed.                       
+         🪪  postInc.type                              
+ ------ ---------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------ 
+  Line   routes/dev/view-preview.php                                                               
+ ------ ------------------------------------------------------------------------------------------ 
+  39     Parameter #3 $subject of function str_replace expects array<string>|string, mixed given.  
+         🪪  argument.type                                                                         
+ ------ ------------------------------------------------------------------------------------------ 
+
+ ------ ------------------------------------------------------------------------------------------ 
+  Line   routes/dev/view-routes.php                                                                
+ ------ ------------------------------------------------------------------------------------------ 
+  53     Parameter #3 $subject of function str_replace expects array<string>|string, mixed given.  
+         🪪  argument.type                                                                         
+  345    Parameter #3 $subject of function str_replace expects array<string>|string, mixed given.  
+         🪪  argument.type                                                                         
+ ------ ------------------------------------------------------------------------------------------ 
+
+ ------ --------------------------------------------------------------------------------------------------------------- 
+  Line   tests/CreatesApplication.php (in context of class Tests\TestCase)                                              
+ ------ --------------------------------------------------------------------------------------------------------------- 
+  17     Cannot call method bootstrap() on mixed.                                                                       
+         🪪  method.nonObject                                                                                           
+  17     Cannot call method make() on mixed.                                                                            
+         🪪  method.nonObject                                                                                           
+  19     Method Tests\TestCase::createApplication() should return Illuminate\Foundation\Application but returns mixed.  
+         🪪  return.type                                                                                                
+ ------ --------------------------------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------ 
+  Line   tests/Feature/Admin/NationalNotificationMailDispatchTest.php                  
+ ------ ------------------------------------------------------------------------------ 
+  66     Cannot access property $subjectLine on mixed.                                 
+         🪪  property.nonObject                                                        
+  67     Cannot access property $body on mixed.                                        
+         🪪  property.nonObject                                                        
+  67     Parameter #1 $haystack of function str_contains expects string, mixed given.  
+         🪪  argument.type                                                             
+ ------ ------------------------------------------------------------------------------ 
+
+ ------ --------------------------------------------------------------------- 
+  Line   tests/Feature/Admin/NotificationNationalZonalClassificationTest.php  
+ ------ --------------------------------------------------------------------- 
+  93     Cannot access property $id on mixed.                                 
+         🪪  property.nonObject                                               
+  93     Cannot access property $tournament on mixed.                         
+         🪪  property.nonObject                                               
+  139    Cannot access property $id on mixed.                                 
+         🪪  property.nonObject                                               
+  139    Cannot access property $tournament on mixed.                         
+         🪪  property.nonObject                                               
+  187    Cannot access property $id on mixed.                                 
+         🪪  property.nonObject                                               
+  187    Cannot access property $tournament on mixed.                         
+         🪪  property.nonObject                                               
+  228    Cannot access property $id on mixed.                                 
+         🪪  property.nonObject                                               
+  228    Cannot access property $tournament on mixed.                         
+         🪪  property.nonObject                                               
+ ------ --------------------------------------------------------------------- 
+
+ ------ --------------------------------------------------------------- 
+  Line   tests/Feature/Admin/SendAssignmentWithConvocationHttpTest.php  
+ ------ --------------------------------------------------------------- 
+  130    Cannot call method hasTo() on mixed.                           
+         🪪  method.nonObject                                           
+  131    Cannot call method hasCc() on mixed.                           
+         🪪  method.nonObject                                           
+  131    Cannot call method hasTo() on mixed.                           
+         🪪  method.nonObject                                           
+ ------ --------------------------------------------------------------- 
+
+ ------ -------------------------------------------------------------------------------- 
+  Line   tests/Feature/Auth/PasswordResetTest.php                                        
+ ------ -------------------------------------------------------------------------------- 
+  42     Binary operation "." between '/reset-password/' and mixed results in an error.  
+         🪪  binaryOp.invalid                                                            
+  42     Cannot access property $token on mixed.                                         
+         🪪  property.nonObject                                                          
+  60     Cannot access property $token on mixed.                                         
+         🪪  property.nonObject                                                          
+ ------ -------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  Line   tests/Feature/CareerHistoryGiorniEffettiviTest.php                                                                 
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  177    Cannot access offset 'days_count' on mixed.                                                                        
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  177    Cannot access offset 0 on mixed.                                                                                   
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  218    Cannot access offset 0 on mixed.                                                                                   
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  220    Cannot access offset 'name' on mixed.                                                                              
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  221    Cannot access offset 'club_name' on mixed.                                                                         
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  222    Cannot access offset 'days_count' on mixed.                                                                        
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  301    Parameter #2 $haystack of method PHPUnit\Framework\Assert::assertCount() expects Countable|iterable, mixed given.  
+         🪪  argument.type                                                                                                  
+  425    Parameter #2 $haystack of method PHPUnit\Framework\Assert::assertCount() expects Countable|iterable, mixed given.  
+         🪪  argument.type                                                                                                  
+  479    Cannot access offset 'days_count' on mixed.                                                                        
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  479    Cannot access offset 0 on mixed.                                                                                   
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  510    Cannot access offset 0 on mixed.                                                                                   
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  512    Cannot access offset 'name' on mixed.                                                                              
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+  513    Cannot access offset 'days_count' on mixed.                                                                        
+         🪪  offsetAccess.nonOffsetAccessible                                                                               
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------ 
+  Line   tests/Feature/CurriculumAnnoCorrenteTest.php                                  
+ ------ ------------------------------------------------------------------------------ 
+  309    Parameter #2 $array of function array_key_exists expects array, mixed given.  
+         🪪  argument.type                                                             
+ ------ ------------------------------------------------------------------------------ 
+
+ ------ ------------------------------------------------- 
+  Line   tests/Feature/FedergolfTest.php                  
+ ------ ------------------------------------------------- 
+  423    Cannot access offset 'competition_id' on mixed.  
+         🪪  offsetAccess.nonOffsetAccessible             
+  446    Cannot access offset 'competition_id' on mixed.  
+         🪪  offsetAccess.nonOffsetAccessible             
+ ------ ------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------- 
+  Line   tests/Feature/Notifications/InstitutionalNotificationSendTest.php  
+ ------ ------------------------------------------------------------------- 
+  80     Cannot call method hasTo() on mixed.                               
+         🪪  method.nonObject                                               
+  109    Cannot call method hasTo() on mixed.                               
+         🪪  method.nonObject                                               
+  113    Cannot call method hasCc() on mixed.                               
+         🪪  method.nonObject                                               
+  113    Cannot call method hasTo() on mixed.                               
+         🪪  method.nonObject                                               
+  114    Cannot call method hasCc() on mixed.                               
+         🪪  method.nonObject                                               
+  114    Cannot call method hasTo() on mixed.                               
+         🪪  method.nonObject                                               
+  143    Cannot call method hasTo() on mixed.                               
+         🪪  method.nonObject                                               
+ ------ ------------------------------------------------------------------- 
+
+ ------ -------------------------------------------------------------------------- 
+  Line   tests/Feature/Notifications/NationalNotificationCorruptZoneEmailTest.php  
+ ------ -------------------------------------------------------------------------- 
+  72     Cannot call method hasTo() on mixed.                                      
+         🪪  method.nonObject                                                      
+  73     Cannot call method hasCc() on mixed.                                      
+         🪪  method.nonObject                                                      
+  74     Cannot call method hasCc() on mixed.                                      
+         🪪  method.nonObject                                                      
+  114    Cannot call method hasCc() on mixed.                                      
+         🪪  method.nonObject                                                      
+ ------ -------------------------------------------------------------------------- 
+
+ ------ --------------------------------------------------------------------------------------------------------------- 
+  Line   tests/Feature/Notifications/NotificationAttachmentsTest.php                                                    
+ ------ --------------------------------------------------------------------------------------------------------------- 
+  111    Cannot call method hasTo() on mixed.                                                                           
+         🪪  method.nonObject                                                                                           
+  112    Cannot call method hasAttachment() on mixed.                                                                   
+         🪪  method.nonObject                                                                                           
+  113    Cannot call method hasAttachment() on mixed.                                                                   
+         🪪  method.nonObject                                                                                           
+  128    Cannot call method hasTo() on mixed.                                                                           
+         🪪  method.nonObject                                                                                           
+  129    Cannot call method hasCc() on mixed.                                                                           
+         🪪  method.nonObject                                                                                           
+  150    Cannot call method hasTo() on mixed.                                                                           
+         🪪  method.nonObject                                                                                           
+  151    Cannot call method hasAttachment() on mixed.                                                                   
+         🪪  method.nonObject                                                                                           
+  152    Cannot call method hasAttachment() on mixed.                                                                   
+         🪪  method.nonObject                                                                                           
+  181    Parameter #2 $haystack of method PHPUnit\Framework\Assert::assertStringContainsString() expects string, mixed  
+         given.                                                                                                         
+         🪪  argument.type                                                                                              
+ ------ --------------------------------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------- 
+  Line   tests/Feature/Notifications/ZonalDeliveryRegressionTest.php  
+ ------ ------------------------------------------------------------- 
+  259    Cannot call method hasTo() on mixed.                         
+         🪪  method.nonObject                                         
+  261    Cannot call method hasCc() on mixed.                         
+         🪪  method.nonObject                                         
+  261    Cannot call method hasTo() on mixed.                         
+         🪪  method.nonObject                                         
+  262    Cannot call method hasCc() on mixed.                         
+         🪪  method.nonObject                                         
+  262    Cannot call method hasTo() on mixed.                         
+         🪪  method.nonObject                                         
+  319    Cannot call method hasCc() on mixed.                         
+         🪪  method.nonObject                                         
+  319    Cannot call method hasTo() on mixed.                         
+         🪪  method.nonObject                                         
+ ------ ------------------------------------------------------------- 
+
+ ------ --------------------------------------------------------------------------------------------------------------- 
+  Line   tests/Feature/Notifications/ZonalNotificationSendTest.php                                                      
+ ------ --------------------------------------------------------------------------------------------------------------- 
+  81     Cannot call method hasTo() on mixed.                                                                           
+         🪪  method.nonObject                                                                                           
+  85     Cannot call method hasCc() on mixed.                                                                           
+         🪪  method.nonObject                                                                                           
+  85     Cannot call method hasTo() on mixed.                                                                           
+         🪪  method.nonObject                                                                                           
+  86     Cannot call method hasCc() on mixed.                                                                           
+         🪪  method.nonObject                                                                                           
+  86     Cannot call method hasTo() on mixed.                                                                           
+         🪪  method.nonObject                                                                                           
+  120    Cannot call method hasTo() on mixed.                                                                           
+         🪪  method.nonObject                                                                                           
+  122    Cannot call method hasCc() on mixed.                                                                           
+         🪪  method.nonObject                                                                                           
+  122    Cannot call method hasTo() on mixed.                                                                           
+         🪪  method.nonObject                                                                                           
+  156    Cannot call method hasTo() on mixed.                                                                           
+         🪪  method.nonObject                                                                                           
+  157    Cannot call method hasCc() on mixed.                                                                           
+         🪪  method.nonObject                                                                                           
+  157    Cannot call method hasTo() on mixed.                                                                           
+         🪪  method.nonObject                                                                                           
+  216    Cannot call method hasTo() on mixed.                                                                           
+         🪪  method.nonObject                                                                                           
+  252    Parameter #2 $haystack of method PHPUnit\Framework\Assert::assertStringContainsString() expects string, mixed  
+         given.                                                                                                         
+         🪪  argument.type                                                                                              
+ ------ --------------------------------------------------------------------------------------------------------------- 
+
+ ------ --------------------------------------------------------------------------------------------------------------- 
+  Line   tests/Unit/AuditV3RegressionTest.php                                                                           
+ ------ --------------------------------------------------------------------------------------------------------------- 
+  57     Parameter #2 $haystack of method PHPUnit\Framework\Assert::assertStringContainsString() expects string, mixed  
+         given.                                                                                                         
+         🪪  argument.type                                                                                              
+ ------ --------------------------------------------------------------------------------------------------------------- 
+
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  Line   tests/Unit/EnumCastRegressionTest.php                                                                              
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+  357    Parameter #1 $tournaments of method App\Services\CalendarDataService::prepareFullCalendarData() expects            
+         Illuminate\Support\Collection<int, App\Models\Tournament>, Illuminate\Support\Collection<(int|string), mixed> giv  
+         en.                                                                                                                
+         🪪  argument.type                                                                                                  
+ ------ ------------------------------------------------------------------------------------------------------------------- 
+
+ ------ --------------------------------------------------- 
+  Line   tests/Unit/Mail/MailDispatchRegressionTest.php     
+ ------ --------------------------------------------------- 
+  110    Cannot call method hasCc() on mixed.               
+         🪪  method.nonObject                               
+  110    Cannot call method hasTo() on mixed.               
+         🪪  method.nonObject                               
+  141    Cannot call method hasCc() on mixed.               
+         🪪  method.nonObject                               
+  141    Cannot call method hasTo() on mixed.               
+         🪪  method.nonObject                               
+  142    Cannot access property $attachmentPaths on mixed.  
+         🪪  property.nonObject                             
+ ------ --------------------------------------------------- 
+
+ [ERROR] Found 301 errors                                                                                               
+

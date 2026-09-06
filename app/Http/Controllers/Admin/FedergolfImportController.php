@@ -8,9 +8,10 @@ use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Models\User;
 use App\Services\FedergolfCommitteeService;
+use App\Services\FedergolfCompetitionsClient;
+use App\Support\Untrusted;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
@@ -29,7 +30,8 @@ use Illuminate\View\View;
 class FedergolfImportController extends Controller
 {
     public function __construct(
-        private readonly FedergolfCommitteeService $committeeService
+        private readonly FedergolfCommitteeService $committeeService,
+        private readonly FedergolfCompetitionsClient $competitions
     ) {}
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -49,10 +51,10 @@ class FedergolfImportController extends Controller
             ->get()
             ->map(fn (Tournament $t) => [
                 'id'              => $t->id,
-                'anno'            => $t->start_date?->format('Y') ?? '?',
+                'anno'            => $t->start_date->format('Y') ?? '?',
                 'label'           => $t->name . ' — ' . ($t->club->name ?? 'Circolo N/D')
-                                    . ' (' . ($t->start_date?->format('d/m/Y') ?? '?') . ')',
-                'start_date'      => $t->start_date?->format('Y-m-d'),
+                                    . ' (' . ($t->start_date->format('d/m/Y') ?? '?') . ')',
+                'start_date'      => $t->start_date->format('Y-m-d'),
                 'club'            => $t->club->name ?? null,
                 'n_assegnazioni'  => $t->assignments()->count(),
             ]);
@@ -83,52 +85,40 @@ class FedergolfImportController extends Controller
         $anno = in_array($anno, [(int) date('Y'), (int) date('Y') - 1]) ? $anno : (int) date('Y');
 
         try {
-            $response = Http::timeout(30)
-                ->asForm()
-                ->withHeaders([
-                    'User-Agent'       => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-                    'Accept'           => 'application/json',
-                    'X-Requested-With' => 'XMLHttpRequest',
-                ])
-                ->post(config('golf.fig.ajax_url'), [
-                    'action'  => 'competitions-search',
-                    'tipo'    => '',
-                    'keyword' => '',
-                    'anno'    => $anno,
-                    'mese'    => '',
-                ]);
+            $result = $this->competitions->fetchYear($anno);
 
-            if (! $response->successful()) {
+            if (! $result['ok']) {
                 return response()->json(['success' => false, 'message' => 'Errore connessione a federgolf.it']);
             }
 
-            $data = $response->json();
-            $oggi = new \DateTime;
             $gare = [];
 
-            foreach ($data['data'] ?? [] as $gara) {
+            // Il CONFINE e' in FedergolfCompetitionsClient: qui le righe sono
+            // gia' array, ma i loro campi restano non tipizzati.
+            foreach ($result['rows'] as $gara) {
                 if ($gara['annullata'] ?? false) {
                     continue;
                 }
 
-                $nome = $gara['nome'] ?? $gara['title'] ?? '';
+                $nome = Untrusted::string($gara['nome'] ?? $gara['title'] ?? null);
                 if (preg_match('/ANNULLAT|RINVIAT/i', $nome)) {
                     continue;
                 }
 
                 $gare[] = [
-                    'id'    => $gara['competition_id'] ?? $gara['id'],
+                    // id: token opaco di federgolf, si passa com'e' (STORICO 2026-08-28)
+                    'id'    => Untrusted::scalarOrNull($gara['competition_id'] ?? $gara['id'] ?? null),
                     'nome'  => $nome,
-                    'data'  => $gara['data'] ?? null,
-                    'club'  => $gara['club'] ?? null,
+                    'data'  => Untrusted::string($gara['data'] ?? null),
+                    'club'  => Untrusted::stringOrNull($gara['club'] ?? null),
                     'tipo'  => $this->detectTipo($nome),
                 ];
             }
 
             // Ordina per data
-            usort($gare, function ($a, $b) {
-                $da = \DateTime::createFromFormat('d/m/Y', $a['data'] ?? '');
-                $db = \DateTime::createFromFormat('d/m/Y', $b['data'] ?? '');
+            usort($gare, function (array $a, array $b): int {
+                $da = \DateTime::createFromFormat('d/m/Y', $a['data']);
+                $db = \DateTime::createFromFormat('d/m/Y', $b['data']);
                 if (! $da || ! $db) {
                     return 0;
                 }
@@ -161,7 +151,7 @@ class FedergolfImportController extends Controller
             'competition_id' => 'required|string|max:100',
         ]);
 
-        $competitionId = $request->input('competition_id');
+        $competitionId = $request->string('competition_id')->toString();
 
         try {
             // 1. Recupera il comitato da FIG
@@ -219,7 +209,9 @@ class FedergolfImportController extends Controller
         ]);
 
         $tournamentId  = $request->integer('tournament_id');
-        $assegnazioni  = $request->input('assegnazioni');
+        // La validazione garantisce array di array con user_id e ruolo, ma
+        // l'input resta non tipizzato: si tengono solo le righe che sono array.
+        $assegnazioni  = Untrusted::rows($request->array('assegnazioni'));
 
         $creati       = 0;
         $saltati      = 0;
@@ -231,8 +223,8 @@ class FedergolfImportController extends Controller
         $tournamentOk = Tournament::find($tournamentId);
 
         foreach ($assegnazioni as $idx => $item) {
-            $userId = (int) $item['user_id'];
-            $ruolo  = AssignmentRole::normalize($item['ruolo'])->value;
+            $userId = Untrusted::int($item['user_id'] ?? null);
+            $ruolo  = AssignmentRole::normalize(Untrusted::string($item['ruolo'] ?? null))->value;
 
             // Controlla se l'assegnazione esiste già
             $existing = Assignment::where('tournament_id', $tournamentId)
@@ -283,7 +275,7 @@ class FedergolfImportController extends Controller
             'debug' => [
                 'database'          => $dbName,
                 'tournament_id'     => $tournamentId,
-                'tournament_nome'   => $tournamentOk?->name ?? '⚠️ NON TROVATO',
+                'tournament_nome'   => $tournamentOk->name ?? '⚠️ NON TROVATO',
                 'assegnazioni_gia_presenti' => $dettagliSaltati,
             ],
         ]);
@@ -305,6 +297,9 @@ class FedergolfImportController extends Controller
         return 'MF';
     }
 
+    /**
+     * @param  list<string>  $errori
+     */
     private function buildResultMessage(int $creati, int $saltati, array $errori): string
     {
         $msg = "{$creati} assegnazioni create";

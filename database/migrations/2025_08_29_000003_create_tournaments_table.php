@@ -16,7 +16,7 @@ return new class extends Migration
             $table->dateTime('availability_deadline');
             $table->foreignId('club_id')->constrained('clubs');
             $table->foreignId('tournament_type_id')->constrained('tournament_types');
-            $table->foreignId('zone_id')->nullable()->constrained('zones')->onDelete('cascade');
+            $table->foreignId('zone_id')->nullable()->constrained('zones')->cascadeOnDelete();
             $table->enum('status', ['draft', 'open', 'closed', 'assigned', 'completed', 'cancelled'])->default('draft');
             $table->text('description')->nullable();
             $table->text('notes')->nullable();
@@ -30,8 +30,8 @@ return new class extends Migration
 
         Schema::create('assignments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('tournament_id')->constrained('tournaments')->onDelete('cascade');
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('tournament_id')->constrained('tournaments')->cascadeOnDelete();
             $table->enum('role', ['Direttore di Torneo', 'Arbitro', 'Osservatore']);
             $table->string('status', 50)->default('assigned');
             $table->boolean('is_confirmed')->default(false);
@@ -48,8 +48,8 @@ return new class extends Migration
 
         Schema::create('availabilities', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('tournament_id')->constrained('tournaments')->onDelete('cascade');
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('tournament_id')->constrained('tournaments')->cascadeOnDelete();
             $table->text('notes')->nullable();
             $table->timestamp('submitted_at');
             $table->timestamps();

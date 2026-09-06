@@ -1,16 +1,16 @@
 import './bootstrap.js';
 import Alpine from 'alpinejs'
 
-// Initialize Alpine
-Alpine.start()
-window.Alpine = Alpine
-
 // Import React and calendar components
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import AdminCalendar from './Components/Calendar/AdminCalendar.jsx';
 import RefereeCalendar from './Components/Calendar/RefereeCalendar.jsx';
 import PublicCalendar from './Components/Calendar/PublicCalendar.jsx';
+
+// Initialize Alpine
+Alpine.start()
+window.Alpine = Alpine
 
 // =================================================================
 // Calendario — mounting helper centralizzato

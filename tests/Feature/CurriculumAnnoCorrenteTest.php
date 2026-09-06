@@ -95,13 +95,16 @@ class CurriculumAnnoCorrenteTest extends TestCase
         // L'anno corrente DEVE comparire nel curriculum
         $this->assertArrayHasKey(
             (string) $this->annoCorrente,
-            $careerData['assignments'],
+            $this->arrayAt($careerData, 'assignments'),
             "L'anno corrente ({$this->annoCorrente}) non compare in assignments. " .
             "BUG: getCareerData() legge solo lo storico JSON e ignora le tabelle live."
         );
 
         // I tornei dell'anno corrente devono essere presenti
-        $assignmentsAnnoCorrente = $careerData['assignments'][(string) $this->annoCorrente] ?? [];
+        $assignmentsAnnoCorrente = $this->arrayAt(
+            $this->arrayAt($careerData, 'assignments'),
+            (string) $this->annoCorrente
+        );
         $this->assertCount(
             2,
             $assignmentsAnnoCorrente,
@@ -133,18 +136,24 @@ class CurriculumAnnoCorrenteTest extends TestCase
         // Anno precedente (storico archiviato) deve esserci
         $this->assertArrayHasKey(
             (string) $this->annoPrecedente,
-            $careerData['assignments'],
+            $this->arrayAt($careerData, 'assignments'),
             "Anno precedente mancante dallo storico."
         );
-        $this->assertCount(2, $careerData['assignments'][(string) $this->annoPrecedente]);
+        $this->assertCount(2, $this->arrayAt(
+            $this->arrayAt($careerData, 'assignments'),
+            (string) $this->annoPrecedente
+        ));
 
         // Anno corrente (live) deve esserci
         $this->assertArrayHasKey(
             (string) $this->annoCorrente,
-            $careerData['assignments'],
+            $this->arrayAt($careerData, 'assignments'),
             "Anno corrente mancante — BUG: dati live ignorati quando esiste career history."
         );
-        $this->assertCount(3, $careerData['assignments'][(string) $this->annoCorrente]);
+        $this->assertCount(3, $this->arrayAt(
+            $this->arrayAt($careerData, 'assignments'),
+            (string) $this->annoCorrente
+        ));
     }
 
     // =========================================================================
@@ -214,11 +223,14 @@ class CurriculumAnnoCorrenteTest extends TestCase
         $careerData = $this->service->getCareerData($this->referee);
 
         // career_summary deve riflettere gli assignments live
+        $summary = $this->arrayAt($careerData, 'career_summary');
+        $totale = $summary['total_assignments'] ?? null;
+
         $this->assertEquals(
             2,
-            $careerData['career_summary']['total_assignments'],
-            "Senza storico: attesi 2 assignments nel summary, trovati " .
-            ($careerData['career_summary']['total_assignments'] ?? 'null')
+            $totale,
+            'Senza storico: attesi 2 assignments nel summary, trovati '
+            .(is_scalar($totale) ? (string) $totale : 'null')
         );
     }
 
@@ -248,7 +260,10 @@ class CurriculumAnnoCorrenteTest extends TestCase
 
         $careerData = $this->service->getCareerData($this->referee);
 
-        $assignmentsAnnoCorrente = $careerData['assignments'][(string) $this->annoCorrente] ?? [];
+        $assignmentsAnnoCorrente = $this->arrayAt(
+            $this->arrayAt($careerData, 'assignments'),
+            (string) $this->annoCorrente
+        );
 
         // Attenzione: la logica corretta dipende dalla strategia di merge scelta.
         // Qui verifichiamo che ci siano almeno 2 (lo storico) e al massimo 4

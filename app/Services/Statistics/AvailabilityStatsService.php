@@ -5,6 +5,7 @@ namespace App\Services\Statistics;
 use App\Models\Availability;
 use App\Models\User;
 use App\Traits\HasZoneVisibility;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -14,6 +15,8 @@ class AvailabilityStatsService
 
     /**
      * Ottiene statistiche generali sulle disponibilità.
+     *
+     * @return array<string, mixed>
      */
     public function getGeneralStats(?User $user = null): array
     {
@@ -37,6 +40,7 @@ class AvailabilityStatsService
 
     /**
      * Ottiene disponibilità per zona.
+     * @return \Illuminate\Support\Collection<array-key, mixed>
      */
     public function getByZone(?string $month = null, ?User $user = null): Collection
     {
@@ -63,6 +67,7 @@ class AvailabilityStatsService
 
     /**
      * Ottiene disponibilità per livello arbitro.
+     * @return \Illuminate\Support\Collection<array-key, mixed>
      */
     public function getByLevel(?string $month = null, ?User $user = null): Collection
     {
@@ -82,6 +87,7 @@ class AvailabilityStatsService
 
     /**
      * Ottiene disponibilità per mese (anno corrente).
+     * @return \Illuminate\Support\Collection<array-key, mixed>
      */
     public function getByMonth(?User $user = null): Collection
     {
@@ -122,6 +128,7 @@ class AvailabilityStatsService
 
     /**
      * Ottiene classifica arbitri per disponibilità.
+     * @return \Illuminate\Database\Eloquent\Collection<int, \App\Models\User>
      */
     public function getRefereesRanking(
         ?User $user = null,
@@ -145,6 +152,7 @@ class AvailabilityStatsService
 
     /**
      * Ottiene top arbitri per disponibilità.
+     * @return \Illuminate\Database\Eloquent\Collection<int, \App\Models\User>
      */
     public function getTopReferees(int $limit = 10, ?User $user = null): \Illuminate\Database\Eloquent\Collection
     {
@@ -162,6 +170,8 @@ class AvailabilityStatsService
 
     /**
      * Ottiene statistiche complete per la vista disponibilità.
+     *
+     * @return array<string, mixed>
      */
     public function getFullStats(
         ?string $month = null,
@@ -188,8 +198,10 @@ class AvailabilityStatsService
 
     /**
      * Query base con visibilità applicata.
+     *
+     * @return Builder<\App\Models\Availability>
      */
-    protected function baseQuery(?User $user = null)
+    protected function baseQuery(?User $user = null): Builder
     {
         $user = $user ?? auth()->user();
         $query = Availability::query();

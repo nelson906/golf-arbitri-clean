@@ -3,7 +3,6 @@
 namespace Tests\Unit\Mail;
 
 use App\Enums\AssignmentRole;
-use App\Mail\AssignmentNotification;
 use App\Mail\ClubNotificationMail;
 use App\Models\TournamentNotification;
 use App\Services\NotificationService;
@@ -24,6 +23,9 @@ use Tests\TestCase;
  */
 class MailDispatchRegressionTest extends TestCase
 {
+    /**
+     * @param  list<int>  $refereeIds
+     */
     private function makeNotification(int $tournamentId, bool $club, array $refereeIds): TournamentNotification
     {
         return TournamentNotification::create([
@@ -57,6 +59,10 @@ class MailDispatchRegressionTest extends TestCase
         );
 
         foreach ($iterator as $file) {
+            if (! $file instanceof \SplFileInfo) {
+                continue;
+            }
+
             if ($file->getExtension() !== 'php') {
                 continue;
             }
@@ -70,13 +76,13 @@ class MailDispatchRegressionTest extends TestCase
 
             $this->assertStringNotContainsString(
                 'new AssignmentNotification(',
-                $content,
+                (string) $content,
                 "DEAD-MAIL-02: AssignmentNotification è ancora istanziata in app/{$relPath}."
             );
 
             $this->assertStringNotContainsString(
                 'new \\App\\Mail\\AssignmentNotification(',
-                $content,
+                (string) $content,
                 "DEAD-MAIL-02: AssignmentNotification è ancora istanziata (FQCN) in app/{$relPath}."
             );
         }
@@ -109,7 +115,7 @@ class MailDispatchRegressionTest extends TestCase
         );
 
         $this->assertTrue(
-            Mail::queued(AssignmentNotification::class)->isEmpty(),
+            Mail::queued('App\\Mail\\AssignmentNotification')->isEmpty(),
             'DISPATCH-01: AssignmentNotification non deve mai essere inviata (è dead code).'
         );
     }

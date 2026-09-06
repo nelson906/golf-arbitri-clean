@@ -6,9 +6,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 /**
  * @property int $id
@@ -26,6 +29,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Zone extends Model
 {
+    /** @use HasFactory<\Database\Factories\ZoneFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -38,25 +42,45 @@ class Zone extends Model
         'is_active',
     ];
 
+    // ── SCOPES ──────────────────────────────────────────────────────
     /**
-     * RELAZIONI
+     * @param  Builder<Zone>  $query
+     * @return Builder<Zone>
      */
-    public function clubs()
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
+    }
+
+    // ── RELAZIONI ───────────────────────────────────────────────────
+    /**
+     * @return HasMany<Club, $this>
+     */
+    public function clubs(): HasMany
     {
         return $this->hasMany(Club::class);
     }
 
-    public function users()
+    /**
+     * @return HasMany<User, $this>
+     */
+    public function users(): HasMany
     {
         return $this->hasMany(User::class);
     }
 
-    public function referees()
+    /**
+     * @return HasMany<User, $this>
+     */
+    public function referees(): HasMany
     {
         return $this->hasMany(User::class)->where('user_type', 'referee');
     }
 
-    public function tournaments()
+    /**
+     * @return HasManyThrough<Tournament, Club, $this>
+     */
+    public function tournaments(): HasManyThrough
     {
         return $this->hasManyThrough(Tournament::class, Club::class);
     }

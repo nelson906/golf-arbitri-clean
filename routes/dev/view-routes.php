@@ -27,10 +27,14 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
         $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($viewsPath));
 
         foreach ($iterator as $file) {
+            if (! $file instanceof \SplFileInfo) {
+                continue;
+            }
+
             if ($file->isFile() && $file->getExtension() === 'php') {
-                $relativePath = str_replace($viewsPath.'/', '', $file->getPathname());
+                $relativePath = str_replace($viewsPath.'/', '', (string) $file->getPathname());
                 if (str_contains($relativePath, '.blade.php')) {
-                    $viewName = str_replace('.blade.php', '', $relativePath);
+                    $viewName = str_replace('.blade.php', '', (string) $relativePath);
                     $viewName = str_replace('/', '.', $viewName);
                     $allViews[] = [
                         'name' => $viewName,
@@ -41,7 +45,7 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
             }
         }
 
-        usort($allViews, fn ($a, $b) => strcmp($a['name'], $b['name']));
+        usort($allViews, fn ($a, $b) => strcmp((string) $a['name'], (string) $b['name']));
 
         return view('dev.view-list', ['views' => $allViews]);
     }
@@ -88,7 +92,7 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
         error_reporting(E_ALL);
         \Illuminate\Support\Facades\Auth::logout();
 
-        if (! empty(trim($renderedView))) {
+        if (! empty(trim((string) $renderedView))) {
             if (DebugCollector::hasIssues()) {
                 $renderedView .= view('dev.debug-panel', [
                     'issues' => DebugCollector::getIssues(),
@@ -96,7 +100,7 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
                 ])->render();
             }
 
-            return response($renderedView);
+            return response((string) $renderedView);
         }
 
         // Source analysis
@@ -106,7 +110,7 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
             return response("<div style='padding:40px;'>View file non trovato</div>");
         }
 
-        $source = file_get_contents($viewFile);
+        $source = (string) file_get_contents($viewFile);
         $lines = explode("\n", $source);
 
         $hasForm = str_contains($source, '<form') || str_contains($source, '@csrf');
@@ -227,16 +231,20 @@ Route::get('/dev/view-test-all', function () {
     $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($viewsPath));
 
     foreach ($iterator as $file) {
+        if (! $file instanceof \SplFileInfo) {
+            continue;
+        }
+
         if (! $file->isFile() || $file->getExtension() !== 'php') {
             continue;
         }
 
-        $relativePath = str_replace($viewsPath.'/', '', $file->getPathname());
+        $relativePath = str_replace($viewsPath.'/', '', (string) $file->getPathname());
         if (! str_contains($relativePath, '.blade.php')) {
             continue;
         }
 
-        $viewName = str_replace('.blade.php', '', $relativePath);
+        $viewName = str_replace('.blade.php', '', (string) $relativePath);
         $viewName = str_replace('/', '.', $viewName);
 
         error_reporting(0);

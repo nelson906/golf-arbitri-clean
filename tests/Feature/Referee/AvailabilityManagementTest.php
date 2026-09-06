@@ -207,7 +207,7 @@ class AvailabilityManagementTest extends TestCase
 
         $availability = Availability::where('user_id', $referee->id)
             ->where('tournament_id', $tournament->id)
-            ->first();
+            ->firstOrFail();
 
         $this->assertNotNull($availability->submitted_at);
     }

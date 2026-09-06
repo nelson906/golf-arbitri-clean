@@ -5,6 +5,8 @@ namespace App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Controller;
 use App\Services\Monitoring\SystemHealthService;
 use App\Services\Monitoring\SystemMetricsService;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class MonitoringController extends Controller
@@ -17,7 +19,7 @@ class MonitoringController extends Controller
     /**
      * Dashboard principale monitoraggio
      */
-    public function dashboard(Request $request)
+    public function dashboard(Request $request): View
     {
         $metrics = $this->metricsService->getAllMetrics();
         $healthStatus = $this->healthService->getHealthStatus();
@@ -25,8 +27,8 @@ class MonitoringController extends Controller
         $alerts = $this->metricsService->getSystemAlerts();
         $performance = $this->metricsService->getPerformanceOverview();
 
-        $period = $request->get('period', '24h');
-        $autoRefresh = $request->get('auto_refresh', true);
+        $period = $request->string('period', '24h')->toString();
+        $autoRefresh = $request->boolean('auto_refresh', true);
 
         return view('super-admin.monitoring.dashboard', compact(
             'metrics',
@@ -44,7 +46,7 @@ class MonitoringController extends Controller
      *
      * @deprecated Usa HealthCheckController@index
      */
-    public function healthCheck(Request $request)
+    public function healthCheck(Request $request): JsonResponse|View
     {
         $response = $this->healthService->performHealthCheck();
         $overallHealth = $response['status'] === 'healthy';
@@ -60,7 +62,7 @@ class MonitoringController extends Controller
     /**
      * Metriche real-time
      */
-    public function realtimeMetrics(Request $request)
+    public function realtimeMetrics(Request $request): JsonResponse|View
     {
         $metrics = $this->metricsService->getRealtimeMetrics();
 
@@ -72,30 +74,11 @@ class MonitoringController extends Controller
     }
 
     /**
-     * Storico performance
-     */
-    public function history(Request $request)
-    {
-        $period = $request->get('period', '24h');
-        $metric = $request->get('metric', 'response_time');
-
-        $historicalData = $this->metricsService->getHistoricalData($period, $metric);
-        $trends = $this->metricsService->calculateTrends($historicalData);
-
-        return view('super-admin.monitoring.history', compact(
-            'historicalData',
-            'trends',
-            'period',
-            'metric'
-        ));
-    }
-
-    /**
      * Metriche performance dettagliate
      */
-    public function performanceMetrics(Request $request)
+    public function performanceMetrics(Request $request): View
     {
-        $timeframe = $request->get('timeframe', '1h');
+        $timeframe = $request->string('timeframe', '1h')->toString();
 
         $metrics = $this->metricsService->getDetailedPerformanceMetrics($timeframe);
 
@@ -105,7 +88,7 @@ class MonitoringController extends Controller
     /**
      * API endpoint per metriche
      */
-    public function apiMetrics(Request $request, string $type)
+    public function apiMetrics(Request $request, string $type): JsonResponse
     {
         return match ($type) {
             'realtime' => response()->json($this->metricsService->getRealtimeMetrics()),

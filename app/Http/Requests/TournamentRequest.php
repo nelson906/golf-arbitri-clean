@@ -11,12 +11,14 @@ use Illuminate\Validation\Rule;
 
 class TournamentRequest extends FormRequest
 {
+    use \App\Http\Concerns\InteractsWithAuthUser;
+
     /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize(): bool
     {
-        $user = $this->user();
+        $user = $this->authUser();
 
         // Check user type — solo gli admin possono gestire tornei
         if (! $user->isAdmin()) {
@@ -65,24 +67,26 @@ class TournamentRequest extends FormRequest
                     }
 
                     // Check if category is available for user's zone
-                    $user = $this->user();
-                    if ($user && $user->isZoneAdmin() && ! $category->isAvailableForZone($user->zone_id)) {
+                    $user = $this->authUser();
+                    if ($user->isZoneAdmin() && ! $category->isAvailableForZone($user->zone_id)) {
                         $fail('Questa categoria non è disponibile per la tua zona.');
                     }
                 },
             ],
             'club_id' => [
-                'required',
+                // Facoltativo: una gara puo' entrare in calendario con data e zona
+                // note e il circolo ancora T.B.A. (vedi migration 2026_09_06_000001).
+                'nullable',
                 'exists:clubs,id',
                 function ($attribute, $value, $fail) {
-                    $club = Club::find($value);
+                    $club = Club::find((int) $value);
                     if ($club && ! $club->is_active) {
                         $fail('Il circolo selezionato non è attivo.');
                     }
 
                     // Check zone access for club
-                    $user = $this->user();
-                    if ($user->isZoneAdmin() && $club->zone_id !== $user->zone_id) {
+                    $user = $this->authUser();
+                    if ($club !== null && $user->isZoneAdmin() && $club->zone_id !== $user->zone_id) {
                         $fail('Non puoi selezionare un circolo di un\'altra zona.');
                     }
                 },
@@ -91,7 +95,7 @@ class TournamentRequest extends FormRequest
                 'required',
                 'date',
                 // Il super_admin può salvare tornei con date passate (correzione dati storici)
-                $this->user()->isSuperAdmin() ? null : ($isUpdate ? 'after_or_equal:today' : 'after:today'),
+                $this->authUser()->isSuperAdmin() ? null : ($isUpdate ? 'after_or_equal:today' : 'after:today'),
             ]),
             'end_date' => [
                 'required',
@@ -102,7 +106,7 @@ class TournamentRequest extends FormRequest
                 'required',
                 'date',
                 // Il super_admin può correggere scadenze passate
-                $this->user()->isSuperAdmin() ? null : 'after_or_equal:today',
+                $this->authUser()->isSuperAdmin() ? null : 'after_or_equal:today',
                 'before:start_date',
             ]),
             'notes' => 'nullable|string|max:1000',
@@ -117,7 +121,7 @@ class TournamentRequest extends FormRequest
                         }
                     } else {
                         // Per updates, il super_admin bypassa il vincolo di stato
-                        if (! $this->user()->isSuperAdmin() && ! $tournament->isEditable()) {
+                        if (! $this->authUser()->isSuperAdmin() && $tournament instanceof Tournament && ! $tournament->isEditable()) {
                             $fail('Questo torneo non può essere modificato nel suo stato attuale.');
                         }
                     }
@@ -126,7 +130,7 @@ class TournamentRequest extends FormRequest
         ];
 
         // Zone ID is required for national admins (not super_admin, who can set it via club)
-        if ($this->user()->user_type === UserType::NationalAdmin) {
+        if ($this->authUser()->user_type === UserType::NationalAdmin) {
             $rules['zone_id'] = [
                 'required',
                 'exists:zones,id',
@@ -172,8 +176,8 @@ class TournamentRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         // If not a national admin, set zone_id from the selected club
-        if ($this->user()->user_type !== UserType::NationalAdmin && $this->has('club_id')) {
-            $club = Club::find($this->club_id);
+        if ($this->authUser()->user_type !== UserType::NationalAdmin && $this->has('club_id')) {
+            $club = Club::find($this->integer('club_id'));
             if ($club) {
                 $this->merge([
                     'zone_id' => $club->zone_id,

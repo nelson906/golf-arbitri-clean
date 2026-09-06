@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\TournamentType;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -12,7 +14,7 @@ class TournamentTypeController extends Controller
     /**
      * Display a listing of the tournament types.
      */
-    public function index()
+    public function index(): View
     {
         $types = TournamentType::withCount('tournaments')
             ->orderBy('sort_order')
@@ -24,7 +26,7 @@ class TournamentTypeController extends Controller
     /**
      * Show the form for creating a new tournament type.
      */
-    public function create()
+    public function create(): View
     {
         return view('admin.tournament-types.create');
     }
@@ -32,7 +34,7 @@ class TournamentTypeController extends Controller
     /**
      * Store a newly created tournament type in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name'           => 'required|string|max:255|unique:tournament_types',
@@ -53,7 +55,9 @@ class TournamentTypeController extends Controller
         }
 
         // Set default values
-        $validated['sort_order']  = $validated['sort_order'] ?? (TournamentType::max('sort_order') ?? 0) + 1;
+        // max() ritorna mixed: un valore non numerico non deve diventare 0 per caso.
+        $maxOrder = TournamentType::max('sort_order');
+        $validated['sort_order']  = $validated['sort_order'] ?? (is_numeric($maxOrder) ? (int) $maxOrder : 0) + 1;
         $validated['is_active']   = $validated['is_active'] ?? true;
         $validated['is_national'] = $validated['is_national'] ?? false;
         $validated['calendar_color'] = $validated['calendar_color'] ?? '#'.substr(md5($validated['name']), 0, 6);
@@ -65,21 +69,9 @@ class TournamentTypeController extends Controller
     }
 
     /**
-     * Display the specified tournament type.
-     */
-    public function show(TournamentType $tournamentType)
-    {
-        $tournamentType->load(['tournaments' => function ($query) {
-            $query->latest()->limit(10);
-        }]);
-
-        return view('admin.tournament-types.show', compact('tournamentType'));
-    }
-
-    /**
      * Show the form for editing the specified tournament type.
      */
-    public function edit(TournamentType $tournamentType)
+    public function edit(TournamentType $tournamentType): View
     {
         return view('admin.tournament-types.edit', compact('tournamentType'));
     }
@@ -87,7 +79,7 @@ class TournamentTypeController extends Controller
     /**
      * Update the specified tournament type in storage.
      */
-    public function update(Request $request, TournamentType $tournamentType)
+    public function update(Request $request, TournamentType $tournamentType): RedirectResponse
     {
         $validated = $request->validate([
             'name'           => 'required|string|max:255|unique:tournament_types,name,'.$tournamentType->id,
@@ -114,7 +106,7 @@ class TournamentTypeController extends Controller
     /**
      * Remove the specified tournament type from storage.
      */
-    public function destroy(TournamentType $tournamentType)
+    public function destroy(TournamentType $tournamentType): RedirectResponse
     {
         // Check if there are tournaments using this type
         if ($tournamentType->tournaments()->exists()) {
@@ -130,7 +122,7 @@ class TournamentTypeController extends Controller
     /**
      * Toggle the active state of a tournament type.
      */
-    public function toggleActive(TournamentType $tournamentType)
+    public function toggleActive(TournamentType $tournamentType): RedirectResponse
     {
         $tournamentType->update([
             'is_active' => ! $tournamentType->is_active,
@@ -143,5 +135,4 @@ class TournamentTypeController extends Controller
                 'Tipo di torneo disattivato.'
         );
     }
-
 }

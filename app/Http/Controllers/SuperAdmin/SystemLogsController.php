@@ -5,6 +5,8 @@ namespace App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Controller;
 use App\Services\Monitoring\SystemLogsService;
 use Carbon\Carbon;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SystemLogsController extends Controller
@@ -16,11 +18,11 @@ class SystemLogsController extends Controller
     /**
      * Log di sistema
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
-        $level = $request->get('level', 'all');
-        $date = $request->get('date', Carbon::today()->format('Y-m-d'));
-        $search = $request->get('search');
+        $level = $request->string('level', 'all')->toString();
+        $date = $request->string('date', Carbon::today()->format('Y-m-d'))->toString();
+        $search = $request->string('search')->toString() ?: null;
 
         $logs = $this->logsService->getLogs($level, $date, $search);
         $logStats = $this->logsService->getLogStats($date);
@@ -35,48 +37,16 @@ class SystemLogsController extends Controller
     }
 
     /**
-     * Ottieni log per livello specifico
-     */
-    public function byLevel(Request $request, string $level)
-    {
-        $date = $request->get('date', Carbon::today()->format('Y-m-d'));
-        $limit = $request->get('limit', 50);
-
-        $logs = $this->logsService->getLogsByLevel($level, $date, $limit);
-
-        if ($request->wantsJson()) {
-            return response()->json($logs);
-        }
-
-        return view('super-admin.monitoring.logs-level', compact('logs', 'level', 'date'));
-    }
-
-    /**
      * Conta errori recenti
      */
-    public function errorCount(Request $request)
+    public function errorCount(Request $request): JsonResponse
     {
-        $hours = $request->get('hours', 24);
+        $hours = $request->integer('hours', 24);
         $count = $this->logsService->countRecentErrors($hours);
 
         return response()->json([
             'error_count' => $count,
             'period_hours' => $hours,
         ]);
-    }
-
-    /**
-     * Statistiche log
-     */
-    public function stats(Request $request)
-    {
-        $date = $request->get('date', Carbon::today()->format('Y-m-d'));
-        $stats = $this->logsService->getLogStats($date);
-
-        if ($request->wantsJson()) {
-            return response()->json($stats);
-        }
-
-        return view('super-admin.monitoring.logs-stats', compact('stats', 'date'));
     }
 }

@@ -10,6 +10,18 @@ use Tests\TestCase;
 
 class AssignmentValidationServiceTest extends TestCase
 {
+
+    /**
+     * Data di test a 6 mesi da oggi, spostata di $offset giorni.
+     *
+     * Le date fisse invecchiano: prima erano hardcoded a marzo 2026 e sarebbero
+     * uscite dall'anno corrente il 2027-01-01. Gli offset conservano le
+     * sovrapposizioni volute fra i tornei (0-2 vs 1-3 = conflitto, 0-2 vs 5-7 = no).
+     */
+    private function futureDate(int $offset = 0): Carbon
+    {
+        return now()->addMonths(6)->startOfDay()->addDays($offset);
+    }
     protected AssignmentValidationService $service;
 
     protected function setUp(): void
@@ -31,15 +43,15 @@ class AssignmentValidationServiceTest extends TestCase
 
         // Torneo 1: 10-12 Marzo
         $tournament1 = Tournament::factory()->create([
-            'start_date' => Carbon::parse('2026-03-10'),
-            'end_date' => Carbon::parse('2026-03-12'),
+            'start_date' => $this->futureDate(0),
+            'end_date' => $this->futureDate(2),
             'status' => 'open',
         ]);
 
         // Torneo 2: 11-13 Marzo (SOVRAPPOSTO!)
         $tournament2 = Tournament::factory()->create([
-            'start_date' => Carbon::parse('2026-03-11'),
-            'end_date' => Carbon::parse('2026-03-13'),
+            'start_date' => $this->futureDate(1),
+            'end_date' => $this->futureDate(3),
             'status' => 'open',
         ]);
 
@@ -49,7 +61,7 @@ class AssignmentValidationServiceTest extends TestCase
         $conflicts = $this->service->detectDateConflicts();
 
         $this->assertCount(1, $conflicts);
-        $this->assertEquals($referee->id, $conflicts->first()['referee']->id);
+        $this->assertEquals($referee->id, $conflicts->firstOrFail()['referee']->id);
     }
 
     /**
@@ -61,15 +73,15 @@ class AssignmentValidationServiceTest extends TestCase
 
         // Torneo 1: 10-12 Marzo
         $tournament1 = Tournament::factory()->create([
-            'start_date' => Carbon::parse('2026-03-10'),
-            'end_date' => Carbon::parse('2026-03-12'),
+            'start_date' => $this->futureDate(0),
+            'end_date' => $this->futureDate(2),
             'status' => 'open',
         ]);
 
         // Torneo 2: 15-17 Marzo (SEPARATO)
         $tournament2 = Tournament::factory()->create([
-            'start_date' => Carbon::parse('2026-03-15'),
-            'end_date' => Carbon::parse('2026-03-17'),
+            'start_date' => $this->futureDate(5),
+            'end_date' => $this->futureDate(7),
             'status' => 'open',
         ]);
 
@@ -94,16 +106,16 @@ class AssignmentValidationServiceTest extends TestCase
         $t1 = Tournament::factory()->create([
             'club_id' => $club1->id,
             'zone_id' => 1,
-            'start_date' => Carbon::parse('2026-03-10'),
-            'end_date' => Carbon::parse('2026-03-12'),
+            'start_date' => $this->futureDate(0),
+            'end_date' => $this->futureDate(2),
             'status' => 'open',
         ]);
 
         $t2 = Tournament::factory()->create([
             'club_id' => $club1->id,
             'zone_id' => 1,
-            'start_date' => Carbon::parse('2026-03-11'),
-            'end_date' => Carbon::parse('2026-03-13'),
+            'start_date' => $this->futureDate(1),
+            'end_date' => $this->futureDate(3),
             'status' => 'open',
         ]);
 
@@ -111,8 +123,8 @@ class AssignmentValidationServiceTest extends TestCase
         $t3 = Tournament::factory()->create([
             'club_id' => $club2->id,
             'zone_id' => 2,
-            'start_date' => Carbon::parse('2026-03-11'),
-            'end_date' => Carbon::parse('2026-03-13'),
+            'start_date' => $this->futureDate(1),
+            'end_date' => $this->futureDate(3),
             'status' => 'open',
         ]);
 
@@ -138,7 +150,6 @@ class AssignmentValidationServiceTest extends TestCase
     {
         $summary = $this->service->getValidationSummary();
 
-        $this->assertIsArray($summary);
         $this->assertArrayHasKey('conflicts', $summary);
         $this->assertArrayHasKey('missing_requirements', $summary);
         $this->assertArrayHasKey('overassigned', $summary);
@@ -153,7 +164,6 @@ class AssignmentValidationServiceTest extends TestCase
     {
         $summary = $this->service->getValidationSummary(1);
 
-        $this->assertIsArray($summary);
         $this->assertIsInt($summary['total_issues']);
     }
 
@@ -172,14 +182,14 @@ class AssignmentValidationServiceTest extends TestCase
 
         // Case 1: Start dentro, end fuori
         $t1 = Tournament::factory()->create([
-            'start_date' => Carbon::parse('2026-03-10'),
-            'end_date' => Carbon::parse('2026-03-15'),
+            'start_date' => $this->futureDate(0),
+            'end_date' => $this->futureDate(5),
             'status' => 'open',
         ]);
 
         $t2 = Tournament::factory()->create([
-            'start_date' => Carbon::parse('2026-03-12'),
-            'end_date' => Carbon::parse('2026-03-18'),
+            'start_date' => $this->futureDate(2),
+            'end_date' => $this->futureDate(8),
             'status' => 'open',
         ]);
 
@@ -200,15 +210,15 @@ class AssignmentValidationServiceTest extends TestCase
 
         // Torneo 1: 10-12 Marzo (fine 12)
         $t1 = Tournament::factory()->create([
-            'start_date' => Carbon::parse('2026-03-10'),
-            'end_date' => Carbon::parse('2026-03-12'),
+            'start_date' => $this->futureDate(0),
+            'end_date' => $this->futureDate(2),
             'status' => 'open',
         ]);
 
         // Torneo 2: 13-15 Marzo (inizio 13 - giorno dopo)
         $t2 = Tournament::factory()->create([
-            'start_date' => Carbon::parse('2026-03-13'),
-            'end_date' => Carbon::parse('2026-03-15'),
+            'start_date' => $this->futureDate(3),
+            'end_date' => $this->futureDate(5),
             'status' => 'open',
         ]);
 
@@ -258,14 +268,14 @@ class AssignmentValidationServiceTest extends TestCase
 
         // Due tornei sovrapposti ma completed
         $t1 = Tournament::factory()->create([
-            'start_date' => Carbon::parse('2026-03-10'),
-            'end_date' => Carbon::parse('2026-03-12'),
+            'start_date' => $this->futureDate(0),
+            'end_date' => $this->futureDate(2),
             'status' => 'completed',
         ]);
 
         $t2 = Tournament::factory()->create([
-            'start_date' => Carbon::parse('2026-03-11'),
-            'end_date' => Carbon::parse('2026-03-13'),
+            'start_date' => $this->futureDate(1),
+            'end_date' => $this->futureDate(3),
             'status' => 'completed',
         ]);
 

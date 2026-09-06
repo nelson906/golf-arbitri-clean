@@ -76,6 +76,7 @@ class ResendNationalNotificationDetailsTest extends TestCase
         ]);
 
         $fresh = $notification->fresh();
+        $this->assertNotNull($fresh);
 
         $this->assertIsArray($fresh->details);
         $this->assertEquals(7, $fresh->details['total_recipients']);
@@ -101,6 +102,7 @@ class ResendNationalNotificationDetailsTest extends TestCase
         $notification->update(['total_recipients' => 99]);
 
         $fresh = $notification->fresh();
+        $this->assertNotNull($fresh);
 
         // Verifica che la colonna fantasma non abbia persistito il valore
         // (non è in $fillable, quindi Eloquent la ignora)

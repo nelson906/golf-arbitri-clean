@@ -33,7 +33,7 @@ class TournamentController extends Controller
      */
     public function index(Request $request): View
     {
-        $user = auth()->user();
+        $user = $this->authUser();
 
         $query = Tournament::with(['tournamentType', 'zone', 'club']);
         $this->applyTournamentVisibility($query, $user);
@@ -67,8 +67,8 @@ class TournamentController extends Controller
      */
     public function calendar(Request $request): View
     {
-        $user = auth()->user();
-        $forceUserMode = $request->get('view_as') === 'user';
+        $user = $this->authUser();
+        $forceUserMode = $request->string('view_as')->toString() === 'user';
         $isAdmin = $forceUserMode ? false : $this->isAdmin($user);
 
         $query = Tournament::with([
@@ -87,10 +87,10 @@ class TournamentController extends Controller
             $query->whereIn('status', ['open', 'closed', 'assigned', 'completed']);
         }
 
-        $currentYear = $request->get('year', now()->year);
+        $currentYear = $request->integer('year', now()->year);
         $query->whereBetween('start_date', [
-            Carbon::create($currentYear, 1, 1)->startOfYear(),
-            Carbon::create($currentYear, 12, 31)->endOfYear(),
+            now()->setYear($currentYear)->startOfYear(),
+            now()->setYear($currentYear)->endOfYear(),
         ]);
 
         $tournaments = $query->orderBy('start_date')->get();
@@ -122,7 +122,7 @@ class TournamentController extends Controller
      */
     public function show(Tournament $tournament): View
     {
-        $user = auth()->user();
+        $user = $this->authUser();
         $isAdmin = $this->isAdmin($user);
 
         // 🔐 CHECK ACCESS
@@ -154,7 +154,7 @@ class TournamentController extends Controller
                 'total_assignments' => $tournament->assignments()->count(),
                 'total_availabilities' => $tournament->availabilities()->count(),
                 'required_referees' => $tournament->required_referees ?? 1,
-                'max_referees' => $tournament->tournamentType?->max_referees ?? 4,
+                'max_referees' => $tournament->tournamentType->max_referees ?? 4,
                 'days_until_deadline' => $tournament->availability_deadline
                     ? Carbon::parse($tournament->availability_deadline)->diffInDays(now(), false)
                     : null,
@@ -166,7 +166,7 @@ class TournamentController extends Controller
         }
 
         // Get required referees from tournament type
-        $required_referees = $tournament->tournamentType?->min_referees ?? 1;
+        $required_referees = $tournament->tournamentType->min_referees ?? 1;
 
         return view('tournaments.show', compact(
             'tournament',
@@ -186,6 +186,11 @@ class TournamentController extends Controller
 
     // Nota: isAdmin, isNationalAdmin, isNationalReferee sono nel trait HasZoneVisibility
 
+    /**
+     * @param  \App\Models\Tournament  $tournament
+     * @param  \App\Models\User|null  $user
+     * @param  bool  $isAdmin
+     */
     private function checkTournamentAccess($tournament, $user, $isAdmin): void
     {
         // Non-admin non possono vedere tornei in draft

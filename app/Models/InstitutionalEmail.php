@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -45,7 +45,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class InstitutionalEmail extends Model
 {
-    use HasFactory;
 
     /**
      * Available categories for institutional emails
@@ -73,6 +72,8 @@ class InstitutionalEmail extends Model
 
     /**
      * Relationship with Zone
+     *
+     * @return BelongsTo<Zone, $this>
      */
     public function zone(): BelongsTo
     {
@@ -81,16 +82,22 @@ class InstitutionalEmail extends Model
 
     /**
      * Scope for active emails
+     *
+     * @param  Builder<InstitutionalEmail>  $query
+     * @return Builder<InstitutionalEmail>
      */
-    public function scopeActive($query)
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
     }
 
     /**
      * Scope for specific zone
+     *
+     * @param  Builder<InstitutionalEmail>  $query
+     * @return Builder<InstitutionalEmail>
      */
-    public function scopeForZone($query, $zoneId = null)
+    public function scopeForZone(Builder $query, ?int $zoneId = null): Builder
     {
         if ($zoneId) {
             return $query->where(function ($q) use ($zoneId) {
@@ -104,8 +111,11 @@ class InstitutionalEmail extends Model
 
     /**
      * Scope for specific category
+     *
+     * @param  Builder<InstitutionalEmail>  $query
+     * @return Builder<InstitutionalEmail>
      */
-    public function scopeOfCategory($query, $category)
+    public function scopeOfCategory(Builder $query, string $category): Builder
     {
         return $query->where('category', $category);
     }
@@ -113,7 +123,7 @@ class InstitutionalEmail extends Model
     /**
      * Get category badge color
      */
-    public function getCategoryBadgeColorAttribute()
+    public function getCategoryBadgeColorAttribute(): string
     {
         return match ($this->category) {
             'federazione' => 'bg-red-100 text-red-800',
@@ -127,13 +137,15 @@ class InstitutionalEmail extends Model
     /**
      * Get category display name
      */
-    public function getCategoryDisplayAttribute()
+    public function getCategoryDisplayAttribute(): string
     {
         return self::CATEGORIES[$this->category] ?? ucfirst($this->category);
     }
 
     /**
      * Get all available categories
+     *
+     * @return array<string, string>
      */
     public static function getCategories(): array
     {

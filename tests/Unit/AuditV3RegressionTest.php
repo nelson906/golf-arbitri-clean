@@ -81,6 +81,7 @@ class AuditV3RegressionTest extends TestCase
         ]);
 
         $fresh = $notification->fresh();
+        $this->assertNotNull($fresh);
 
         $this->assertIsArray($fresh->metadata,
             'BUG-01: metadata deve essere un array dopo fresh().');
@@ -106,6 +107,7 @@ class AuditV3RegressionTest extends TestCase
         ]);
 
         $fresh = $notification->fresh();
+        $this->assertNotNull($fresh);
 
         // Pattern usato da resend() nel controller
         $isNational = $fresh->metadata['is_national'] ?? false;
@@ -240,7 +242,7 @@ class AuditV3RegressionTest extends TestCase
         $this->assertFileExists($serviceProviderPath,
             'BUG-03: AppServiceProvider.php deve esistere.');
 
-        $source = file_get_contents($serviceProviderPath);
+        $source = (string) file_get_contents($serviceProviderPath);
 
         $this->assertStringContainsString('AssignmentObserver', $source,
             'BUG-03: AppServiceProvider deve fare riferimento ad AssignmentObserver.');
@@ -273,8 +275,9 @@ class AuditV3RegressionTest extends TestCase
         ]);
 
         $fresh = $notification->fresh();
+        $this->assertNotNull($fresh);
 
-        $this->assertStringContainsString($referee->name, $fresh->referee_list,
+        $this->assertStringContainsString($referee->name, (string) $fresh->referee_list,
             'BUG-03: Il nome dell\'arbitro assegnato deve comparire in referee_list dopo la creazione.');
     }
 
@@ -305,16 +308,18 @@ class AuditV3RegressionTest extends TestCase
         ]);
 
         // Verifica che entrambi siano presenti
-        $this->assertStringContainsString('Arbitro Uno', $notification->fresh()->referee_list);
-        $this->assertStringContainsString('Arbitro Due', $notification->fresh()->referee_list);
+        $refereeList = (string) $notification->refresh()->referee_list;
+        $this->assertStringContainsString('Arbitro Uno', $refereeList);
+        $this->assertStringContainsString('Arbitro Due', $refereeList);
 
         // Elimina la prima assegnazione
         $assignment1->delete();
 
         $freshAfterDelete = $notification->fresh();
-        $this->assertStringNotContainsString('Arbitro Uno', $freshAfterDelete->referee_list,
+        $this->assertNotNull($freshAfterDelete);
+        $this->assertStringNotContainsString('Arbitro Uno', (string) $freshAfterDelete->referee_list,
             'BUG-03: referee_list non deve contenere l\'arbitro rimosso.');
-        $this->assertStringContainsString('Arbitro Due', $freshAfterDelete->referee_list,
+        $this->assertStringContainsString('Arbitro Due', (string) $freshAfterDelete->referee_list,
             'BUG-03: referee_list deve ancora contenere l\'arbitro rimanente.');
     }
 
@@ -339,6 +344,8 @@ class AuditV3RegressionTest extends TestCase
         ]);
 
         $fresh = $notification->fresh();
+        $this->assertNotNull($fresh);
+        $this->assertIsArray($fresh->details);
         $this->assertArrayHasKey('total_recipients', $fresh->details,
             'BUG-03: details deve contenere total_recipients dopo l\'aggiornamento observer.');
         $this->assertGreaterThan(0, $fresh->details['total_recipients'],
@@ -377,7 +384,6 @@ class AuditV3RegressionTest extends TestCase
             'DUP-02: referee_levels() deve essere una funzione globale.');
 
         $levels = referee_levels();
-        $this->assertIsArray($levels);
         $this->assertNotEmpty($levels);
         $this->assertArrayHasKey('Aspirante', $levels);
     }
@@ -582,7 +588,7 @@ class AuditV3RegressionTest extends TestCase
         $docComment = $rc->getDocComment() ?: '';
 
         // Cerca nel file sorgente (le costanti non hanno reflection doc individuale in PHP)
-        $source = file_get_contents($rc->getFileName());
+        $source = (string) file_get_contents((string) $rc->getFileName());
 
         $this->assertStringContainsString('@deprecated', $source,
             'DUP-05: Il file Tournament.php deve contenere annotazioni @deprecated per STATUS_*.');

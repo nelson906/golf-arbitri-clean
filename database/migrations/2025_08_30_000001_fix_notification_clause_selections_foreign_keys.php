@@ -38,12 +38,12 @@ return new class extends Migration
             $table->foreign('tournament_notification_id', 'fk_ncs_tournament_notification')
                 ->references('id')
                 ->on('tournament_notifications')
-                ->onDelete('cascade');
+                ->cascadeOnDelete();
 
             $table->foreign('clause_id', 'fk_ncs_clause')
                 ->references('id')
                 ->on('notification_clauses')
-                ->onDelete('cascade');
+                ->cascadeOnDelete();
         });
     }
 

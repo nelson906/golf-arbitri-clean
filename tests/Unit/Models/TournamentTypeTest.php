@@ -17,11 +17,11 @@ class TournamentTypeTest extends TestCase
      */
     public function test_tournament_type_has_many_tournaments(): void
     {
-        $type = TournamentType::first();
+        $type = TournamentType::firstOrFail();
 
         Tournament::factory()->count(3)->create(['tournament_type_id' => $type->id]);
 
-        $this->assertCount(3, $type->fresh()->tournaments);
+        $this->assertCount(3, $type->refresh()->tournaments);
     }
 
     // ==========================================
@@ -80,7 +80,7 @@ class TournamentTypeTest extends TestCase
      */
     public function test_tournament_type_has_required_attributes(): void
     {
-        $type = TournamentType::first();
+        $type = TournamentType::firstOrFail();
 
         $this->assertNotNull($type->name);
         $this->assertNotNull($type->short_name);
@@ -94,7 +94,7 @@ class TournamentTypeTest extends TestCase
      */
     public function test_tournament_type_has_calendar_color(): void
     {
-        $type = TournamentType::first();
+        $type = TournamentType::firstOrFail();
 
         $this->assertNotNull($type->calendar_color);
         $this->assertStringStartsWith('#', $type->calendar_color);

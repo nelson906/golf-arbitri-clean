@@ -65,6 +65,8 @@ class RefereeLevelsHelper
     /**
      * Ottieni tutti i livelli per select.
      * Delega a RefereeLevel::selectOptions() — fonte di verità.
+     *
+     * @return array<string, string>
      */
     public static function getSelectOptions(bool $includeArchived = false): array
     {
@@ -112,7 +114,7 @@ class RefereeLevelsHelper
 
         $normalized = self::normalize($level);
 
-        return self::DB_ENUM_VALUES[$normalized] ?? ucfirst($level);
+        return self::DB_ENUM_VALUES[$normalized ?? ''] ?? ucfirst($level);
     }
 
     /**
@@ -126,7 +128,7 @@ class RefereeLevelsHelper
 
         $normalized = self::normalize($level);
 
-        return array_key_exists($normalized, self::DB_ENUM_VALUES);
+        return array_key_exists($normalized ?? '', self::DB_ENUM_VALUES);
     }
 
     /**
@@ -140,6 +142,8 @@ class RefereeLevelsHelper
 
     /**
      * Debug helper
+     *
+     * @return array<string, mixed>
      */
     public static function debugLevel(string $level): array
     {
@@ -161,6 +165,8 @@ class RefereeLevelsHelper
 
     /**
      * Ottieni tutte le varianti per debug
+     *
+     * @return list<string>
      */
     public static function getAllVariants(): array
     {

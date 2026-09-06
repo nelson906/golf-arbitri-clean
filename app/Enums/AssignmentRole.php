@@ -56,14 +56,14 @@ enum AssignmentRole: string
      * Ordina una Collection di assegnazioni per gerarchia di ruolo, poi per nome.
      * Sostituisce RefereeRoleHelper::sortByRole().
      *
-     * @param  \Illuminate\Support\Collection $assignments
-     * @return \Illuminate\Support\Collection
+     * @param  \Illuminate\Support\Collection<int, \App\Models\Assignment>  $assignments
+     * @return \Illuminate\Support\Collection<int, \App\Models\Assignment>
      */
     public static function sortCollection(\Illuminate\Support\Collection $assignments): \Illuminate\Support\Collection
     {
         return $assignments->sort(function ($a, $b) {
-            $orderA = self::tryFrom($a->role)?->sortOrder() ?? 999;
-            $orderB = self::tryFrom($b->role)?->sortOrder() ?? 999;
+            $orderA = self::tryFrom($a->role ?? '')?->sortOrder() ?? 999;
+            $orderB = self::tryFrom($b->role ?? '')?->sortOrder() ?? 999;
 
             if ($orderA === $orderB) {
                 return strcmp($a->user->name ?? '', $b->user->name ?? '');

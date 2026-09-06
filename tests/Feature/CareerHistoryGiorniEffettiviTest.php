@@ -13,6 +13,29 @@ use Tests\TestCase;
 
 class CareerHistoryGiorniEffettiviTest extends TestCase
 {
+
+    /**
+     * Anno di riferimento dei test: ~6 mesi nel futuro.
+     *
+     * Qui l'anno non e' solo una data, e' anche la CHIAVE dello storico
+     * (tournaments_by_year), quindi date e chiave devono muoversi insieme.
+     */
+    private function targetYear(): int
+    {
+        return now()->addMonths(6)->year;
+    }
+
+    /**
+     * Data dentro l'anno di riferimento, a $offset giorni dal 1 marzo.
+     *
+     * L'ancora al 1 marzo (non a "oggi + 6 mesi") garantisce che gli offset
+     * usati qui — fino a ~95 giorni — restino sempre dentro targetYear(),
+     * qualunque sia il giorno in cui gira la suite.
+     */
+    private function targetDate(int $offset = 0): string
+    {
+        return now()->addMonths(6)->startOfYear()->addMonths(2)->addDays($offset)->format('Y-m-d');
+    }
     use RefreshDatabase;
 
     protected User $referee;
@@ -57,8 +80,8 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
         $this->tournament = Tournament::factory()->create([
             'name' => 'Torneo Test '.now()->timestamp,
             'zone_id' => $this->zone->id,
-            'start_date' => '2025-04-04',
-            'end_date' => '2025-04-08', // 5 giorni
+            'start_date' => $this->targetDate(34),
+            'end_date' => $this->targetDate(38), // 5 giorni
         ]);
 
         $this->careerHistoryService = app(CareerHistoryService::class);
@@ -66,7 +89,7 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function it_creates_referee_career_history_on_first_tournament_add()
+    public function it_creates_referee_career_history_on_first_tournament_add(): void
     {
         $this->assertDatabaseMissing('referee_career_history', [
             'user_id' => $this->referee->id,
@@ -77,12 +100,12 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
             'name' => $this->tournament->name,
             'club_id' => $this->tournament->club_id,
             'start_date' => $this->tournament->start_date->format('Y-m-d'),
-            'end_date' => $this->tournament->end_date->format('Y-m-d'),
+            'end_date' => $this->targetDate(38),
         ];
 
         $result = $this->careerHistoryService->addTournamentEntry(
             $this->referee->id,
-            2025,
+            $this->targetYear(),
             $tournamentData,
             3 // giorni effettivi
         );
@@ -94,33 +117,34 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function it_adds_tournament_with_days_count()
+    public function it_adds_tournament_with_days_count(): void
     {
         $tournamentData = [
             'id' => $this->tournament->id,
             'name' => $this->tournament->name,
             'club_id' => $this->tournament->club_id,
             'start_date' => $this->tournament->start_date->format('Y-m-d'),
-            'end_date' => $this->tournament->end_date->format('Y-m-d'),
+            'end_date' => $this->targetDate(38),
         ];
 
         $this->careerHistoryService->addTournamentEntry(
             $this->referee->id,
-            2025,
+            $this->targetYear(),
             $tournamentData,
             3 // giorni effettivi
         );
 
-        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->first();
+        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->firstOrFail();
 
-        $this->assertNotNull($history);
-        $this->assertArrayHasKey('2025', $history->tournaments_by_year);
-        $this->assertCount(1, $history->tournaments_by_year['2025']);
-        $this->assertEquals(3, $history->tournaments_by_year['2025'][0]['days_count']);
+        $this->assertIsArray($history->tournaments_by_year);
+        $anno = $this->arrayAt($history->tournaments_by_year, $this->targetYear());
+        $this->assertCount(1, $anno);
+        $primo = $this->arrayAt($anno, 0);
+        $this->assertEquals(3, $primo['days_count'] ?? null);
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function it_updates_tournament_days()
+    public function it_updates_tournament_days(): void
     {
         // Aggiungi torneo
         $tournamentData = [
@@ -128,12 +152,12 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
             'name' => $this->tournament->name,
             'club_id' => $this->tournament->club_id,
             'start_date' => $this->tournament->start_date->format('Y-m-d'),
-            'end_date' => $this->tournament->end_date->format('Y-m-d'),
+            'end_date' => $this->targetDate(38),
         ];
 
         $this->careerHistoryService->addTournamentEntry(
             $this->referee->id,
-            2025,
+            $this->targetYear(),
             $tournamentData,
             3
         );
@@ -141,19 +165,20 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
         // Aggiorna giorni
         $updated = $this->careerHistoryService->updateTournamentDays(
             $this->referee->id,
-            2025,
+            $this->targetYear(),
             $this->tournament->id,
             4 // cambio da 3 a 4
         );
 
         $this->assertTrue($updated);
 
-        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->first();
-        $this->assertEquals(4, $history->tournaments_by_year['2025'][0]['days_count']);
+        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->firstOrFail();
+        $this->assertIsArray($history->tournaments_by_year);
+        $this->assertEquals(4, $history->tournaments_by_year[$this->targetYear()][0]['days_count']);
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function it_updates_tournament_complete_data()
+    public function it_updates_tournament_complete_data(): void
     {
         // Aggiungi torneo
         $tournamentData = [
@@ -161,13 +186,13 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
             'name' => 'Nome Originale',
             'club_id' => $this->tournament->club_id,
             'club_name' => 'Club Originale',
-            'start_date' => '2025-04-04',
-            'end_date' => '2025-04-08',
+            'start_date' => $this->targetDate(34),
+            'end_date' => $this->targetDate(38),
         ];
 
         $this->careerHistoryService->addTournamentEntry(
             $this->referee->id,
-            2025,
+            $this->targetYear(),
             $tournamentData,
             3
         );
@@ -181,15 +206,16 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
 
         $updated = $this->careerHistoryService->updateTournamentEntry(
             $this->referee->id,
-            2025,
+            $this->targetYear(),
             $this->tournament->id,
             $updateData
         );
 
         $this->assertTrue($updated);
 
-        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->first();
-        $tournament = $history->tournaments_by_year['2025'][0];
+        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->firstOrFail();
+        $this->assertIsArray($history->tournaments_by_year);
+        $tournament = $history->tournaments_by_year[$this->targetYear()][0];
 
         $this->assertEquals('Nome Modificato', $tournament['name']);
         $this->assertEquals('Club Modificato', $tournament['club_name']);
@@ -197,34 +223,35 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function it_recalculates_career_stats_after_adding_tournament()
+    public function it_recalculates_career_stats_after_adding_tournament(): void
     {
         $tournamentData = [
             'id' => $this->tournament->id,
             'name' => $this->tournament->name,
             'club_id' => $this->tournament->club_id,
             'start_date' => $this->tournament->start_date->format('Y-m-d'),
-            'end_date' => $this->tournament->end_date->format('Y-m-d'),
+            'end_date' => $this->targetDate(38),
         ];
 
         $this->careerHistoryService->addTournamentEntry(
             $this->referee->id,
-            2025,
+            $this->targetYear(),
             $tournamentData,
             3
         );
 
-        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->first();
+        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->firstOrFail();
 
         $this->assertNotNull($history->career_stats);
         $this->assertArrayHasKey('total_tournaments', $history->career_stats);
         $this->assertArrayHasKey('total_assignments', $history->career_stats);
         $this->assertArrayHasKey('first_year', $history->career_stats);
+        $this->assertIsArray($history->career_stats);
         $this->assertEquals(1, $history->career_stats['total_tournaments']);
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function it_recalculates_career_stats_after_updating_tournament()
+    public function it_recalculates_career_stats_after_updating_tournament(): void
     {
         // Aggiungi 2 tornei
         $tournamentData = [
@@ -232,15 +259,15 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
             'name' => $this->tournament->name,
             'club_id' => $this->tournament->club_id,
             'start_date' => $this->tournament->start_date->format('Y-m-d'),
-            'end_date' => $this->tournament->end_date->format('Y-m-d'),
+            'end_date' => $this->targetDate(38),
         ];
 
-        $this->careerHistoryService->addTournamentEntry($this->referee->id, 2025, $tournamentData, 3);
+        $this->careerHistoryService->addTournamentEntry($this->referee->id, $this->targetYear(), $tournamentData, 3);
 
         $tournament2 = Tournament::factory()->create([
             'zone_id' => $this->zone->id,
-            'start_date' => '2025-05-01',
-            'end_date' => '2025-05-03',
+            'start_date' => $this->targetDate(61),
+            'end_date' => $this->targetDate(63),
         ]);
 
         $tournamentData2 = [
@@ -248,45 +275,49 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
             'name' => $tournament2->name,
             'club_id' => $tournament2->club_id,
             'start_date' => $tournament2->start_date->format('Y-m-d'),
-            'end_date' => $tournament2->end_date->format('Y-m-d'),
+            'end_date' => $this->targetDate(63),
         ];
 
-        $this->careerHistoryService->addTournamentEntry($this->referee->id, 2025, $tournamentData2, 2);
+        $this->careerHistoryService->addTournamentEntry($this->referee->id, $this->targetYear(), $tournamentData2, 2);
 
-        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->first();
+        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->firstOrFail();
+        $this->assertIsArray($history->career_stats);
+        $this->assertIsArray($history->career_stats);
         $this->assertEquals(2, $history->career_stats['total_tournaments']);
 
         // Aggiorna uno
         $this->careerHistoryService->updateTournamentEntry(
             $this->referee->id,
-            2025,
+            $this->targetYear(),
             $this->tournament->id,
             ['name' => 'Nome Aggiornato']
         );
 
         $history->refresh();
         // Deve ancora essere 2, non deve cancellare tornei
+        $this->assertIsArray($history->career_stats);
         $this->assertEquals(2, $history->career_stats['total_tournaments']);
-        $this->assertCount(2, $history->tournaments_by_year['2025']);
+        $this->assertIsArray($history->tournaments_by_year);
+        $this->assertCount(2, $history->tournaments_by_year[$this->targetYear()]);
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function generate_stats_summary_includes_all_required_fields()
+    public function generate_stats_summary_includes_all_required_fields(): void
     {
         $history = RefereeCareerHistory::create([
             'user_id' => $this->referee->id,
             'tournaments_by_year' => [
-                '2025' => [
+                $this->targetYear() => [
                     [
                         'id' => 1,
                         'name' => 'Test',
-                        'start_date' => '2025-04-04',
-                        'end_date' => '2025-04-08',
+                        'start_date' => $this->targetDate(34),
+                        'end_date' => $this->targetDate(38),
                     ],
                 ],
             ],
             'assignments_by_year' => [
-                '2025' => [
+                $this->targetYear() => [
                     [
                         'id' => 1,
                         'tournament_id' => 1,
@@ -310,23 +341,23 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
 
         $this->assertEquals(1, $stats['total_tournaments']);
         $this->assertEquals(1, $stats['total_assignments']);
-        $this->assertEquals(2025, $stats['first_year']);
+        $this->assertEquals($this->targetYear(), $stats['first_year']);
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function get_career_data_includes_current_year_level()
+    public function get_career_data_includes_current_year_level(): void
     {
         $careerData = $this->refereeCareerService->getCareerData($this->referee);
 
         $currentYear = now()->year;
 
-        $this->assertArrayHasKey('career_levels', $careerData);
-        $this->assertArrayHasKey($currentYear, $careerData['career_levels']);
-        $this->assertEquals('Nazionale', $careerData['career_levels'][$currentYear]['level']);
+        $livelli = $this->arrayAt($careerData, 'career_levels');
+        $annoCorrente = $this->arrayAt($livelli, $currentYear);
+        $this->assertEquals('Nazionale', $annoCorrente['level'] ?? null);
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function get_year_data_returns_correct_level_from_history()
+    public function get_year_data_returns_correct_level_from_history(): void
     {
         // Crea history con level changes
         $history = RefereeCareerHistory::create([
@@ -349,7 +380,7 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function batch_add_preserves_existing_data()
+    public function batch_add_preserves_existing_data(): void
     {
         // Aggiungi primo torneo
         $tournamentData = [
@@ -357,12 +388,12 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
             'name' => $this->tournament->name,
             'club_id' => $this->tournament->club_id,
             'start_date' => $this->tournament->start_date->format('Y-m-d'),
-            'end_date' => $this->tournament->end_date->format('Y-m-d'),
+            'end_date' => $this->targetDate(38),
         ];
-        $this->careerHistoryService->addTournamentEntry($this->referee->id, 2025, $tournamentData, 3);
+        $this->careerHistoryService->addTournamentEntry($this->referee->id, $this->targetYear(), $tournamentData, 3);
 
         // Crea assignment manuale
-        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->first();
+        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->firstOrFail();
         $assignments = $history->assignments_by_year ?? [];
         $assignments['2024'] = [
             ['id' => 99, 'tournament_id' => 99, 'role' => 'Arbitro'],
@@ -373,13 +404,13 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
         // Batch add nuovo torneo
         $tournament2 = Tournament::factory()->create([
             'zone_id' => $this->zone->id,
-            'start_date' => '2025-06-01',
-            'end_date' => '2025-06-03',
+            'start_date' => $this->targetDate(92),
+            'end_date' => $this->targetDate(94),
         ]);
 
         $result = $this->careerHistoryService->addBatchTournaments(
             $this->referee->id,
-            2025,
+            $this->targetYear(),
             [
                 ['tournament_id' => $tournament2->id, 'days_count' => 2],
             ]
@@ -390,15 +421,16 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
         $history->refresh();
 
         // Verifica che il torneo precedente sia ancora presente
-        $this->assertCount(2, $history->tournaments_by_year['2025']);
+        $this->assertIsArray($history->tournaments_by_year);
+        $this->assertCount(2, $history->tournaments_by_year[$this->targetYear()]);
 
         // Verifica che gli assignments del 2024 siano ancora presenti
-        $this->assertArrayHasKey('2024', $history->assignments_by_year);
-        $this->assertCount(1, $history->assignments_by_year['2024']);
+        $this->assertIsArray($history->assignments_by_year);
+        $this->assertCount(1, $this->arrayAt($history->assignments_by_year, '2024'));
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function remove_tournament_recalculates_stats()
+    public function remove_tournament_recalculates_stats(): void
     {
         // Aggiungi torneo
         $tournamentData = [
@@ -406,33 +438,35 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
             'name' => $this->tournament->name,
             'club_id' => $this->tournament->club_id,
             'start_date' => $this->tournament->start_date->format('Y-m-d'),
-            'end_date' => $this->tournament->end_date->format('Y-m-d'),
+            'end_date' => $this->targetDate(38),
         ];
-        $this->careerHistoryService->addTournamentEntry($this->referee->id, 2025, $tournamentData, 3);
+        $this->careerHistoryService->addTournamentEntry($this->referee->id, $this->targetYear(), $tournamentData, 3);
 
-        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->first();
+        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->firstOrFail();
+        $this->assertIsArray($history->career_stats);
         $this->assertEquals(1, $history->career_stats['total_tournaments']);
 
         // Rimuovi
         $removed = $this->careerHistoryService->removeTournamentEntry(
             $this->referee->id,
-            2025,
+            $this->targetYear(),
             $this->tournament->id
         );
 
         $this->assertTrue($removed);
 
         $history->refresh();
+        $this->assertIsArray($history->career_stats);
         $this->assertEquals(0, $history->career_stats['total_tournaments']);
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function controller_can_add_tournament_with_days()
+    public function controller_can_add_tournament_with_days(): void
     {
         $this->actingAs($this->admin);
 
         $response = $this->post(route('admin.career-history.add-tournament', $this->referee), [
-            'year' => 2025,
+            'year' => $this->targetYear(),
             'tournament_id' => $this->tournament->id,
             'days_count' => 3,
         ]);
@@ -440,13 +474,13 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
         $response->assertRedirect();
         $response->assertSessionHas('success');
 
-        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->first();
-        $this->assertNotNull($history);
-        $this->assertEquals(3, $history->tournaments_by_year['2025'][0]['days_count']);
+        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->firstOrFail();
+        $this->assertIsArray($history->tournaments_by_year);
+        $this->assertEquals(3, $history->tournaments_by_year[$this->targetYear()][0]['days_count']);
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function controller_can_update_tournament_complete()
+    public function controller_can_update_tournament_complete(): void
     {
         $this->actingAs($this->admin);
 
@@ -455,14 +489,14 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
             'id' => $this->tournament->id,
             'name' => 'Nome Originale',
             'club_id' => $this->tournament->club_id,
-            'start_date' => '2025-04-04',
-            'end_date' => '2025-04-08',
+            'start_date' => $this->targetDate(34),
+            'end_date' => $this->targetDate(38),
         ];
-        $this->careerHistoryService->addTournamentEntry($this->referee->id, 2025, $tournamentData, 3);
+        $this->careerHistoryService->addTournamentEntry($this->referee->id, $this->targetYear(), $tournamentData, 3);
 
         // Aggiorna via controller
         $response = $this->post(route('admin.career-history.update-tournament', $this->referee), [
-            'year' => 2025,
+            'year' => $this->targetYear(),
             'tournament_id' => $this->tournament->id,
             'name' => 'Nome Modificato',
             'days_count' => 4,
@@ -471,8 +505,9 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
         $response->assertRedirect();
         $response->assertSessionHas('success');
 
-        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->first();
-        $tournament = $history->tournaments_by_year['2025'][0];
+        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->firstOrFail();
+        $this->assertIsArray($history->tournaments_by_year);
+        $tournament = $history->tournaments_by_year[$this->targetYear()][0];
 
         $this->assertEquals('Nome Modificato', $tournament['name']);
         $this->assertEquals(4, $tournament['days_count']);

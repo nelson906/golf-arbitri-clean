@@ -4,7 +4,9 @@
 
 namespace App\Console\Commands;
 
+use App\Support\Untrusted;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
 
 class SimpleBackupCommand extends Command
@@ -13,7 +15,7 @@ class SimpleBackupCommand extends Command
 
     protected $description = 'Backup semplice senza dipendenze esterne';
 
-    public function handle()
+    public function handle(): int
     {
         $this->info('🔒 BACKUP SEMPLICE');
         $this->info('==================');
@@ -39,26 +41,36 @@ class SimpleBackupCommand extends Command
         return 0;
     }
 
-    private function backupDatabase($backupDir, $timestamp)
+    /**
+     * @param  string  $backupDir
+     * @param  string  $timestamp
+     */
+    private function backupDatabase($backupDir, $timestamp): void
     {
         $this->info('📊 Backup database...');
 
-        $config = config('database.connections.mysql');
+        $config = Config::array('database.connections.mysql');
+        $host = Untrusted::string($config['host'] ?? null, '127.0.0.1');
+        $port = Untrusted::string($config['port'] ?? null, '3306');
+        $username = Untrusted::string($config['username'] ?? null);
+        $password = Untrusted::string($config['password'] ?? null);
+        $database = Untrusted::string($config['database'] ?? null);
+
         $backupFile = "{$backupDir}/db_backup_{$timestamp}.sql";
 
         // Costruisci comando mysqldump
         $command = sprintf(
             'mysqldump -h%s -P%s -u%s -p%s %s > %s 2>&1',
-            $config['host'] ?? '127.0.0.1',
-            $config['port'] ?? '3306',
-            $config['username'],
-            $config['password'],
-            $config['database'],
+            $host,
+            $port,
+            $username,
+            $password,
+            $database,
             $backupFile
         );
 
         // Nascondi password nell'output
-        $displayCommand = str_replace("-p{$config['password']}", '-p***', $command);
+        $displayCommand = str_replace("-p{$password}", '-p***', $command);
         $this->line("Executing: {$displayCommand}");
 
         exec($command, $output, $returnCode);
@@ -74,7 +86,10 @@ class SimpleBackupCommand extends Command
         }
     }
 
-    private function backupCode($timestamp)
+    /**
+     * @param  string  $timestamp
+     */
+    private function backupCode($timestamp): void
     {
         $this->info('📁 Backup Git...');
 
@@ -111,7 +126,10 @@ class SimpleBackupCommand extends Command
         }
     }
 
-    private function createPhysicalBackup($timestamp)
+    /**
+     * @param  string  $timestamp
+     */
+    private function createPhysicalBackup($timestamp): void
     {
         $backupDir = storage_path("app/backups/code_backup_{$timestamp}");
         $this->info("📦 Backup fisico in: {$backupDir}");
@@ -147,7 +165,11 @@ class SimpleBackupCommand extends Command
         $this->info('✅ Backup fisico completato');
     }
 
-    private function formatBytes($bytes, $precision = 2)
+    /**
+     * @param  float|int  $bytes
+     * @param  int  $precision
+     */
+    private function formatBytes($bytes, $precision = 2): string
     {
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
 

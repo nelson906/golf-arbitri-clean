@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class NotificationClause extends Model
 {
-    use HasFactory;
     use SoftDeletes;
 
     protected $fillable = [
@@ -42,18 +42,29 @@ class NotificationClause extends Model
     ];
 
     // Relazioni
-    public function selections()
+    /**
+     * @return HasMany<NotificationClauseSelection, $this>
+     */
+    public function selections(): HasMany
     {
         return $this->hasMany(NotificationClauseSelection::class, 'clause_id');
     }
 
     // Scopes
-    public function scopeActive($query)
+    /**
+     * @param  Builder<NotificationClause>  $query
+     * @return Builder<NotificationClause>
+     */
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
     }
 
-    public function scopeForRecipientType($query, string $type)
+    /**
+     * @param  Builder<NotificationClause>  $query
+     * @return Builder<NotificationClause>
+     */
+    public function scopeForRecipientType(Builder $query, string $type): Builder
     {
         return $query->where(function ($q) use ($type) {
             $q->where('applies_to', $type)
@@ -61,12 +72,20 @@ class NotificationClause extends Model
         });
     }
 
-    public function scopeByCategory($query, string $category)
+    /**
+     * @param  Builder<NotificationClause>  $query
+     * @return Builder<NotificationClause>
+     */
+    public function scopeByCategory(Builder $query, string $category): Builder
     {
         return $query->where('category', $category);
     }
 
-    public function scopeOrdered($query)
+    /**
+     * @param  Builder<NotificationClause>  $query
+     * @return Builder<NotificationClause>
+     */
+    public function scopeOrdered(Builder $query): Builder
     {
         return $query->orderBy('sort_order')->orderBy('title');
     }

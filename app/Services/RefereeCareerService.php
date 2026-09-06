@@ -12,6 +12,8 @@ class RefereeCareerService
 {
     /**
      * Get career data for a referee, optionally filtered by year
+     *
+     * @return array<string, mixed>
      */
     public function getCareerData(User $referee, ?int $year = null): array
     {
@@ -56,7 +58,7 @@ class RefereeCareerService
             $firstYear = ! empty($allYears) ? min($allYears) : null;
 
             // Aggiorna career_summary con first_year corretto
-            if (isset($historicalData['career_summary'])) {
+            if (is_array($historicalData['career_summary'])) {
                 $historicalData['career_summary']['first_year'] = $firstYear;
             }
 
@@ -115,6 +117,8 @@ class RefereeCareerService
 
     /**
      * Get year-specific data for a referee
+     *
+     * @return array{level: mixed, total_tournaments: int, roles: array<array-key, int>}
      */
     public function getYearData(User $referee, int $year): array
     {
@@ -167,6 +171,9 @@ class RefereeCareerService
         ];
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
     protected function getCurrentAssignmentsData(User $referee): array
     {
         $assignments = Assignment::where('user_id', $referee->id)
@@ -176,8 +183,9 @@ class RefereeCareerService
                 return $assignment->tournament && $assignment->tournament->start_date;
             })
             ->map(function ($assignment) {
-                $timestamp = strtotime($assignment->tournament->start_date);
-                $year = date('Y', $timestamp !== false ? $timestamp : time());
+                // start_date e' castato a Carbon: l'anno si legge dall'oggetto,
+                // non passando per strtotime() (che vuole una stringa).
+                $year = $assignment->tournament->start_date->year;
 
                 return [
                     'id' => $assignment->id,
@@ -185,15 +193,20 @@ class RefereeCareerService
                     'role' => $assignment->role,
                     'tournament_name' => $assignment->tournament->name ?? 'N/A',
                     'tournament_date' => $assignment->tournament->start_date,
-                    'year' => (int) $year,
+                    'year' => $year,
                     'is_confirmed' => $assignment->is_confirmed ?? false,
                 ];
             })
-            ->toArray();
+            ->values()
+            ->all();
 
+        /** @var list<array<string, mixed>> $assignments */
         return $assignments;
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
     protected function getAssignmentsForYear(User $referee, int $year): array
     {
         $assignments = Assignment::where('user_id', $referee->id)
@@ -212,11 +225,16 @@ class RefereeCareerService
                     'is_confirmed' => $assignment->is_confirmed ?? false,
                 ];
             })
-            ->toArray();
+            ->values()
+            ->all();
 
+        /** @var list<array<string, mixed>> $assignments */
         return $assignments;
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
     protected function getTournamentsForYear(User $referee, int $year): array
     {
         $tournaments = Tournament::whereYear('start_date', $year)
@@ -239,11 +257,16 @@ class RefereeCareerService
                         : $tournament->status,
                 ];
             })
-            ->toArray();
+            ->values()
+            ->all();
 
+        /** @var list<array<string, mixed>> $tournaments */
         return $tournaments;
     }
 
+    /**
+     * @param  array<int, array<string, mixed>>  $assignments
+     */
     protected function calculateActiveYears(array $assignments): int
     {
         if (empty($assignments)) {
@@ -260,6 +283,9 @@ class RefereeCareerService
         return count(array_unique($years));
     }
 
+    /**
+     * @param  array<int, array<string, mixed>>  $assignments
+     */
     protected function getFirstYear(array $assignments): ?int
     {
         if (empty($assignments)) {
@@ -276,6 +302,11 @@ class RefereeCareerService
         return ! empty($years) ? min($years) : null;
     }
 
+    /**
+     * @param  array<int, array<string, mixed>>  $assignments
+     * @param  array<int, array<string, mixed>>  $tournaments
+     * @return array<string, mixed>
+     */
     protected function getYearSummary(array $assignments, ?string $level, array $tournaments = []): array
     {
         $roleCount = array_count_values(array_column($assignments, 'role'));
@@ -287,6 +318,9 @@ class RefereeCareerService
         ];
     }
 
+    /**
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
     public function getHistoricalStats(?int $year = null): Collection
     {
         $query = RefereeCareerHistory::with('user');
@@ -295,7 +329,8 @@ class RefereeCareerService
             // Add any year-specific filtering if needed
         }
 
-        return $query->get()->map(function ($history) use ($year) {
+        /** @var \Illuminate\Support\Collection<int, array<string, mixed>> $rows */
+        $rows = $query->get()->map(function ($history) use ($year) {
             /** @var \App\Models\User $user */
             $user = $history->user;
 
@@ -307,6 +342,8 @@ class RefereeCareerService
                 'year_data' => $year ? ($data['year_summary'] ?? null) : null,
             ];
         });
+
+        return $rows;
     }
 
     public function archiveYear(int $year): void

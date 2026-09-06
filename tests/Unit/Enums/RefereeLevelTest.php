@@ -98,7 +98,6 @@ class RefereeLevelTest extends TestCase
     {
         $opts = RefereeLevel::selectOptions();
 
-        $this->assertIsArray($opts);
         $this->assertArrayHasKey('Aspirante',      $opts);
         $this->assertArrayHasKey('1_livello',      $opts);
         $this->assertArrayHasKey('Regionale',      $opts);

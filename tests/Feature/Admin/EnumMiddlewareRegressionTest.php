@@ -158,7 +158,7 @@ class EnumMiddlewareRegressionTest extends TestCase
         $tournament = $this->createTournament(['status' => 'open']);
 
         // Ricarica fresh dal DB
-        $reloaded = Tournament::find($tournament->id);
+        $reloaded = Tournament::findOrFail($tournament->id);
 
         $this->assertInstanceOf(TournamentStatus::class, $reloaded->status,
             'Dopo il ricaricamento dal DB, status deve essere castato a TournamentStatus');
@@ -175,7 +175,7 @@ class EnumMiddlewareRegressionTest extends TestCase
         $zoneAdmin = $this->createZoneAdmin();
 
         // Ricarica fresh dal DB
-        $reloaded = \App\Models\User::find($zoneAdmin->id);
+        $reloaded = \App\Models\User::findOrFail($zoneAdmin->id);
 
         $this->assertInstanceOf(UserType::class, $reloaded->user_type,
             'Dopo il ricaricamento dal DB, user_type deve essere castato a UserType');
@@ -195,15 +195,18 @@ class EnumMiddlewareRegressionTest extends TestCase
     {
         $admin = $this->createZoneAdmin(1);
         $club  = $this->createClub(['zone_id' => 1]);
-        $type  = \App\Models\TournamentType::first();
+        $type  = \App\Models\TournamentType::firstOrFail();
 
         $data = [
             'name'                   => 'Torneo Regression Test',
             'club_id'                => $club->id,
             'tournament_type_id'     => $type->id,
-            'start_date'             => '2026-09-10',
-            'end_date'               => '2026-09-12',
-            'availability_deadline'  => '2026-09-01 23:59:59',
+            // Date RELATIVE: 'availability_deadline' ha la regola after_or_equal:today
+            // per chi non e' super_admin, quindi una data fissa fa fallire il test
+            // appena la si supera (era '2026-09-01', rotto dal 2026-09-02).
+            'start_date'             => now()->addDays(30)->format('Y-m-d'),
+            'end_date'               => now()->addDays(32)->format('Y-m-d'),
+            'availability_deadline'  => now()->addDays(20)->format('Y-m-d H:i:s'),
             'status'                 => 'open',
         ];
 

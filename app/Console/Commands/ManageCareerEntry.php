@@ -191,7 +191,7 @@ class ManageCareerEntry extends Command
             'name' => $tournament->name,
             'club_id' => $tournament->club_id,
             'club_name' => $tournament->club->name ?? null,
-            'start_date' => $tournament->start_date?->format('Y-m-d') ?? '',
+            'start_date' => $tournament->start_date->format('Y-m-d') ?? '',
             'end_date' => $tournament->end_date?->format('Y-m-d') ?? '',
         ];
 

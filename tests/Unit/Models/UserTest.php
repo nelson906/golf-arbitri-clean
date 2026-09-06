@@ -22,7 +22,7 @@ class UserTest extends TestCase
      */
     public function test_user_belongs_to_zone(): void
     {
-        $zone = Zone::first();
+        $zone = Zone::firstOrFail();
         $user = User::factory()->referee()->create(['zone_id' => $zone->id]);
 
         $this->assertInstanceOf(Zone::class, $user->zone);
@@ -79,7 +79,7 @@ class UserTest extends TestCase
             'submitted_at' => now(),
         ]);
 
-        $this->assertCount(2, $user->fresh()->availabilities);
+        $this->assertCount(2, $user->refresh()->availabilities);
     }
 
     /**
@@ -112,8 +112,8 @@ class UserTest extends TestCase
             'assignments_count' => 0,
         ]);
 
-        $this->assertInstanceOf(RefereeCareerHistory::class, $user->fresh()->careerHistory);
-        $this->assertEquals($careerHistory->id, $user->careerHistory->id);
+        $this->assertInstanceOf(RefereeCareerHistory::class, $user->refresh()->careerHistory);
+        $this->assertEquals($careerHistory->id, $user->careerHistory?->id);
     }
 
     // ==========================================

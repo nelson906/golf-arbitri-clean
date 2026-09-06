@@ -13,11 +13,26 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Service per la validazione e il controllo qualità delle assegnazioni
+ *
+ * @phpstan-type ConflictRow array{
+ *     referee: \App\Models\User,
+ *     assignment1: \App\Models\Assignment,
+ *     assignment2: \App\Models\Assignment,
+ *     severity: string,
+ * }
  */
 class AssignmentValidationService
 {
     /**
      * Ottieni un riepilogo completo di tutte le validazioni
+     *
+     * @return array{
+     *     conflicts: int,
+     *     missing_requirements: int,
+     *     overassigned: int,
+     *     underassigned: int,
+     *     total_issues: int,
+     * }
      */
     public function getValidationSummary(?int $zoneId = null): array
     {
@@ -37,6 +52,7 @@ class AssignmentValidationService
 
     /**
      * Rileva conflitti di date nelle assegnazioni
+     * @return \Illuminate\Support\Collection<int, ConflictRow>
      */
     public function detectDateConflicts(?int $zoneId = null): Collection
     {
@@ -49,6 +65,8 @@ class AssignmentValidationService
             });
 
         $assignments = $query->get();
+
+        /** @var \Illuminate\Support\Collection<int, ConflictRow> $conflicts */
         $conflicts = collect();
 
         // Raggruppa per arbitro
@@ -82,6 +100,7 @@ class AssignmentValidationService
 
     /**
      * Trova tornei con requisiti mancanti
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
      */
     public function findMissingRequirements(?int $zoneId = null): Collection
     {
@@ -174,6 +193,7 @@ class AssignmentValidationService
 
     /**
      * Trova arbitri sovrassegnati
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
      */
     public function findOverassignedReferees(?int $zoneId = null, int $threshold = 5): Collection
     {
@@ -206,7 +226,8 @@ class AssignmentValidationService
         // Calcola la media una sola volta per tutti gli arbitri sovrassegnati
         $avgAssignments = $overassigned->avg('assignments_count');
 
-        return $overassigned->map(function ($referee) use ($threshold, $avgAssignments) {
+        /** @var \Illuminate\Support\Collection<int, array<string, mixed>> $rows */
+        $rows = $overassigned->map(function ($referee) use ($threshold, $avgAssignments) {
             return [
                 'referee' => $referee,
                 'assignments_count' => $referee->assignments_count,
@@ -216,10 +237,13 @@ class AssignmentValidationService
                     : 0,
             ];
         });
+
+        return $rows;
     }
 
     /**
      * Trova arbitri sottoutilizzati
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
      */
     public function findUnderassignedReferees(?int $zoneId = null, int $threshold = 2): Collection
     {
@@ -237,7 +261,8 @@ class AssignmentValidationService
         }
 
         // Filtering after get() for SQLite compatibility (HAVING on subquery count not supported)
-        return $query
+        /** @var \Illuminate\Support\Collection<int, array<string, mixed>> $rows */
+        $rows = $query
             ->with(['zone'])
             ->get()
             ->filter(fn ($referee) => $referee->assignments_count < $threshold)
@@ -250,14 +275,19 @@ class AssignmentValidationService
                     'availability_status' => $this->checkAvailabilityStatus($referee),
                 ];
             });
+
+        return $rows;
     }
 
     /**
      * Suggerisci correzioni automatiche per i conflitti
+     * @param  \Illuminate\Support\Collection<int, ConflictRow>  $conflicts
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
      */
     public function suggestConflictResolutions(Collection $conflicts): Collection
     {
-        return $conflicts->map(function ($conflict) {
+        /** @var \Illuminate\Support\Collection<int, array<string, mixed>> $rows */
+        $rows = $conflicts->map(function ($conflict) {
             $suggestions = [];
 
             // Suggerisci arbitri alternativi per assignment2
@@ -287,10 +317,18 @@ class AssignmentValidationService
 
             return array_merge($conflict, ['suggestions' => $suggestions]);
         });
+
+        return $rows;
     }
 
     /**
      * Applica correzioni automatiche (quando possibile)
+     *
+     * @return array{
+     *     fixed: list<array<string, mixed>>,
+     *     failed: list<array<string, mixed>>,
+     *     summary: array{total_fixed: int, total_failed: int},
+     * }
      */
     public function applyAutomaticFixes(?int $zoneId = null): array
     {
@@ -310,16 +348,18 @@ class AssignmentValidationService
                         $conflict['referee']->id
                     );
 
-                    if ($alternatives->count() > 0) {
+                    $replacement = $alternatives->first();
+
+                    if ($replacement !== null) {
                         try {
                             $conflict['assignment2']->update([
-                                'user_id' => $alternatives->first()->id,
+                                'user_id' => $replacement->id,
                             ]);
                             $fixed[] = [
                                 'type' => 'conflict_resolved',
                                 'tournament' => $conflict['assignment2']->tournament->name,
                                 'old_referee' => $conflict['referee']->name,
-                                'new_referee' => $alternatives->first()->name,
+                                'new_referee' => $replacement->name,
                             ];
                         } catch (\Exception $e) {
                             $failed[] = [
@@ -393,6 +433,9 @@ class AssignmentValidationService
         return 'low'; // Sovrapposizione parziale nello stesso giorno
     }
 
+    /**
+     * @param  list<array<string, mixed>>  $issues
+     */
     private function calculateTotalSeverity(array $issues): int
     {
         $score = 0;
@@ -408,10 +451,13 @@ class AssignmentValidationService
         return $score;
     }
 
+    /**
+     * @return \Illuminate\Support\Collection<int, \App\Models\User>
+     */
     private function findAlternativeReferees(Tournament $tournament, int $excludeUserId): Collection
     {
         // Usa RefereeLevelsHelper per normalizzazione livelli (null-safe: tournamentType può essere null)
-        $requiredLevel = RefereeLevelsHelper::normalize($tournament->tournamentType?->required_level ?? '');
+        $requiredLevel = RefereeLevelsHelper::normalize($tournament->tournamentType->required_level ?? '');
         $levels = array_keys(RefereeLevelsHelper::DB_ENUM_VALUES);
         $requiredIndex = array_search($requiredLevel, $levels);
 
@@ -425,7 +471,7 @@ class AssignmentValidationService
         $query->whereIn('level', $acceptableLevels);
 
         // Filtra per zona se non nazionale (null-safe: se tournamentType è null, tratta come non nazionale)
-        if (! ($tournament->tournamentType?->is_national ?? false)) {
+        if (! ($tournament->tournamentType->is_national ?? false)) {
             $query->where('zone_id', $tournament->zone_id);
         }
 
@@ -479,13 +525,5 @@ class AssignmentValidationService
     private function getUnderassignedCount(?int $zoneId, int $threshold = 2): int
     {
         return $this->findUnderassignedReferees($zoneId, $threshold)->count();
-    }
-
-    private function getTotalIssuesCount(?int $zoneId): int
-    {
-        return $this->getConflictsSummary($zoneId) +
-            $this->getMissingRequirementsSummary($zoneId) +
-            $this->getOverassignedCount($zoneId) +
-            $this->getUnderassignedCount($zoneId);
     }
 }

@@ -6,6 +6,7 @@ use App\Models\Assignment;
 use App\Models\Availability;
 use App\Models\RefereeCareerHistory;
 use App\Models\Tournament;
+use App\Support\Untrusted;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
@@ -17,7 +18,13 @@ class CareerHistoryService
      *
      * @param  int  $year  Anno da archiviare
      * @param  bool  $clearSourceData  Se true, elimina i dati dalla tabella sorgente dopo l'archiviazione
-     * @return array Statistiche dell'operazione
+     * @return array{
+     *     referees_processed: int,
+     *     assignments_archived: int,
+     *     availabilities_archived: int,
+     *     tournaments_archived: int,
+     *     errors: list<string>,
+     * } Statistiche dell'operazione
      */
     public function archiveYear(int $year, bool $clearSourceData = false): array
     {
@@ -43,7 +50,9 @@ class CareerHistoryService
             ->unique()
             ->filter();
 
-        foreach ($refereeIds as $userId) {
+        foreach ($refereeIds as $rawUserId) {
+            $userId = Untrusted::int($rawUserId);
+
             try {
                 $result = $this->archiveYearForUser($userId, $year);
 
@@ -71,6 +80,8 @@ class CareerHistoryService
 
     /**
      * Archivia un anno per un singolo utente.
+     *
+     * @return array{tournaments_count: int, assignments_count: int, availabilities_count: int}
      */
     public function archiveYearForUser(int $userId, int $year): array
     {
@@ -106,7 +117,7 @@ class CareerHistoryService
             'club_id' => $t->club_id,
             'club_name' => $t->club->name ?? null,
             'start_date' => $t->start_date->format('Y-m-d'),
-            'end_date' => $t->end_date->format('Y-m-d'),
+            'end_date' => ($t->end_date ?? $t->start_date)->format('Y-m-d'),
         ])->values()->toArray();
 
         $assignmentsData = $assignments->map(fn ($a) => [
@@ -120,7 +131,7 @@ class CareerHistoryService
         $availabilitiesData = $availabilities->map(fn ($av) => [
             'tournament_id' => $av->tournament_id,
             'tournament_name' => $av->tournament->name ?? null,
-            'submitted_at' => Carbon::parse($av->submitted_at)?->format('Y-m-d H:i'),
+            'submitted_at' => Carbon::parse($av->submitted_at)->format('Y-m-d H:i'),
             'notes' => $av->notes,
         ])->values()->toArray();
 
@@ -140,6 +151,8 @@ class CareerHistoryService
 
     /**
      * Aggiorna il career history aggiungendo i dati di un anno.
+     *
+     * @param  array<string, mixed>  $yearData
      */
     public function updateCareerHistory(int $userId, int $year, array $yearData): RefereeCareerHistory
     {
@@ -180,6 +193,8 @@ class CareerHistoryService
 
     /**
      * Modifica una singola voce torneo per un utente/anno.
+     *
+     * @param  array<string, mixed>  $data
      */
     public function updateTournamentEntry(int $userId, int $year, int $tournamentId, array $data): bool
     {
@@ -216,6 +231,8 @@ class CareerHistoryService
 
     /**
      * Aggiunge un torneo manualmente allo storico di un utente.
+     *
+     * @param  array<string, mixed>  $tournamentData
      */
     public function addTournamentEntry(int $userId, int $year, array $tournamentData, ?int $daysCount = null): bool
     {
@@ -321,6 +338,9 @@ class CareerHistoryService
 
     /**
      * Aggiunge più tornei in modalità batch.
+     *
+     * @param  list<array<array-key, mixed>>  $tournamentsData
+     * @return array{added: int, errors: list<string>}
      */
     public function addBatchTournaments(int $userId, int $year, array $tournamentsData): array
     {
@@ -355,11 +375,14 @@ class CareerHistoryService
         $errors = [];
 
         foreach ($tournamentsData as $item) {
+            // Fuori dal try: serve anche al messaggio nel catch.
+            $tournamentId = Untrusted::int($item['tournament_id'] ?? null);
+
             try {
-                $tournament = Tournament::with('club')->find($item['tournament_id']);
+                $tournament = Tournament::with('club')->find($tournamentId);
 
                 if (! $tournament) {
-                    $errors[] = "Torneo ID {$item['tournament_id']} non trovato";
+                    $errors[] = "Torneo ID {$tournamentId} non trovato";
 
                     continue;
                 }
@@ -370,7 +393,7 @@ class CareerHistoryService
                     'name' => $tournament->name,
                     'club_id' => $tournament->club_id,
                     'club_name' => $tournament->club->name ?? null,
-                    'start_date' => $tournament->start_date?->format('Y-m-d') ?? '',
+                    'start_date' => $tournament->start_date->format('Y-m-d') ?? '',
                     'end_date' => $tournament->end_date?->format('Y-m-d') ?? '',
                 ];
 
@@ -394,7 +417,7 @@ class CareerHistoryService
 
                 $added++;
             } catch (\Exception $e) {
-                $errors[] = "Errore torneo ID {$item['tournament_id']}: ".$e->getMessage();
+                $errors[] = "Errore torneo ID {$tournamentId}: ".$e->getMessage();
             }
         }
 
@@ -447,6 +470,8 @@ class CareerHistoryService
 
     /**
      * Elimina i dati sorgente dopo l'archiviazione.
+     *
+     * @return array{assignments_deleted: int, availabilities_deleted: int, tournaments_deleted: int}
      */
     public function clearSourceData(int $year): array
     {

@@ -78,14 +78,15 @@ class MarkFigAssignmentsNotified extends Command
         $confirmedAsgn = 0;
 
         foreach ($byTournament as $tournamentId => $tournamentAssignments) {
-            $torneo     = $tournamentAssignments->first()->tournament;
-            $nomeTorneo = $torneo?->name ?? "Torneo ID {$tournamentId}";
-            $dataStr    = $torneo?->start_date?->format('d/m/Y') ?? '—';
+            $prima      = $tournamentAssignments->first();
+            $torneo     = $prima?->tournament;
+            $nomeTorneo = $torneo->name ?? "Torneo ID {$tournamentId}";
+            $dataStr    = $torneo?->start_date->format('d/m/Y') ?? '—';
 
             // Determina il tipo di notifica per questo specifico torneo
             if ($type === 'auto') {
                 // Fonte di verità: is_national dal tipo torneo
-                $isNational       = $torneo?->tournamentType?->is_national ?? false;
+                $isNational       = $torneo->tournamentType->is_national ?? false;
                 $notificationType = $isNational ? 'crc_referees' : null;
             } elseif ($type === 'zonal') {
                 $notificationType = null;
@@ -119,7 +120,7 @@ class MarkFigAssignmentsNotified extends Command
             } else {
                 // Costruisci referee_list e details
                 $refereeNames = $tournamentAssignments
-                    ->map(fn ($a) => $a->user?->name ?? '?')
+                    ->map(fn ($a) => $a->user->name ?? '?')
                     ->filter()
                     ->implode(', ');
 

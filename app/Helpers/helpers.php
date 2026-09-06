@@ -16,6 +16,8 @@ if (! function_exists('referee_levels')) {
     /**
      * Ritorna i livelli arbitro per select HTML.
      * Alias globale di RefereeLevelsHelper::getSelectOptions().
+     *
+     * @return array<string, string>
      */
     function referee_levels(bool $includeArchived = false): array
     {

@@ -14,7 +14,10 @@ use App\Services\Statistics\TournamentStatsService;
 use App\Services\Statistics\ZoneStatsService;
 use App\Traits\HasZoneVisibility;
 use Carbon\Carbon;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StatisticsDashboardController extends Controller
 {
@@ -31,12 +34,12 @@ class StatisticsDashboardController extends Controller
     /**
      * Display the statistics dashboard.
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         $user = auth()->user();
         $isNationalAdmin = $this->isNationalAdmin($user);
 
-        $period = $request->get('period', '30');
+        $period = $request->integer('period', 30);
         $startDate = Carbon::now()->subDays($period);
 
         $generalStats = $this->getGeneralStats($user);
@@ -66,16 +69,16 @@ class StatisticsDashboardController extends Controller
     /**
      * Statistiche disponibilità
      */
-    public function disponibilita(Request $request)
+    public function disponibilita(Request $request): View
     {
         $user = auth()->user();
         $isNationalAdmin = $this->isNationalAdmin($user);
 
-        $month = $request->get('month');
-        $dateFrom = $request->get('date_from');
-        $dateTo = $request->get('date_to');
-        $sortBy = $request->get('sort', 'availabilities_count');
-        $sortDirection = $request->get('direction', 'desc');
+        $month = $request->string('month')->toString() ?: null;
+        $dateFrom = $request->string('date_from')->toString() ?: null;
+        $dateTo = $request->string('date_to')->toString() ?: null;
+        $sortBy = $request->string('sort', 'availabilities_count')->toString();
+        $sortDirection = $request->string('direction', 'desc')->toString();
 
         // Query base con filtri
         $query = Availability::with(['referee', 'tournament.club', 'tournament.zone', 'tournament.tournamentType']);
@@ -103,14 +106,14 @@ class StatisticsDashboardController extends Controller
     /**
      * Statistiche assegnazioni
      */
-    public function assegnazioni(Request $request)
+    public function assegnazioni(Request $request): View
     {
         $user = auth()->user();
         $isNationalAdmin = $this->isNationalAdmin($user);
 
-        $status = $request->get('status');
-        $dateFrom = $request->get('date_from');
-        $dateTo = $request->get('date_to');
+        $status = $request->string('status')->toString() ?: null;
+        $dateFrom = $request->string('date_from')->toString() ?: null;
+        $dateTo = $request->string('date_to')->toString() ?: null;
 
         // Query assegnazioni con filtri
         $query = Assignment::with(['referee', 'tournament.club', 'tournament.zone', 'tournament.tournamentType']);
@@ -137,15 +140,15 @@ class StatisticsDashboardController extends Controller
     /**
      * Statistiche tornei
      */
-    public function tornei(Request $request)
+    public function tornei(Request $request): View
     {
         $user = auth()->user();
         $isNationalAdmin = $this->isNationalAdmin($user);
 
-        $status = $request->get('status');
-        $category = $request->get('category');
-        $dateFrom = $request->get('date_from');
-        $dateTo = $request->get('date_to');
+        $status = $request->string('status')->toString() ?: null;
+        $category = $request->string('category')->toString() ?: null;
+        $dateFrom = $request->string('date_from')->toString() ?: null;
+        $dateTo = $request->string('date_to')->toString() ?: null;
 
         // Query tornei con filtri
         $query = Tournament::with(['club', 'zone', 'tournamentType']);
@@ -185,13 +188,13 @@ class StatisticsDashboardController extends Controller
     /**
      * Statistiche arbitri
      */
-    public function arbitri(Request $request)
+    public function arbitri(Request $request): View
     {
         $user = auth()->user();
         $isNationalAdmin = $this->isNationalAdmin($user);
 
-        $level = $request->get('level');
-        $zone = $request->get('zone');
+        $level = $request->string('level')->toString() ?: null;
+        $zone = $request->string('zone')->toString() ?: null;
 
         // Query arbitri con filtri
         $query = User::where('user_type', '=', 'referee')->with(['zone']);
@@ -225,7 +228,7 @@ class StatisticsDashboardController extends Controller
     /**
      * Statistiche zone
      */
-    public function zone(Request $request)
+    public function zone(Request $request): View
     {
         $user = auth()->user();
 
@@ -234,8 +237,8 @@ class StatisticsDashboardController extends Controller
             abort(403, 'Accesso non autorizzato');
         }
 
-        $dateFrom = $request->get('date_from');
-        $dateTo = $request->get('date_to');
+        $dateFrom = $request->string('date_from')->toString() ?: null;
+        $dateTo = $request->string('date_to')->toString() ?: null;
 
         $zoneStats = $this->zoneStats->getAllZonesStats($dateFrom, $dateTo, $user);
 
@@ -249,12 +252,12 @@ class StatisticsDashboardController extends Controller
     /**
      * Metriche performance
      */
-    public function performance(Request $request)
+    public function performance(Request $request): View
     {
         $user = auth()->user();
         $isNationalAdmin = $this->isNationalAdmin($user);
 
-        $period = $request->get('period', 30);
+        $period = $request->integer('period', 30);
 
         $metrics = [
             'response_time' => [],
@@ -274,9 +277,9 @@ class StatisticsDashboardController extends Controller
     /**
      * Export statistiche CSV
      */
-    public function exportCsv(Request $request)
+    public function exportCsv(Request $request): StreamedResponse
     {
-        $type = $request->get('type', 'general');
+        $type = $request->string('type', 'general')->toString();
         $user = auth()->user();
 
         $filename = "statistiche_{$type}_".Carbon::now()->format('Y-m-d').'.csv';
@@ -305,8 +308,10 @@ class StatisticsDashboardController extends Controller
 
     /**
      * API endpoint per statistiche
+     *
+     * @param  string  $type
      */
-    public function apiStats($type)
+    public function apiStats($type): JsonResponse
     {
         $user = auth()->user();
 
@@ -319,6 +324,10 @@ class StatisticsDashboardController extends Controller
     }
 
     // Private helper methods
+    /**
+     * @param  \App\Models\User|null  $user
+     * @return array<string, mixed>
+     */
     private function getGeneralStats($user): array
     {
         $tournamentStats = $this->tournamentStats->getGeneralStats($user);
@@ -336,6 +345,11 @@ class StatisticsDashboardController extends Controller
         ];
     }
 
+    /**
+     * @param  \App\Models\User|null  $user
+     * @param  string  $startDate
+     * @return array<string, mixed>
+     */
     private function getPeriodStats($user, $startDate): array
     {
         $tournamentQuery = Tournament::query()->where('created_at', '>=', $startDate);
@@ -354,6 +368,9 @@ class StatisticsDashboardController extends Controller
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function getChartData(): array
     {
         return [
@@ -363,6 +380,9 @@ class StatisticsDashboardController extends Controller
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function getPerformanceMetrics(): array
     {
         return [
@@ -373,6 +393,11 @@ class StatisticsDashboardController extends Controller
         ];
     }
 
+    /**
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<TModel>  $query
+     */
     private function applyDateFilters($query, ?string $dateFrom, ?string $dateTo, ?string $month = null): void
     {
         if ($dateFrom) {
@@ -388,6 +413,11 @@ class StatisticsDashboardController extends Controller
         }
     }
 
+    /**
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<TModel>  $query
+     */
     private function applyStatusFilter($query, ?string $status): void
     {
         if ($status === 'confirmed') {
@@ -398,11 +428,27 @@ class StatisticsDashboardController extends Controller
     }
 
     // Export methods (placeholder implementations)
+    /**
+     * @param  resource  $handle
+     * @param  \App\Models\User|null  $user
+     */
     private function exportTournamentsCSV($handle, $user): void {}
 
+    /**
+     * @param  resource  $handle
+     * @param  \App\Models\User|null  $user
+     */
     private function exportRefereesCSV($handle, $user): void {}
 
+    /**
+     * @param  resource  $handle
+     * @param  \App\Models\User|null  $user
+     */
     private function exportAssignmentsCSV($handle, $user): void {}
 
+    /**
+     * @param  resource  $handle
+     * @param  \App\Models\User|null  $user
+     */
     private function exportGeneralCSV($handle, $user): void {}
 }

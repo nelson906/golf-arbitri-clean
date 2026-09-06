@@ -6,6 +6,7 @@ use App\Enums\RefereeLevel;
 use App\Http\Controllers\Controller;
 use App\Models\Tournament;
 use Carbon\Carbon;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -13,9 +14,9 @@ class DashboardController extends Controller
     /**
      * Display the referee dashboard.
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
-        $user = auth()->user();
+        $user = $this->authUser();
 
         $user->load('zone'); // Eager load zone relationship
 

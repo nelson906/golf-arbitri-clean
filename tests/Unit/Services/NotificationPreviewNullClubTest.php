@@ -24,7 +24,7 @@ class NotificationPreviewNullClubTest extends TestCase
     public function test_preview_with_club_flag_but_null_club_does_not_throw(): void
     {
         $tournament = $this->createTournament([
-            'tournament_type_id' => TournamentType::first()->id,
+            'tournament_type_id' => TournamentType::firstOrFail()->id,
         ]);
 
         // Forza circolo assente (difensivo: il FK normalmente lo impedisce).
@@ -49,8 +49,9 @@ class NotificationPreviewNullClubTest extends TestCase
             ->prepareEmailPreview($notification, $tournament);
 
         // Niente eccezione e il campo club è null, non un crash.
-        $this->assertArrayHasKey('recipients', $preview);
-        $this->assertNull($preview['recipients']['club']);
+        $recipients = $this->arrayAt($preview, 'recipients');
+        $this->assertArrayHasKey('club', $recipients);
+        $this->assertNull($recipients['club']);
         $this->assertSame('Oggetto test', $preview['subject']);
     }
 }

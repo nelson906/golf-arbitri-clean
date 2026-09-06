@@ -21,7 +21,7 @@ class CurriculumController extends Controller
      */
     public function index(Request $request): View
     {
-        $user = auth()->user();
+        $user = $this->authUser();
         $careerData = $this->careerService->getCareerData($user);
 
         return view('user.curriculum.index', [

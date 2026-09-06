@@ -11,7 +11,6 @@ use App\Models\User;
 use App\Models\Zone;
 use App\Services\DocumentGenerationService;
 use App\Services\NotificationPreparationService;
-use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -40,7 +39,6 @@ class NotificationCycleTest extends TestCase
 
     protected DocumentGenerationService $documentService;
 
-    protected NotificationService $notificationService;
 
     protected NotificationPreparationService $preparationService;
 
@@ -48,6 +46,9 @@ class NotificationCycleTest extends TestCase
 
     protected ?User $testAdmin = null;
 
+    /**
+     * @var list<string>
+     */
     protected array $generatedFiles = [];
 
     protected bool $databaseAvailable = false;
@@ -66,7 +67,6 @@ class NotificationCycleTest extends TestCase
 
         // Inizializza i servizi
         $this->documentService = app(DocumentGenerationService::class);
-        $this->notificationService = app(NotificationService::class);
         $this->preparationService = app(NotificationPreparationService::class);
 
         // Fake mail per non inviare email reali
@@ -93,22 +93,6 @@ class NotificationCycleTest extends TestCase
         }
 
         parent::tearDown();
-    }
-
-    /**
-     * Test 1: Verifica che DocumentGenerationService sia istanziabile
-     */
-    public function test_document_generation_service_is_instantiable(): void
-    {
-        $this->assertInstanceOf(DocumentGenerationService::class, $this->documentService);
-    }
-
-    /**
-     * Test 2: Verifica che NotificationService sia istanziabile
-     */
-    public function test_notification_service_is_instantiable(): void
-    {
-        $this->assertInstanceOf(NotificationService::class, $this->notificationService);
     }
 
     /**
@@ -144,6 +128,8 @@ class NotificationCycleTest extends TestCase
         $this->requireDatabase();
 
         // Trova un torneo esistente per testare
+        // first() e non firstOrFail(): l'assenza di dati qui e' uno SKIP voluto,
+        // non un fallimento (il test gira su un DB che puo' essere vuoto).
         $tournament = Tournament::with(['club', 'zone', 'tournamentType'])->first();
 
         if (! $tournament) {
@@ -176,7 +162,6 @@ class NotificationCycleTest extends TestCase
         try {
             $result = $this->documentService->generateConvocationForTournament($tournament);
 
-            $this->assertIsArray($result);
             $this->assertArrayHasKey('path', $result);
             $this->assertArrayHasKey('filename', $result);
             $this->assertArrayHasKey('type', $result);
@@ -212,7 +197,6 @@ class NotificationCycleTest extends TestCase
         try {
             $result = $this->documentService->generateClubDocument($tournament);
 
-            $this->assertIsArray($result);
             $this->assertArrayHasKey('path', $result);
             $this->assertArrayHasKey('filename', $result);
             $this->assertArrayHasKey('type', $result);
@@ -249,11 +233,11 @@ class NotificationCycleTest extends TestCase
         $notification = TournamentNotification::create([
             'tournament_id' => $tournament->id,
             'status' => 'pending',
-            'sent_by' => User::first()?->id ?? 1,
+            'sent_by' => User::first()->id ?? 1,
         ]);
 
         // Verifica se esistono clausole
-        $clause = NotificationClause::where('is_active', true)->first();
+        $clause = NotificationClause::where('is_active', true)->firstOrFail();
 
         if ($clause) {
             NotificationClauseSelection::create([
@@ -266,7 +250,6 @@ class NotificationCycleTest extends TestCase
         try {
             $result = $this->documentService->generateConvocationForTournament($tournament, $notification);
 
-            $this->assertIsArray($result);
             $this->assertFileExists($result['path']);
 
             // Traccia il file per cleanup
@@ -295,7 +278,6 @@ class NotificationCycleTest extends TestCase
         try {
             $notification = $this->preparationService->prepareNotification($tournament);
 
-            $this->assertInstanceOf(TournamentNotification::class, $notification);
             $this->assertEquals($tournament->id, $notification->tournament_id);
             $this->assertEquals('pending', $notification->status);
         } catch (\Exception $e) {
@@ -310,9 +292,6 @@ class NotificationCycleTest extends TestCase
     {
         // Verifica che Mail::fake() sia attivo
         Mail::assertNothingOutgoing();
-
-        // Questo test conferma che le email non verranno inviate durante i test
-        $this->assertTrue(true);
     }
 
     /**
@@ -336,7 +315,7 @@ class NotificationCycleTest extends TestCase
         $notification = TournamentNotification::create([
             'tournament_id' => $tournament->id,
             'status' => 'pending',
-            'sent_by' => User::first()?->id ?? 1,
+            'sent_by' => User::first()->id ?? 1,
             'metadata' => [
                 'subject' => 'Test Convocazione',
                 'message' => 'Messaggio di test',
@@ -373,9 +352,6 @@ class NotificationCycleTest extends TestCase
 
         // Step 4: Verifica che le email non siano state inviate (sono fake)
         Mail::assertNothingOutgoing();
-
-        // Test completato con successo
-        $this->assertTrue(true, 'Ciclo di notifica completato con successo');
     }
 
     /**
@@ -384,25 +360,35 @@ class NotificationCycleTest extends TestCase
     public function test_tournament_date_formatting(): void
     {
 
+        // Date relative: le tre casistiche di formatTournamentDates() sono
+        // "stesso giorno", "stesso mese" e "mesi diversi", quindi il salto di
+        // mese va costruito esplicitamente e non con date fisse che invecchiano.
+        $base       = now()->addMonths(6)->startOfMonth();
+        $single     = $base->copy()->addDays(14);
+        $sameStart  = $base->copy()->addDays(14);
+        $sameEnd    = $base->copy()->addDays(16);
+        $diffStart  = $base->copy()->endOfMonth()->subDays(2)->startOfDay();
+        $diffEnd    = $base->copy()->addMonth()->startOfMonth()->addDays(1);
+
         // Torneo stesso giorno
         $singleDayTournament = new Tournament([
             'name' => 'Test Single Day',
-            'start_date' => '2025-06-15',
-            'end_date' => '2025-06-15',
+            'start_date' => $single->format('Y-m-d'),
+            'end_date' => $single->format('Y-m-d'),
         ]);
 
         // Torneo stesso mese
         $sameMonthTournament = new Tournament([
             'name' => 'Test Same Month',
-            'start_date' => '2025-06-15',
-            'end_date' => '2025-06-17',
+            'start_date' => $sameStart->format('Y-m-d'),
+            'end_date' => $sameEnd->format('Y-m-d'),
         ]);
 
         // Torneo mesi diversi
         $diffMonthTournament = new Tournament([
             'name' => 'Test Diff Month',
-            'start_date' => '2025-06-28',
-            'end_date' => '2025-07-02',
+            'start_date' => $diffStart->format('Y-m-d'),
+            'end_date' => $diffEnd->format('Y-m-d'),
         ]);
 
         // Test tramite reflection per accedere al metodo protected
@@ -412,15 +398,15 @@ class NotificationCycleTest extends TestCase
 
         // Verifica formattazione stesso giorno
         $result1 = $method->invoke($this->documentService, $singleDayTournament);
-        $this->assertEquals('15/06/2025', $result1);
+        $this->assertEquals($single->format('d/m/Y'), $result1);
 
         // Verifica formattazione stesso mese
         $result2 = $method->invoke($this->documentService, $sameMonthTournament);
-        $this->assertEquals('15-17/06/2025', $result2);
+        $this->assertEquals($sameStart->format('d').'-'.$sameEnd->format('d/m/Y'), $result2);
 
         // Verifica formattazione mesi diversi
         $result3 = $method->invoke($this->documentService, $diffMonthTournament);
-        $this->assertEquals('28/06/2025 - 02/07/2025', $result3);
+        $this->assertEquals($diffStart->format('d/m/Y').' - '.$diffEnd->format('d/m/Y'), $result3);
     }
 
     /**
@@ -461,6 +447,7 @@ class NotificationCycleTest extends TestCase
         // Zona inesistente dovrebbe usare default
         try {
             $path = $method->invoke($this->documentService, 999);
+            $this->assertIsString($path);
             // Se arriviamo qui, il default è stato usato
             $this->assertStringContainsString('default', $path);
         } catch (\Exception $e) {
@@ -518,9 +505,9 @@ class NotificationCycleTest extends TestCase
 
         if (! $tournament) {
             // Crea un torneo temporaneo senza assegnazioni
-            $zone = Zone::first();
+            $zone = Zone::firstOrFail();
             $club = Club::first();
-            $tournamentType = \App\Models\TournamentType::first();
+            $tournamentType = \App\Models\TournamentType::firstOrFail();
 
             if (! $zone || ! $club || ! $tournamentType) {
                 $this->markTestSkipped('Zone, Club o TournamentType non disponibili');

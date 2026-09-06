@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -32,7 +32,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class Communication extends Model
 {
-    use HasFactory;
 
     protected $fillable = [
         'title',
@@ -100,6 +99,8 @@ class Communication extends Model
 
     /**
      * Get the author of the communication
+     *
+     * @return BelongsTo<User, $this>
      */
     public function author(): BelongsTo
     {
@@ -108,6 +109,8 @@ class Communication extends Model
 
     /**
      * Get the zone for this communication
+     *
+     * @return BelongsTo<Zone, $this>
      */
     public function zone(): BelongsTo
     {
@@ -116,8 +119,11 @@ class Communication extends Model
 
     /**
      * Scope for published communications
+     *
+     * @param  Builder<Communication>  $query
+     * @return Builder<Communication>
      */
-    public function scopePublished($query)
+    public function scopePublished(Builder $query): Builder
     {
         return $query->where('status', self::STATUS_PUBLISHED)
             ->where(function ($q) {
@@ -132,8 +138,11 @@ class Communication extends Model
 
     /**
      * Scope for active communications
+     *
+     * @param  Builder<Communication>  $query
+     * @return Builder<Communication>
      */
-    public function scopeActive($query)
+    public function scopeActive(Builder $query): Builder
     {
         return $query->published();
     }

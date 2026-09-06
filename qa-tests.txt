@@ -1,0 +1,606 @@
+
+   PASS  Tests\Unit\AuditV3RegressionTest
+  ✓ bug01 metadata is fillable and cast as array                         1.16s  
+  ✓ bug01 is national flag persists in metadata                          0.15s  
+  ✓ bug01 resend detection pattern works                                 0.03s  
+  ✓ bug02 super admin can create communications                          0.02s  
+  ✓ bug02 super admin can update communications                          0.03s  
+  ✓ bug02 super admin can delete communications                          0.02s  
+  ✓ bug02 national admin can manage communications                       0.02s  
+  ✓ bug02 zone admin can manage communications                           0.02s  
+  ✓ bug02 referee cannot manage communications                           0.03s  
+  ✓ bug02 is admin returns true for all admin types                      0.03s  
+  ✓ bug03 assignment observer is registered                              0.02s  
+  ✓ bug03 creating assignment updates notification referee list          0.05s  
+  ✓ bug03 deleting assignment removes referee from list                  0.05s  
+  ✓ bug03 observer updates total recipients in details                   0.04s  
+  ✓ bug04 prepare and send removed as dead code                          0.02s  
+  ✓ dup02 referee levels is global function                              0.02s  
+  ✓ dup02 normalize referee level is global function                     0.02s  
+  ✓ dup02 referee level label is global function                         0.02s  
+  ✓ dup02 global functions delegate to helper class                      0.02s  
+  ✓ dup03 empty builder produces empty result                            0.02s  
+  ✓ dup03 add campionati adds to to list                                 0.02s  
+  ✓ dup03 add crc adds to cc list                                        0.02s  
+  ✓ dup03 builder deduplicates recipients                                0.02s  
+  ✓ dup03 all names contains to and cc names                             0.03s  
+  ✓ dup03 add national admins finds db users                             0.02s  
+  ✓ dup03 add zone admins filters by tournament zone                     0.03s  
+  ✓ dup05 status constants still exist with correct values               0.02s  
+  ✓ dup05 statuses array contains all statuses                           0.02s  
+  ✓ dup05 status constants have deprecated annotation                    0.02s  
+  ✓ inc01 national admin enum value is national admin string             0.02s  
+  ✓ inc01 query with enum finds national admins                          0.02s  
+  ✓ inc01 enum query equals raw string query                             0.02s  
+  ✓ inc01 national admin email pluck pattern                             0.02s  
+
+   PASS  Tests\Unit\Config\GolfConfigTest
+  ✓ all config assignment role values exist in enum                      0.04s  
+  ✓ assistant role is not in config                                      0.02s  
+  ✓ assistente label is not in config values                             0.02s  
+  ✓ required assignment roles are present in config                      0.02s  
+  ✓ config role values match enum exactly                                0.02s  
+  ✓ assignment role enum has correct cases                               0.02s  
+
+   PASS  Tests\Unit\Controllers\ResendNationalNotificationDetailsTest
+  ✓ total recipients is not in fillable                                  0.02s  
+  ✓ details is fillable and cast as array                                0.02s  
+  ✓ total recipients saved in details json is retrievable                0.03s  
+  ✓ direct total recipients update is silently ignored                   0.03s  
+  ✓ get stats attribute reads total recipients from details              0.03s  
+
+   PASS  Tests\Unit\DeadCodeRegressionTest
+  ✓ dead01 update status not in tournament controller                    0.02s  
+  ✓ dead01 change status still exists                                    0.02s  
+  ✓ dead02 get clubs by zone not in tournament controller                0.02s  
+  ✓ dead03 protected stubs do not exist                                  0.02s  
+  ✓ dead04 tournament notification mail removed                          0.02s  
+  ✓ dead05 update order not in tournament type controller                0.02s  
+  ✓ dead06 get db enum values not in helper                              0.02s  
+  ✓ dead07 unused system operations do not exist                         0.05s  
+
+   PASS  Tests\Unit\EnumCastRegressionTest
+  ✓ user type cast returns enum instance                                 0.03s  
+  ✓ user type value returns correct string                               0.03s  
+  ✓ user type value can be used as array key                             0.03s  
+  ✓ user is admin methods are consistent with enum                       0.03s  
+  ✓ has role zone admin is exclusive to zone admin                       0.03s  
+  ✓ has role admin covers all admin types                                0.03s  
+  ✓ has role specificity                                                 0.02s  
+  ✓ tournament status cast returns enum instance                         0.03s  
+  ✓ tournament status value returns correct string                       0.06s  
+  ✓ tournament status value can be used as array key                     0.06s  
+  ✓ tournament color service border color works for all statuses         0.06s  
+  ✓ collection group by with enum requires value                         0.04s  
+  ✓ tournament stats count by status                                     0.04s  
+  ✓ calendar data service serializes user type as string                 0.03s  
+  ✓ calendar data service admin serializes status as string              0.04s  
+  ✓ calendar data service referee serializes status as string            0.03s  
+  ✓ user roles array contains strings not enum instances                 0.03s  
+  ✓ tournament status enum methods                                       0.02s  
+  ✓ tournament status active values returns strings                      0.02s  
+  ✓ tournament status color class returns string                         0.02s  
+
+   PASS  Tests\Unit\Enums\AssignmentRoleTest
+  ✓ enum values match database strings                                   0.03s  
+  ✓ label equals value for all roles                                     0.02s  
+  ✓ values returns all three strings                                     0.02s  
+  ✓ values are strings                                                   0.02s  
+  ✓ default returns referee                                              0.02s  
+  ✓ default value is arbitro                                             0.02s  
+  ✓ sort order director has highest priority                             0.02s  
+  ✓ sort order observer has lowest priority                              0.02s  
+  ✓ sort order all distinct                                              0.02s  
+  ✓ sort collection director comes first                                 0.02s  
+  ✓ sort collection alphabetical within same role                        0.02s  
+  ✓ sort collection handles unknown role gracefully                      0.02s  
+  ✓ sort collection preserves count                                      0.02s  
+  ✓ sort collection handles empty collection                             0.02s  
+  ✓ normalize italian values round trip                                  0.02s  
+  ✓ normalize english variants                                           0.02s  
+  ✓ normalize case insensitive                                           0.02s  
+  ✓ normalize trims whitespace                                           0.02s  
+  ✓ normalize unknown input defaults to referee                          0.02s  
+  ✓ normalize returns value usable in db query                           0.02s  
+  ✓ all roles are tryable from their own value                           0.02s  
+  ✓ try from unknown returns null                                        0.02s  
+  ✓ sort and normalize consistency                                       0.02s  
+
+   PASS  Tests\Unit\Enums\RefereeLevelTest
+  ✓ label returns human readable string                                  0.03s  
+  ✓ label for primo livello differs from value                           0.02s  
+  ✓ is national returns true for high levels                             0.02s  
+  ✓ is national returns false for low levels                             0.02s  
+  ✓ is active returns false only for archivio                            0.02s  
+  ✓ active levels excludes archivio                                      0.02s  
+  ✓ active levels contains all five levels                               0.02s  
+  ✓ select options returns associative array                             0.02s  
+  ✓ select options values are human labels                               0.02s  
+  ✓ select options excludes archivio by default                          0.03s  
+  ✓ select options includes archivio when requested                      0.02s  
+  ✓ can access national true for valid high levels                       0.02s  
+  ✓ can access national false for low levels                             0.02s  
+  ✓ can access national false for null                                   0.02s  
+  ✓ can access national false for unknown string                         0.02s  
+  ✓ helper select options matches enum select options                    0.02s  
+  ✓ helper select options with archived matches enum                     0.02s  
+  ✓ helper can access national matches enum                              0.02s  
+  ✓ all enum values match db enum values                                 0.02s  
+
+   PASS  Tests\Unit\Enums\UserTypeZoneAdminQueryTest
+  ✓ zone admin enum value is admin string                                0.03s  
+  ✓ zone admin value equals string admin                                 0.02s  
+  ✓ query with enum value finds zone admins                              0.02s  
+  ✓ query with zone admin value excludes other roles                     0.03s  
+  ✓ notification controller zone admin query pattern                     0.03s  
+  ✓ availability controller zone admin email query pattern               0.02s  
+
+   PASS  Tests\Unit\Helpers\RefereeLevelsHelperTest
+  ✓ get select options returns array                                     0.02s  
+  ✓ get select options excludes archived by default                      0.02s  
+  ✓ get select options includes archived when requested                  0.02s  
+  ✓ normalize converts variants correctly                                0.02s  
+  ✓ normalize handles null                                               0.02s  
+  ✓ normalize handles empty string                                       0.02s  
+  ✓ normalize returns original for unknown value                         0.04s  
+  ✓ get label returns correct labels                                     0.02s  
+  ✓ get label handles null                                               0.02s  
+  ✓ get label handles empty string                                       0.02s  
+  ✓ is valid recognizes valid levels                                     0.02s  
+  ✓ is valid recognizes valid variants                                   0.02s  
+  ✓ is valid rejects invalid levels                                      0.02s  
+  ✓ can access national tournaments for high levels                      0.02s  
+  ✓ can access national tournaments for low levels                       0.02s  
+  ✓ get all variants returns all variants                                0.02s  
+  ✓ debug level returns complete info                                    0.02s  
+  ✓ global helper functions work                                         0.02s  
+
+   PASS  Tests\Unit\Helpers\ZoneHelperTest
+  ✓ get folder code returns correct code for valid zone                  0.03s  
+  ✓ get folder code handles null                                         0.02s  
+  ✓ get folder code for all zones                                        0.02s  
+  ✓ get folder code for tournament returns crc for national              0.03s  
+  ✓ get folder code for tournament returns zone for zonal                0.03s  
+  ✓ is tournament national identifies national tournaments               0.03s  
+  ✓ is tournament national identifies non national tournaments           0.03s  
+  ✓ get all folder codes returns array                                   0.02s  
+  ✓ get zone name returns existing zone name                             0.02s  
+  ✓ get zone name handles null                                           0.02s  
+  ✓ get zone name handles non existent zone                              0.02s  
+  ✓ get email pattern generates correct pattern                          0.02s  
+  ✓ user has access to zone super admin has access to all                0.02s  
+  ✓ user has access to zone national admin has access to all             0.02s  
+  ✓ user has access to zone zone admin has access to own zone only       0.02s  
+  ✓ user has access to zone referee has access to own zone only          0.02s  
+
+   PASS  Tests\Unit\Mail\MailDispatchRegressionTest
+  ✓ assignment notification has no call sites in app code                0.06s  
+  ✓ send to referee dispatches cc copy                                   0.05s  
+  ✓ mail without documents has no attachments                            0.04s  
+  ✓ send to club dispatches club notification mail                       0.03s  
+
+   PASS  Tests\Unit\Mail\ZombieMailStubsDeletedTest
+  ✓ national availability notification file does not exist               0.02s  
+  ✓ referee availability confirmation file does not exist                0.02s  
+  ✓ zonal availability notification file does not exist                  0.02s  
+  ✓ active mail classes still exist                                      0.02s  
+  ✓ tournament notification mail file does not exist                     0.02s  
+  ✓ per recipient zonal mailables do not exist                           0.02s  
+  ✓ assignment notification file does not exist                          0.02s  
+  ✓ no mail class uses view name placeholder                             0.02s  
+
+   PASS  Tests\Unit\Models\AssignmentTest
+  ✓ assignment belongs to user                                           0.04s  
+  ✓ assignment belongs to tournament                                     0.03s  
+  ✓ assignment belongs to assigned by                                    0.03s  
+  ✓ referee is alias of user                                             0.04s  
+  ✓ unique constraint on user tournament                                 0.04s  
+  ✓ same user can have multiple assignments on different tournaments     0.04s  
+  ✓ same tournament can have multiple assignments for different users    0.04s  
+  ✓ factory confirmed state                                              0.04s  
+  ✓ factory completed state                                              0.03s  
+  ✓ factory as tournament director state                                 0.04s  
+  ✓ factory as referee state                                             0.03s  
+  ✓ factory as observer state                                            0.03s  
+  ✓ assignment has required fields                                       0.03s  
+  ✓ assignment has valid roles                                           0.03s  
+  ✓ is confirmed is boolean                                              0.03s  
+
+   PASS  Tests\Unit\Models\AvailabilityTest
+  ✓ availability belongs to user                                         0.04s  
+  ✓ availability belongs to tournament                                   0.03s  
+  ✓ unique constraint on user tournament                                 0.03s  
+  ✓ same user can declare availability for different tournaments         0.04s  
+  ✓ submitted at is required                                             0.03s  
+  ✓ user id is required                                                  0.03s  
+  ✓ tournament id is required                                            0.02s  
+  ✓ submitted at is saved correctly                                      0.03s  
+
+   PASS  Tests\Unit\Models\ClubTest
+  ✓ club belongs to zone                                                 0.03s  
+  ✓ club has many tournaments                                            0.03s  
+  ✓ scope active filters active clubs                                    0.03s  
+  ✓ scope ordered sorts by name                                          0.02s  
+  ✓ scope visible super admin sees all                                   0.03s  
+  ✓ scope visible national admin sees all                                0.03s  
+  ✓ scope visible zone admin sees own zone only                          0.03s  
+  ✓ scope visible without user returns empty                             0.04s  
+  ✓ club factory creates valid club                                      0.02s  
+  ✓ club factory in zone state                                           0.02s  
+  ✓ club factory inactive state                                          0.02s  
+  ✓ club has required fields                                             0.02s  
+  ✓ club code is unique                                                  0.02s  
+  ✓ is active is boolean                                                 0.02s  
+
+   PASS  Tests\Unit\Models\NotificationClauseSelectionFkTest
+  ✓ clause selection belongs to tournament notification                  0.04s  
+  ✓ tournament notification has clause selections                        0.03s  
+  ✓ clause selections are orphaned without cascade guard                 0.03s  
+  ✓ unique constraint on notification placeholder                        0.03s  
+  ✓ tournament notification model has clause selections relation         0.02s  
+  ✓ clause selection has expected relations                              0.02s  
+
+   PASS  Tests\Unit\Models\TournamentNotificationCanBeResentTest
+  ✓ notification never sent can be resent                                0.03s  
+  ✓ notification sent more than one hour ago can be resent               0.03s  
+  ✓ notification sent 61 minutes ago can be resent                       0.03s  
+  ✓ notification sent recently cannot be resent                          0.03s  
+  ✓ notification sent 30 seconds ago cannot be resent                    0.03s  
+  ✓ failed notification sent recently cannot be resent                   0.03s  
+  ✓ failed notification sent over one hour ago can be resent             0.03s  
+
+   PASS  Tests\Unit\Models\TournamentTest
+  ✓ tournament belongs to club                                           0.03s  
+  ✓ tournament belongs to tournament type                                0.03s  
+  ✓ tournament type is alias                                             0.03s  
+  ✓ tournament has zone through club                                     0.03s  
+  ✓ tournament has many assignments                                      0.04s  
+  ✓ tournament has many availabilities                                   0.03s  
+  ✓ tournament has referees through assignments                          0.05s  
+  ✓ scope upcoming filters future tournaments                            0.04s  
+  ✓ scope visible super admin sees all                                   0.05s  
+  ✓ scope visible national admin sees national only                      0.05s  
+  ✓ scope visible zone admin sees own zone only                          0.05s  
+  ✓ scope visible national referee sees own zone and national            0.06s  
+  ✓ scope visible regional referee sees own zone only                    0.06s  
+  ✓ scope visible without user returns empty                             0.04s  
+  ✓ zone id accessor returns club zone id                                0.02s  
+  ✓ tournament factory creates valid tournament                          0.03s  
+  ✓ tournament factory upcoming state                                    0.02s  
+  ✓ tournament factory past state                                        0.03s  
+
+   PASS  Tests\Unit\Models\TournamentTypeTest
+  ✓ tournament type has many tournaments                                 0.05s  
+  ✓ scope national filters national types                                0.02s  
+  ✓ scope zonal filters zonal types                                      0.02s  
+  ✓ scope active filters active types                                    0.03s  
+  ✓ tournament type has required attributes                              0.02s  
+  ✓ tournament type has calendar color                                   0.02s  
+
+   PASS  Tests\Unit\Models\UserTest
+  ✓ user belongs to zone                                                 0.03s  
+  ✓ user can have null zone                                              0.02s  
+  ✓ user has many assignments                                            0.05s  
+  ✓ user has many availabilities                                         0.04s  
+  ✓ user has tournaments through assignments                             0.05s  
+  ✓ user can have career history                                         0.03s  
+  ✓ scope referees filters only referees                                 0.03s  
+  ✓ scope active filters active users                                    0.03s  
+  ✓ scope visible super admin sees all                                   0.04s  
+  ✓ scope visible national admin sees national referees                  0.03s  
+  ✓ scope visible zone admin sees own zone only                          0.03s  
+  ✓ scope visible without user returns empty                             0.03s  
+  ✓ is active accessor works                                             0.02s  
+  ✓ has role recognizes admin                                            0.03s  
+  ✓ has role recognizes zone admin                                       0.02s  
+  ✓ has role recognizes super admin                                      0.02s  
+  ✓ has role recognizes referee                                          0.02s  
+  ✓ user factory creates valid referee                                   0.02s  
+  ✓ user factory creates valid zone admin                                0.02s  
+
+   PASS  Tests\Unit\Models\ZoneTest
+  ✓ zone has many clubs                                                  0.04s  
+  ✓ zone has many users                                                  0.03s  
+  ✓ zone has code                                                        0.02s  
+  ✓ crc zone exists                                                      0.02s  
+  ✓ all zones are active by default                                      0.02s  
+  ✓ zones can be ordered                                                 0.02s  
+
+   PASS  Tests\Unit\Services\AssignmentDateConflictNullEndDateTest
+  ✓ same day overlap detected with null end date                         0.02s  
+  ✓ distant tournaments with null end date do not overlap                0.02s  
+  ✓ overlapping ranges detected                                          0.02s  
+
+   PASS  Tests\Unit\Services\AssignmentValidationServiceTest
+  ✓ detects date conflicts                                               0.05s  
+  ✓ does not detect conflicts for non overlapping dates                  0.04s  
+  ✓ filters conflicts by zone                                            0.05s  
+  ✓ validation summary returns correct structure                         0.02s  
+  ✓ validation summary works with specific zone                          0.02s  
+  ✓ dates overlap logic through detect conflicts                         0.04s  
+  ✓ consecutive dates do not conflict                                    0.04s  
+  ✓ works with no assignments                                            0.02s  
+  ✓ works with single assignment                                         0.03s  
+  ✓ ignores completed tournaments                                        0.04s  
+
+   WARN  Tests\Unit\Services\DocumentGenerationServiceTest
+  ✓ get zone folder returns crc for national tournaments                 0.04s  
+  ✓ get zone folder returns zone code for zonal tournaments              0.03s  
+  - zone template path logic → Requires filesystem setup with actual te… 0.05s  
+  - tournament dates formatting → Requires template files and complex s… 0.02s  
+  ✓ get zone folder accepts tournament                                   0.03s  
+  ✓ get zone folder returns valid values                                 0.03s  
+  ✓ get zone folder handles tournament without club                      0.02s  
+
+   PASS  Tests\Unit\Services\NotificationPreviewNullClubTest
+  ✓ preview with club flag but null club does not throw                  0.04s  
+
+   PASS  Tests\Unit\Services\NotificationRecipientBuilderEmailValidationTest
+  ✓ invalid email is skipped in to                                       0.02s  
+  ✓ invalid email is skipped in cc                                       0.04s  
+  ✓ valid email is kept                                                  0.02s  
+  ✓ build returns cc in canonical laravel format                         0.02s  
+  ✓ cc array is consumable by mail cc                                    0.02s  
+
+   PASS  Tests\Unit\Services\NotificationServiceTest
+  ✓ prepare notification creates new notification                        0.04s  
+  ✓ prepare notification retrieves existing notification                 0.03s  
+  ✓ prepare notification includes referee info                           0.04s  
+  ✓ recipients are normalized                                            0.03s  
+  ✓ send fails without metadata recipients                               0.04s  
+  ✓ notification with empty recipients sends no emails                   0.05s  
+  ✓ prepare notification works with no assignments                       0.03s  
+  ✓ prepare notification handles many referees                           0.09s  
+  ✓ notification status is tracked                                       0.03s  
+
+   PASS  Tests\Feature\Admin\AssignmentManagementTest
+  ✓ admin can assign referee to tournament                               0.15s  
+  ✓ admin can assign tournament director                                 0.04s  
+  ✓ admin can assign observer                                            0.05s  
+  ✓ admin can update assignment role                                     0.04s  
+  ✓ admin can delete assignment                                          0.04s  
+  ✓ cannot assign same referee twice to same tournament                  0.05s  
+  ✓ role must be valid                                                   0.05s  
+  ✓ referee cannot create assignments                                    0.05s  
+  ✓ assignment created with correct assigned by                          0.04s  
+  ✓ assignment has assigned at timestamp                                 0.04s  
+
+   PASS  Tests\Feature\Admin\EnumMiddlewareRegressionTest
+  ✓ zone admin can access admin tournaments index                        0.04s  
+  ✓ national admin can access admin tournaments index                    0.03s  
+  ✓ super admin can access admin tournaments index                       0.03s  
+  ✓ referee cannot access admin tournaments index                        0.03s  
+  ✓ unauthenticated user cannot access admin routes                      0.02s  
+  ✓ zone admin can access tournament create page                         0.03s  
+  ✓ super admin can access tournament create page                        0.03s  
+  ✓ zone admin can view tournament detail                                0.04s  
+  ✓ national admin can view tournament detail                            0.04s  
+  ✓ tournament status is persisted and reloaded as enum                  0.03s  
+  ✓ user type is persisted and reloaded as enum                          0.02s  
+  ✓ creating tournament with string status stores correct enum           0.05s  
+
+   PASS  Tests\Feature\Admin\NationalNotificationMailDispatchTest
+  ✓ send national notification dispatches mailable                       0.06s  
+  ✓ mailable can be instantiated and rendered                            0.04s  
+
+   PASS  Tests\Feature\Admin\NotificationNationalZonalClassificationTest
+  ✓ zonal tournament with corrupt crc notification type shows as zonal   0.04s  
+  ✓ zonal tournament primary notification is null type not crc           0.04s  
+  ✓ national tournament shows as national                                0.04s  
+  ✓ national tournament with both notifications has crc and zone         0.04s  
+  ✓ mark notified auto creates null type for zonal tournament            0.05s  
+  ✓ mark notified auto creates crc type for national tournament          0.04s  
+  ✓ mark notified auto assigns correct type for mixed batch              0.05s  
+  ✓ fix notification types corrects zonal tournament with wrong type     0.03s  
+  ✓ fix notification types dry run does not modify db                    0.03s  
+  ✓ fix notification types leaves correct records unchanged              0.04s  
+  ✓ mark notified sets is confirmed on assignments                       0.04s  
+
+   PASS  Tests\Feature\Admin\SendAssignmentWithConvocationHttpTest
+  ✓ preview action returns json preview                                  0.19s  
+  ✓ save action persists draft without sending                           0.12s  
+  ✓ send action dispatches and redirects to index                        0.12s  
+
+   PASS  Tests\Feature\Admin\SendNationalNotificationHttpTest
+  ✓ zonal tournament is rejected for crc notification                    0.04s  
+  ✓ no recipients returns error                                          0.04s  
+  ✓ success creates national record and deletes zonal draft              0.04s  
+
+   PASS  Tests\Feature\Admin\TournamentManagementTest
+  ✓ admin can view tournament create page                                0.03s  
+  ✓ admin can create tournament                                          0.03s  
+  ✓ zone admin cannot create tournament in other zone                    0.04s  
+  ✓ admin can update tournament in own zone                              0.04s  
+  ✓ admin can delete tournament                                          0.05s  
+  ✓ zone admin sees only own zone tournaments                            0.05s  
+  ✓ super admin sees all tournaments                                     0.05s  
+  ✓ tournament creation requires required fields                         0.03s  
+  ✓ admin can create tournament without club                             0.03s  
+  ✓ tba tournament is visible to its zone admin                          0.02s  
+  ✓ end date must be after start date                                    0.04s  
+  ✓ referee cannot access tournament creation                            0.03s  
+  ✓ guest cannot access tournaments                                      0.02s  
+
+   PASS  Tests\Feature\Auth\AuthenticationTest
+  ✓ login screen can be rendered                                         0.03s  
+  ✓ users can authenticate using the login screen                        0.04s  
+  ✓ users can not authenticate with invalid password                     0.25s  
+  ✓ users can logout                                                     0.06s  
+  ✓ inactive users can not authenticate                                  0.25s  
+  ✓ deactivation kills existing session                                  0.05s  
+
+   PASS  Tests\Feature\Auth\EmailVerificationTest
+  ✓ email verification screen can be rendered                            0.03s  
+  ✓ email can be verified                                                0.03s  
+  ✓ email is not verified with invalid hash                              0.03s  
+
+   PASS  Tests\Feature\Auth\PasswordConfirmationTest
+  ✓ confirm password screen can be rendered                              0.03s  
+  ✓ password can be confirmed                                            0.03s  
+  ✓ password is not confirmed with invalid password                      0.25s  
+
+   PASS  Tests\Feature\Auth\PasswordResetTest
+  ✓ reset password link screen can be rendered                           0.05s  
+  ✓ reset password link can be requested                                 0.26s  
+  ✓ reset password screen can be rendered                                0.33s  
+  ✓ password can be reset with valid token                               0.30s  
+
+   PASS  Tests\Feature\Auth\PasswordUpdateTest
+  ✓ password can be updated                                              0.04s  
+  ✓ correct password must be provided to update password                 0.03s  
+
+   PASS  Tests\Feature\Auth\RegistrationTest
+  ✓ registration screen can be rendered                                  0.03s  
+  ✓ new users can register                                               0.04s  
+
+   PASS  Tests\Feature\CareerHistoryGiorniEffettiviTest
+  ✓ it creates referee career history on first tournament add            0.04s  
+  ✓ it adds tournament with days count                                   0.04s  
+  ✓ it updates tournament days                                           0.04s  
+  ✓ it updates tournament complete data                                  0.04s  
+  ✓ it recalculates career stats after adding tournament                 0.03s  
+  ✓ it recalculates career stats after updating tournament               0.04s  
+  ✓ generate stats summary includes all required fields                  0.03s  
+  ✓ get career data includes current year level                          0.03s  
+  ✓ get year data returns correct level from history                     0.03s  
+  ✓ batch add preserves existing data                                    0.04s  
+  ✓ remove tournament recalculates stats                                 0.04s  
+  ✓ controller can add tournament with days                              0.04s  
+  ✓ controller can update tournament complete                            0.04s  
+
+   PASS  Tests\Feature\CurriculumAnnoCorrenteTest
+  ✓ curriculum include anno corrente quando esiste storico pregresso     0.06s  
+  ✓ career data contiene sia storico sia anno corrente                   0.06s  
+  ✓ get year data anno corrente legge dati live                          0.06s  
+  ✓ curriculum anno corrente senza storico usa fallback                  0.05s  
+  ✓ anno corrente archiviato non viene duplicato                         0.05s  
+  ✓ pagina curriculum utente mostra anno corrente                        0.06s  
+
+   PASS  Tests\Feature\DatabaseConnectionTest
+  ✓ uses mysql for tests                                                 0.02s  
+  ✓ database is isolated                                                 0.02s  
+
+   PASS  Tests\Feature\ExampleTest
+  ✓ the application returns a successful response                        0.04s  
+
+   PASS  Tests\Feature\FedergolfTest
+  ✓ iscritti ready when there are admitted players                       0.06s  
+  ✓ iscritti open when nobody is admitted yet                            0.03s  
+  ✓ iscritti empty when there are no entries                             0.02s  
+  ✓ iscritti error when federgolf returns http error                     0.03s  
+  ✓ iscritti not found when federgolf returns 404                        0.04s  
+  ✓ iscritti rate limit when federgolf returns 429                       0.02s  
+  ✓ iscritti forbidden when federgolf returns 403                        0.02s  
+  ✓ iscritti unpublished when payload has no processed data              0.02s  
+  ✓ iscritti unpublished when wordpress answers zero                     0.03s  
+  ✓ iscritti open reports counts                                         0.02s  
+  ✓ iscritti ready exposes counts                                        0.02s  
+  ✓ iscritti not found is not cached                                     0.03s  
+  ✓ iscritti error when body is not json                                 0.04s  
+  ✓ iscritti wildcard counts as admitted                                 0.02s  
+  ✓ iscritti name is decoded and trimmed                                 0.03s  
+  ✓ iscritti admitted without any readable name is a parse error         0.04s  
+  ✓ iscritti partial names still ready                                   0.03s  
+  ✓ iscritti entry without status column is not admitted                 0.02s  
+  ✓ iscritti rejects empty gara id                                       0.03s  
+  ✓ iscritti rejects oversized gara id                                   0.02s  
+  ✓ iscritti rejects control characters in gara id                       0.02s  
+  ✓ iscritti accepts any opaque id format                                0.02s  
+  ✓ iscritti accepts guid gara id                                        0.02s  
+  ✓ iscritti rejects array gara id                                       0.02s  
+  ✓ iscritti accepts numeric id with leading zeros and spaces            0.02s  
+  ✓ iscritti success is cached for same gara                             0.02s  
+  ✓ iscritti error is not cached                                         0.04s  
+  ✓ load all competitions excludes past and cancelled                    0.02s  
+  ✓ load all competitions excludes postponed by name                     0.03s  
+  ✓ load all competitions detects tipo from name                         0.03s  
+  ✓ load all competitions sorts by date ascending                        0.03s  
+  ✓ load all competitions club defaults to null                          0.02s  
+  ✓ load all competitions fails gracefully on http error                 0.03s  
+  ✓ load all competitions reports rate limit                             0.03s  
+  ✓ load all competitions fails gracefully on non json body              0.03s  
+
+   WARN  Tests\Feature\NotificationCycleTest
+  ✓ zone templates exist                                                 0.04s  
+  - get zone folder returns correct folder → Nessun torneo nel database… 0.03s  
+  - generate convocation for tournament with assignments → Nessun torne… 0.02s  
+  - generate club document → Nessun torneo con assegnazioni nel databas… 0.02s  
+  - generate convocation with clauses → Nessun torneo con assegnazioni…  0.02s  
+  - prepare notification → Nessun torneo con assegnazioni nel database   0.02s  
+  ✓ notification send is mocked                                          0.02s  
+  - complete notification cycle → Nessun torneo completo nel database    0.02s  
+  ✓ tournament date formatting                                           0.02s  
+  ✓ role translation                                                     0.02s  
+  ✓ handles missing template gracefully                                  0.02s  
+  - generated docx is valid zip → Nessun torneo con assegnazioni         0.02s  
+  - handles tournament without assignments → Zone, Club o TournamentTyp… 0.02s  
+
+   PASS  Tests\Feature\Notifications\InstitutionalNotificationSendTest
+  ✓ send dispatches mail to configured institutional address             0.07s  
+  ✓ institutional sent together with club and referees                   0.06s  
+  ✓ invalid institutional id does not block other recipients             0.05s  
+
+   PASS  Tests\Feature\Notifications\NationalNotificationCorruptZoneEmailTest
+  ✓ corrupt zone email is skipped and send does not crash                0.06s  
+  ✓ valid zone email is included in cc                                   0.04s  
+
+   PASS  Tests\Feature\Notifications\NotificationAttachmentsTest
+  ✓ club mail includes both attachments                                  0.06s  
+  ✓ referee is in cc of club mail                                        0.06s  
+  ✓ attach convocation false skips convocation                           0.07s  
+  ✓ missing attachment file marks partial with error                     0.07s  
+
+   PASS  Tests\Feature\Notifications\NotificationDeleteCleanupTest
+  ✓ delete with cleanup removes documents record and clauses             0.05s  
+  ✓ destroy endpoint deletes single notification                         0.04s  
+  ✓ destroy tournament endpoint deletes all notifications                0.05s  
+
+   PASS  Tests\Feature\Notifications\PreflightRecipientsTest
+  ✓ all valid emails produce zero invalid                                0.04s  
+  ✓ club with empty email is flagged                                     0.03s  
+  ✓ zone with name instead of email is flagged                           0.03s  
+  ✓ referee with malformed email is flagged others valid                 0.04s  
+
+   PASS  Tests\Feature\Notifications\ZonalDeliveryRegressionTest
+  ✓ fresh zonal send delivers for real to club referees and institution… 0.07s  
+  ✓ form choices override stale recipients column                        0.14s  
+  ✓ send from index with fig metadata redirects to form instead of send… 0.06s  
+  ✓ partial failure is not reported as full success                      0.14s  
+
+   PASS  Tests\Feature\Notifications\ZonalNotificationSendTest
+  ✓ zonal send reaches club and assigned referees                        0.06s  
+  ✓ zonal send ignores referees no longer assigned                       0.07s  
+  ✓ stale recipients column does not override form metadata              0.06s  
+  ✓ metadata without recipients is rejected                              0.04s  
+  ✓ missing club email does not block referees                           0.05s  
+  ✓ no valid recipients ends failed not sent                             0.05s  
+
+   PASS  Tests\Feature\ProfileTest
+  ✓ profile page is displayed                                            0.05s  
+  ✓ profile information can be updated                                   0.03s  
+  ✓ email verification status is unchanged when the email address is un… 0.03s  
+  ✓ user can delete their account                                        0.03s  
+  ✓ correct password must be provided to delete account                  0.03s  
+
+   WARN  Tests\Feature\Referee\AvailabilityManagementTest
+  ✓ referee can view available tournaments                               0.04s  
+  - referee sees only own zone tournaments → Richiede scope visible() f… 0.02s  
+  ✓ referee can declare availability                                     0.05s  
+  ✓ referee cannot declare availability twice                            0.06s  
+  ✓ referee can remove availability                                      0.05s  
+  ✓ referee cannot remove others availability                            0.04s  
+  ✓ referee cannot declare availability after deadline                   0.03s  
+  ✓ admin cannot declare availability                                    0.03s  
+  ✓ guest cannot access availabilities                                   0.03s  
+  ✓ submitted at is set automatically                                    0.05s  
+
+   PASS  Tests\Feature\Referee\RefereeDashboardAuthTest
+  ✓ unauthenticated user is redirected from referee dashboard            0.04s  
+  ✓ authenticated referee can access referee dashboard                   0.04s  
+  ✓ authenticated zone admin can access referee dashboard                0.05s  
+  ✓ referee dashboard named route is defined                             0.02s  
+  ✓ legacy referee quadranti routes are removed                          0.02s  
+
+  Tests:    11 skipped, 479 passed (2138 assertions)
+  Duration: 19.21s
+

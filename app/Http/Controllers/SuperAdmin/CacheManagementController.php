@@ -4,6 +4,7 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Services\Monitoring\CacheService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -16,10 +17,19 @@ class CacheManagementController extends Controller
     /**
      * Pulisci cache sistema
      */
-    public function clear(Request $request)
+    public function clear(Request $request): JsonResponse
     {
         try {
-            $types = $request->get('types', ['application', 'config', 'route', 'view']);
+            $types = ['application', 'config', 'route', 'view'];
+
+        if ($request->has('types')) {
+            $types = [];
+            foreach ($request->array('types') as $voce) {
+                if (is_string($voce)) {
+                    $types[] = $voce;
+                }
+            }
+        }
             $results = $this->cacheService->clearCache($types);
 
             return response()->json([
@@ -40,10 +50,19 @@ class CacheManagementController extends Controller
     /**
      * Ottimizza sistema
      */
-    public function optimize(Request $request)
+    public function optimize(Request $request): JsonResponse
     {
         try {
-            $operations = $request->get('operations', ['config', 'route', 'view']);
+            $operations = ['config', 'route', 'view'];
+
+        if ($request->has('operations')) {
+            $operations = [];
+            foreach ($request->array('operations') as $voce) {
+                if (is_string($voce)) {
+                    $operations[] = $voce;
+                }
+            }
+        }
             $results = $this->cacheService->optimize($operations);
 
             return response()->json([
@@ -62,23 +81,9 @@ class CacheManagementController extends Controller
     }
 
     /**
-     * Statistiche cache
-     */
-    public function stats(Request $request)
-    {
-        $stats = $this->cacheService->getCacheStats();
-
-        if ($request->wantsJson()) {
-            return response()->json($stats);
-        }
-
-        return view('super-admin.monitoring.cache-stats', compact('stats'));
-    }
-
-    /**
      * Pulisci cache applicazione
      */
-    public function clearApplication(Request $request)
+    public function clearApplication(Request $request): JsonResponse
     {
         try {
             $results = $this->cacheService->clearCache(['application']);
@@ -99,7 +104,7 @@ class CacheManagementController extends Controller
     /**
      * Pulisci cache view
      */
-    public function clearViews(Request $request)
+    public function clearViews(Request $request): JsonResponse
     {
         try {
             $results = $this->cacheService->clearCache(['view']);

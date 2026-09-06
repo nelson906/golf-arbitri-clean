@@ -100,7 +100,7 @@ class AssignmentObserver
                 ->get();
 
             $refereeNames = $assignments
-                ->map(fn ($a) => $a->user?->name)
+                ->map(fn ($a) => $a->user->name)
                 ->filter()
                 ->implode(', ');
 

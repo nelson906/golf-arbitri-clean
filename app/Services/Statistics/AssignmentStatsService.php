@@ -6,6 +6,7 @@ use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Models\User;
 use App\Traits\HasZoneVisibility;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class AssignmentStatsService
@@ -14,6 +15,8 @@ class AssignmentStatsService
 
     /**
      * Ottiene statistiche generali sulle assegnazioni.
+     *
+     * @return array<string, mixed>
      */
     public function getGeneralStats(?User $user = null): array
     {
@@ -37,6 +40,7 @@ class AssignmentStatsService
 
     /**
      * Ottiene assegnazioni per ruolo.
+     * @return \Illuminate\Support\Collection<array-key, mixed>
      */
     public function getByRole(?User $user = null): Collection
     {
@@ -51,6 +55,7 @@ class AssignmentStatsService
 
     /**
      * Ottiene assegnazioni per zona.
+     * @return \Illuminate\Support\Collection<array-key, mixed>
      */
     public function getByZone(?User $user = null): Collection
     {
@@ -72,6 +77,7 @@ class AssignmentStatsService
 
     /**
      * Ottiene assegnazioni per livello arbitro.
+     * @return \Illuminate\Support\Collection<array-key, mixed>
      */
     public function getByLevel(?User $user = null): Collection
     {
@@ -121,6 +127,8 @@ class AssignmentStatsService
 
     /**
      * Ottiene statistiche carico di lavoro.
+     *
+     * @return array<string, mixed>
      */
     public function getWorkloadStats(?User $user = null): array
     {
@@ -135,7 +143,7 @@ class AssignmentStatsService
         $referees = $refereesQuery->get();
 
         return [
-            'avg_assignments' => round($referees->avg('assignments_count'), 2),
+            'avg_assignments' => round((float) $referees->avg('assignments_count'), 2),
             'max_assignments' => $referees->max('assignments_count'),
             'min_assignments' => $referees->min('assignments_count'),
             'overloaded_referees' => $referees->where('assignments_count', '>', 10)->count(),
@@ -144,6 +152,8 @@ class AssignmentStatsService
 
     /**
      * Ottiene statistiche complete per la vista assegnazioni.
+     *
+     * @return array<string, mixed>
      */
     public function getFullStats(?User $user = null): array
     {
@@ -168,8 +178,10 @@ class AssignmentStatsService
 
     /**
      * Query base con visibilità applicata.
+     *
+     * @return Builder<\App\Models\Assignment>
      */
-    protected function baseQuery(?User $user = null)
+    protected function baseQuery(?User $user = null): Builder
     {
         $user = $user ?? auth()->user();
         $query = Assignment::query();

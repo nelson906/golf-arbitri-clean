@@ -15,6 +15,7 @@ class ZoneFactory extends Factory
      *
      * @var string
      */
+    /** @var class-string<Zone> */
     protected $model = Zone::class;
 
     /**

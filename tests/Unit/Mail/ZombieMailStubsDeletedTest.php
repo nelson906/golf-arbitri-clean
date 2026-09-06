@@ -140,14 +140,14 @@ class ZombieMailStubsDeletedTest extends TestCase
     public function test_no_mail_class_uses_view_name_placeholder(): void
     {
         $mailDir = app_path('Mail');
-        $files = glob("{$mailDir}/*.php");
+        $files = glob("{$mailDir}/*.php") ?: [];
 
         $offenders = [];
 
         foreach ($files as $file) {
-            $content = file_get_contents($file);
+            $content = (string) file_get_contents((string) $file);
             if (str_contains($content, "view: 'view.name'")) {
-                $offenders[] = basename($file);
+                $offenders[] = basename((string) $file);
             }
         }
 

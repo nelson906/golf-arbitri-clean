@@ -35,7 +35,7 @@ class TournamentTest extends TestCase
      */
     public function test_tournament_belongs_to_tournament_type(): void
     {
-        $type = TournamentType::first();
+        $type = TournamentType::firstOrFail();
         $tournament = Tournament::factory()->create(['tournament_type_id' => $type->id]);
 
         $this->assertInstanceOf(TournamentType::class, $tournament->tournamentType);
@@ -49,7 +49,7 @@ class TournamentTest extends TestCase
     {
         $tournament = Tournament::factory()->create();
 
-        $this->assertEquals($tournament->tournamentType->id, $tournament->type->id);
+        $this->assertEquals($tournament->tournamentType?->id, $tournament->type?->id);
     }
 
     /**
@@ -57,7 +57,7 @@ class TournamentTest extends TestCase
      */
     public function test_tournament_has_zone_through_club(): void
     {
-        $zone = Zone::first();
+        $zone = Zone::firstOrFail();
         $club = Club::factory()->create(['zone_id' => $zone->id]);
         $tournament = Tournament::factory()->create(['club_id' => $club->id]);
 
@@ -77,7 +77,7 @@ class TournamentTest extends TestCase
         Assignment::factory()->forTournament($tournament)->forUser($user1)->create();
         Assignment::factory()->forTournament($tournament)->forUser($user2)->create();
 
-        $this->assertCount(2, $tournament->fresh()->assignments);
+        $this->assertCount(2, $tournament->refresh()->assignments);
     }
 
     /**
@@ -101,7 +101,7 @@ class TournamentTest extends TestCase
             'submitted_at' => now(),
         ]);
 
-        $this->assertCount(2, $tournament->fresh()->availabilities);
+        $this->assertCount(2, $tournament->refresh()->availabilities);
     }
 
     /**
@@ -116,7 +116,7 @@ class TournamentTest extends TestCase
         Assignment::factory()->forTournament($tournament)->forUser($user1)->create();
         Assignment::factory()->forTournament($tournament)->forUser($user2)->create();
 
-        $this->assertCount(2, $tournament->fresh()->referees);
+        $this->assertCount(2, $tournament->refresh()->referees);
         $this->assertTrue($tournament->referees->contains($user1));
         $this->assertTrue($tournament->referees->contains($user2));
     }
@@ -160,8 +160,8 @@ class TournamentTest extends TestCase
         $nationalAdmin = $this->createNationalAdmin();
 
         // Prendo i tipi dal seeder
-        $nationalType = TournamentType::where('is_national', true)->first();
-        $zonalType = TournamentType::where('is_national', false)->first();
+        $nationalType = TournamentType::where('is_national', true)->firstOrFail();
+        $zonalType = TournamentType::where('is_national', false)->firstOrFail();
 
         Tournament::factory()->count(2)->create(['tournament_type_id' => $nationalType->id]);
         Tournament::factory()->count(3)->create(['tournament_type_id' => $zonalType->id]);
@@ -197,8 +197,8 @@ class TournamentTest extends TestCase
         $nationalReferee = User::factory()->referee()->inZone(1)->withLevel('Nazionale')->create();
 
         // Prendo i tipi dal seeder
-        $nationalType = TournamentType::where('is_national', true)->first();
-        $zonalType = TournamentType::where('is_national', false)->first();
+        $nationalType = TournamentType::where('is_national', true)->firstOrFail();
+        $zonalType = TournamentType::where('is_national', false)->firstOrFail();
 
         $club1 = Club::factory()->create(['zone_id' => 1]); // stessa zona
         $club2 = Club::factory()->create(['zone_id' => 2]); // altra zona
@@ -235,8 +235,8 @@ class TournamentTest extends TestCase
         $regionalReferee = User::factory()->referee()->inZone(1)->withLevel('Regionale')->create();
 
         // Prendo i tipi dal seeder
-        $nationalType = TournamentType::where('is_national', true)->first();
-        $zonalType = TournamentType::where('is_national', false)->first();
+        $nationalType = TournamentType::where('is_national', true)->firstOrFail();
+        $zonalType = TournamentType::where('is_national', false)->firstOrFail();
 
         $club1 = Club::factory()->create(['zone_id' => 1]); // stessa zona
         $club2 = Club::factory()->create(['zone_id' => 2]); // altra zona

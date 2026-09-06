@@ -8,6 +8,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Support\Facades\Config;
 
 /**
  * Notifica nazionale (CRC/SZR) — sostituisce le 2 chiamate Mail::raw()
@@ -39,12 +40,12 @@ class NationalNotificationMail extends Mailable implements ShouldQueue
      */
     public function envelope(): Envelope
     {
-        $crcEmail = config('golf.emails.crc');
+        $crcEmail = Config::string('golf.emails.crc');
         $senderName = 'CRC - Comitato Regole e Campionati';
 
         return new Envelope(
             from: new \Illuminate\Mail\Mailables\Address(
-                config('mail.from.address'),
+                Config::string('mail.from.address'),
                 $senderName
             ),
             replyTo: filter_var($crcEmail, FILTER_VALIDATE_EMAIL)

@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
@@ -60,7 +60,6 @@ use Illuminate\Support\Facades\Storage;
  */
 class Document extends Model
 {
-    use HasFactory;
 
     protected $fillable = [
         'name',
@@ -127,6 +126,8 @@ class Document extends Model
 
     /**
      * Get the uploader (user) who uploaded this document
+     *
+     * @return BelongsTo<User, $this>
      */
     public function uploader(): BelongsTo
     {
@@ -135,6 +136,8 @@ class Document extends Model
 
     /**
      * Get the tournament this document belongs to
+     *
+     * @return BelongsTo<Tournament, $this>
      */
     public function tournament(): BelongsTo
     {
@@ -143,6 +146,8 @@ class Document extends Model
 
     /**
      * Get the zone this document belongs to
+     *
+     * @return BelongsTo<Zone, $this>
      */
     public function zone(): BelongsTo
     {
@@ -197,16 +202,22 @@ class Document extends Model
 
     /**
      * Scope for public documents
+     *
+     * @param  Builder<Document>  $query
+     * @return Builder<Document>
      */
-    public function scopePublic($query)
+    public function scopePublic(Builder $query): Builder
     {
         return $query->where('is_public', true);
     }
 
     /**
      * Scope for documents in a specific category
+     *
+     * @param  Builder<Document>  $query
+     * @return Builder<Document>
      */
-    public function scopeCategory($query, string $category)
+    public function scopeCategory(Builder $query, string $category): Builder
     {
         return $query->where('category', $category);
     }

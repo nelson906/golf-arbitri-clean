@@ -37,7 +37,7 @@ return new class extends Migration
             $table->text('address')->nullable();
             $table->string('city')->nullable();
             $table->string('province', 2)->nullable();
-            $table->foreignId('zone_id')->constrained('zones')->onDelete('cascade');
+            $table->foreignId('zone_id')->constrained('zones')->cascadeOnDelete();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 

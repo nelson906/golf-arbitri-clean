@@ -14,7 +14,6 @@ class RefereeLevelsHelperTest extends TestCase
     {
         $options = RefereeLevelsHelper::getSelectOptions();
 
-        $this->assertIsArray($options);
         $this->assertNotEmpty($options);
         $this->assertArrayHasKey('Aspirante', $options);
         $this->assertArrayHasKey('Nazionale', $options);
@@ -214,7 +213,6 @@ class RefereeLevelsHelperTest extends TestCase
     {
         $variants = RefereeLevelsHelper::getAllVariants();
 
-        $this->assertIsArray($variants);
         $this->assertNotEmpty($variants);
         $this->assertContains('Aspirante', $variants);
         $this->assertContains('aspirante', $variants);
@@ -228,7 +226,6 @@ class RefereeLevelsHelperTest extends TestCase
     {
         $debug = RefereeLevelsHelper::debugLevel('naz');
 
-        $this->assertIsArray($debug);
         $this->assertArrayHasKey('original', $debug);
         $this->assertArrayHasKey('lowercase', $debug);
         $this->assertArrayHasKey('normalized', $debug);
@@ -249,7 +246,6 @@ class RefereeLevelsHelperTest extends TestCase
     {
         // referee_levels()
         $levels = referee_levels();
-        $this->assertIsArray($levels);
         $this->assertNotEmpty($levels);
 
         // normalize_referee_level()

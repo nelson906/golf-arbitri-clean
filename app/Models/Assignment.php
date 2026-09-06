@@ -9,6 +9,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property int $id
@@ -16,20 +17,28 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $user_id
  * @property string|null $role
  * @property Carbon|null $assigned_at
- * @property int|null $assigned_by
+ * @property int $assigned_by
  * @property string|null $status
  * @property string|null $notes
  * @property Carbon|null $confirmed_at
  * @property bool $is_confirmed
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * @property-read Tournament|null $tournament
- * @property-read User|null $user
- * @property-read User|null $referee
- * @property-read User|null $assignedBy
+ * @property-read Tournament $tournament  FK NOT NULL
+ * @property-read User $user  FK NOT NULL
+ * @property-read User $referee  alias di user
+ * @property-read User $assignedBy  FK NOT NULL
+ *
+ * Attributi NON persistiti: copiati dallo User collegato da
+ * AssignmentController::getAvailableReferees() per comodita' della view.
+ * @property string|null $name
+ * @property string|null $email
+ * @property string|null $referee_code
+ * @property string|null $level
  */
 class Assignment extends Model
 {
+    /** @use HasFactory<\Database\Factories\AssignmentFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -50,18 +59,21 @@ class Assignment extends Model
         'is_confirmed' => 'boolean',
     ];
 
+    // ── RELAZIONI ───────────────────────────────────────────────────
     /**
-     * RELAZIONI
+     * @return BelongsTo<Tournament, $this>
      */
-    public function tournament()
+    public function tournament(): BelongsTo
     {
         return $this->belongsTo(Tournament::class);
     }
 
     /**
      * Relazione con l'utente/arbitro assegnato
+     *
+     * @return BelongsTo<User, $this>
      */
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
@@ -70,16 +82,19 @@ class Assignment extends Model
      * Alias per retrocompatibilità con codice legacy
      *
      * @deprecated Usare user() invece
+     * @return BelongsTo<User, $this>
      */
-    public function referee()
+    public function referee(): BelongsTo
     {
         return $this->user();
     }
 
     /**
      * Relazione con l'utente che ha creato l'assegnazione
+     *
+     * @return BelongsTo<User, $this>
      */
-    public function assignedBy()
+    public function assignedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_by');
     }

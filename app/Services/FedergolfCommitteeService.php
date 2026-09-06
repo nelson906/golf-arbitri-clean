@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Enums\AssignmentRole;
 use App\Models\User;
+use App\Support\Untrusted;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -13,6 +15,14 @@ use Illuminate\Support\Facades\Log;
  * con gli arbitri presenti nel database locale.
  *
  * Non scrive nulla sul DB: restituisce solo dati per la revisione dell'admin.
+ *
+ * @phpstan-type CommitteeMember array{
+ *     nome: string,
+ *     cognome: string,
+ *     nome_completo: string,
+ *     ruolo: string,
+ *     ruolo_normalizzato: string,
+ * }
  */
 class FedergolfCommitteeService
 {
@@ -21,13 +31,13 @@ class FedergolfCommitteeService
     /** Base URL federgolf.it — da config('golf.fig.base'). */
     private function figBase(): string
     {
-        return rtrim(config('golf.fig.base'), '/');
+        return rtrim(Config::string('golf.fig.base'), '/');
     }
 
     /** Endpoint AJAX WordPress federgolf.it — da config('golf.fig.ajax_url'). */
     private function figAjax(): string
     {
-        return config('golf.fig.ajax_url');
+        return Config::string('golf.fig.ajax_url');
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -39,7 +49,7 @@ class FedergolfCommitteeService
      * Tenta prima via AJAX WordPress, poi via HTML scraping della pagina di dettaglio.
      *
      * @param  string $competitionId  GUID della gara su federgolf.it
-     * @return array<int, array{nome: string, cognome: string, ruolo: string, ruolo_normalizzato: string}>
+     * @return list<CommitteeMember>
      */
     public function fetchCommittee(string $competitionId): array
     {
@@ -56,6 +66,8 @@ class FedergolfCommitteeService
 
     /**
      * Prova a ottenere il comitato via WordPress AJAX.
+     *
+     * @return list<CommitteeMember>
      */
     private function fetchViaAjax(string $competitionId): array
     {
@@ -79,13 +91,15 @@ class FedergolfCommitteeService
             $data = $response->json();
 
             // Se la risposta ha un campo comitato strutturato
-            if (! empty($data['data']['comitato'])) {
-                return $this->normalizeCommitteeItems($data['data']['comitato']);
+            $comitato = Untrusted::at($data, 'data', 'comitato');
+            if (! empty($comitato)) {
+                return $this->normalizeCommitteeItems($comitato);
             }
 
             // Alcuni endpoint restituiscono il comitato dentro 'committee'
-            if (! empty($data['data']['committee'])) {
-                return $this->normalizeCommitteeItems($data['data']['committee']);
+            $committee = Untrusted::at($data, 'data', 'committee');
+            if (! empty($committee)) {
+                return $this->normalizeCommitteeItems($committee);
             }
 
         } catch (\Throwable $e) {
@@ -97,6 +111,8 @@ class FedergolfCommitteeService
 
     /**
      * Scarica e fa parsing dell'HTML della pagina di dettaglio gara.
+     *
+     * @return list<CommitteeMember>
      */
     private function fetchViaHtml(string $competitionId): array
     {
@@ -131,6 +147,8 @@ class FedergolfCommitteeService
      *
      * La struttura HTML di federgolf.it cambia occasionalmente, quindi
      * proviamo più pattern in cascata.
+     *
+     * @return list<CommitteeMember>
      */
     private function parseHtmlCommittee(string $html): array
     {
@@ -165,15 +183,17 @@ class FedergolfCommitteeService
     /**
      * Estrae coppie nome/ruolo da un blocco HTML (lista, tabella o paragrafi).
      *
-     * @return array<int, array{nome: string, cognome: string, ruolo: string, ruolo_normalizzato: string}>
+     * @return list<CommitteeMember>
      */
     private function extractNamesFromBlock(string $html): array
     {
         // Rimuovi tag HTML, preservando separatori di riga significativi
-        $text = preg_replace('/<\/?(tr|li|p|br|div)[^>]*>/i', "\n", $html);
+        // preg_* falliscono su input malformato: qui l'HTML arriva da federgolf.it,
+        // quindi il fallback non e' teorico.
+        $text = preg_replace('/<\/?(tr|li|p|br|div)[^>]*>/i', "\n", $html) ?? $html;
         $text = strip_tags($text);
 
-        $lines  = preg_split('/\n+/', $text);
+        $lines  = preg_split('/\n+/', $text) ?: [];
         $result = [];
 
         foreach ($lines as $line) {
@@ -210,11 +230,13 @@ class FedergolfCommitteeService
     /**
      * Cerca nel testo globale della pagina righe contenenti ruoli noti.
      * Ultimo tentativo quando la struttura HTML non è riconoscibile.
+     *
+     * @return list<CommitteeMember>
      */
     private function extractByRoleKeywords(string $html): array
     {
         $text   = strip_tags($html);
-        $lines  = preg_split('/\n+/', $text);
+        $lines  = preg_split('/\n+/', $text) ?: [];
         $result = [];
 
         foreach ($lines as $line) {
@@ -299,18 +321,18 @@ class FedergolfCommitteeService
     private function extractName(string $line, string $labelRuolo): string
     {
         // Rimuovi la label del ruolo dalla riga
-        $nome = preg_replace('/' . preg_quote($labelRuolo, '/') . '/i', '', $line);
+        $nome = preg_replace('/' . preg_quote($labelRuolo, '/') . '/i', '', $line) ?? $line;
         // Rimuovi pattern ruolo estesi
         $nome = preg_replace(
             '/(direttore\s+di\s+(torneo|gara)|tournament\s+director|rules\s+official|arbitro|osservatore|observer)/i',
             '',
             $nome
-        );
+        ) ?? $nome;
         // Rimuovi parentesi e contenuto: es. "()" o "(Club Golf Roma)"
-        $nome = preg_replace('/\([^)]*\)/', '', $nome);
+        $nome = preg_replace('/\([^)]*\)/', '', $nome) ?? $nome;
         // Rimuovi punteggiatura di separazione (trattini, due punti, pipe, virgola iniziale/finale)
-        $nome = preg_replace('/^[\s\-–—:|,]+|[\s\-–—:|,]+$/', '', $nome);
-        $nome = preg_replace('/\s{2,}/', ' ', $nome);
+        $nome = preg_replace('/^[\s\-–—:|,]+|[\s\-–—:|,]+$/', '', $nome) ?? $nome;
+        $nome = preg_replace('/\s{2,}/', ' ', $nome) ?? $nome;
 
         return trim($nome);
     }
@@ -328,8 +350,8 @@ class FedergolfCommitteeService
     private function splitNomeCognome(string $nomeCompleto): array
     {
         // Pulisci parentesi residue prima di splittare
-        $nomeCompleto = trim(preg_replace('/\([^)]*\)/', '', $nomeCompleto));
-        $nomeCompleto = preg_replace('/\s{2,}/', ' ', $nomeCompleto);
+        $nomeCompleto = trim((string) preg_replace('/\([^)]*\)/', '', $nomeCompleto));
+        $nomeCompleto = preg_replace('/\s{2,}/', ' ', $nomeCompleto) ?? $nomeCompleto;
 
         // Formato "COGNOME, NOME" (virgola come separatore) — tipico API FIG
         if (str_contains($nomeCompleto, ',')) {
@@ -366,18 +388,24 @@ class FedergolfCommitteeService
 
     /**
      * Normalizza un array di items comitato provenienti da risposta AJAX strutturata.
+     *
+     * @param  mixed  $items  Ramo grezzo della risposta AJAX federgolf.it
+     * @return list<CommitteeMember>
      */
-    private function normalizeCommitteeItems(array $items): array
+    private function normalizeCommitteeItems(mixed $items): array
     {
         $result = [];
 
-        foreach ($items as $item) {
+        foreach (Untrusted::rows($items) as $item) {
+            $nomeRaw    = Untrusted::string($item['nome'] ?? null);
+            $cognomeRaw = Untrusted::string($item['cognome'] ?? $item['lastName'] ?? null);
+
             $nomeCompleto = html_entity_decode(
-                trim(($item['nome'] ?? '') . ' ' . ($item['cognome'] ?? $item['lastName'] ?? '')),
+                trim($nomeRaw.' '.$cognomeRaw),
                 ENT_QUOTES | ENT_HTML5,
                 'UTF-8'
             );
-            $ruoloRaw = $item['ruolo'] ?? $item['role'] ?? $item['incarico'] ?? 'Arbitro';
+            $ruoloRaw = Untrusted::string($item['ruolo'] ?? $item['role'] ?? $item['incarico'] ?? null, 'Arbitro');
             $ruolo    = AssignmentRole::normalize($ruoloRaw);
             [$nome, $cognome] = $this->splitNomeCognome($nomeCompleto);
 
@@ -400,11 +428,11 @@ class FedergolfCommitteeService
     /**
      * Per ogni membro del comitato FIG, cerca il miglior match tra gli arbitri locali.
      *
-     * @param  array  $committee  Output di fetchCommittee()
-     * @return array<int, array{
-     *   fig: array,
+     * @param  list<CommitteeMember>  $committee  Output di fetchCommittee()
+     * @return list<array{
+     *   fig: CommitteeMember,
      *   match: array{user_id: int, name: string, score: int}|null,
-     *   candidati: array
+     *   candidati: array<int, array{user_id: int, name: string, email: string, score: int}>
      * }>
      */
     public function matchWithUsers(array $committee): array
@@ -451,6 +479,7 @@ class FedergolfCommitteeService
      * Hard filter: se cognome < 65% → candidato scartato (evita omonimi di caso)
      *
      * @return array<int, array{user_id: int, name: string, email: string, score: int}>
+     * @param  \Illuminate\Support\Collection<int, \App\Models\User>  $referees
      */
     private function findCandidates(string $cognomeFig, string $nomeFig, Collection $referees): array
     {
@@ -459,7 +488,7 @@ class FedergolfCommitteeService
         // Tokenizza i nomi FIG: "Simone Gaetano" → ['simone', 'gaetano']
         // Ogni token viene confrontato col nome locale; si prende il migliore
         $nomeTokensFig = array_values(array_filter(
-            array_map([$this, 'normalize'], preg_split('/\s+/', trim($nomeFig))),
+            array_map([$this, 'normalize'], preg_split('/\s+/', trim($nomeFig)) ?: []),
             fn ($t) => strlen($t) >= 2
         ));
 
@@ -486,7 +515,7 @@ class FedergolfCommitteeService
 
             // Tokenizza anche il nome locale (gestisce "Daniela Emma")
             $nomeTokensLocal = array_values(array_filter(
-                array_map('trim', preg_split('/\s+/', $nomeLocalNorm)),
+                array_map('trim', preg_split('/\s+/', $nomeLocalNorm) ?: []),
                 fn ($t) => strlen($t) >= 2
             ));
 
@@ -522,7 +551,7 @@ class FedergolfCommitteeService
     /** Restituisce l'ultimo token di una stringa normalizzata. */
     private function lastToken(string $s): string
     {
-        $parts = preg_split('/\s+/', trim($s));
+        $parts = preg_split('/\s+/', trim($s)) ?: [];
 
         return end($parts) ?: $s;
     }
@@ -530,27 +559,13 @@ class FedergolfCommitteeService
     /** Restituisce tutti i token tranne l'ultimo (= parte "nome" da "Nome Cognome"). */
     private function allButLastToken(string $s): string
     {
-        $parts = preg_split('/\s+/', trim($s));
+        $parts = preg_split('/\s+/', trim($s)) ?: [];
         if (count($parts) <= 1) {
             return $s;
         }
         array_pop($parts);
 
         return implode(' ', $parts);
-    }
-
-    /**
-     * Calcola la similarità semplice tra due stringhe (0-100).
-     * Usato ancora per il matching torneo/club nel Command, non per i nomi.
-     */
-    private function computeScore(string $a, string $b): int
-    {
-        if ($a === $b) {
-            return 100;
-        }
-        similar_text($a, $b, $pct);
-
-        return (int) round($pct);
     }
 
     /**
@@ -567,7 +582,7 @@ class FedergolfCommitteeService
             $s
         );
         $s = preg_replace('/[^a-z0-9\s]/', '', $s);
-        $s = preg_replace('/\s+/', ' ', $s);
+        $s = preg_replace('/\s+/', ' ', (string) $s) ?? '';
 
         return trim($s);
     }

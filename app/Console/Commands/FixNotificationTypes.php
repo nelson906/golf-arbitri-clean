@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use Illuminate\Console\Command;
 
@@ -52,7 +51,7 @@ class FixNotificationTypes extends Command
                 continue;
             }
 
-            $isNational      = $tournament->tournamentType?->is_national ?? false;
+            $isNational      = $tournament->tournamentType->is_national ?? false;
             $currentType     = $notif->notification_type;
 
             // Determina il tipo corretto

@@ -13,8 +13,12 @@ use App\Models\User;
 use App\Models\Zone;
 use App\Services\CalendarDataService;
 use App\Services\TournamentColorService;
+use App\Support\Untrusted;
 use App\Traits\HasZoneVisibility;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -39,9 +43,9 @@ class AvailabilityController extends Controller
     /**
      * Show user's availabilities
      */
-    public function index()
+    public function index(): \Illuminate\Contracts\View\View
     {
-        $user = auth()->user();
+        $user = $this->authUser();
 
         // Disponibilità dell'utente con i tornei associati
         $availabilities = $user->availabilities()
@@ -57,9 +61,9 @@ class AvailabilityController extends Controller
     /**
      * Show tournaments for declaring availability
      */
-    public function tournaments(Request $request)
+    public function tournaments(Request $request): \Illuminate\Contracts\View\View
     {
-        $user = auth()->user();
+        $user = $this->authUser();
 
         // Query base per i tornei futuri
         $query = Tournament::with(['club', 'zone', 'tournamentType'])
@@ -71,16 +75,16 @@ class AvailabilityController extends Controller
         // Filtri opzionali
         if ($request->filled('zone_id')) {
             $query->whereHas('club', function ($q) use ($request) {
-                $q->where('zone_id', $request->zone_id);
+                $q->where('zone_id', $request->integer('zone_id'));
             });
         }
 
         if ($request->filled('tournament_type_id')) {
-            $query->where('tournament_type_id', $request->tournament_type_id);
+            $query->where('tournament_type_id', $request->integer('tournament_type_id'));
         }
 
         if ($request->filled('month')) {
-            $query->whereMonth('start_date', $request->month);
+            $query->whereMonth('start_date', $request->integer('month'));
         }
 
         $tournaments = $query->orderBy('start_date')->paginate(20);
@@ -111,7 +115,7 @@ class AvailabilityController extends Controller
     /**
      * Store/update availability for tournament
      */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse|RedirectResponse
     {
         $request->validate([
             'tournament_id' => 'required|exists:tournaments,id',
@@ -119,9 +123,9 @@ class AvailabilityController extends Controller
             'notes' => 'nullable|string|max:500',
         ]);
 
-        $user = auth()->user();
+        $user = $this->authUser();
 
-        if (! $user || ! $user->isReferee()) {
+        if (! $user->isReferee()) {
             abort(403);
         }
         /** @var Tournament $tournament */
@@ -190,11 +194,11 @@ class AvailabilityController extends Controller
     /**
      * Remove a single availability
      */
-    public function destroy(Availability $availability)
+    public function destroy(Availability $availability): RedirectResponse
     {
-        $user = auth()->user();
+        $user = $this->authUser();
 
-        if (! $user || (int) $availability->user_id !== (int) $user->id) {
+        if ((int) $availability->user_id !== (int) $user->id) {
             abort(403);
         }
 
@@ -214,15 +218,17 @@ class AvailabilityController extends Controller
     /**
      * Save batch availabilities
      */
-    public function saveBatch(Request $request)
+    public function saveBatch(Request $request): RedirectResponse
     {
         $request->validate([
             'availabilities' => 'array',
             'availabilities.*' => 'exists:tournaments,id',
         ]);
 
-        $user = auth()->user();
-        $selectedTournaments = $request->input('availabilities', []);
+        $user = $this->authUser();
+        // Lista di ID dal form: si tiene solo cio' che e' davvero un intero,
+        // perche' finisce in whereIn() e in Availability::create().
+        $selectedTournaments = Untrusted::intList($request->array('availabilities'));
 
         // Recupera i tornei nella pagina corrente con filtro visibilità centralizzato
         $pageQuery = Tournament::with(['club', 'zone', 'tournamentType'])
@@ -234,21 +240,21 @@ class AvailabilityController extends Controller
         // Applica gli stessi filtri della vista
         if ($request->filled('zone_id')) {
             $pageQuery->whereHas('club', function ($q) use ($request) {
-                $q->where('zone_id', $request->zone_id);
+                $q->where('zone_id', $request->integer('zone_id'));
             });
         }
         if ($request->filled('tournament_type_id')) {
-            $pageQuery->where('tournament_type_id', $request->tournament_type_id);
+            $pageQuery->where('tournament_type_id', $request->integer('tournament_type_id'));
         }
         if ($request->filled('month')) {
-            $pageQuery->whereMonth('start_date', $request->month);
+            $pageQuery->whereMonth('start_date', $request->integer('month'));
         }
 
         // Ottieni solo i tornei della pagina corrente
         $pageTournamentIds = $pageQuery->pluck('id')->toArray();
 
         // Filtra solo i tornei selezionati che sono nella pagina corrente
-        $selectedTournaments = array_intersect($selectedTournaments, $pageTournamentIds);
+        $selectedTournaments = array_values(array_intersect($selectedTournaments, $pageTournamentIds));
 
         // Ottieni le disponibilità esistenti solo per i tornei della pagina corrente
         $existingAvailabilities = Availability::where('user_id', $user->id)
@@ -285,7 +291,11 @@ class AvailabilityController extends Controller
             DB::commit();
 
             // Gestione notifiche
-            $this->handleNotifications($user, $selectedTournaments, $existingAvailabilities);
+            $this->handleNotifications(
+                $user,
+                $selectedTournaments,
+                Untrusted::intList($existingAvailabilities)
+            );
 
             return redirect()->route('user.availability.index')
                 ->with('success', 'Disponibilità aggiornate con successo!');
@@ -306,7 +316,7 @@ class AvailabilityController extends Controller
      */
     public function calendar(Request $request): View
     {
-        $user = auth()->user();
+        $user = $this->authUser();
 
         try {
             // Tornei rilevanti per l'utente con filtro visibilità centralizzato
@@ -330,9 +340,9 @@ class AvailabilityController extends Controller
                 ]
             );
             // Aggiungi can_declare per ogni torneo (logica specifica di questo controller)
-            $calendarData['tournaments'] = $calendarData['tournaments']->map(function ($event) use ($user, $tournaments) {
-                $tournament = $tournaments->firstWhere('id', $event['id']);
-                if ($tournament) {
+            $calendarData['tournaments'] = $calendarData['tournaments']->map(function (array $event) use ($user, $tournaments) {
+                $tournament = $tournaments->firstWhere('id', $event['id'] ?? null);
+                if ($tournament && is_array($event['extendedProps'] ?? null)) {
                     $event['extendedProps']['can_declare'] = $this->canDeclareAvailability($user, $tournament);
                 }
 
@@ -359,6 +369,9 @@ class AvailabilityController extends Controller
     /**
      * Private methods
      * Nota: getAccessibleZones e getAccessibleTournaments sono ora nel trait HasZoneVisibility
+     *
+     * @param  \App\Models\User  $user
+     * @param  \App\Models\Tournament  $tournament
      */
     private function canDeclareAvailability($user, $tournament): bool
     {
@@ -385,10 +398,10 @@ class AvailabilityController extends Controller
      * - Arbitro riceve TUTTE le disponibilità
      *
      * @param  User  $user  L'arbitro che ha modificato le disponibilità
-     * @param  array  $newAvailabilities  ID tornei con nuova disponibilità
-     * @param  array  $oldAvailabilities  ID tornei con disponibilità precedente
+     * @param  list<int>  $newAvailabilities  ID tornei con nuova disponibilità
+     * @param  list<int>  $oldAvailabilities  ID tornei con disponibilità precedente
      */
-    private function handleNotifications($user, $newAvailabilities, $oldAvailabilities)
+    private function handleNotifications($user, $newAvailabilities, $oldAvailabilities): void
     {
         $added = array_diff($newAvailabilities, $oldAvailabilities);
         $removed = array_diff($oldAvailabilities, $newAvailabilities);
@@ -452,7 +465,7 @@ class AvailabilityController extends Controller
      * @param  Tournament  $tournament  Il torneo per cui è stata modificata la disponibilità
      * @param  string  $action  'added' o 'removed'
      */
-    private function handleSingleNotification($user, $tournament, $action)
+    private function handleSingleNotification($user, $tournament, $action): void
     {
         try {
             $tournament->load(['club', 'tournamentType']);
@@ -479,7 +492,7 @@ class AvailabilityController extends Controller
             Log::info('Notifiche disponibilità singola inviate (separate)', [
                 'user_id' => $user->id,
                 'tournament_id' => $tournament->id,
-                'is_national' => $tournament->tournamentType?->is_national ?? false,
+                'is_national' => $tournament->tournamentType->is_national ?? false,
                 'action' => $action,
             ]);
         } catch (\Exception $e) {
@@ -505,22 +518,22 @@ class AvailabilityController extends Controller
      * │ Arbitro      │ TUTTE le disponibilità (già gestito sopra) │
      * └────────────────────────────────────────────────────────────┘
      *
-     * @param  User  $user
-     * @param  \Illuminate\Support\Collection  $addedTournaments
-     * @param  \Illuminate\Support\Collection  $removedTournaments
+     * @param  \App\Models\User  $user
+     * @param  \Illuminate\Support\Collection<int, \App\Models\Tournament>  $addedTournaments
+     * @param  \Illuminate\Support\Collection<int, \App\Models\Tournament>  $removedTournaments
      */
-    private function sendSeparatedAdminNotifications($user, $addedTournaments, $removedTournaments)
+    private function sendSeparatedAdminNotifications($user, $addedTournaments, $removedTournaments): void
     {
         // Combina tutti i tornei
         $allTournaments = $addedTournaments->merge($removedTournaments);
 
         // Raggruppa direttamente per tipo (no servizio esterno)
         $zonalTournaments = $allTournaments->filter(function ($tournament) {
-            return ! ($tournament->tournamentType?->is_national ?? false);
+            return ! ($tournament->tournamentType->is_national ?? false);
         });
 
         $nationalTournaments = $allTournaments->filter(function ($tournament) {
-            return $tournament->tournamentType?->is_national ?? false;
+            return $tournament->tournamentType->is_national ?? false;
         });
 
         // ═══════════════════════════════════════════════════════════════
@@ -578,6 +591,9 @@ class AvailabilityController extends Controller
 
     /**
      * Raccoglie email zone admin per i tornei specificati
+     *
+     * @param  iterable<int, \App\Models\Tournament>  $tournaments
+     * @return array<string, mixed>
      */
     private function collectZoneAdminEmails($tournaments): array
     {
@@ -606,6 +622,8 @@ class AvailabilityController extends Controller
 
     /**
      * Raccoglie email national admin (CRC)
+     *
+     * @return array<string, mixed>
      */
     private function collectNationalAdminEmails(): array
     {

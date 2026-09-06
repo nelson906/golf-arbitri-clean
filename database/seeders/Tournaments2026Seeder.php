@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Club;
 use App\Models\Tournament;
 use App\Models\TournamentType;
+use App\Models\Zone;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
@@ -23,7 +24,9 @@ class Tournaments2026Seeder extends Seeder
      * - Crea solo nuovi tornei se non esistono
      * - Crea circoli mancanti se necessario
      * - Crea/verifica tournament_types
-     * - Salta tornei con circolo T.B.A. (To Be Assigned)
+     * - Importa i tornei con circolo T.B.A. (To Be Assigned) usando la sola
+     *   zona, quando il CSV la indica: prima venivano scartati e sparivano
+     *   dal calendario finche' qualcuno non li reinseriva a mano
      */
     public function run(): void
     {
@@ -141,6 +144,8 @@ class Tournaments2026Seeder extends Seeder
 
     /**
      * Mapping CSV -> CODE del database
+     *
+     * @return array<string, mixed>
      */
     private function getCsvToCodeMapping(): array
     {
@@ -171,6 +176,24 @@ class Tournaments2026Seeder extends Seeder
     }
 
     /**
+     * Risolve la zona indicata dal CSV per i tornei T.B.A.
+     *
+     * Il campo `zona_circolo` non ha un formato garantito (a volte il codice
+     * "SZR3", a volte il nome esteso): si prova prima il codice, poi il nome.
+     */
+    private function findZone(string $csvZona): ?Zone
+    {
+        $zona = trim($csvZona);
+
+        if ($zona === '' || $zona === 'N/D') {
+            return null;
+        }
+
+        return Zone::where('code', $zona)->first()
+            ?? Zone::where('name', $zona)->first();
+    }
+
+    /**
      * Verifica circoli (NON crea nulla)
      */
     private function ensureClubs(): void
@@ -193,6 +216,12 @@ class Tournaments2026Seeder extends Seeder
 
         $csvPath = database_path('../calendari_2026_consolidato.csv');
         $file = fopen($csvPath, 'r');
+        if ($file === false) {
+            $this->command->error('CSV non apribile.');
+
+            return;
+        }
+
         $header = fgetcsv($file);
 
         $imported = 0;
@@ -201,25 +230,47 @@ class Tournaments2026Seeder extends Seeder
         $errors = 0;
 
         while (($row = fgetcsv($file)) !== false) {
-            $data = array_combine($header, $row);
+            $data = array_combine(array_map('strval', $header ?: []), $row);
 
             try {
-                // Salta T.B.A.
-                if ($data['circolo'] === 'T.B.A.' || $data['zona_circolo'] === 'N/D') {
-                    $skipped++;
+                // Torneo T.B.A.: data e zona note, circolo non ancora deciso.
+                // Si importa lo stesso con club_id null (migration
+                // 2026_09_06_000001), purche' il CSV dica almeno la zona:
+                // senza zona non sarebbe visibile a nessun admin zonale e
+                // resterebbe un record orfano.
+                $isTba = $data['circolo'] === 'T.B.A.';
 
-                    continue;
-                }
+                if ($isTba) {
+                    $zonaTba = $this->findZone((string) $data['zona_circolo']);
 
-                // Trova circolo usando ricerca intelligente
-                $circoloName = $data['circolo'];
-                $club = $this->findClub($circoloName);
+                    if (! $zonaTba) {
+                        $this->command->warn("   ⚠ T.B.A. senza zona utilizzabile: {$data['nome_gara']}");
+                        $skipped++;
 
-                if (! $club) {
-                    $this->command->warn("   ⚠ Circolo non trovato: {$circoloName}");
-                    $skipped++;
+                        continue;
+                    }
 
-                    continue;
+                    $club = null;
+                    $zoneId = $zonaTba->id;
+                } else {
+                    if ($data['zona_circolo'] === 'N/D') {
+                        $skipped++;
+
+                        continue;
+                    }
+
+                    // Trova circolo usando ricerca intelligente
+                    $circoloName = $data['circolo'];
+                    $club = $this->findClub((string) $circoloName);
+
+                    if (! $club) {
+                        $this->command->warn("   ⚠ Circolo non trovato: {$circoloName}");
+                        $skipped++;
+
+                        continue;
+                    }
+
+                    $zoneId = $club->zone_id;
                 }
 
                 // Trova tournament type
@@ -236,10 +287,17 @@ class Tournaments2026Seeder extends Seeder
                 $endDate = Carbon::parse($data['data_fine']);
                 $availabilityDeadline = $startDate->copy()->subWeeks(3)->setTime(23, 59, 59);
 
-                // Cerca torneo esistente
+                // Cerca torneo esistente. Sui T.B.A. il circolo non c'e'
+                // ancora, quindi l'identita' e' (nome, data) piu' la zona.
+                $clubId = $club?->id;
+
                 $existing = Tournament::where('name', $data['nome_gara'])
-                    ->where('club_id', $club->id)
                     ->where('start_date', $startDate)
+                    ->when(
+                        $clubId !== null,
+                        fn ($q) => $q->where('club_id', $clubId),
+                        fn ($q) => $q->whereNull('club_id')->where('zone_id', $zoneId)
+                    )
                     ->first();
 
                 if ($existing) {
@@ -247,7 +305,7 @@ class Tournaments2026Seeder extends Seeder
                     $existing->update([
                         'end_date' => $endDate,
                         'tournament_type_id' => $tournamentType->id,
-                        'zone_id' => $club->zone_id,
+                        'zone_id' => $zoneId,
                         'availability_deadline' => $availabilityDeadline,
                         // NON aggiorniamo status se era già assigned/completed
                         // 'status' => Tournament::STATUS_OPEN,
@@ -257,9 +315,9 @@ class Tournaments2026Seeder extends Seeder
                     // Crea nuovo torneo
                     Tournament::create([
                         'name' => $data['nome_gara'],
-                        'club_id' => $club->id,
+                        'club_id' => $club?->id,
                         'tournament_type_id' => $tournamentType->id,
-                        'zone_id' => $club->zone_id,
+                        'zone_id' => $zoneId,
                         'start_date' => $startDate,
                         'end_date' => $endDate,
                         'availability_deadline' => $availabilityDeadline,

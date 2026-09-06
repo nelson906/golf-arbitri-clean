@@ -9,6 +9,7 @@ use App\Models\TournamentNotification;
 use App\Models\TournamentType;
 use App\Services\NotificationService;
 use Illuminate\Mail\Mailables\Attachment;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -34,7 +35,7 @@ class NotificationAttachmentsTest extends TestCase
 
     private function docsDisk(): \Illuminate\Contracts\Filesystem\Filesystem
     {
-        return Storage::disk(config('golf.documents.disk', 'docs'));
+        return Storage::disk(Config::string('golf.documents.disk', 'docs'));
     }
 
     protected function tearDown(): void
@@ -70,7 +71,7 @@ class NotificationAttachmentsTest extends TestCase
         $this->createAssignment(['tournament_id' => $tournament->id, 'user_id' => $ref->id]);
 
         $zone = ZoneHelper::getFolderCodeForTournament($tournament);
-        $this->dir = config('golf.documents.storage_path')."/{$zone}/generated";
+        $this->dir = Config::string('golf.documents.storage_path')."/{$zone}/generated";
 
         $convFile = 'Convocazione_real.docx';
         $clubFile = 'Lettera_real.docx';
@@ -143,7 +144,7 @@ class NotificationAttachmentsTest extends TestCase
         $metadata['attach_convocation'] = false;
         $notification->update(['metadata' => $metadata]);
 
-        app(NotificationService::class)->send($notification->fresh());
+        app(NotificationService::class)->send($notification->refresh());
 
         Mail::assertQueued(ClubNotificationMail::class, function ($mail) use ($clubPath, $convPath) {
             return $mail->hasTo('circolo@example.test')
@@ -173,6 +174,7 @@ class NotificationAttachmentsTest extends TestCase
         Mail::assertQueued(ClubNotificationMail::class, 1);
 
         $final = $notification->fresh();
+        $this->assertNotNull($final);
         $this->assertEquals('partial', $final->status,
             'REGRESSIONE M3: allegato mancante deve produrre status partial, non sent.');
         $this->assertStringContainsString('allegato mancante',

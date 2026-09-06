@@ -5,7 +5,6 @@ namespace App\Http\Requests;
 use App\Enums\AssignmentRole;
 use App\Enums\RefereeLevel;
 use App\Enums\TournamentStatus;
-use App\Enums\UserType;
 use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Models\User;
@@ -14,20 +13,22 @@ use Illuminate\Validation\Rule;
 
 class AssignmentRequest extends FormRequest
 {
+    use \App\Http\Concerns\InteractsWithAuthUser;
+
     /**
      * Determina se l'utente è autorizzato a fare questa richiesta.
      * Usa i metodi tipizzati del model User invece di confronti stringa.
      */
     public function authorize(): bool
     {
-        $user = $this->user();
+        $user = $this->authUser();
 
         // Solo gli admin possono creare assegnazioni
         if (! $user->isAdmin()) {
             return false;
         }
 
-        $tournament = Tournament::find($this->tournament_id);
+        $tournament = Tournament::find($this->integer('tournament_id'));
         if (! $tournament) {
             return false;
         }
@@ -65,7 +66,7 @@ class AssignmentRequest extends FormRequest
                     }
 
                     // Verifica limite massimo arbitri
-                    $maxReferees = $tournament->tournamentType?->max_referees ?? 4;
+                    $maxReferees = $tournament->tournamentType->max_referees ?? 4;
                     if ($tournament->assignments()->count() >= $maxReferees) {
                         $fail('Il torneo ha già raggiunto il numero massimo di '.$maxReferees.' arbitri.');
                     }
@@ -91,7 +92,7 @@ class AssignmentRequest extends FormRequest
                         $fail("L'arbitro selezionato non è attivo.");
                     }
 
-                    $tournament = Tournament::with('tournamentType')->find($this->tournament_id);
+                    $tournament = Tournament::with('tournamentType')->find($this->integer('tournament_id'));
 
                     if ($tournament && Assignment::where('tournament_id', $tournament->id)
                         ->where('user_id', $user->id)
@@ -113,7 +114,7 @@ class AssignmentRequest extends FormRequest
                     }
 
                     // Per tornei zonali: stesso zona
-                    if ($tournament && ! ($tournament->tournamentType?->is_national ?? false)) {
+                    if ($tournament && ! ($tournament->tournamentType->is_national ?? false)) {
                         if ($user->zone_id !== $tournament->zone_id) {
                             $fail("L'arbitro appartiene a una zona diversa dal torneo.");
                         }
@@ -134,8 +135,10 @@ class AssignmentRequest extends FormRequest
      */
     public function resolvedRole(): AssignmentRole
     {
-        return $this->role
-            ? AssignmentRole::from($this->role)
+        $role = $this->string('role')->toString();
+
+        return $role !== ''
+            ? AssignmentRole::from($role)
             : AssignmentRole::Referee;
     }
 

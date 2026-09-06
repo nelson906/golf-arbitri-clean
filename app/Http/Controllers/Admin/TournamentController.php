@@ -9,11 +9,15 @@ use App\Http\Requests\TournamentRequest;
 use App\Models\Club;
 use App\Models\Tournament;
 use App\Models\TournamentType;
+use App\Models\User;
 use App\Models\Zone;
 use App\Services\CalendarDataService;
 use App\Services\TournamentColorService;
 use App\Traits\HasZoneVisibility;
 use App\Traits\TournamentControllerTrait;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -30,9 +34,9 @@ class TournamentController extends Controller
     /**
      * Display a listing of tournaments.
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
-        $user = auth()->user();
+        $user = $this->authUser();
 
         $query = Tournament::with(['club.zone', 'tournamentType', 'notification']);
         $this->applyTournamentVisibility($query, $user);
@@ -70,9 +74,9 @@ class TournamentController extends Controller
     /**
      * Show tournaments calendar view
      */
-    public function calendar(Request $request)
+    public function calendar(Request $request): View
     {
-        $user = auth()->user();
+        $user = $this->authUser();
 
         $tournaments = Tournament::visible($user)
             ->with(['tournamentType', 'zone', 'club', 'assignments.user'])
@@ -101,8 +105,10 @@ class TournamentController extends Controller
 
     /**
      * Get admin roles for permissions
+     *
+     * @return list<string>
      */
-    private function getAdminRoles($user): array
+    private function getAdminRoles(User $user): array
     {
         $roles = ['Admin'];
         if ($user->isSuperAdmin()) {
@@ -117,9 +123,9 @@ class TournamentController extends Controller
     /**
      * Show the form for creating a new tournament.
      */
-    public function create()
+    public function create(): View
     {
-        $user = auth()->user();
+        $user = $this->authUser();
         $isNationalAdmin = $user->isNationalAdmin();
 
         // Tutti gli admin vedono tutti i tipi di torneo attivi
@@ -141,12 +147,12 @@ class TournamentController extends Controller
     /**
      * Show the form for editing the specified tournament.
      */
-    public function edit(Tournament $tournament)
+    public function edit(Tournament $tournament): RedirectResponse|View
     {
         // Check access usando il trait
         $this->checkTournamentAccess($tournament);
 
-        $user = auth()->user();
+        $user = $this->authUser();
 
         // Check if editable — il super_admin bypassa qualunque vincolo di stato
         if (! $tournament->isEditableBy($user)) {
@@ -175,14 +181,20 @@ class TournamentController extends Controller
     /**
      * Store a newly created tournament in storage.
      */
-    public function store(TournamentRequest $request)
+    public function store(TournamentRequest $request): RedirectResponse
     {
         $data = $request->validated();
 
-        // Set zone_id from club se admin zonale
+        // Set zone_id from club se admin zonale.
+        // Su un torneo T.B.A. (nessun circolo scelto) la zona e' quella
+        // dell'admin che lo sta creando: e' l'unica informazione disponibile,
+        // ed e' cio' che lo tiene visibile nel suo calendario.
         if ($this->isZoneAdmin()) {
-            $club = Club::findOrFail($data['club_id']);
-            $data['zone_id'] = $club->zone_id;
+            $clubId = $request->integer('club_id');
+
+            $data['zone_id'] = $clubId > 0
+                ? Club::findOrFail($clubId)->zone_id
+                : $this->authUser()->zone_id;
         }
         $data['created_by'] = auth()->id();
 
@@ -197,9 +209,9 @@ class TournamentController extends Controller
     /**
      * Display the specified tournament for admin view
      */
-    public function show(Tournament $tournament)
+    public function show(Tournament $tournament): View
     {
-        $user = auth()->user();
+        $user = $this->authUser();
 
         // Check permissions using trait method (consistent with edit/update)
         if (! $this->canAccessTournament($tournament, $user)) {
@@ -229,7 +241,7 @@ class TournamentController extends Controller
             'total_assignments' => $assignedReferees ? $assignedReferees->count() : 0,
             'total_availabilities' => $availableReferees ? $availableReferees->count() : 0,
             'assigned_referees' => $assignedReferees ? $assignedReferees->count() : 0,
-            'required_referees' => $tournament->tournamentType?->min_referees ?? 2,
+            'required_referees' => $tournament->tournamentType->min_referees ?? 2,
             'days_until_deadline' => $tournament->availability_deadline
                 ? now()->diffInDays($tournament->availability_deadline, false)
                 : null,
@@ -246,13 +258,13 @@ class TournamentController extends Controller
     /**
      * Update the specified tournament in storage.
      */
-    public function update(TournamentRequest $request, Tournament $tournament)
+    public function update(TournamentRequest $request, Tournament $tournament): RedirectResponse
     {
         // Check access
         $this->checkTournamentAccess($tournament);
 
         // Check if editable — il super_admin bypassa qualunque vincolo di stato
-        if (! $tournament->isEditableBy(auth()->user())) {
+        if (! $tournament->isEditableBy($this->authUser())) {
             return redirect()
                 ->route('admin.tournaments.show', $tournament)->with('error', 'Questo torneo non può essere modificato nel suo stato attuale.');
         }
@@ -261,7 +273,7 @@ class TournamentController extends Controller
 
         // Update zone_id from club if changed
         if (isset($data['club_id']) && $data['club_id'] != $tournament->club_id) {
-            $club = Club::findOrFail($data['club_id']);
+            $club = Club::findOrFail($request->integer('club_id'));
             $data['zone_id'] = $club->zone_id;
         }
 
@@ -275,7 +287,7 @@ class TournamentController extends Controller
     /**
      * Remove the specified tournament from storage.
      */
-    public function destroy(Request $request, Tournament $tournament)
+    public function destroy(Request $request, Tournament $tournament): RedirectResponse
     {
         // Check access
         $this->checkTournamentAccess($tournament);
@@ -300,7 +312,7 @@ class TournamentController extends Controller
      * Change tournament status with override (bypasses workflow validation).
      * Use this for manual corrections or administrative overrides.
      */
-    public function changeStatus(Request $request, Tournament $tournament)
+    public function changeStatus(Request $request, Tournament $tournament): JsonResponse|RedirectResponse
     {
         // Check access
         $this->checkTournamentAccess($tournament);
@@ -310,7 +322,7 @@ class TournamentController extends Controller
         ]);
 
         $oldStatus = $tournament->status; // TournamentStatus enum
-        $newStatus = $request->status;    // string from request
+        $newStatus = $request->string('status')->toString();
 
         // Update status directly (no workflow validation)
         $tournament->update(['status' => $newStatus]);
@@ -322,7 +334,7 @@ class TournamentController extends Controller
             'old_status' => $oldStatus->value,
             'new_status' => $newStatus,
             'user_id' => auth()->id(),
-            'user_name' => auth()->user()->name,
+            'user_name' => $this->authUser()->name,
         ]);
 
         if ($request->wantsJson() || $request->ajax()) {
@@ -343,7 +355,7 @@ class TournamentController extends Controller
     /**
      * Show availabilities for a tournament.
      */
-    public function availabilities(Tournament $tournament)
+    public function availabilities(Tournament $tournament): View
     {
         // Check access
         $this->checkTournamentAccess($tournament);
@@ -363,7 +375,7 @@ class TournamentController extends Controller
             ->where('is_active', '=', true)
 
             // ✅ FIXED: Use tournamentType relationship (null-safe: tournamentType può essere null)
-            ->when($tournament->tournamentType?->is_national ?? false, function ($q) {
+            ->when($tournament->tournamentType->is_national ?? false, function ($q) {
                 // Usa i valori dell'enum RefereeLevel per evitare inconsistenze di case
                 $q->whereIn('level', [\App\Enums\RefereeLevel::Nazionale->value, \App\Enums\RefereeLevel::Internazionale->value]);
             }, function ($q) use ($tournament) {
@@ -383,11 +395,10 @@ class TournamentController extends Controller
     /**
      * Check if user can access tournament (usa il trait HasZoneVisibility).
      */
-    private function checkTournamentAccess(Tournament $tournament)
+    private function checkTournamentAccess(Tournament $tournament): void
     {
         if (! $this->canAccessTournament($tournament)) {
             abort(403, 'Non sei autorizzato ad accedere a questo torneo.');
         }
     }
-
 }

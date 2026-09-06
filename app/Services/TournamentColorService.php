@@ -156,7 +156,7 @@ class TournamentColorService
     public function getEventColor(Tournament $tournament, bool $isAssigned = false, bool $isAvailable = false, bool $isAdmin = false): string
     {
         if ($isAdmin) {
-            return $tournament->tournamentType?->calendar_color ?? self::DEFAULT_COLOR;
+            return $tournament->tournamentType->calendar_color ?? self::DEFAULT_COLOR;
         }
 
         return $this->getRefereeEventColor($tournament, $isAssigned, $isAvailable);
@@ -191,6 +191,8 @@ class TournamentColorService
 
     /**
      * Ottieni array colori per legenda admin (con nomi completi)
+     *
+     * @return array<string, string>
      */
     public function getAdminLegendColors(): array
     {
@@ -212,6 +214,8 @@ class TournamentColorService
 
     /**
      * Ottieni array colori per legenda arbitro
+     *
+     * @return array<string, mixed>
      */
     public function getRefereeLegendColors(): array
     {

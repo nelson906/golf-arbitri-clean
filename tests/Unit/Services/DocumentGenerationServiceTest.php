@@ -101,14 +101,6 @@ class DocumentGenerationServiceTest extends TestCase
     // ==========================================
 
     /**
-     * Test: Service è istanziabile
-     */
-    public function test_service_is_instantiable(): void
-    {
-        $this->assertInstanceOf(DocumentGenerationService::class, $this->service);
-    }
-
-    /**
      * Test: getZoneFolder accetta Tournament
      */
     public function test_get_zone_folder_accepts_tournament(): void
@@ -117,7 +109,6 @@ class DocumentGenerationServiceTest extends TestCase
 
         $folder = $this->service->getZoneFolder($tournament);
 
-        $this->assertIsString($folder);
         $this->assertNotEmpty($folder);
     }
 
@@ -150,10 +141,11 @@ class DocumentGenerationServiceTest extends TestCase
         // Dovrebbe gestire gracefully (o lanciare exception se necessario)
         try {
             $folder = $this->service->getZoneFolder($tournament);
-            $this->assertIsString($folder);
+            $this->assertNotEmpty($folder);
         } catch (\Exception $e) {
-            // Va bene anche se lancia exception
-            $this->assertInstanceOf(\Exception::class, $e);
+            // Va bene anche se lancia exception: e' un esito accettabile del test,
+            // non un'asserzione (assertInstanceOf(Exception::class, $e) e' tautologico).
+            $this->addToAssertionCount(1);
         }
     }
 }

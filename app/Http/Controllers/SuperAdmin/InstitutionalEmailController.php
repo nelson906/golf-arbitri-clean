@@ -5,20 +5,23 @@ namespace App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Controller;
 use App\Models\InstitutionalEmail;
 use App\Models\Zone;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InstitutionalEmailController extends Controller
 {
     /**
      * Display a listing of institutional emails.
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         $query = InstitutionalEmail::with('zone');
 
         // Filtri
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = $request->string('search')->toString();
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
@@ -27,14 +30,14 @@ class InstitutionalEmailController extends Controller
         }
 
         if ($request->filled('category')) {
-            $query->where('category', $request->category);
+            $query->where('category', $request->string('category')->toString());
         }
 
         if ($request->filled('zone_id')) {
-            if ($request->zone_id === 'null') {
+            if ($request->string('zone_id')->toString() === 'null') {
                 $query->whereNull('zone_id');
             } else {
-                $query->where('zone_id', $request->zone_id);
+                $query->where('zone_id', $request->integer('zone_id'));
             }
         }
 
@@ -52,7 +55,7 @@ class InstitutionalEmailController extends Controller
     /**
      * Show the form for creating a new institutional email.
      */
-    public function create()
+    public function create(): View
     {
         $zones = Zone::where('is_active', true)->orderBy('name')->get();
         $categories = InstitutionalEmail::CATEGORIES;
@@ -63,7 +66,7 @@ class InstitutionalEmailController extends Controller
     /**
      * Store a newly created institutional email.
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -86,7 +89,7 @@ class InstitutionalEmailController extends Controller
     /**
      * Show the form for editing the institutional email.
      */
-    public function edit(InstitutionalEmail $institutionalEmail)
+    public function edit(InstitutionalEmail $institutionalEmail): View
     {
         $zones = Zone::where('is_active', true)->orderBy('name')->get();
         $categories = InstitutionalEmail::CATEGORIES;
@@ -97,7 +100,7 @@ class InstitutionalEmailController extends Controller
     /**
      * Update the specified institutional email.
      */
-    public function update(Request $request, InstitutionalEmail $institutionalEmail)
+    public function update(Request $request, InstitutionalEmail $institutionalEmail): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -119,7 +122,7 @@ class InstitutionalEmailController extends Controller
     /**
      * Remove the specified institutional email.
      */
-    public function destroy(InstitutionalEmail $institutionalEmail)
+    public function destroy(InstitutionalEmail $institutionalEmail): RedirectResponse
     {
         $institutionalEmail->delete();
 
@@ -130,7 +133,7 @@ class InstitutionalEmailController extends Controller
     /**
      * Toggle email active status.
      */
-    public function toggleActive(InstitutionalEmail $institutionalEmail)
+    public function toggleActive(InstitutionalEmail $institutionalEmail): RedirectResponse
     {
         $institutionalEmail->update(['is_active' => ! $institutionalEmail->is_active]);
 
@@ -145,7 +148,7 @@ class InstitutionalEmailController extends Controller
     /**
      * Export institutional emails.
      */
-    public function export()
+    public function export(): StreamedResponse
     {
         $emails = InstitutionalEmail::with('zone')->get();
 
@@ -181,12 +184,12 @@ class InstitutionalEmailController extends Controller
                     $email->name,
                     $email->email,
                     $email->category_label ?? $email->category,
-                    $email->zone?->name ?? 'Tutte',
+                    $email->zone->name ?? 'Tutte',
                     $email->description,
                     $email->is_active ? 'Attivo' : 'Inattivo',
                     $email->receive_all_notifications ? 'Sì' : 'No',
                     implode(', ', $email->notification_types ?? []),
-                    $email->created_at->format('d/m/Y H:i'),
+                    $email->created_at?->format('d/m/Y H:i') ?? '',
                 ]);
             }
 

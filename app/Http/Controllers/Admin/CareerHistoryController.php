@@ -10,6 +10,9 @@ use App\Models\User;
 use App\Models\Zone;
 use App\Services\CareerHistoryService;
 use App\Traits\HasZoneVisibility;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -27,7 +30,7 @@ class CareerHistoryController extends Controller
     /**
      * Lista arbitri con storico carriera.
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         $currentUser = auth()->user();
         $zoneRestriction = $this->getUserZoneId($currentUser);
@@ -43,11 +46,11 @@ class CareerHistoryController extends Controller
 
         // Additional zone filter from request (for super_admin)
         if ($request->filled('zone_id') && $this->isSuperAdmin()) {
-            $query->where('zone_id', $request->zone_id);
+            $query->where('zone_id', $request->integer('zone_id'));
         }
 
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = $request->string('search')->toString();
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
@@ -75,7 +78,7 @@ class CareerHistoryController extends Controller
     /**
      * Mostra lo storico di un arbitro.
      */
-    public function show(User $user)
+    public function show(User $user): View
     {
         // Check zone access
         $currentUser = auth()->user();
@@ -91,7 +94,7 @@ class CareerHistoryController extends Controller
     /**
      * Form per archiviare un anno.
      */
-    public function archiveForm()
+    public function archiveForm(): View
     {
         $currentUser = auth()->user();
         $currentYear = now()->year;
@@ -115,7 +118,7 @@ class CareerHistoryController extends Controller
     /**
      * Esegue l'archiviazione di un anno.
      */
-    public function processArchive(Request $request)
+    public function processArchive(Request $request): RedirectResponse
     {
         $request->validate([
             'year' => 'required|integer|min:2000|max:'.now()->year,
@@ -123,8 +126,8 @@ class CareerHistoryController extends Controller
             'clear_data' => 'nullable|boolean',
         ]);
 
-        $year = (int) $request->year;
-        $userId = $request->user_id;
+        $year = $request->integer('year');
+        $userId = $request->integer('user_id');
         $clearData = $request->boolean('clear_data', false);
         $currentUser = auth()->user();
 
@@ -165,8 +168,9 @@ class CareerHistoryController extends Controller
 
                 $message = "Anno {$year} archiviato: {$stats['referees_processed']} arbitri, {$stats['assignments_archived']} assegnazioni";
 
-                if (! empty($stats['errors'])) {
-                    $message .= " ({$stats['errors']} errori)";
+                if ($stats['errors'] !== []) {
+                    // Prima interpolava l'array intero: usciva "Array errori".
+                    $message .= ' ('.count($stats['errors']).' errori)';
                 }
                 // Svuota le tabelle se richiesto
                 if ($clearData && empty($stats['errors'])) {
@@ -194,7 +198,7 @@ class CareerHistoryController extends Controller
     /**
      * Form per modificare un anno specifico.
      */
-    public function editYear(User $user, int $year)
+    public function editYear(User $user, int $year): RedirectResponse|View
     {
         // Check zone access
         $currentUser = auth()->user();
@@ -215,7 +219,7 @@ class CareerHistoryController extends Controller
 
         // Tornei disponibili per aggiunta - filtrati per livello arbitro
         $query = Tournament::whereYear('start_date', $year)
-            ->whereNotIn('id', collect($tournaments)->pluck('id'))
+            ->whereNotIn('id', collect((array) $tournaments)->pluck('id'))
             ->with('club');
 
         // Filtra tornei in base al livello arbitro
@@ -261,7 +265,7 @@ class CareerHistoryController extends Controller
     /**
      * Aggiunge un torneo allo storico.
      */
-    public function addTournament(Request $request, User $user)
+    public function addTournament(Request $request, User $user): RedirectResponse
     {
         // Check zone access
         $currentUser = auth()->user();
@@ -276,7 +280,8 @@ class CareerHistoryController extends Controller
             'days_count' => 'nullable|integer|min:1',
         ]);
 
-        $tournament = Tournament::with('club')->find($request->tournament_id);
+        $year = $request->integer('year');
+        $tournament = Tournament::with('club')->find($request->integer('tournament_id'));
 
         if (! $tournament) {
             return redirect()
@@ -289,15 +294,17 @@ class CareerHistoryController extends Controller
             'name' => $tournament->name,
             'club_id' => $tournament->club_id,
             'club_name' => $tournament->club->name ?? null,
-            'start_date' => $tournament->start_date?->format('Y-m-d') ?? '',
+            'start_date' => $tournament->start_date->format('Y-m-d') ?? '',
             'end_date' => $tournament->end_date?->format('Y-m-d') ?? '',
         ];
 
         $this->careerService->addTournamentEntry(
             $user->id,
-            $request->year,
+            $year,
             $tournamentData,
-            $request->days_count
+            // `days_count` e' nullable: integer() renderebbe 0 un valore assente,
+            // e addTournamentEntry() distingue null da 0.
+            $request->filled('days_count') ? $request->integer('days_count') : null
         );
 
         // Se c'è un ruolo, aggiungi anche l'assegnazione
@@ -306,14 +313,14 @@ class CareerHistoryController extends Controller
             if ($history) {
                 $assignments = $history->assignments_by_year ?? [];
 
-                if (! isset($assignments[$request->year])) {
-                    $assignments[$request->year] = [];
+                if (! isset($assignments[$year])) {
+                    $assignments[$year] = [];
                 }
 
-                $assignments[$request->year][] = [
+                $assignments[$year][] = [
                     'tournament_id' => $tournament->id,
                     'tournament_name' => $tournament->name,
-                    'role' => $request->role,
+                    'role' => $request->string('role')->toString(),
                     'assigned_at' => now()->format('Y-m-d'),
                     'status' => 'manual_entry',
                 ];
@@ -325,14 +332,14 @@ class CareerHistoryController extends Controller
         }
 
         return redirect()
-            ->route('admin.career-history.edit-year', [$user, $request->year])
+            ->route('admin.career-history.edit-year', [$user, $year])
             ->with('success', "Torneo '{$tournament->name}' aggiunto");
     }
 
     /**
      * Aggiunge piu tornei allo storico in una volta.
      */
-    public function addMultipleTournaments(Request $request, User $user)
+    public function addMultipleTournaments(Request $request, User $user): RedirectResponse
     {
         // Check zone access
         $currentUser = auth()->user();
@@ -347,8 +354,9 @@ class CareerHistoryController extends Controller
             'role' => 'nullable|string|max:100',
         ]);
 
+        $year = $request->integer('year');
         $tournaments = Tournament::with('club')
-            ->whereIn('id', $request->tournament_ids)
+            ->whereIn('id', $request->array('tournament_ids'))
             ->get();
 
         $addedCount = 0;
@@ -360,11 +368,11 @@ class CareerHistoryController extends Controller
                 'name' => $tournament->name,
                 'club_id' => $tournament->club_id,
                 'club_name' => $tournament->club->name ?? null,
-                'start_date' => $tournament->start_date?->format('Y-m-d') ?? '',
+                'start_date' => $tournament->start_date->format('Y-m-d') ?? '',
                 'end_date' => $tournament->end_date?->format('Y-m-d') ?? '',
             ];
 
-            $this->careerService->addTournamentEntry($user->id, $request->year, $tournamentData);
+            $this->careerService->addTournamentEntry($user->id, $year, $tournamentData);
             $addedCount++;
 
             // Se c'e un ruolo, aggiungi anche l'assegnazione
@@ -376,14 +384,14 @@ class CareerHistoryController extends Controller
                 if ($history) {
                     $assignments = $history->assignments_by_year ?? [];
 
-                    if (! isset($assignments[$request->year])) {
-                        $assignments[$request->year] = [];
+                    if (! isset($assignments[$year])) {
+                        $assignments[$year] = [];
                     }
 
-                    $assignments[$request->year][] = [
+                    $assignments[$year][] = [
                         'tournament_id' => $tournament->id,
                         'tournament_name' => $tournament->name,
-                        'role' => $request->role,
+                        'role' => $request->string('role')->toString(),
                         'assigned_at' => now()->format('Y-m-d'),
                         'status' => 'manual_entry',
                     ];
@@ -400,14 +408,14 @@ class CareerHistoryController extends Controller
         }
 
         return redirect()
-            ->route('admin.career-history.edit-year', [$user, $request->year])
+            ->route('admin.career-history.edit-year', [$user, $year])
             ->with('success', "{$addedCount} tornei aggiunti allo storico");
     }
 
     /**
      * Rimuove un torneo dallo storico.
      */
-    public function removeTournament(Request $request, User $user)
+    public function removeTournament(Request $request, User $user): RedirectResponse
     {
         // Check zone access
         $currentUser = auth()->user();
@@ -420,20 +428,23 @@ class CareerHistoryController extends Controller
             'tournament_id' => 'required|integer',
         ]);
 
+        $year = $request->integer('year');
+        $tournamentId = $request->integer('tournament_id');
+
         $removed = $this->careerService->removeTournamentEntry(
             $user->id,
-            $request->year,
-            $request->tournament_id
+            $year,
+            $tournamentId
         );
 
         // Rimuovi anche dalle assegnazioni
         $history = RefereeCareerHistory::where('user_id', $user->id)->first();
         if ($history) {
             $assignments = $history->assignments_by_year ?? [];
-            if (isset($assignments[$request->year])) {
-                $assignments[$request->year] = array_values(array_filter(
-                    $assignments[$request->year],
-                    fn ($a) => $a['tournament_id'] != $request->tournament_id
+            if (isset($assignments[$year])) {
+                $assignments[$year] = array_values(array_filter(
+                    $assignments[$year],
+                    fn ($a) => $a['tournament_id'] != $tournamentId
                 ));
                 $history->assignments_by_year = $assignments;
                 $history->career_stats = $history->generateStatsSummary();
@@ -442,14 +453,14 @@ class CareerHistoryController extends Controller
         }
 
         return redirect()
-            ->route('admin.career-history.edit-year', [$user, $request->year])
+            ->route('admin.career-history.edit-year', [$user, $year])
             ->with($removed ? 'success' : 'warning', $removed ? 'Torneo rimosso' : 'Torneo non trovato');
     }
 
     /**
      * Aggiorna i giorni effettivi di un torneo esistente.
      */
-    public function updateTournamentDays(Request $request, User $user)
+    public function updateTournamentDays(Request $request, User $user): RedirectResponse
     {
         // Check zone access
         $currentUser = auth()->user();
@@ -463,22 +474,24 @@ class CareerHistoryController extends Controller
             'days_count' => 'required|integer|min:1',
         ]);
 
+        $year = $request->integer('year');
+
         $updated = $this->careerService->updateTournamentDays(
             $user->id,
-            $request->year,
-            $request->tournament_id,
-            $request->days_count
+            $year,
+            $request->integer('tournament_id'),
+            $request->integer('days_count')
         );
 
         return redirect()
-            ->route('admin.career-history.edit-year', [$user, $request->year])
+            ->route('admin.career-history.edit-year', [$user, $year])
             ->with($updated ? 'success' : 'warning', $updated ? 'Giorni aggiornati' : 'Torneo non trovato');
     }
 
     /**
      * Aggiorna completamente un torneo esistente.
      */
-    public function updateTournamentComplete(Request $request, User $user)
+    public function updateTournamentComplete(Request $request, User $user): RedirectResponse
     {
         // Check zone access
         $currentUser = auth()->user();
@@ -499,37 +512,39 @@ class CareerHistoryController extends Controller
         // Prepara dati da aggiornare (solo campi forniti)
         $updateData = [];
         if ($request->filled('name')) {
-            $updateData['name'] = $request->name;
+            $updateData['name'] = $request->string('name')->toString();
         }
         if ($request->filled('club_name')) {
-            $updateData['club_name'] = $request->club_name;
+            $updateData['club_name'] = $request->string('club_name')->toString();
         }
         if ($request->filled('start_date')) {
-            $updateData['start_date'] = $request->start_date;
+            $updateData['start_date'] = $request->string('start_date')->toString();
         }
         if ($request->filled('end_date')) {
-            $updateData['end_date'] = $request->end_date;
+            $updateData['end_date'] = $request->string('end_date')->toString();
         }
         if ($request->filled('days_count')) {
-            $updateData['days_count'] = (int) $request->days_count;
+            $updateData['days_count'] = $request->integer('days_count');
         }
+
+        $year = $request->integer('year');
 
         $updated = $this->careerService->updateTournamentEntry(
             $user->id,
-            $request->year,
-            $request->tournament_id,
+            $year,
+            $request->integer('tournament_id'),
             $updateData
         );
 
         return redirect()
-            ->route('admin.career-history.edit-year', [$user, $request->year])
+            ->route('admin.career-history.edit-year', [$user, $year])
             ->with($updated ? 'success' : 'warning', $updated ? 'Torneo aggiornato' : 'Torneo non trovato');
     }
 
     /**
      * Form per inserimento batch di tornei.
      */
-    public function batchEntryForm(User $user, int $year)
+    public function batchEntryForm(User $user, int $year): View
     {
         // Check zone access
         $currentUser = auth()->user();
@@ -542,7 +557,7 @@ class CareerHistoryController extends Controller
         $existingTournamentIds = [];
 
         if ($history && isset($history->tournaments_by_year[$year])) {
-            $existingTournamentIds = collect($history->tournaments_by_year[$year])
+            $existingTournamentIds = collect((array) $history->tournaments_by_year[$year])
                 ->pluck('id')
                 ->toArray();
         }
@@ -587,7 +602,7 @@ class CareerHistoryController extends Controller
     /**
      * Salvataggio batch di tornei.
      */
-    public function batchSave(Request $request, User $user)
+    public function batchSave(Request $request, User $user): RedirectResponse
     {
         // Check zone access
         $currentUser = auth()->user();
@@ -603,10 +618,21 @@ class CareerHistoryController extends Controller
             'tournaments.*.role' => 'nullable|string',
         ]);
 
+        $year = $request->integer('year');
+
+        // La validazione garantisce `tournaments` array di array, ma l'input resta
+        // non tipizzato: si filtra alle sole righe che sono davvero array.
+        $tournamentsInput = [];
+        foreach ($request->array('tournaments') as $row) {
+            if (is_array($row)) {
+                $tournamentsInput[] = $row;
+            }
+        }
+
         $result = $this->careerService->addBatchTournaments(
             $user->id,
-            $request->year,
-            $request->tournaments
+            $year,
+            $tournamentsInput
         );
 
         if (! empty($result['errors'])) {
@@ -618,16 +644,16 @@ class CareerHistoryController extends Controller
 
         return redirect()
             ->route('admin.career-history.show', $user)
-            ->with('success', "Aggiunti {$result['added']} tornei per l'anno {$request->year}");
+            ->with('success', "Aggiunti {$result['added']} tornei per l'anno {$year}");
     }
 
     /**
      * Preview dati anno prima di archiviare.
      */
-    public function previewYear(Request $request)
+    public function previewYear(Request $request): JsonResponse
     {
         $currentUser = auth()->user();
-        $year = $request->get('year', now()->year);
+        $year = $request->integer('year', now()->year);
         $zoneRestriction = $this->getUserZoneId($currentUser);
 
         $stats = $this->getYearStats($year, $zoneRestriction);
@@ -637,6 +663,8 @@ class CareerHistoryController extends Controller
 
     /**
      * Calcola statistiche per un anno.
+     *
+     * @return array<string, mixed>
      */
     private function getYearStats(int $year, ?int $zoneId = null): array
     {

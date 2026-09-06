@@ -10,12 +10,113 @@ use App\Models\User;
 use App\Models\Zone;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Testing\PendingCommand;
+use Illuminate\Testing\TestResponse;
 
 abstract class TestCase extends BaseTestCase
 {
     use CreatesApplication;
     use RefreshDatabase;
+
+    /**
+     * `$this->artisan()` e' tipizzato PendingCommand|int (int quando l'output
+     * della console non e' mockato). Nei test lo e' sempre, ma il tipo va
+     * ristretto per poter concatenare assertExitCode()/expectsOutput().
+     *
+     * @param  array<string, mixed>  $parameters
+     */
+    protected function artisanCommand(string $command, array $parameters = []): PendingCommand
+    {
+        $pending = $this->artisan($command, $parameters);
+
+        $this->assertInstanceOf(PendingCommand::class, $pending);
+
+        return $pending;
+    }
+
+    /**
+     * Legge una chiave dal JSON di risposta pretendendo che sia una stringa.
+     *
+     * `TestResponse::json()` restituisce mixed: senza questo controllo un
+     * assertStringContainsString() su un valore che non e' una stringa fallisce
+     * con un TypeError invece che con un messaggio utile.
+     *
+     * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $response
+     */
+    protected function jsonString(TestResponse $response, string $key): string
+    {
+        $value = $response->json($key);
+
+        $this->assertIsString($value, "La chiave '{$key}' del JSON di risposta non e' una stringa.");
+
+        return $value;
+    }
+
+    /**
+     * Legge una chiave dal JSON di risposta pretendendo che sia un array.
+     *
+     * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $response
+     * @return array<array-key, mixed>
+     */
+    protected function jsonArray(TestResponse $response, ?string $key = null): array
+    {
+        $value = $response->json($key);
+
+        $this->assertIsArray($value, "La chiave '".($key ?? '(radice)')."' del JSON di risposta non e' un array.");
+
+        return $value;
+    }
+
+    /**
+     * Legge un dato passato alla view pretendendo che sia dell'oggetto atteso.
+     *
+     * @template TExpected of object
+     *
+     * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $response
+     * @param  class-string<TExpected>  $class
+     * @return TExpected
+     */
+    protected function viewObject(TestResponse $response, string $key, string $class): object
+    {
+        $value = $response->viewData($key);
+
+        $this->assertInstanceOf($class, $value, "La view non ha ricevuto un {$class} in '{$key}'.");
+
+        return $value;
+    }
+
+    /**
+     * Legge un dato passato alla view pretendendo che sia un array.
+     *
+     * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $response
+     * @return array<array-key, mixed>
+     */
+    protected function viewArray(TestResponse $response, string $key): array
+    {
+        $value = $response->viewData($key);
+
+        $this->assertIsArray($value, "La view non ha ricevuto un array in '{$key}'.");
+
+        return $value;
+    }
+
+    /**
+     * Estrae un sotto-array da una struttura non tipizzata (colonne JSON,
+     * ritorni array<string, mixed>) facendo fallire il test se manca.
+     *
+     * @param  array<array-key, mixed>  $data
+     * @return array<array-key, mixed>
+     */
+    protected function arrayAt(array $data, string|int $key): array
+    {
+        $this->assertArrayHasKey($key, $data, "Chiave '{$key}' assente.");
+        $value = $data[$key];
+        $this->assertIsArray($value, "Il valore in '{$key}' non e' un array.");
+
+        return $value;
+    }
 
     /**
      * Setup eseguito prima di ogni test
@@ -49,11 +150,11 @@ abstract class TestCase extends BaseTestCase
      */
     protected function assertDatabaseIsTest(): void
     {
-        $connection = config('database.default');
+        $connection = Config::string('database.default');
 
         // Se non è SQLite in memoria, verifica che sia un database di test
-        if ($connection !== 'sqlite' || config('database.connections.sqlite.database') !== ':memory:') {
-            $dbName = config("database.connections.{$connection}.database");
+        if ($connection !== 'sqlite' || Config::get('database.connections.sqlite.database') !== ':memory:') {
+            $dbName = Config::string("database.connections.{$connection}.database");
 
             // Il database deve contenere 'test' nel nome o essere :memory:
             $this->assertTrue(
@@ -163,6 +264,8 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Crea un utente arbitro
+     *
+     * @param  array<string, mixed>  $attributes
      */
     protected function createReferee(array $attributes = []): User
     {
@@ -175,6 +278,8 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Crea un admin di zona
+     *
+     * @param  array<string, mixed>  $attributes
      */
     protected function createZoneAdmin(int $zoneId = 1, array $attributes = []): User
     {
@@ -185,6 +290,8 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Crea un admin nazionale
+     *
+     * @param  array<string, mixed>  $attributes
      */
     protected function createNationalAdmin(array $attributes = []): User
     {
@@ -193,6 +300,8 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Crea un super admin
+     *
+     * @param  array<string, mixed>  $attributes
      */
     protected function createSuperAdmin(array $attributes = []): User
     {
@@ -205,6 +314,8 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Crea un circolo
+     *
+     * @param  array<string, mixed>  $attributes
      */
     protected function createClub(array $attributes = []): Club
     {
@@ -217,6 +328,8 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Crea un torneo
+     *
+     * @param  array<string, mixed>  $attributes
      */
     protected function createTournament(array $attributes = []): Tournament
     {
@@ -228,7 +341,7 @@ abstract class TestCase extends BaseTestCase
 
         // Se non specificato type, usa il primo disponibile
         if (! isset($attributes['tournament_type_id'])) {
-            $attributes['tournament_type_id'] = TournamentType::first()->id;
+            $attributes['tournament_type_id'] = TournamentType::firstOrFail()->id;
         }
 
         return Tournament::factory()->create($attributes);
@@ -236,6 +349,8 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Crea un'assegnazione
+     *
+     * @param  array<string, mixed>  $attributes
      */
     protected function createAssignment(array $attributes = []): Assignment
     {
@@ -258,6 +373,8 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Login come arbitro
+     *
+     * @param  array<string, mixed>  $attributes
      */
     protected function actingAsReferee(array $attributes = []): self
     {
@@ -269,6 +386,8 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Login come admin zona
+     *
+     * @param  array<string, mixed>  $attributes
      */
     protected function actingAsZoneAdmin(int $zoneId = 1, array $attributes = []): self
     {
@@ -280,6 +399,8 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Login come admin nazionale
+     *
+     * @param  array<string, mixed>  $attributes
      */
     protected function actingAsNationalAdmin(array $attributes = []): self
     {
@@ -291,6 +412,8 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Login come super admin
+     *
+     * @param  array<string, mixed>  $attributes
      */
     protected function actingAsSuperAdmin(array $attributes = []): self
     {
@@ -306,6 +429,8 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Assert che un model ha una relazione
+     *
+     * @param  \Illuminate\Database\Eloquent\Model  $model
      */
     protected function assertHasRelation($model, string $relation): void
     {

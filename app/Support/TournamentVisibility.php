@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\UserType;
+use App\Models\Tournament;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -26,14 +27,15 @@ final class TournamentVisibility
     /**
      * Applica il filtro di visibilità su una query Tournament.
      *
-     * @param  Builder  $query  Query su Tournament (o relazione)
+     * @param  Builder<Tournament>  $query  Query su Tournament
      * @param  User|null  $user  Utente corrente (default: auth()->user())
+     * @return Builder<Tournament>
      */
     public static function apply(Builder $query, ?User $user = null): Builder
     {
         $user = $user ?? auth()->user();
 
-        if (! $user || ! $user->user_type) {
+        if (! $user) {
             return $query->whereRaw('1 = 0');
         }
 
@@ -65,9 +67,12 @@ final class TournamentVisibility
      * Applica il filtro di visibilità su una query con relazione al torneo.
      * Usato per Assignment, Availability, TournamentNotification, ecc.
      *
-     * @param  Builder  $query  Query sull'entità con relazione al torneo
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  Builder<TModel>  $query  Query sull'entità con relazione al torneo
      * @param  User|null  $user  Utente corrente
      * @param  string  $tournamentRelation  Nome della relazione Eloquent (default: 'tournament')
+     * @return Builder<TModel>
      */
     public static function applyViaRelation(
         Builder $query,
@@ -76,7 +81,7 @@ final class TournamentVisibility
     ): Builder {
         $user = $user ?? auth()->user();
 
-        if (! $user || ! $user->user_type) {
+        if (! $user) {
             return $query->whereRaw('1 = 0');
         }
 
@@ -118,13 +123,13 @@ final class TournamentVisibility
     /**
      * Verifica se un utente può accedere a un torneo specifico.
      *
-     * @param  \App\Models\Tournament  $tournament
+     * @param  Tournament  $tournament
      */
     public static function canAccess($tournament, ?User $user = null): bool
     {
         $user = $user ?? auth()->user();
 
-        if (! $user || ! $user->user_type) {
+        if (! $user) {
             return false;
         }
 
@@ -135,8 +140,17 @@ final class TournamentVisibility
             return true;
         }
 
-        $tournamentZoneId = $tournament->club?->zone_id ?? $tournament->attributes['zone_id'] ?? null;
-        $isNationalTournament = $tournament->tournamentType?->is_national ?? false;
+        // La riga era `$tournament->club->zone_id ?? $tournament->attributes['zone_id'] ?? null`,
+        // ma il termine di mezzo dall'ESTERNO del model e' sempre null: `$attributes` e'
+        // protected, quindi passa da __get() che non trova ne' colonna ne' accessor.
+        // Risultato: un torneo in preparazione — data gia' fissata, circolo non ancora
+        // scelto — restava senza zona e spariva dalla vista del suo stesso admin di zona.
+        //
+        // Tournament::getZoneIdAttribute() fa esattamente la cosa giusta: usa il club
+        // quando c'e', altrimenti la colonna zone_id (che l'osservatore mantiene
+        // sincronizzata). E' quella la fonte da interrogare.
+        $tournamentZoneId = $tournament->zone_id;
+        $isNationalTournament = $tournament->tournamentType->is_national ?? false;
 
         return match ($type) {
             UserType::NationalAdmin => $isNationalTournament,
@@ -148,6 +162,12 @@ final class TournamentVisibility
 
     // ── Metodi privati ────────────────────────────────────────────────────────
 
+    /**
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
     private static function applyRefereeFilter(Builder $query, User $user): Builder
     {
         $isNational = $user->isNationalReferee();
@@ -173,6 +193,9 @@ final class TournamentVisibility
         return $query->whereRaw('1 = 0');
     }
 
+    /**
+     * @param  \App\Models\Tournament  $tournament
+     */
     private static function refereeCanAccess(
         $tournament,
         User $user,

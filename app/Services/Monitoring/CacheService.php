@@ -4,12 +4,16 @@ namespace App\Services\Monitoring;
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 
 class CacheService
 {
     /**
      * Pulisce cache specificata.
+     *
+     * @param  list<string>  $types
+     * @return array<string, mixed>
      */
     public function clearCache(array $types = ['application', 'config', 'route', 'view']): array
     {
@@ -33,6 +37,8 @@ class CacheService
 
     /**
      * Pulisce un tipo specifico di cache.
+     *
+     * @return array<string, mixed>
      */
     protected function clearCacheType(string $type): array
     {
@@ -64,6 +70,9 @@ class CacheService
 
     /**
      * Ottimizza il sistema.
+     *
+     * @param  list<string>  $operations
+     * @return array<string, mixed>
      */
     public function optimize(array $operations = ['config', 'route', 'view']): array
     {
@@ -87,6 +96,8 @@ class CacheService
 
     /**
      * Esegue un'operazione di ottimizzazione.
+     *
+     * @return array<string, mixed>
      */
     protected function runOptimization(string $operation): array
     {
@@ -127,11 +138,13 @@ class CacheService
 
     /**
      * Ottiene statistiche cache.
+     *
+     * @return array<string, mixed>
      */
     public function getCacheStats(): array
     {
         return [
-            'driver' => config('cache.default'),
+            'driver' => Config::string('cache.default'),
             'hit_rate' => 89.2,  // Placeholder
             'miss_rate' => 10.8, // Placeholder
             'evictions' => 45,   // Placeholder

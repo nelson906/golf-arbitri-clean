@@ -11,6 +11,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Config;
 
 class ClubNotificationMail extends Mailable implements ShouldQueue
 {
@@ -18,19 +19,35 @@ class ClubNotificationMail extends Mailable implements ShouldQueue
     use SerializesModels;
 
 
+    /**
+     * @var \App\Models\Tournament
+     */
     public $tournament;
 
+    /**
+     * @var array<int, array{path: string, name: string}>
+     */
     public $attachmentPaths;
 
+    /**
+     * @var \Illuminate\Support\Collection<int, \App\Models\Assignment>
+     */
     public $sortedAssignments;
 
+    /**
+     * @var string|null
+     */
     public $content;
 
     /** Oggetto personalizzato dal form (null = default "Arbitri Assegnati - ...") */
+    /**
+     * @var string|null
+     */
     public $subjectLine;
 
     /**
      * Create a new message instance.
+     * @param  array<int, array{path: string, name: string}>  $attachmentPaths
      */
     public function __construct(Tournament $tournament, ?string $content = null, array $attachmentPaths = [], ?string $subjectLine = null)
     {
@@ -63,7 +80,7 @@ class ClubNotificationMail extends Mailable implements ShouldQueue
 
         return new Envelope(
             from: new \Illuminate\Mail\Mailables\Address(
-                config('mail.from.address'),
+                Config::string('mail.from.address'),
                 $senderName
             ),
             replyTo: $replyToEmail
@@ -82,7 +99,7 @@ class ClubNotificationMail extends Mailable implements ShouldQueue
     {
         // Torneo nazionale → mittente CRC
         if (ZoneHelper::isTournamentNational($this->tournament)) {
-            $crcEmail = config('golf.emails.crc');
+            $crcEmail = Config::string('golf.emails.crc');
 
             return [
                 'CRC - Comitato Regole e Campionati',
@@ -132,13 +149,13 @@ class ClubNotificationMail extends Mailable implements ShouldQueue
                 // (metadata['message']) veniva silenziosamente scartato e
                 // partiva sempre il testo di default.
                 'message_content' => $this->content,
-                'recipient_name' => $this->tournament->club->name,
+                'recipient_name' => $this->tournament->club->name ?? '',
                 'tournament_name' => $this->tournament->name,
                 'tournament_dates' => $this->tournament->date_range,
-                'club_name' => $this->tournament->club->name,
+                'club_name' => $this->tournament->club->name ?? '',
                 'referees' => $referees,
-                'zone_email' => ZoneHelper::getEmailPattern($this->tournament->zone_id),
-                'club_email' => $this->tournament->club->email,
+                'zone_email' => ZoneHelper::getEmailPattern($this->tournament->zone_id ?? 0),
+                'club_email' => $this->tournament->club->email ?? '',
                 'attachments_info' => count($this->attachmentPaths) > 0 ?
                     ['Facsimile convocazione in formato Word'] : null,
             ]
@@ -147,6 +164,8 @@ class ClubNotificationMail extends Mailable implements ShouldQueue
 
     /**
      * Get the attachments for the message.
+     *
+     * @return list<mixed>
      */
     public function attachments(): array
     {
@@ -177,5 +196,4 @@ class ClubNotificationMail extends Mailable implements ShouldQueue
 
         return $mailAttachments;
     }
-
 }

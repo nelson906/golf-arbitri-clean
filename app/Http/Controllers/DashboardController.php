@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\UserType;
+use Illuminate\Http\RedirectResponse;
 
 class DashboardController extends Controller
 {
@@ -14,7 +15,7 @@ class DashboardController extends Controller
      * - Admin\DashboardController for admin users
      * - User\DashboardController for referee/user types
      */
-    public function index()
+    public function index(): RedirectResponse
     {
         $user = auth()->user();
 
@@ -25,7 +26,7 @@ class DashboardController extends Controller
         // user_type è castato a enum UserType nel modello User.
         // Usare $user->user_type?->isAdmin() evita il confronto stringa/enum
         // che causava il fallthrough al default (referee.dashboard) per tutti gli admin.
-        if ($user->user_type?->isAdmin()) {
+        if ($user->user_type->isAdmin()) {
             return redirect()->route('admin.dashboard');
         }
 
