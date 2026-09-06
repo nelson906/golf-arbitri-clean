@@ -5,10 +5,18 @@ namespace App\Services\Monitoring;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
+/**
+ * @phpstan-type LogEntry array{
+ *     level: string,
+ *     message: string,
+ *     time: \Illuminate\Support\Carbon,
+ * }
+ */
 class SystemLogsService
 {
     /**
      * Ottiene log di sistema.
+     * @return \Illuminate\Support\Collection<int, LogEntry>
      */
     public function getLogs(
         string $level = 'all',
@@ -18,6 +26,7 @@ class SystemLogsService
         $date = $date ?? Carbon::today()->format('Y-m-d');
 
         // Per ora dati mock - implementare lettura log reali se necessario
+        /** @var Collection<int, LogEntry> $logs */
         $logs = collect([
             ['level' => 'info', 'message' => 'Sistema avviato correttamente', 'time' => now()],
             ['level' => 'info', 'message' => 'Database connesso - 3 connessioni attive', 'time' => now()],
@@ -42,6 +51,8 @@ class SystemLogsService
 
     /**
      * Ottiene statistiche log.
+     *
+     * @return array<string, mixed>
      */
     public function getLogStats(?string $date = null): array
     {
@@ -58,6 +69,8 @@ class SystemLogsService
 
     /**
      * Legge file di log Laravel.
+     *
+     * @return list<string>
      */
     public function readLaravelLog(?string $date = null, int $lines = 100): array
     {
@@ -78,30 +91,12 @@ class SystemLogsService
         }
         $logLines = array_slice(explode("\n", $content), -$lines);
 
-        return array_filter($logLines);
-    }
-
-    /**
-     * Parsa una riga di log.
-     */
-    protected function parseLogLine(string $line): ?array
-    {
-        // Pattern per log Laravel: [2025-01-01 12:00:00] production.ERROR: Message
-        $pattern = '/\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] \w+\.(\w+): (.+)/';
-
-        if (preg_match($pattern, $line, $matches)) {
-            return [
-                'time' => $matches[1],
-                'level' => strtolower($matches[2]),
-                'message' => $matches[3],
-            ];
-        }
-
-        return null;
+        return array_values(array_filter($logLines));
     }
 
     /**
      * Ottiene log per livello.
+     * @return \Illuminate\Support\Collection<int, LogEntry>
      */
     public function getLogsByLevel(string $level, ?string $date = null, int $limit = 50): Collection
     {

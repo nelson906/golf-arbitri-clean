@@ -6,6 +6,7 @@ use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Models\User;
 use App\Traits\HasZoneVisibility;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class TournamentStatsService
@@ -14,6 +15,8 @@ class TournamentStatsService
 
     /**
      * Ottiene statistiche generali sui tornei.
+     *
+     * @return array<string, mixed>
      */
     public function getGeneralStats(?User $user = null): array
     {
@@ -29,6 +32,7 @@ class TournamentStatsService
 
     /**
      * Ottiene tornei per tipo.
+     * @return \Illuminate\Support\Collection<array-key, mixed>
      */
     public function getByType(?User $user = null): Collection
     {
@@ -47,6 +51,7 @@ class TournamentStatsService
 
     /**
      * Ottiene tornei per stato.
+     * @return \Illuminate\Support\Collection<array-key, mixed>
      */
     public function getByStatus(?User $user = null): Collection
     {
@@ -60,6 +65,7 @@ class TournamentStatsService
 
     /**
      * Ottiene tornei per zona.
+     * @return \Illuminate\Support\Collection<array-key, mixed>
      */
     public function getByZone(?User $user = null): Collection
     {
@@ -80,6 +86,7 @@ class TournamentStatsService
 
     /**
      * Ottiene tornei per mese (anno corrente).
+     * @return \Illuminate\Support\Collection<array-key, mixed>
      */
     public function getByMonth(?User $user = null): Collection
     {
@@ -144,6 +151,8 @@ class TournamentStatsService
 
     /**
      * Ottiene statistiche complete per la vista tornei.
+     *
+     * @return array<string, mixed>
      */
     public function getFullStats(?User $user = null): array
     {
@@ -162,8 +171,10 @@ class TournamentStatsService
 
     /**
      * Query base con visibilità applicata.
+     *
+     * @return Builder<\App\Models\Tournament>
      */
-    protected function baseQuery(?User $user = null)
+    protected function baseQuery(?User $user = null): Builder
     {
         $user = $user ?? auth()->user();
         $query = Tournament::query();

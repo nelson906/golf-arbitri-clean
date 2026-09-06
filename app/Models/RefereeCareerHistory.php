@@ -2,13 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RefereeCareerHistory extends Model
 {
-    use HasFactory;
 
     protected $table = 'referee_career_history';
 
@@ -33,33 +31,51 @@ class RefereeCareerHistory extends Model
     ];
 
     // Relationships
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function referee(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
     // Accessors per anni specifici
+    /**
+     * @return array<array-key, mixed>
+     */
     public function getTournamentsForYear(int $year): array
     {
         return $this->tournaments_by_year[$year] ?? [];
     }
 
+    /**
+     * @return array<array-key, mixed>
+     */
     public function getAssignmentsForYear(int $year): array
     {
         return $this->assignments_by_year[$year] ?? [];
     }
 
+    /**
+     * @return array<array-key, mixed>
+     */
     public function getAvailabilitiesForYear(int $year): array
     {
         return $this->availabilities_by_year[$year] ?? [];
     }
 
     // Helper methods
+    /**
+     * @return array<string, mixed>
+     */
     public function generateStatsSummary(): array
     {
         $tournaments = $this->tournaments_by_year ?? [];

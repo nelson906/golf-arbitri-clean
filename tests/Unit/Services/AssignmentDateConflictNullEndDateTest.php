@@ -36,7 +36,12 @@ class AssignmentDateConflictNullEndDateTest extends TestCase
         $method = new ReflectionMethod(AssignmentValidationService::class, 'datesOverlap');
         $method->setAccessible(true);
 
-        return $method->invoke(app(AssignmentValidationService::class), $a, $b);
+        $overlap = $method->invoke(app(AssignmentValidationService::class), $a, $b);
+
+        // invoke() e' dichiarato mixed: datesOverlap() ritorna bool, ma lo si verifica.
+        $this->assertIsBool($overlap);
+
+        return $overlap;
     }
 
     /**

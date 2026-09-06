@@ -62,7 +62,7 @@ class UserTypeZoneAdminQueryTest extends TestCase
      */
     public function test_query_with_enum_value_finds_zone_admins(): void
     {
-        $zone1 = \App\Models\Zone::first();
+        $zone1 = \App\Models\Zone::firstOrFail();
         $this->assertNotNull($zone1, 'Devono esistere zone per questo test');
 
         // Crea admin di zona
@@ -88,7 +88,7 @@ class UserTypeZoneAdminQueryTest extends TestCase
             $foundViaString->pluck('id')->sort()->values(),
             'Le due forme di query devono restituire gli stessi risultati'
         );
-        $this->assertEquals($zoneAdmin->id, $foundViaEnum->first()->id);
+        $this->assertEquals($zoneAdmin->id, $foundViaEnum->firstOrFail()->id);
     }
 
     /**
@@ -96,7 +96,7 @@ class UserTypeZoneAdminQueryTest extends TestCase
      */
     public function test_query_with_zone_admin_value_excludes_other_roles(): void
     {
-        $zone = \App\Models\Zone::first();
+        $zone = \App\Models\Zone::firstOrFail();
 
         $zoneAdmin    = $this->createZoneAdmin($zone->id);
         $referee      = $this->createReferee(['zone_id' => $zone->id]);
@@ -122,7 +122,7 @@ class UserTypeZoneAdminQueryTest extends TestCase
      */
     public function test_notification_controller_zone_admin_query_pattern(): void
     {
-        $zone = \App\Models\Zone::first();
+        $zone = \App\Models\Zone::firstOrFail();
 
         // Crea scenario: 2 admin attivi + 1 inattivo
         $activeAdmin1  = $this->createZoneAdmin($zone->id, ['is_active' => true]);
@@ -152,7 +152,7 @@ class UserTypeZoneAdminQueryTest extends TestCase
      */
     public function test_availability_controller_zone_admin_email_query_pattern(): void
     {
-        $zone = \App\Models\Zone::first();
+        $zone = \App\Models\Zone::firstOrFail();
 
         $admin = $this->createZoneAdmin($zone->id, [
             'is_active' => true,

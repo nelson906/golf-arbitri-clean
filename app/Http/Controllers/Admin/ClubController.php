@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Models\Zone;
 use App\Traits\HasZoneVisibility;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -16,7 +18,7 @@ class ClubController extends Controller
     /**
      * Display lista circoli
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         $user = auth()->user();
         $isNationalAdmin = $this->isNationalAdmin($user);
@@ -31,7 +33,7 @@ class ClubController extends Controller
 
         // Filtro ricerca
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = $request->string('search')->toString();
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('city', 'like', "%{$search}%")
@@ -41,11 +43,11 @@ class ClubController extends Controller
 
         // Filtro zona
         if ($request->filled('zone_id')) {
-            $query->where('zone_id', $request->zone_id);
+            $query->where('zone_id', $request->integer('zone_id'));
         }
         // Apply status filter
         if ($request->filled('status')) {
-            $query->where('is_active', $request->status === 'active');
+            $query->where('is_active', $request->string('status')->toString() === 'active');
         }
 
         // Filtro zona già applicato da applyClubVisibility()
@@ -67,7 +69,7 @@ class ClubController extends Controller
     /**
      * Show dettaglio circolo
      */
-    public function show(Club $club)
+    public function show(Club $club): View
     {
         // Carica relazioni base
         $club->load(['zone']);
@@ -97,7 +99,7 @@ class ClubController extends Controller
     /**
      * Show form creazione
      */
-    public function create()
+    public function create(): View
     {
         $user = auth()->user();
         $isNationalAdmin = $this->isNationalAdmin($user);
@@ -116,7 +118,7 @@ class ClubController extends Controller
     /**
      * Store nuovo circolo
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $rules = [
             'name' => 'required|string|max:255',
@@ -148,7 +150,7 @@ class ClubController extends Controller
     /**
      * Show form modifica
      */
-    public function edit(Club $club)
+    public function edit(Club $club): View
     {
         $user = auth()->user();
         $isNationalAdmin = $this->isNationalAdmin($user);
@@ -171,7 +173,7 @@ class ClubController extends Controller
     /**
      * Update circolo
      */
-    public function update(Request $request, Club $club)
+    public function update(Request $request, Club $club): RedirectResponse
     {
         $user = auth()->user();
         $isNationalAdmin = $this->isNationalAdmin($user);
@@ -185,7 +187,7 @@ class ClubController extends Controller
             'name' => 'required|string|max:255',
             'zone_id' => 'required|exists:zones,id',
             'city' => 'nullable|string|max:255',
-            'province' => 'nullable|string|max:255',
+            'province' => 'nullable|string|max:2',
             'address' => 'nullable|string|max:500',
             'phone' => 'nullable|string|max:50',
             'email' => 'nullable|email|max:255',
@@ -206,7 +208,7 @@ class ClubController extends Controller
     /**
      * Delete circolo
      */
-    public function destroy(Club $club)
+    public function destroy(Club $club): RedirectResponse
     {
         if (! $this->isNationalAdmin()) {
             abort(403, 'Solo gli admin nazionali possono eliminare circoli');
@@ -234,7 +236,7 @@ class ClubController extends Controller
     /**
      * Toggle stato attivo (se la colonna esiste)
      */
-    public function toggleActive(Club $club)
+    public function toggleActive(Club $club): RedirectResponse
     {
 
         $user = auth()->user();

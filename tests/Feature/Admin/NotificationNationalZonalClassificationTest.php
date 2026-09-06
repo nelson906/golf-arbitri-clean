@@ -3,10 +3,10 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Assignment;
-use App\Models\Club;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Models\TournamentType;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Tests\TestCase;
 
 /**
@@ -28,6 +28,31 @@ use Tests\TestCase;
  */
 class NotificationNationalZonalClassificationTest extends TestCase
 {
+
+    /**
+     * Anno di riferimento: ~6 mesi nel futuro.
+     *
+     * Serve anche a `federgolf:mark-notified --anno`, che filtra con
+     * whereYear('start_date', $anno) OLTRE che sul testo della nota:
+     * se le date dei tornei si spostano, l'anno passato al comando
+     * deve spostarsi con loro.
+     */
+    private function futureYear(): int
+    {
+        return now()->addMonths(6)->year;
+    }
+
+    /**
+     * Data a $offset giorni dal 1 marzo dell'anno di riferimento.
+     *
+     * L'ancora al 1 marzo (non a "oggi + 6 mesi") tiene tutti gli offset usati
+     * qui — fino a 88 giorni — dentro futureYear(), qualunque sia il giorno in
+     * cui gira la suite. Le date fisse (erano marzo-giugno 2025) invecchiano.
+     */
+    private function futureDate(int $offset = 0): string
+    {
+        return now()->addMonths(6)->startOfYear()->addMonths(2)->addDays($offset)->format('Y-m-d');
+    }
     // -------------------------------------------------------------------------
     // SCENARIO A — Torneo zonale con record notifica corrotto (is_national=false
     //              ma notification_type='crc_referees')
@@ -41,7 +66,7 @@ class NotificationNationalZonalClassificationTest extends TestCase
     {
         $zoneAdmin = $this->createZoneAdmin(1);
 
-        $zonalType = TournamentType::where('is_national', false)->first();
+        $zonalType = TournamentType::where('is_national', false)->firstOrFail();
         $club      = $this->createClub(['zone_id' => 1]);
         $torneo    = $this->createTournament([
             'club_id'            => $club->id,
@@ -63,11 +88,11 @@ class NotificationNationalZonalClassificationTest extends TestCase
         $response->assertOk();
 
         // Verifica che il gruppo abbia is_national = false
-        $groups = $response->viewData('tournamentNotifications');
+        $groups = $this->viewObject($response, 'tournamentNotifications', LengthAwarePaginator::class);
         $group  = $groups->getCollection()
             ->firstWhere(fn ($g) => $g->tournament->id === $torneo->id);
 
-        $this->assertNotNull($group, 'Il torneo deve comparire nella lista notifiche.');
+        $this->assertInstanceOf(\stdClass::class, $group, 'Il torneo deve comparire nella lista notifiche.');
         $this->assertFalse(
             $group->is_national,
             'Un torneo con tournamentType.is_national=false deve essere classificato come ZONALE, ' .
@@ -82,7 +107,7 @@ class NotificationNationalZonalClassificationTest extends TestCase
     public function test_zonal_tournament_primary_notification_is_null_type_not_crc(): void
     {
         $zoneAdmin = $this->createZoneAdmin(1);
-        $zonalType = TournamentType::where('is_national', false)->first();
+        $zonalType = TournamentType::where('is_national', false)->firstOrFail();
         $club      = $this->createClub(['zone_id' => 1]);
         $torneo    = $this->createTournament([
             'club_id'            => $club->id,
@@ -109,15 +134,18 @@ class NotificationNationalZonalClassificationTest extends TestCase
         $response = $this->actingAs($zoneAdmin)
             ->get(route('admin.tournament-notifications.index'));
 
-        $groups = $response->viewData('tournamentNotifications');
+        $groups = $this->viewObject($response, 'tournamentNotifications', LengthAwarePaginator::class);
         $group  = $groups->getCollection()
             ->firstWhere(fn ($g) => $g->tournament->id === $torneo->id);
 
-        $this->assertNotNull($group);
+        $this->assertInstanceOf(\stdClass::class, $group);
+
         // La notifica principale per un torneo zonale deve essere quella con type=null
+        $primary = $group->primary;
+        $this->assertInstanceOf(TournamentNotification::class, $primary);
         $this->assertEquals(
             $notifCorrect->id,
-            $group->primary->id,
+            $primary->id,
             'Per un torneo zonale, la notifica PRIMARY deve essere quella con notification_type=null.'
         );
     }
@@ -134,7 +162,7 @@ class NotificationNationalZonalClassificationTest extends TestCase
     {
         $nationalAdmin = $this->createNationalAdmin();
 
-        $nationalType = TournamentType::where('is_national', true)->first();
+        $nationalType = TournamentType::where('is_national', true)->firstOrFail();
         $club         = $this->createClub(['zone_id' => 1]);
         $torneo       = $this->createTournament([
             'club_id'            => $club->id,
@@ -154,11 +182,11 @@ class NotificationNationalZonalClassificationTest extends TestCase
 
         $response->assertOk();
 
-        $groups = $response->viewData('tournamentNotifications');
+        $groups = $this->viewObject($response, 'tournamentNotifications', LengthAwarePaginator::class);
         $group  = $groups->getCollection()
             ->firstWhere(fn ($g) => $g->tournament->id === $torneo->id);
 
-        $this->assertNotNull($group, 'Il torneo nazionale deve comparire nella lista notifiche.');
+        $this->assertInstanceOf(\stdClass::class, $group, 'Il torneo nazionale deve comparire nella lista notifiche.');
         $this->assertTrue(
             $group->is_national,
             'Un torneo con tournamentType.is_national=true deve essere classificato come NAZIONALE.'
@@ -173,7 +201,7 @@ class NotificationNationalZonalClassificationTest extends TestCase
     {
         $nationalAdmin = $this->createNationalAdmin();
 
-        $nationalType = TournamentType::where('is_national', true)->first();
+        $nationalType = TournamentType::where('is_national', true)->firstOrFail();
         $club         = $this->createClub(['zone_id' => 1]);
         $torneo       = $this->createTournament([
             'club_id'            => $club->id,
@@ -195,15 +223,24 @@ class NotificationNationalZonalClassificationTest extends TestCase
         $response = $this->actingAs($nationalAdmin)
             ->get(route('admin.tournament-notifications.index'));
 
-        $groups = $response->viewData('tournamentNotifications');
+        $groups = $this->viewObject($response, 'tournamentNotifications', LengthAwarePaginator::class);
         $group  = $groups->getCollection()
             ->firstWhere(fn ($g) => $g->tournament->id === $torneo->id);
 
-        $this->assertNotNull($group);
+        $this->assertInstanceOf(\stdClass::class, $group);
         $this->assertTrue($group->is_national);
-        $this->assertEquals($notifCrc->id, $group->crc->id, 'group->crc deve puntare alla notifica crc_referees.');
-        $this->assertEquals($notifZone->id, $group->zone->id, 'group->zone deve puntare alla notifica zone_observers.');
-        $this->assertEquals($notifCrc->id, $group->primary->id, 'Per tornei nazionali, primary deve essere CRC.');
+
+        $crc = $group->crc;
+        $zone = $group->zone;
+        $primary = $group->primary;
+
+        $this->assertInstanceOf(TournamentNotification::class, $crc);
+        $this->assertInstanceOf(TournamentNotification::class, $zone);
+        $this->assertInstanceOf(TournamentNotification::class, $primary);
+
+        $this->assertEquals($notifCrc->id, $crc->id, 'group->crc deve puntare alla notifica crc_referees.');
+        $this->assertEquals($notifZone->id, $zone->id, 'group->zone deve puntare alla notifica zone_observers.');
+        $this->assertEquals($notifCrc->id, $primary->id, 'Per tornei nazionali, primary deve essere CRC.');
     }
 
     // -------------------------------------------------------------------------
@@ -216,14 +253,14 @@ class NotificationNationalZonalClassificationTest extends TestCase
      */
     public function test_mark_notified_auto_creates_null_type_for_zonal_tournament(): void
     {
-        $zonalType = TournamentType::where('is_national', false)->first();
+        $zonalType = TournamentType::where('is_national', false)->firstOrFail();
         $club      = $this->createClub(['zone_id' => 1]);
         $torneo    = Tournament::factory()->create([
             'club_id'            => $club->id,
             'tournament_type_id' => $zonalType->id,
             'zone_id'            => 1,
-            'start_date'         => '2025-03-15',
-            'end_date'           => '2025-03-16',
+            'start_date'         => $this->futureDate(0),
+            'end_date'           => $this->futureDate(1),
         ]);
 
         $arbitro = $this->createReferee(['zone_id' => 1]);
@@ -233,13 +270,13 @@ class NotificationNationalZonalClassificationTest extends TestCase
             'user_id'       => $arbitro->id,
             'assigned_by'   => $arbitro->id,
             'assigned_at'   => now(),
-            'notes'         => 'Import batch FIG 2025',
+            'notes'         => 'Import batch FIG '.$this->futureYear(),
             'role'          => 'Arbitro',
             'is_confirmed'  => false,
         ]);
 
-        $this->artisan('federgolf:mark-notified', [
-            '--anno' => 2025,
+        $this->artisanCommand('federgolf:mark-notified', [
+            '--anno' => $this->futureYear(),
             '--type' => 'auto',
         ])->assertExitCode(0);
 
@@ -259,14 +296,14 @@ class NotificationNationalZonalClassificationTest extends TestCase
      */
     public function test_mark_notified_auto_creates_crc_type_for_national_tournament(): void
     {
-        $nationalType = TournamentType::where('is_national', true)->first();
+        $nationalType = TournamentType::where('is_national', true)->firstOrFail();
         $club         = $this->createClub(['zone_id' => 1]);
         $torneo       = Tournament::factory()->create([
             'club_id'            => $club->id,
             'tournament_type_id' => $nationalType->id,
             'zone_id'            => 1,
-            'start_date'         => '2025-04-10',
-            'end_date'           => '2025-04-11',
+            'start_date'         => $this->futureDate(26),
+            'end_date'           => $this->futureDate(27),
         ]);
 
         $arbitro = $this->createReferee(['zone_id' => 1, 'level' => 'nazionale']);
@@ -276,13 +313,13 @@ class NotificationNationalZonalClassificationTest extends TestCase
             'user_id'       => $arbitro->id,
             'assigned_by'   => $arbitro->id,
             'assigned_at'   => now(),
-            'notes'         => 'Import batch FIG 2025',
+            'notes'         => 'Import batch FIG '.$this->futureYear(),
             'role'          => 'Arbitro',
             'is_confirmed'  => false,
         ]);
 
-        $this->artisan('federgolf:mark-notified', [
-            '--anno' => 2025,
+        $this->artisanCommand('federgolf:mark-notified', [
+            '--anno' => $this->futureYear(),
             '--type' => 'auto',
         ])->assertExitCode(0);
 
@@ -302,8 +339,8 @@ class NotificationNationalZonalClassificationTest extends TestCase
      */
     public function test_mark_notified_auto_assigns_correct_type_for_mixed_batch(): void
     {
-        $zonalType    = TournamentType::where('is_national', false)->first();
-        $nationalType = TournamentType::where('is_national', true)->first();
+        $zonalType    = TournamentType::where('is_national', false)->firstOrFail();
+        $nationalType = TournamentType::where('is_national', true)->firstOrFail();
 
         $club = $this->createClub(['zone_id' => 1]);
 
@@ -312,8 +349,8 @@ class NotificationNationalZonalClassificationTest extends TestCase
             'tournament_type_id' => $zonalType->id,
             'zone_id'            => 1,
             'name'               => 'Gara Zonale Test',
-            'start_date'         => '2025-05-10',
-            'end_date'           => '2025-05-11',
+            'start_date'         => $this->futureDate(56),
+            'end_date'           => $this->futureDate(57),
         ]);
 
         $torneoNazionale = Tournament::factory()->create([
@@ -321,8 +358,8 @@ class NotificationNationalZonalClassificationTest extends TestCase
             'tournament_type_id' => $nationalType->id,
             'zone_id'            => 1,
             'name'               => 'Gara Nazionale Test',
-            'start_date'         => '2025-05-20',
-            'end_date'           => '2025-05-21',
+            'start_date'         => $this->futureDate(66),
+            'end_date'           => $this->futureDate(67),
         ]);
 
         $arbitro = $this->createReferee(['zone_id' => 1, 'level' => 'nazionale']);
@@ -333,19 +370,19 @@ class NotificationNationalZonalClassificationTest extends TestCase
                 'user_id'       => $arbitro->id,
                 'assigned_by'   => $arbitro->id,
                 'assigned_at'   => now(),
-                'notes'         => 'Import batch FIG 2025',
+                'notes'         => 'Import batch FIG '.$this->futureYear(),
                 'role'          => 'Arbitro',
                 'is_confirmed'  => false,
             ]);
         }
 
-        $this->artisan('federgolf:mark-notified', [
-            '--anno' => 2025,
+        $this->artisanCommand('federgolf:mark-notified', [
+            '--anno' => $this->futureYear(),
             '--type' => 'auto',
         ])->assertExitCode(0);
 
-        $notifZonale    = TournamentNotification::where('tournament_id', $torneoZonale->id)->first();
-        $notifNazionale = TournamentNotification::where('tournament_id', $torneoNazionale->id)->first();
+        $notifZonale    = TournamentNotification::where('tournament_id', $torneoZonale->id)->firstOrFail();
+        $notifNazionale = TournamentNotification::where('tournament_id', $torneoNazionale->id)->firstOrFail();
 
         $this->assertNull(
             $notifZonale->notification_type,
@@ -368,7 +405,7 @@ class NotificationNationalZonalClassificationTest extends TestCase
      */
     public function test_fix_notification_types_corrects_zonal_tournament_with_wrong_type(): void
     {
-        $zonalType = TournamentType::where('is_national', false)->first();
+        $zonalType = TournamentType::where('is_national', false)->firstOrFail();
         $club      = $this->createClub(['zone_id' => 1]);
         $torneo    = $this->createTournament([
             'club_id'            => $club->id,
@@ -381,7 +418,7 @@ class NotificationNationalZonalClassificationTest extends TestCase
             'status'            => 'sent',
         ]);
 
-        $this->artisan('federgolf:fix-notification-types')
+        $this->artisanCommand('federgolf:fix-notification-types')
              ->assertExitCode(0);
 
         $notif->refresh();
@@ -397,7 +434,7 @@ class NotificationNationalZonalClassificationTest extends TestCase
      */
     public function test_fix_notification_types_dry_run_does_not_modify_db(): void
     {
-        $zonalType = TournamentType::where('is_national', false)->first();
+        $zonalType = TournamentType::where('is_national', false)->firstOrFail();
         $club      = $this->createClub(['zone_id' => 1]);
         $torneo    = $this->createTournament([
             'club_id'            => $club->id,
@@ -410,7 +447,7 @@ class NotificationNationalZonalClassificationTest extends TestCase
             'status'            => 'sent',
         ]);
 
-        $this->artisan('federgolf:fix-notification-types', ['--dry-run' => true])
+        $this->artisanCommand('federgolf:fix-notification-types', ['--dry-run' => true])
              ->assertExitCode(0);
 
         $notif->refresh();
@@ -427,8 +464,8 @@ class NotificationNationalZonalClassificationTest extends TestCase
      */
     public function test_fix_notification_types_leaves_correct_records_unchanged(): void
     {
-        $zonalType    = TournamentType::where('is_national', false)->first();
-        $nationalType = TournamentType::where('is_national', true)->first();
+        $zonalType    = TournamentType::where('is_national', false)->firstOrFail();
+        $nationalType = TournamentType::where('is_national', true)->firstOrFail();
         $club         = $this->createClub(['zone_id' => 1]);
 
         // Torneo zonale con tipo corretto (null)
@@ -453,7 +490,7 @@ class NotificationNationalZonalClassificationTest extends TestCase
             'status'            => 'sent',
         ]);
 
-        $this->artisan('federgolf:fix-notification-types')
+        $this->artisanCommand('federgolf:fix-notification-types')
              ->assertExitCode(0);
 
         $notifZ->refresh();
@@ -480,13 +517,13 @@ class NotificationNationalZonalClassificationTest extends TestCase
      */
     public function test_mark_notified_sets_is_confirmed_on_assignments(): void
     {
-        $zonalType = TournamentType::where('is_national', false)->first();
+        $zonalType = TournamentType::where('is_national', false)->firstOrFail();
         $club      = $this->createClub(['zone_id' => 1]);
         $torneo    = Tournament::factory()->create([
             'club_id'            => $club->id,
             'tournament_type_id' => $zonalType->id,
-            'start_date'         => '2025-06-10',
-            'end_date'           => '2025-06-11',
+            'start_date'         => $this->futureDate(87),
+            'end_date'           => $this->futureDate(88),
         ]);
 
         $arbitro = $this->createReferee(['zone_id' => 1]);
@@ -495,13 +532,13 @@ class NotificationNationalZonalClassificationTest extends TestCase
             'user_id'       => $arbitro->id,
             'assigned_by'   => $arbitro->id,
             'assigned_at'   => now(),
-            'notes'         => 'Import batch FIG 2025',
+            'notes'         => 'Import batch FIG '.$this->futureYear(),
             'role'          => 'Arbitro',
             'is_confirmed'  => false,
         ]);
 
-        $this->artisan('federgolf:mark-notified', [
-            '--anno' => 2025,
+        $this->artisanCommand('federgolf:mark-notified', [
+            '--anno' => $this->futureYear(),
             '--type' => 'auto',
         ])->assertExitCode(0);
 

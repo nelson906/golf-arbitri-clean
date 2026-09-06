@@ -18,11 +18,11 @@ class ZoneTest extends TestCase
      */
     public function test_zone_has_many_clubs(): void
     {
-        $zone = Zone::first();
+        $zone = Zone::firstOrFail();
 
         Club::factory()->count(3)->create(['zone_id' => $zone->id]);
 
-        $this->assertCount(3, $zone->fresh()->clubs);
+        $this->assertCount(3, $zone->refresh()->clubs);
     }
 
     /**
@@ -30,12 +30,12 @@ class ZoneTest extends TestCase
      */
     public function test_zone_has_many_users(): void
     {
-        $zone = Zone::first();
+        $zone = Zone::firstOrFail();
 
         User::factory()->referee()->inZone($zone->id)->count(2)->create();
         User::factory()->zoneAdmin()->inZone($zone->id)->create();
 
-        $this->assertCount(3, $zone->fresh()->users);
+        $this->assertCount(3, $zone->refresh()->users);
     }
 
     // ==========================================
@@ -47,7 +47,7 @@ class ZoneTest extends TestCase
      */
     public function test_zone_has_code(): void
     {
-        $zone = Zone::where('code', 'SZR1')->first();
+        $zone = Zone::where('code', 'SZR1')->firstOrFail();
 
         $this->assertEquals('SZR1', $zone->code);
         $this->assertNotEmpty($zone->name);

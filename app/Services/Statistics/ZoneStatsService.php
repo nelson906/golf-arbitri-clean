@@ -13,6 +13,8 @@ class ZoneStatsService
 
     /**
      * Ottiene statistiche complete per tutte le zone.
+     *
+     * @return array<string, mixed>
      */
     public function getAllZonesStats(
         ?string $dateFrom = null,
@@ -35,6 +37,8 @@ class ZoneStatsService
 
     /**
      * Ottiene statistiche per una singola zona.
+     *
+     * @return array<string, mixed>
      */
     public function getZoneStats(Zone $zone, ?string $dateFrom = null, ?string $dateTo = null): array
     {
@@ -126,6 +130,8 @@ class ZoneStatsService
 
     /**
      * Ottiene riepilogo zone per dashboard.
+     *
+     * @return array<string, mixed>
      */
     public function getZonesSummary(?User $user = null): array
     {

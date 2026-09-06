@@ -17,6 +17,7 @@ use App\Traits\HasZoneVisibility;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -32,7 +33,7 @@ class AssignmentController extends Controller
     /**
      * Display lista assegnazioni
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         $user = auth()->user();
 
@@ -97,7 +98,7 @@ class AssignmentController extends Controller
     /**
      * Show form creazione
      */
-    public function create(Request $request)
+    public function create(Request $request): View
     {
         $tournament = null;
         $availableReferees = collect();
@@ -157,14 +158,14 @@ class AssignmentController extends Controller
      * mai cablata): authorize() verifica ruolo+zona, rules() aggiunge controlli
      * business (stato torneo, max arbitri, livello richiesto, stessa zona).
      */
-    public function store(AssignmentRequest $request)
+    public function store(AssignmentRequest $request): RedirectResponse
     {
         $validated = $request->validated();
 
         // Difesa in profondità: oltre ad authorize() della FormRequest,
         // applica le regole di visibilità complete (es. national admin
         // limitato ai tornei nazionali) — IDOR fix
-        $tournament = Tournament::findOrFail($validated['tournament_id']);
+        $tournament = Tournament::findOrFail($request->integer('tournament_id'));
         $this->checkTournamentAccess($tournament);
 
         $exists = Assignment::where('tournament_id', $validated['tournament_id'])
@@ -191,6 +192,8 @@ class AssignmentController extends Controller
 
     /**
      * Show assignment details
+     *
+     * @param  int|string  $assignmentId
      */
     public function show($assignmentId): View
     {
@@ -301,6 +304,8 @@ class AssignmentController extends Controller
 
     /**
      * Check if user can access the assignment.
+     *
+     * @param  \App\Models\Assignment  $assignment
      */
     private function checkAssignmentAccess($assignment): void
     {
@@ -334,7 +339,7 @@ class AssignmentController extends Controller
     /**
      * Mostra form per assegnare arbitri a un torneo
      */
-    public function assignReferees(Tournament $tournament)
+    public function assignReferees(Tournament $tournament): View
     {
         // Verifica accesso zona al torneo (IDOR fix: il middleware controlla solo il ruolo)
         $this->checkTournamentAccess($tournament);
@@ -355,7 +360,8 @@ class AssignmentController extends Controller
 
         // Ottieni arbitri già assegnati
         $assignedReferees = $this->getAssignedReferees($tournament);
-        $assignedRefereeIds = $assignedReferees->pluck('user_id')->toArray();
+        /** @var list<int> $assignedRefereeIds */
+        $assignedRefereeIds = $assignedReferees->pluck('user_id')->values()->all();
 
         // Ottieni arbitri disponibili (hanno dichiarato disponibilità)
         $availableReferees = $this->getAvailableReferees($tournament, $assignedRefereeIds);
@@ -377,8 +383,11 @@ class AssignmentController extends Controller
 
     /**
      * Ottieni arbitri già assegnati al torneo
+     *
+     * @param  \App\Models\Tournament  $tournament
+     * @return Collection<int, \App\Models\Assignment>
      */
-    private function getAssignedReferees($tournament)
+    private function getAssignedReferees($tournament): Collection
     {
         $assignedReferees = $tournament->assignments()
             ->with('user')
@@ -405,8 +414,12 @@ class AssignmentController extends Controller
 
     /**
      * Ottieni arbitri che hanno dichiarato disponibilità
+     *
+     * @param  \App\Models\Tournament  $tournament
+     * @param  list<int>  $excludeIds
+     * @return Collection<int, \App\Models\User>
      */
-    private function getAvailableReferees($tournament, $excludeIds = [])
+    private function getAvailableReferees($tournament, $excludeIds = []): Collection
     {
         $query = User::with('zone')
             ->where('user_type', 'referee');
@@ -434,8 +447,12 @@ class AssignmentController extends Controller
 
     /**
      * Ottieni arbitri della stessa zona che non hanno dichiarato disponibilità
+     *
+     * @param  \App\Models\Tournament  $tournament
+     * @param  list<int>  $excludeIds
+     * @return Collection<int, \App\Models\User>
      */
-    private function getPossibleReferees($tournament, $excludeIds = [])
+    private function getPossibleReferees($tournament, $excludeIds = []): Collection
     {
         // CRC admin: non mostra arbitri "possibili" zonali, solo nazionali nella sezione dedicata
         if ($this->isNationalAdmin()) {
@@ -468,8 +485,13 @@ class AssignmentController extends Controller
 
     /**
      * Ottieni arbitri nazionali/internazionali per tornei nazionali
+     *
+     * @param  \App\Models\Tournament  $tournament
+     * @param  list<int>  $excludeIds
+     * @param  \Illuminate\Support\Collection<int, \App\Models\User>|null  $availableReferees
+     * @return Collection<int, \App\Models\User>
      */
-    private function getNationalReferees($tournament, $excludeIds = [], $availableReferees = null)
+    private function getNationalReferees($tournament, $excludeIds = [], $availableReferees = null): Collection
     {
         // CRC admin: mostra sempre arbitri nazionali (che non hanno dato disponibilità)
         // Per admin zonali: mostra solo se il torneo è nazionale
@@ -502,7 +524,7 @@ class AssignmentController extends Controller
     /**
      * Salva assegnazioni multiple
      */
-    public function storeMultiple(Request $request, Tournament $tournament)
+    public function storeMultiple(Request $request, Tournament $tournament): RedirectResponse
     {
         // Verifica accesso zona al torneo (IDOR fix: il middleware controlla solo il ruolo)
         $this->checkTournamentAccess($tournament);
@@ -525,13 +547,17 @@ class AssignmentController extends Controller
                 ->pluck('user_id')
                 ->toArray();
 
-            foreach ($request->referee_ids as $refereeId) {
+            $roles = $request->array('roles');
+
+            foreach ($request->array('referee_ids') as $refereeId) {
                 if (in_array($refereeId, $existingUserIds)) {
                     $skipped++;
                     continue;
                 }
 
-                $role = $request->roles[$refereeId] ?? AssignmentRole::default()->value;
+                $role = is_string($refereeId) || is_int($refereeId)
+                    ? ($roles[$refereeId] ?? AssignmentRole::default()->value)
+                    : AssignmentRole::default()->value;
 
                 $data = [
                     'tournament_id' => $tournament->id,
@@ -554,7 +580,7 @@ class AssignmentController extends Controller
 
                 if (! $existingNotification && $created > 0) {
                     // Determina notification_type dalla fonte di verità (tournamentType.is_national)
-                    $isNational = $tournament->tournamentType?->is_national ?? false;
+                    $isNational = $tournament->tournamentType->is_national ?? false;
 
                     TournamentNotification::create([
                         'tournament_id'     => $tournament->id,
@@ -601,7 +627,7 @@ class AssignmentController extends Controller
     /**
      * Rimuovi assegnazione
      */
-    public function removeFromTournament(Tournament $tournament, User $referee)
+    public function removeFromTournament(Tournament $tournament, User $referee): RedirectResponse
     {
         // Verifica accesso zona al torneo (IDOR fix: il middleware controlla solo il ruolo)
         $this->checkTournamentAccess($tournament);
@@ -621,8 +647,10 @@ class AssignmentController extends Controller
 
     /**
      * Helper: verifica accesso al torneo (usa il trait HasZoneVisibility)
+     *
+     * @param  \App\Models\Tournament  $tournament
      */
-    private function checkTournamentAccess($tournament)
+    private function checkTournamentAccess($tournament): void
     {
         if (! $this->canAccessTournament($tournament)) {
             abort(403, 'Non autorizzato a gestire questo torneo');
@@ -636,7 +664,7 @@ class AssignmentController extends Controller
     /**
      * Remove assignment by ID
      */
-    public function destroy(Assignment $assignment)
+    public function destroy(Assignment $assignment): RedirectResponse
     {
         try {
             // Verifica permessi usando il trait
@@ -744,14 +772,14 @@ class AssignmentController extends Controller
 
         // Statistiche sui problemi
         $issueTypes = $tournaments->flatMap(function ($item) {
-            return collect($item['issues'])->pluck('type');
+            return collect((array) $item['issues'])->pluck('type');
         })->countBy()->toArray();
 
         $stats = [
             'total_tournaments' => $tournaments->count(),
             'issue_types' => $issueTypes,
             'high_severity' => $tournaments->filter(function ($item) {
-                return collect($item['issues'])->contains('severity', 'high');
+                return collect((array) $item['issues'])->contains('severity', 'high');
             })->count(),
         ];
 
@@ -772,14 +800,14 @@ class AssignmentController extends Controller
 
         // Threshold configurabile — minimo 1 per evitare che valori negativi o zero
         // restituiscano tutti gli arbitri come "sovrassegnati"
-        $threshold = max(1, (int) $request->input('threshold', 5));
+        $threshold = max(1, $request->integer('threshold', 5));
 
         $referees = $this->validationService->findOverassignedReferees($zoneId, $threshold);
 
         // Statistiche
         $stats = [
             'total_overassigned' => $referees->count(),
-            'avg_assignments' => round($referees->avg('assignments_count'), 1),
+            'avg_assignments' => round((float) $referees->avg('assignments_count'), 1),
             'max_assignments' => $referees->max('assignments_count'),
             'total_over_threshold' => $referees->sum('over_threshold'),
         ];
@@ -802,7 +830,7 @@ class AssignmentController extends Controller
 
         // Threshold configurabile — minimo 1 per evitare che valori negativi o zero
         // restituiscano tutti gli arbitri come "sottoutilizzati"
-        $threshold = max(1, (int) $request->input('threshold', 2));
+        $threshold = max(1, $request->integer('threshold', 2));
 
         $referees = $this->validationService->findUnderassignedReferees($zoneId, $threshold);
 
@@ -861,19 +889,5 @@ class AssignmentController extends Controller
                 ->route('admin.assignment-validation.conflicts')
                 ->with('error', 'Errore durante la risoluzione automatica: '.$e->getMessage());
         }
-    }
-
-    /**
-     * Helper per ottenere zone_id in base al tipo di utente (usa il trait HasZoneVisibility)
-     */
-    private function getZoneIdForUser($user): ?int
-    {
-        // Super admin e national admin vedono tutto
-        if ($this->isNationalAdmin($user)) {
-            return null;
-        }
-
-        // Zone admin vede solo la sua zona
-        return $user->zone_id;
     }
 }

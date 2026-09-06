@@ -17,7 +17,6 @@ class ZoneHelperTest extends TestCase
     {
         $result = ZoneHelper::getFolderCode(1);
 
-        $this->assertIsString($result);
         $this->assertStringStartsWith('SZR', $result);
     }
 
@@ -117,7 +116,6 @@ class ZoneHelperTest extends TestCase
     {
         $codes = ZoneHelper::getAllFolderCodes();
 
-        $this->assertIsArray($codes);
         $this->assertNotEmpty($codes);
         $this->assertContains('CRC', $codes);
     }
@@ -127,7 +125,7 @@ class ZoneHelperTest extends TestCase
      */
     public function test_get_zone_name_returns_existing_zone_name(): void
     {
-        $zone = Zone::first();
+        $zone = Zone::firstOrFail();
 
         if ($zone) {
             $result = ZoneHelper::getZoneName($zone->id);
@@ -164,7 +162,6 @@ class ZoneHelperTest extends TestCase
     {
         $result = ZoneHelper::getEmailPattern(1);
 
-        $this->assertIsString($result);
         $this->assertStringContainsString('@', $result);
     }
 

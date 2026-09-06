@@ -31,7 +31,7 @@ return new class extends Migration
             $table->id();
             $table->string('title');
             $table->text('description')->nullable();
-            $table->foreignId('zone_id')->nullable()->constrained('zones')->onDelete('cascade');
+            $table->foreignId('zone_id')->nullable()->constrained('zones')->cascadeOnDelete();
             $table->string('logo_path')->nullable();
             $table->text('header_text')->nullable();
             $table->text('header_content')->nullable();
@@ -41,7 +41,7 @@ return new class extends Migration
             $table->json('settings')->nullable();
             $table->boolean('is_active')->default(true);
             $table->boolean('is_default')->default(false);
-            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
 
             $table->index(['zone_id', 'is_active']);

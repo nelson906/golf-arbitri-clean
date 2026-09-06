@@ -6,6 +6,7 @@ use App\Enums\UserType;
 use App\Models\InstitutionalEmail;
 use App\Models\Tournament;
 use App\Models\User;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -45,7 +46,7 @@ class NotificationRecipientBuilder
      */
     public function addCampionati(): static
     {
-        $email = config('golf.emails.ufficio_campionati', 'campionati@federgolf.it');
+        $email = Config::string('golf.emails.ufficio_campionati', 'campionati@federgolf.it');
 
         if ($email) {
             $this->addTo($email, 'Comitato Campionati');
@@ -117,7 +118,7 @@ class NotificationRecipientBuilder
      */
     public function addCrc(): static
     {
-        $email = config('golf.emails.crc', 'crc@federgolf.it');
+        $email = Config::string('golf.emails.crc', 'crc@federgolf.it');
 
         if ($email) {
             $this->addCc($email, 'CRC');

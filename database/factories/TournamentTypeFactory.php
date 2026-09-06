@@ -25,7 +25,7 @@ class TournamentTypeFactory extends Factory
 
         return [
             'name' => fake()->words(2, true),
-            'short_name' => 'T'.str_pad($counter, 2, '0', STR_PAD_LEFT),  // T01, T02, etc
+            'short_name' => 'T'.str_pad((string) $counter, 2, '0', STR_PAD_LEFT),  // T01, T02, etc
             'description' => fake()->optional()->sentence(),
             'is_national' => fake()->boolean(30),
             'level' => fake()->randomElement(['zonale', 'nazionale']),

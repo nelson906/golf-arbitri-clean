@@ -7,6 +7,7 @@ use App\Models\Communication;
 use App\Traits\HasZoneVisibility;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
@@ -37,17 +38,17 @@ class CommunicationController extends Controller
 
         // Filtri opzionali
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $query->where('status', $request->string('status')->toString());
         }
 
         if ($request->filled('type')) {
-            $query->where('type', $request->type);
+            $query->where('type', $request->string('type')->toString());
         }
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
-                $q->where('title', 'like', '%'.$request->search.'%')
-                    ->orWhere('content', 'like', '%'.$request->search.'%');
+                $q->where('title', 'like', '%'.$request->string('search')->toString().'%')
+                    ->orWhere('content', 'like', '%'.$request->string('search')->toString().'%');
             });
         }
 
@@ -150,15 +151,17 @@ class CommunicationController extends Controller
 
     /**
      * Get available zones for user (usa trait)
+     *
+     * @param  \App\Models\User|null  $user
+     * @return Collection<int, \App\Models\Zone>
      */
-    private function getAvailableZones($user)
+    private function getAvailableZones($user): Collection
     {
         if ($this->isNationalAdmin($user)) {
             return \App\Models\Zone::orderBy('name')->get();
         }
 
         return \App\Models\Zone::where('id', $this->getUserZoneId($user))->get();
-
     }
 
     /**

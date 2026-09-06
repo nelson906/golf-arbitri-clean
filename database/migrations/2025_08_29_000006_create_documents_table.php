@@ -32,9 +32,9 @@ return new class extends Migration
             $table->enum('category', ['general', 'tournament', 'regulation', 'form', 'template'])->default('general');
             $table->enum('type', ['pdf', 'document', 'spreadsheet', 'image', 'text', 'other'])->default('other');
             $table->text('description')->nullable();
-            $table->foreignId('tournament_id')->nullable()->constrained('tournaments')->onDelete('cascade');
-            $table->foreignId('zone_id')->nullable()->constrained('zones')->onDelete('cascade');
-            $table->foreignId('uploader_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('tournament_id')->nullable()->constrained('tournaments')->cascadeOnDelete();
+            $table->foreignId('zone_id')->nullable()->constrained('zones')->cascadeOnDelete();
+            $table->foreignId('uploader_id')->constrained('users')->cascadeOnDelete();
             $table->boolean('is_public')->default(false);
             $table->integer('download_count')->default(0);
             $table->timestamps();
@@ -54,8 +54,8 @@ return new class extends Migration
             $table->enum('type', ['announcement', 'alert', 'maintenance', 'info'])->default('info');
             $table->enum('status', ['draft', 'published', 'expired'])->default('draft');
             $table->enum('priority', ['low', 'normal', 'high', 'urgent'])->default('normal');
-            $table->foreignId('zone_id')->nullable()->constrained('zones')->onDelete('cascade');
-            $table->foreignId('author_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('zone_id')->nullable()->constrained('zones')->cascadeOnDelete();
+            $table->foreignId('author_id')->constrained('users')->cascadeOnDelete();
             $table->timestamp('scheduled_at')->nullable();
             $table->timestamp('expires_at')->nullable();
             $table->timestamp('published_at')->nullable();

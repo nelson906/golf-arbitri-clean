@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -13,15 +14,15 @@ class DatabaseConnectionTest extends TestCase
     public function test_uses_mysql_for_tests(): void
     {
         // Verifica che la connessione sia MySQL
-        $connection = config('database.default');
+        $connection = Config::string('database.default');
         $this->assertEquals('mysql', $connection, 'I test devono usare MySQL');
 
         // Verifica che il database contenga "test" nel nome
-        $database = config('database.connections.mysql.database');
+        $database = Config::string('database.connections.mysql.database');
         $this->assertStringContainsString('test', strtolower($database), 'Il database di test deve contenere "test" nel nome');
 
         // Verifica che l'ambiente sia testing
-        $this->assertEquals('testing', config('app.env'));
+        $this->assertEquals('testing', Config::string('app.env'));
     }
 
     /**
@@ -32,8 +33,5 @@ class DatabaseConnectionTest extends TestCase
         // Ottieni il nome del driver
         $driver = DB::connection()->getDriverName();
         $this->assertEquals('mysql', $driver);
-
-        // Verifica che possiamo creare e distruggere tabelle senza problemi
-        $this->assertTrue(true, 'Database isolato e sicuro per i test');
     }
 }

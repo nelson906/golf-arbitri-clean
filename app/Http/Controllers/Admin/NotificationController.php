@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\AssignmentRole;
-use App\Enums\UserType;
 use App\Http\Controllers\Controller;
 use App\Mail\NationalNotificationMail;
 use App\Models\Tournament;
@@ -11,11 +9,16 @@ use App\Models\TournamentNotification;
 use App\Services\NotificationDocumentService;
 use App\Services\NotificationPreparationService;
 use App\Services\NotificationTransactionService;
+use App\Support\Untrusted;
 use App\Traits\HasZoneVisibility;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * Gestione convocazioni collettive e lettere circoli (solo DOCX)
@@ -86,7 +89,7 @@ class NotificationController extends Controller
      * Lista notifiche con gestione documenti
      * Per gare nazionali, raggruppa CRC e Zona in una singola riga
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         $user = auth()->user();
 
@@ -106,12 +109,12 @@ class NotificationController extends Controller
 
         // Filtro anno (sulla data del torneo)
         if ($request->filled('anno')) {
-            $tournamentsQuery->whereYear('start_date', (int) $request->anno);
+            $tournamentsQuery->whereYear('start_date', $request->integer('anno'));
         }
 
         // Filtro ricerca nome torneo
         if ($request->filled('cerca')) {
-            $tournamentsQuery->where('name', 'like', '%'.$request->cerca.'%');
+            $tournamentsQuery->where('name', 'like', '%'.$request->string('cerca')->toString().'%');
         }
 
         // Ordina per data torneo ascendente (cronologia crescente)
@@ -142,7 +145,7 @@ class NotificationController extends Controller
             $first = $notifications->first();
 
             // Fonte di verità: is_national dal tipo torneo, non dalla notifica
-            $isNational = $tournament->tournamentType?->is_national ?? false;
+            $isNational = $tournament->tournamentType->is_national ?? false;
 
             return (object) [
                 'tournament'            => $tournament,
@@ -180,7 +183,7 @@ class NotificationController extends Controller
     /**
      * Form per invio notifiche collettive
      */
-    public function showAssignmentForm(Tournament $tournament)
+    public function showAssignmentForm(Tournament $tournament): RedirectResponse|View
     {
         $this->checkTournamentAccess($tournament);
 
@@ -226,7 +229,7 @@ class NotificationController extends Controller
     /**
      * Stato documenti per il modal
      */
-    public function documentsStatus(TournamentNotification $notification)
+    public function documentsStatus(TournamentNotification $notification): JsonResponse
     {
         $this->checkNotificationAccess($notification);
 
@@ -246,8 +249,10 @@ class NotificationController extends Controller
 
     /**
      * Genera/rigenera documento
+     *
+     * @param  string  $type
      */
-    public function generateDocument(TournamentNotification $notification, $type)
+    public function generateDocument(TournamentNotification $notification, $type): JsonResponse
     {
         $this->checkNotificationAccess($notification);
 
@@ -286,8 +291,10 @@ class NotificationController extends Controller
 
     /**
      * Elimina un documento della notifica (AJAX dal modal)
+     *
+     * @param  string  $type
      */
-    public function deleteDocument(TournamentNotification $notification, $type)
+    public function deleteDocument(TournamentNotification $notification, $type): JsonResponse
     {
         $this->checkNotificationAccess($notification);
 
@@ -323,8 +330,10 @@ class NotificationController extends Controller
 
     /**
      * Download documento
+     *
+     * @param  string  $type
      */
-    public function downloadDocument(TournamentNotification $notification, $type)
+    public function downloadDocument(TournamentNotification $notification, $type): RedirectResponse|BinaryFileResponse
     {
         $this->checkNotificationAccess($notification);
 
@@ -361,7 +370,7 @@ class NotificationController extends Controller
     /**
      * Invia notifica (con metadati salvati)
      */
-    public function send(TournamentNotification $notification)
+    public function send(TournamentNotification $notification): RedirectResponse
     {
         $this->checkNotificationAccess($notification);
 
@@ -389,9 +398,9 @@ class NotificationController extends Controller
      * FIX D3: il redirect post-invio riflette lo stato reale — un invio
      * parziale (es. circolo senza email) non deve apparire come pieno successo.
      */
-    private function redirectAfterSend(TournamentNotification $notification)
+    private function redirectAfterSend(TournamentNotification $notification): RedirectResponse
     {
-        $final = $notification->fresh();
+        $final = $notification->refresh();
 
         if ($final->status === 'partial') {
             $lastError = $final->metadata['last_error'] ?? 'destinatario non raggiungibile';
@@ -421,7 +430,7 @@ class NotificationController extends Controller
      * (admin.notifications.prepare_notification) così che l'admin possa rivedere
      * destinatari, assegnazioni e contenuti prima del nuovo invio.
      */
-    public function resend(TournamentNotification $notification)
+    public function resend(TournamentNotification $notification): RedirectResponse
     {
         $this->checkNotificationAccess($notification);
 
@@ -433,7 +442,7 @@ class NotificationController extends Controller
     /**
      * Mostra una singola notifica
      */
-    public function show(TournamentNotification $notification)
+    public function show(TournamentNotification $notification): View
     {
         $this->checkNotificationAccess($notification);
 
@@ -445,7 +454,7 @@ class NotificationController extends Controller
     /**
      * Modifica una singola notifica
      */
-    public function edit(TournamentNotification $notification)
+    public function edit(TournamentNotification $notification): View
     {
         $this->checkNotificationAccess($notification);
 
@@ -457,7 +466,7 @@ class NotificationController extends Controller
     /**
      * Elimina una notifica e i relativi documenti
      */
-    public function destroy(TournamentNotification $notification)
+    public function destroy(TournamentNotification $notification): RedirectResponse
     {
         $this->checkNotificationAccess($notification);
 
@@ -475,7 +484,7 @@ class NotificationController extends Controller
      * Elimina TUTTE le notifiche di un torneo (CRC + Zona + bozze)
      * Usato dal pulsante "Elimina" nella lista raggruppata
      */
-    public function destroyTournament(Tournament $tournament)
+    public function destroyTournament(Tournament $tournament): RedirectResponse
     {
         $this->checkTournamentAccess($tournament);
 
@@ -496,7 +505,7 @@ class NotificationController extends Controller
     /**
      * Salva clausole via AJAX (per rigenerazione documenti)
      */
-    public function saveClauses(Request $request, TournamentNotification $notification)
+    public function saveClauses(Request $request, TournamentNotification $notification): JsonResponse
     {
         $this->checkNotificationAccess($notification);
 
@@ -527,7 +536,7 @@ class NotificationController extends Controller
     /**
      * Invia notifica con allegati dal form
      */
-    public function sendAssignmentWithConvocation(Request $request, Tournament $tournament)
+    public function sendAssignmentWithConvocation(Request $request, Tournament $tournament): JsonResponse|RedirectResponse
     {
         $this->checkTournamentAccess($tournament);
 
@@ -560,13 +569,17 @@ class NotificationController extends Controller
 
             // Email aggiuntive libere dal form (FIX: prima il backend le ignorava)
             $additional = [];
-            $additionalEmails = $request->input('additional_emails', []);
-            $additionalNames = $request->input('additional_names', []);
-            foreach ($additionalEmails as $i => $email) {
-                if (! empty($email)) {
+            $additionalNames = $request->array('additional_names');
+
+            foreach ($request->array('additional_emails') as $i => $email) {
+                $indirizzo = Untrusted::string($email);
+
+                if ($indirizzo !== '') {
                     $additional[] = [
-                        'email' => $email,
-                        'name' => $additionalNames[$i] ?? null,
+                        'email' => $indirizzo,
+                        'name' => Untrusted::stringOrNull(
+                            is_string($i) || is_int($i) ? ($additionalNames[$i] ?? null) : null
+                        ),
                     ];
                 }
             }
@@ -577,9 +590,9 @@ class NotificationController extends Controller
                 'message' => $validated['message'],
                 'attach_convocation' => $request->boolean('attach_convocation', true),
                 'recipients' => [
-                    'referees' => $request->input('recipients', []),
+                    'referees' => $request->array('recipients'),
                     'club' => $request->boolean('send_to_club', true),
-                    'institutional' => $request->input('fixed_addresses', []),
+                    'institutional' => $request->array('fixed_addresses'),
                     // FIX: "Invia copia alla sezione" — prima il backend lo ignorava
                     'zone' => $request->boolean('send_to_section', false),
                     'additional' => $additional,
@@ -590,7 +603,7 @@ class NotificationController extends Controller
             $this->transactionService->saveAsDraft(
                 $notification,
                 $metadata,
-                $request->input('clauses', [])
+                $request->array('clauses')
             );
 
             // ═══════════════════════════════════════════════════════════════════════
@@ -632,7 +645,7 @@ class NotificationController extends Controller
     /**
      * Find notification by tournament
      */
-    public function findByTournament(Tournament $tournament)
+    public function findByTournament(Tournament $tournament): JsonResponse
     {
         $this->checkTournamentAccess($tournament);
 
@@ -647,8 +660,10 @@ class NotificationController extends Controller
 
     /**
      * Carica un documento manualmente
+     *
+     * @param  string  $type
      */
-    public function uploadDocument(Request $request, TournamentNotification $notification, $type)
+    public function uploadDocument(Request $request, TournamentNotification $notification, $type): JsonResponse
     {
         $this->checkNotificationAccess($notification);
 
@@ -695,7 +710,7 @@ class NotificationController extends Controller
      * Invia notifica per gare nazionali (senza allegati)
      * Gestisce sia CRC (arbitri designati) che Admin Zona (osservatori)
      */
-    public function sendNationalNotification(Request $request, Tournament $tournament)
+    public function sendNationalNotification(Request $request, Tournament $tournament): RedirectResponse
     {
         $this->checkTournamentAccess($tournament);
 
@@ -721,10 +736,10 @@ class NotificationController extends Controller
         $isCrcNotification = $notificationType === 'crc_referees';
 
         // GUARD: solo tornei nazionali possono avere notifiche CRC/SZR
-        $isNational = $tournament->tournamentType?->is_national ?? false;
+        $isNational = $tournament->tournamentType->is_national ?? false;
         if (! $isNational) {
             return redirect()->back()->with('error',
-                'Questo torneo è zonale (tipo: ' . ($tournament->tournamentType?->name ?? '?') . '). ' .
+                'Questo torneo è zonale (tipo: ' . ($tournament->tournamentType->name ?? '?') . '). ' .
                 'Le notifiche CRC/SZR sono riservate ai tornei nazionali.'
             );
         }

@@ -20,24 +20,31 @@ use Illuminate\Contracts\Auth\Authenticatable;
 if (! class_exists('DebugCollector')) {
     class DebugCollector
     {
-        private static $issues = [];
+        /** @var list<array{type: string, message: string, context: array<string, mixed>}> */
+        private static array $issues = [];
 
-        public static function addIssue($type, $message, $context = [])
+        /**
+         * @param  array<string, mixed>  $context
+         */
+        public static function addIssue(string $type, string $message, array $context = []): void
         {
             self::$issues[] = compact('type', 'message', 'context');
         }
 
-        public static function getIssues()
+        /**
+         * @return list<array{type: string, message: string, context: array<string, mixed>}>
+         */
+        public static function getIssues(): array
         {
             return self::$issues;
         }
 
-        public static function clear()
+        public static function clear(): void
         {
             self::$issues = [];
         }
 
-        public static function hasIssues()
+        public static function hasIssues(): bool
         {
             return count(self::$issues) > 0;
         }
@@ -50,12 +57,15 @@ if (! class_exists('DebugCollector')) {
 if (! class_exists('MockPaginatorView')) {
     class MockPaginatorView
     {
-        public function __toString()
+        public function __toString(): string
         {
             return '';
         }
 
-        public function __call($m, $a)
+        /**
+         * @param  array<int, mixed>  $a
+         */
+        public function __call(string $m, array $a): self
         {
             return $this;
         }
@@ -66,24 +76,33 @@ if (! class_exists('MockPaginatorView')) {
 // MOCK COLLECTION
 // ============================================
 if (! class_exists('MockCollection')) {
+    /**
+     * @extends \Illuminate\Support\Collection<array-key, mixed>
+     */
     class MockCollection extends \Illuminate\Support\Collection
     {
-        public function links($view = null, $data = [])
+        /**
+         * @param  array<string, mixed>  $data
+         */
+        public function links(?string $view = null, array $data = []): MockPaginatorView
         {
             return new MockPaginatorView;
         }
 
-        public function render($view = null, $data = [])
+        /**
+         * @param  array<string, mixed>  $data
+         */
+        public function render(?string $view = null, array $data = []): MockPaginatorView
         {
             return new MockPaginatorView;
         }
 
-        public function withQueryString()
+        public function withQueryString(): self
         {
             return $this;
         }
 
-        public function appends($key, $value = null)
+        public function appends(mixed $key, mixed $value = null): self
         {
             return $this;
         }
@@ -94,13 +113,21 @@ if (! class_exists('MockCollection')) {
 // UNIVERSAL VALUE (Mock Object)
 // ============================================
 if (! class_exists('UniversalValue')) {
+    /**
+     * @implements \ArrayAccess<array-key, mixed>
+     * @implements \IteratorAggregate<array-key, mixed>
+     */
     class UniversalValue implements \ArrayAccess, \Countable, \IteratorAggregate, \JsonSerializable, \Stringable, Authenticatable
     {
-        private $data = [];
+        /** @var array<array-key, mixed> */
+        private array $data = [];
 
-        public function __construct($data = [])
+        /**
+         * @param  array<string, mixed>  $data
+         */
+        public function __construct(array $data = [])
         {
-            $this->data = is_array($data) ? $data : ['value' => $data];
+            $this->data = $data;
             if (! isset($this->data['id'])) {
                 $this->data['id'] = rand(1, 999);
             }
@@ -129,19 +156,19 @@ if (! class_exists('UniversalValue')) {
             return 'password';
         }
 
-        public function getRememberToken()
+        public function getRememberToken(): ?string
         {
             return null;
         }
 
         public function setRememberToken($value) {}
 
-        public function getRememberTokenName()
+        public function getRememberTokenName(): ?string
         {
             return null;
         }
 
-        public function __get($name)
+        public function __get(string $name): mixed
         {
             if (isset($this->data[$name])) {
                 return $this->data[$name];
@@ -151,12 +178,12 @@ if (! class_exists('UniversalValue')) {
             return $this->data[$name];
         }
 
-        public function __set($name, $value)
+        public function __set(string $name, mixed $value): void
         {
             $this->data[$name] = $value;
         }
 
-        public function __isset($name)
+        public function __isset(string $name): bool
         {
             return true;
         }
@@ -181,7 +208,7 @@ if (! class_exists('UniversalValue')) {
 
         public function offsetSet($offset, $value): void
         {
-            $this->data[$offset] = $value;
+            $this->data[$offset ?? count($this->data)] = $value;
         }
 
         public function offsetUnset($offset): void
@@ -201,11 +228,12 @@ if (! class_exists('UniversalValue')) {
 
         public function __toString(): string
         {
-            if (isset($this->data['id'])) {
-                return (string) $this->data['id'];
-            }
-            if (isset($this->data['name'])) {
-                return (string) $this->data['name'];
+            foreach (['id', 'name'] as $key) {
+                $value = $this->data[$key] ?? null;
+
+                if (is_scalar($value)) {
+                    return (string) $value;
+                }
             }
 
             return 'mock';
@@ -216,7 +244,10 @@ if (! class_exists('UniversalValue')) {
             return $this->data;
         }
 
-        public function __call($method, $args)
+        /**
+         * @param  array<int, mixed>  $args
+         */
+        public function __call(string $method, array $args): mixed
         {
             if (in_array($method, ['isEmpty', 'isNotEmpty', 'keys', 'values', 'where', 'filter'])) {
                 if ($method === 'isEmpty') {
@@ -255,7 +286,9 @@ if (! class_exists('UniversalValue')) {
                 return 5;
             }
             if ($method === 'format') {
-                return now()->format($args[0] ?? 'd/m/Y');
+                $formato = $args[0] ?? 'd/m/Y';
+
+                return now()->format(is_string($formato) ? $formato : 'd/m/Y');
             }
             if ($method === 'first') {
                 return new UniversalValue(['id' => 1]);
@@ -267,7 +300,7 @@ if (! class_exists('UniversalValue')) {
             return $this;
         }
 
-        private function generate($name)
+        private function generate(string $name): mixed
         {
             // Dates
             if (str_contains(strtolower($name), 'date') ||
@@ -326,14 +359,18 @@ if (! class_exists('UniversalValue')) {
 // VIEW ANALYZER (Core Logic)
 // ============================================
 if (! function_exists('analyzeViewRecursive')) {
-    function analyzeViewRecursive($viewName, &$allVariables = [])
+    /**
+     * @param  list<string>  $allVariables
+     * @return list<string>
+     */
+    function analyzeViewRecursive(string $viewName, array &$allVariables = []): array
     {
         $viewFile = resource_path('views/'.str_replace('.', '/', $viewName).'.blade.php');
         if (! file_exists($viewFile)) {
             return $allVariables;
         }
 
-        $content = file_get_contents($viewFile);
+        $content = (string) file_get_contents($viewFile);
         preg_match_all('/\$(\w+)/', $content, $matches);
         $allVariables = array_merge($allVariables, $matches[1]);
 
@@ -346,12 +383,12 @@ if (! function_exists('analyzeViewRecursive')) {
             analyzeViewRecursive($extends[1], $allVariables);
         }
 
-        return array_unique($allVariables);
+        return array_values(array_unique($allVariables));
     }
 }
 
 if (! function_exists('generateValue')) {
-    function generateValue($name)
+    function generateValue(string $name): mixed
     {
         // Arrays
         if (str_contains($name, 'stats') ||
@@ -385,7 +422,7 @@ if (! function_exists('detectOrphanedViews')) {
     /**
      * Detect views that are never referenced in code
      *
-     * @return array ['orphaned' => [...], 'used' => [...], 'total' => N]
+     * @return array<string, mixed> ['orphaned' => [...], 'used' => [...], 'total' => N]
      */
     function detectOrphanedViews()
     {
@@ -399,16 +436,20 @@ if (! function_exists('detectOrphanedViews')) {
             );
 
             foreach ($iterator as $file) {
+                if (! $file instanceof \SplFileInfo) {
+                    continue;
+                }
+
                 if (! $file->isFile() || $file->getExtension() !== 'php') {
                     continue;
                 }
 
-                $relativePath = str_replace($viewsPath.'/', '', $file->getPathname());
+                $relativePath = str_replace($viewsPath.'/', '', (string) $file->getPathname());
                 if (! str_contains($relativePath, '.blade.php')) {
                     continue;
                 }
 
-                $viewName = str_replace('.blade.php', '', $relativePath);
+                $viewName = str_replace('.blade.php', '', (string) $relativePath);
                 $viewName = str_replace('/', '.', $viewName);
 
                 // Skip vendor, mail, components, and dev views
@@ -457,6 +498,10 @@ if (! function_exists('detectOrphanedViews')) {
 
                 foreach ($files as $file) {
                     try {
+                        if (! $file instanceof \SplFileInfo) {
+                            continue;
+                        }
+
                         if (! $file->isFile() ||
                             ! in_array($file->getExtension(), ['php', 'blade'])) {
                             continue;
@@ -507,9 +552,9 @@ if (! function_exists('measureViewPerformance')) {
      * Measure view rendering performance
      *
      * @param  string  $viewName
-     * @param  array  $data
+     * @param  array<string, mixed>  $data
      * @param  int  $iterations
-     * @return array
+     * @return array<string, mixed>
      */
     function measureViewPerformance($viewName, $data = [], $iterations = 10)
     {
@@ -548,8 +593,8 @@ if (! function_exists('measureViewPerformance')) {
             'times_ms' => $times,
             'memory_kb' => $memoryUsage,
             'avg_time_ms' => round(array_sum($times) / count($times), 2),
-            'min_time_ms' => round(min($times), 2),
-            'max_time_ms' => round(max($times), 2),
+            'min_time_ms' => $times === [] ? 0 : round(min($times), 2),
+            'max_time_ms' => $times === [] ? 0 : round(max($times), 2),
             'avg_memory_kb' => round(array_sum($memoryUsage) / count($memoryUsage), 2),
             'rating' => getRatingForPerformance(
                 array_sum($times) / count($times),
@@ -560,7 +605,10 @@ if (! function_exists('measureViewPerformance')) {
 }
 
 if (! function_exists('getRatingForPerformance')) {
-    function getRatingForPerformance($avgTimeMs, $avgMemoryKb)
+    /**
+     * @return array<string, string>
+     */
+    function getRatingForPerformance(float $avgTimeMs, float $avgMemoryKb): array
     {
         // Time rating
         if ($avgTimeMs < 10) {
@@ -601,7 +649,7 @@ if (! function_exists('benchmarkAllViews')) {
      * Benchmark all views for performance
      *
      * @param  int  $iterations
-     * @return array
+     * @return array<string, mixed>
      */
     function benchmarkAllViews($iterations = 5)
     {
@@ -613,16 +661,20 @@ if (! function_exists('benchmarkAllViews')) {
         );
 
         foreach ($iterator as $file) {
+            if (! $file instanceof \SplFileInfo) {
+                continue;
+            }
+
             if (! $file->isFile() || $file->getExtension() !== 'php') {
                 continue;
             }
 
-            $relativePath = str_replace($viewsPath.'/', '', $file->getPathname());
+            $relativePath = str_replace($viewsPath.'/', '', (string) $file->getPathname());
             if (! str_contains($relativePath, '.blade.php')) {
                 continue;
             }
 
-            $viewName = str_replace('.blade.php', '', $relativePath);
+            $viewName = str_replace('.blade.php', '', (string) $relativePath);
             $viewName = str_replace('/', '.', $viewName);
 
             // Skip vendor and mail

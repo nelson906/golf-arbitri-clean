@@ -37,7 +37,7 @@ class UserFactory extends Factory
             'remember_token' => Str::random(10),
             'phone' => fake()->phoneNumber(),
             'user_type' => 'referee',
-            'zone_id' => Zone::inRandomOrder()->first()?->id ?? 1,
+            'zone_id' => Zone::inRandomOrder()->first()->id ?? 1,
             'level' => fake()->randomElement(['Aspirante', '1_livello', 'Regionale', 'Nazionale', 'Internazionale']),
             'is_active' => true,
             'city' => fake()->city(),

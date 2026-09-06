@@ -149,7 +149,7 @@ class ZonalNotificationSendTest extends TestCase
             'recipients' => ['club' => false, 'referees' => [], 'institutional' => []],
         ]);
 
-        app(NotificationService::class)->send($notification->fresh());
+        app(NotificationService::class)->send($notification->refresh());
 
         // Il form (metadata) vince: circolo in TO E arbitro in CC
         Mail::assertQueued(ClubNotificationMail::class, function ($mail) {

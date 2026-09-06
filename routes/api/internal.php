@@ -16,7 +16,7 @@ Route::middleware('auth')->group(function () {
     // Dashboard Data (inline closures - working)
     Route::prefix('dashboard')->group(function () {
         Route::get('/notifications/unread', function () {
-            return response()->json(['count' => auth()->user()->unreadNotifications()->count()]);
+            return response()->json(['count' => auth()->user()?->unreadNotifications()->count()]);
         });
     });
 
@@ -29,7 +29,7 @@ Route::middleware('auth')->group(function () {
             return \App\Models\TournamentType::active()->get(['id', 'name', 'competence']);
         });
         Route::get('/current-user', function () {
-            return auth()->user()->only(['id', 'name', 'user_type', 'level', 'zone_id']);
+            return auth()->user()?->only(['id', 'name', 'user_type', 'level', 'zone_id']);
         });
     });
 });

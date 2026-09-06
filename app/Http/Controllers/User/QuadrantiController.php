@@ -43,13 +43,13 @@ class QuadrantiController extends Controller
             // Cerca il foglio "Atlete"
             if ($spreadsheet->sheetNameExists('Atlete')) {
                 $worksheet = $spreadsheet->getSheetByName('Atlete');
-                $atlete = $this->extractNamesFromWorksheet($worksheet);
+                $atlete = $worksheet === null ? [] : $this->extractNamesFromWorksheet($worksheet);
             }
 
             // Cerca il foglio "Atleti"
             if ($spreadsheet->sheetNameExists('Atleti')) {
                 $worksheet = $spreadsheet->getSheetByName('Atleti');
-                $atleti = $this->extractNamesFromWorksheet($worksheet);
+                $atleti = $worksheet === null ? [] : $this->extractNamesFromWorksheet($worksheet);
             }
 
             // Se non ci sono fogli con nomi specifici, prova con i primi due fogli
@@ -81,7 +81,7 @@ class QuadrantiController extends Controller
      * Estrae i nomi dal foglio di lavoro
      *
      * @param  \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet  $worksheet
-     * @return array
+     * @return list<string>
      */
     private function extractNamesFromWorksheet($worksheet)
     {
@@ -98,12 +98,15 @@ class QuadrantiController extends Controller
                 $name = $worksheet->getCell('A'.$row)->getValue();
             }
 
-            // Pulisci e aggiungi il nome se non è vuoto
-            if (! empty($name)) {
-                $name = trim($name);
+            // Pulisci e aggiungi il nome se non è vuoto.
+            // getValue() su una cella puo' restituire numeri, booleani o null:
+            // si normalizza a stringa prima di trattarlo come tale.
+            $name = is_scalar($name) ? trim((string) $name) : '';
+
+            if ($name !== '') {
                 // Rimuovi eventuali numeri all'inizio (es. "1. NOME" diventa "NOME")
-                $name = preg_replace('/^\d+\.?\s*/', '', $name);
-                if (! empty($name)) {
+                $name = (string) preg_replace('/^\d+\.?\s*/', '', $name);
+                if ($name !== '') {
                     $names[] = $name;
                 }
             }
@@ -119,8 +122,8 @@ class QuadrantiController extends Controller
      */
     public function getCoordinates(Request $request)
     {
-        $geoArea = $request->input('geo_area', 'CENTRO');
-        $date = $request->input('start', date('d/m/Y'));
+        $geoArea = $request->string('geo_area', 'CENTRO')->toString();
+        $date = $request->string('start', date('d/m/Y'))->toString();
 
         // Coordinate geografiche approssimative per le diverse aree italiane
         $coordinates = [

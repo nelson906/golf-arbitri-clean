@@ -35,6 +35,10 @@ class InstitutionalNotificationSendTest extends TestCase
         ]);
     }
 
+    /**
+     * @param  list<int>  $refereeIds
+     * @param  list<int>  $institutionalIds
+     */
     private function makeNotification(int $tournamentId, bool $club, array $refereeIds, array $institutionalIds): TournamentNotification
     {
         return TournamentNotification::create([

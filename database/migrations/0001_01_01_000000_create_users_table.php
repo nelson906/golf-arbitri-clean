@@ -39,7 +39,7 @@ return new class extends Migration
             $table->enum('level', ['Aspirante', '1_livello', 'Regionale', 'Nazionale', 'Internazionale', 'Archivio'])->default('1_livello');
             $table->enum('gender', ['male', 'female', 'mixed'])->default('mixed');
             $table->date('certified_date')->nullable();
-            $table->foreignId('zone_id')->nullable()->constrained('zones')->onDelete('set null');
+            $table->foreignId('zone_id')->nullable()->constrained('zones')->nullOnDelete();
             $table->string('club_member')->nullable();
 
             // Contact info

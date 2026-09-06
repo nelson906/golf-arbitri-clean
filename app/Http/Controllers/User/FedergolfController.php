@@ -3,58 +3,21 @@
 namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
+use App\Services\FedergolfCompetitionsClient;
+use App\Support\Untrusted;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class FedergolfController extends Controller
 {
-    // Cerca gare per nome
-    public function searchCompetitions(Request $request)
-    {
-        $keyword = $request->input('keyword', '');
-
-        $response = Http::asForm()->post(
-            config('golf.fig.ajax_url'),
-            [
-                'action' => 'competitions-search',
-                'tipo' => '',
-                'keyword' => $keyword,
-                'anno' => date('Y'),
-                'mese' => '',
-            ]
-        );
-
-        $data = $response->json();
-
-        // C2: corpo non-JSON (manutenzione/WAF) → errore esplicito,
-        // non una lista vuota spacciata per "nessun risultato".
-        if (! is_array($data)) {
-            return response()->json(['success' => false, 'message' => 'Errore connessione']);
-        }
-
-        $gare = [];
-
-        foreach ($data['data'] ?? [] as $gara) {
-            $tipo = 'MISTA';
-            if (stripos($gara['title'], 'MASCHILE') !== false) {
-                $tipo = 'MASCHILE';
-            } elseif (stripos($gara['title'], 'FEMMINILE') !== false) {
-                $tipo = 'FEMMINILE';
-            }
-
-            $gare[] = [
-                'id' => $gara['id'],
-                'title' => $gara['title'],
-                'tipo' => $tipo,
-                'date' => $gara['date'] ?? null,
-            ];
-        }
-
-        return response()->json(['success' => true, 'gare' => $gare]);
-    }
+    public function __construct(
+        private readonly FedergolfCompetitionsClient $competitions
+    ) {}
 
     /** Lunghezza massima accettata per un id gara. */
     private const GARA_ID_MAX = 200;
@@ -101,7 +64,7 @@ class FedergolfController extends Controller
      * `gara_id` e' trattato come token opaco: nessun vincolo di formato,
      * vedi cacheKeyFor().
      */
-    public function getIscritti(Request $request)
+    public function getIscritti(Request $request): JsonResponse
     {
         // C1: senza validazione un gara_id array/assente produce 500
         // (Array to string conversion) o chiave cache condivisa.
@@ -170,6 +133,9 @@ class FedergolfController extends Controller
     /**
      * Costruisce il payload di risposta con tutte le chiavi sempre presenti,
      * cosi il frontend non deve mai fare guardie su campi mancanti.
+     *
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
      */
     protected function payload(string $state, ?string $message = null, array $extra = []): array
     {
@@ -183,6 +149,9 @@ class FedergolfController extends Controller
         ], $extra);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     protected function fetchIscritti(string|int|null $garaId): array
     {
         try {
@@ -194,7 +163,7 @@ class FedergolfController extends Controller
                     'Accept' => 'application/json',
                     'X-Requested-With' => 'XMLHttpRequest',
                 ])
-                ->post(config('golf.fig.ajax_url'), [
+                ->post(Config::string('golf.fig.ajax_url'), [
                     'action' => 'competition-player-list',
                     'competition_id' => $garaId,
                     'page_number' => 1,
@@ -257,7 +226,7 @@ class FedergolfController extends Controller
             );
         }
 
-        $entries = $data['data']['processedData'];
+        $entries = Untrusted::rows($data['data']['processedData']);
 
         $iscritti = [];
         $totale = count($entries);
@@ -333,6 +302,8 @@ class FedergolfController extends Controller
     /**
      * Traduce lo status HTTP di federgolf.it in stato + messaggio utile.
      * Prima era un unico "errore HTTP nnn" che non diceva cosa fare.
+     *
+     * @return array<string, mixed>
      */
     protected function httpErrorPayload(int $status, string|int|null $garaId): array
     {
@@ -380,7 +351,7 @@ class FedergolfController extends Controller
         );
     }
 
-    public function loadAllCompetitions(Request $request)
+    public function loadAllCompetitions(Request $request): JsonResponse
     {
         try {
             $annoCorrente = (int) date('Y');
@@ -413,39 +384,43 @@ class FedergolfController extends Controller
             $gare = [];
 
             foreach ($entries as $gara) {
-                if ($gara['annullata'] == 1) {
+                if (($gara['annullata'] ?? null) == 1) {
                     continue;
                 }
+
+                $nome = Untrusted::string($gara['nome'] ?? null);
                 if (
-                    stripos($gara['nome'], 'ANNULLATA') !== false ||
-                    stripos($gara['nome'], 'RINVIATA') !== false ||
-                    stripos($gara['nome'], 'RINVIATO') !== false
+                    stripos($nome, 'ANNULLATA') !== false ||
+                    stripos($nome, 'RINVIATA') !== false ||
+                    stripos($nome, 'RINVIATO') !== false
                 ) {
                     continue;
                 }
 
-                $dataGara = \DateTime::createFromFormat('d/m/Y', $gara['data']);
+                $dataFig = Untrusted::string($gara['data'] ?? null);
+                $dataGara = \DateTime::createFromFormat('d/m/Y', $dataFig);
                 if ($dataGara && $dataGara < $oggi) {
                     continue;
                 }
 
                 $tipo = 'MISTA';
-                if (stripos($gara['nome'], 'MASCHILE') !== false) {
+                if (stripos($nome, 'MASCHILE') !== false) {
                     $tipo = 'MASCHILE';
-                } elseif (stripos($gara['nome'], 'FEMMINILE') !== false) {
+                } elseif (stripos($nome, 'FEMMINILE') !== false) {
                     $tipo = 'FEMMINILE';
                 }
 
                 $gare[] = [
-                    'id' => $gara['competition_id'],
-                    'title' => $gara['nome'],
+                    // id: token opaco di federgolf, si passa com'e' (STORICO 2026-08-28)
+                    'id' => Untrusted::scalarOrNull($gara['competition_id'] ?? null),
+                    'title' => $nome,
                     'tipo' => $tipo,
-                    'date' => $gara['data'],
-                    'club' => $gara['club'] ?? null,
+                    'date' => $dataFig,
+                    'club' => Untrusted::stringOrNull($gara['club'] ?? null),
                 ];
             }
 
-            usort($gare, function ($a, $b) {
+            usort($gare, function (array $a, array $b): int {
                 $dateA = \DateTime::createFromFormat('d/m/Y', $a['date']);
                 $dateB = \DateTime::createFromFormat('d/m/Y', $b['date']);
 
@@ -477,67 +452,61 @@ class FedergolfController extends Controller
      * risposta, oppure null su errore rete/HTTP/corpo non-JSON (C2/C5).
      * In caso di null valorizza lastCompetitionsReason/Message, cosi il
      * chiamante puo' dire all'utente COSA e' andato storto.
+     *
+     * @return list<array<array-key, mixed>>|null  null = errore rete/HTTP/formato
      */
     protected function fetchCompetitionsYear(int $anno): ?array
     {
-        try {
-            $response = Http::timeout(30)
-                ->asForm()
-                ->withHeaders([
-                    'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-                    'Accept' => 'application/json',
-                    'X-Requested-With' => 'XMLHttpRequest',
-                ])
-                ->post(config('golf.fig.ajax_url'), [
-                    'action' => 'competitions-search',
-                    'tipo' => '',
-                    'keyword' => '',
-                    'anno' => (string) $anno,
-                    'mese' => '',
-                ]);
-        } catch (ConnectionException $e) {
+        $result = $this->competitions->fetchYear($anno);
+
+        if ($result['ok']) {
+            return $result['rows'];
+        }
+
+        $status = $result['status'];
+
+        if ($result['reason'] === FedergolfCompetitionsClient::REASON_TIMEOUT) {
             Log::warning('Federgolf timeout/connect loadAllCompetitions', [
                 'anno' => $anno,
-                'error' => $e->getMessage(),
+                'error' => $result['error'],
             ]);
 
             return $this->failCompetitions('timeout',
                 'Federgolf.it non ha risposto entro il tempo massimo. Riprovare tra qualche secondo.');
         }
 
-        if (! $response->successful()) {
-            Log::warning('Federgolf HTTP error loadAllCompetitions', [
-                'anno' => $anno,
-                'status' => $response->status(),
-            ]);
-
-            if ($response->status() === 429) {
-                return $this->failCompetitions('rate_limit',
-                    'Troppe richieste a Federgolf.it. Attendere un minuto e riprovare.');
-            }
-
-            if ($response->status() >= 500) {
-                return $this->failCompetitions('http',
-                    'Federgolf.it non è al momento disponibile (HTTP '.$response->status().'). Riprovare più tardi.');
-            }
-
-            return $this->failCompetitions('http',
-                'Federgolf.it ha risposto con errore HTTP '.$response->status().'.');
-        }
-
-        $data = $response->json();
-        if (! is_array($data) || ! isset($data['data']) || ! is_array($data['data'])) {
+        if ($result['reason'] === FedergolfCompetitionsClient::REASON_INVALID_FORMAT) {
             Log::warning('Federgolf formato inatteso loadAllCompetitions', ['anno' => $anno]);
 
             return $this->failCompetitions('invalid_format',
                 'Federgolf.it ha risposto in un formato inatteso (sito in manutenzione?). Riprovare tra qualche minuto.');
         }
 
-        return $data['data'];
+        Log::warning('Federgolf HTTP error loadAllCompetitions', [
+            'anno' => $anno,
+            'status' => $status,
+        ]);
+
+        if ($result['reason'] === FedergolfCompetitionsClient::REASON_RATE_LIMIT) {
+            return $this->failCompetitions('rate_limit',
+                'Troppe richieste a Federgolf.it. Attendere un minuto e riprovare.');
+        }
+
+        if ($status >= 500) {
+            return $this->failCompetitions('http',
+                'Federgolf.it non è al momento disponibile (HTTP '.$status.'). Riprovare più tardi.');
+        }
+
+        return $this->failCompetitions('http',
+            'Federgolf.it ha risposto con errore HTTP '.$status.'.');
     }
 
-    /** Registra il motivo del fallimento e ritorna null (helper di leggibilita'). */
-    protected function failCompetitions(string $reason, string $message): ?array
+    /**
+     * Registra il motivo del fallimento e ritorna null (helper di leggibilita').
+     * Il tipo di ritorno e' `null` e non `?array`: cosi' chi lo usa come valore
+     * di return conserva il tipo dichiarato dal proprio metodo.
+     */
+    protected function failCompetitions(string $reason, string $message): null
     {
         $this->lastCompetitionsReason = $reason;
         $this->lastCompetitionsMessage = $message;

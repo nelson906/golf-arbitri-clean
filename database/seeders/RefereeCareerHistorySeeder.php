@@ -36,6 +36,8 @@ class RefereeCareerHistorySeeder extends Seeder
 
     /**
      * Genera dati di carriera basati sul profilo dell'arbitro
+     *
+     * @return array<string, mixed>
      */
     private function generateCareerData(User $referee): array
     {
@@ -53,7 +55,7 @@ class RefereeCareerHistorySeeder extends Seeder
             $yearExperience = $year - $startYear;
 
             // Numero tornei cresce con esperienza
-            $numTournaments = $this->calculateTournamentsForYear($yearExperience, $referee->level);
+            $numTournaments = $this->calculateTournamentsForYear($yearExperience, $referee->level ?? '');
 
             $tournamentsByYear[$year] = $numTournaments;
             $assignmentsByYear[$year] = $numTournaments; // Tutti i tornei sono stati assegnati
@@ -72,10 +74,10 @@ class RefereeCareerHistorySeeder extends Seeder
             'avg_tournaments_per_year' => $experienceYears > 0 ? round(array_sum($tournamentsByYear) / $experienceYears, 1) : 0,
             'best_year' => [
                 'year' => $this->getBestYear($tournamentsByYear),
-                'tournaments' => max($tournamentsByYear),
+                'tournaments' => $tournamentsByYear === [] ? 0 : max($tournamentsByYear),
             ],
-            'role_distribution' => $this->generateRoleDistribution($referee->level),
-            'tournament_types_count' => $this->generateTournamentTypesCount($referee->level),
+            'role_distribution' => $this->generateRoleDistribution($referee->level ?? ''),
+            'tournament_types_count' => $this->generateTournamentTypesCount($referee->level ?? ''),
             'zones_served' => $this->generateZonesServed($referee),
         ];
 
@@ -113,6 +115,8 @@ class RefereeCareerHistorySeeder extends Seeder
 
     /**
      * Genera i cambiamenti di livello nel tempo
+     *
+     * @return list<array<string, string|null>>
      */
     private function generateLevelChanges(User $referee, int $startYear, int $currentYear): array
     {
@@ -129,7 +133,7 @@ class RefereeCareerHistorySeeder extends Seeder
         $currentLevelYear = $startYear;
 
         // Traccia la progressione fino al livello attuale
-        while ($currentLevel !== $referee->level && isset($levelProgression[$currentLevel])) {
+        while ($currentLevel !== $referee->level && $currentLevel !== null && isset($levelProgression[$currentLevel])) {
             $yearsNeeded = $levelProgression[$currentLevel]['years'];
             $promotionYear = $currentLevelYear + $yearsNeeded;
 
@@ -149,21 +153,30 @@ class RefereeCareerHistorySeeder extends Seeder
             }
         }
 
-        return $changes;
+        return array_values($changes);
     }
 
     /**
      * Trova l'anno con più tornei
+     *
+     * @param  array<int, int>  $tournamentsByYear
      */
     private function getBestYear(array $tournamentsByYear): int
     {
-        return array_key_exists(max($tournamentsByYear), array_flip($tournamentsByYear))
-            ? array_search(max($tournamentsByYear), $tournamentsByYear)
-            : array_key_first($tournamentsByYear);
+        if ($tournamentsByYear === []) {
+            return 0;
+        }
+
+        $best = max($tournamentsByYear);
+        $year = array_search($best, $tournamentsByYear, true);
+
+        return (int) ($year !== false ? $year : array_key_first($tournamentsByYear));
     }
 
     /**
      * Genera distribuzione ruoli
+     *
+     * @return array<string, int>
      */
     private function generateRoleDistribution(string $level): array
     {
@@ -191,6 +204,8 @@ class RefereeCareerHistorySeeder extends Seeder
 
     /**
      * Genera conteggio tipi di torneo
+     *
+     * @return array<string, int>
      */
     private function generateTournamentTypesCount(string $level): array
     {
@@ -226,6 +241,8 @@ class RefereeCareerHistorySeeder extends Seeder
 
     /**
      * Genera zone servite
+     *
+     * @return list<int|null>
      */
     private function generateZonesServed(User $referee): array
     {

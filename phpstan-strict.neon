@@ -1,0 +1,46 @@
+# Config di MIGRAZIONE, affiancata a phpstan.neon (che resta la config di CI).
+#
+# phpstan.neon gira a livello 6 con una lista lunga di ignoreErrors: quelle
+# soppressioni non sono "livello 6 pulito", nascondono categorie intere
+# (missingType.*, proprieta' dinamiche su Request, metodi unused). Questa
+# config misura il gap reale verso il livello 10 SENZA soppressioni.
+#
+#   vendor/bin/phpstan analyse -c phpstan-strict.neon --memory-limit=1G
+#
+# Uso: si parte alti di livello e si scende finche' il numero e' gestibile,
+# si azzera quel livello, si risale. Quando strict arriva a zero, questo
+# file sostituisce phpstan.neon.
+#
+# SCALA DI MIGRAZIONE (misura del 2026-09-05 a livello 10: 3361 errori)
+#   872  missingType.* + argument.templateType   -> livello 6   FATTO (2026-09-05, zero)
+#   382  null-safety (X|null)                    -> livello 8   FATTO (2026-09-05, zero)
+#  1745  mixed (esplicito e implicito)           -> livello 9    FATTO (2026-09-06, zero)
+#        residuo del 10 (strict comparisons)     -> livello 10   <== TAPPA CORRENTE
+#   362  resto (di cui 134 larastan.relationExistence, chiusi tipando
+#        le firme delle relazioni nei Model il 2026-09-05)
+# I mixed sono un EFFETTO dei missingType: non si sopprimono i secondi,
+# si tipano. Ogni livello si azzera prima di risalire.
+
+includes:
+    - vendor/larastan/larastan/extension.neon
+    # Narrowing delle asserzioni PHPUnit: senza questa estensione un
+    # assertNotNull($x) non restringe il tipo e ogni $x->prop successivo
+    # resta un errore di livello 8 dentro i test.
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+
+parameters:
+    level: 10
+
+    paths:
+        - app
+        - database
+        - routes
+        - tests
+
+    excludePaths:
+        analyseAndScan:
+            - vendor
+            - node_modules
+
+    treatPhpDocTypesAsCertain: false
+    tmpDir: storage/framework/cache/phpstan

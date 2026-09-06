@@ -15,10 +15,14 @@ class BatchAvailabilityNotification extends Mailable implements ShouldQueue
     use SerializesModels;
 
 
+    /**
+     * @param  \Illuminate\Support\Collection<int, \App\Models\Tournament>  $addedTournaments
+     * @param  \Illuminate\Support\Collection<int, \App\Models\Tournament>  $removedTournaments
+     */
     public function __construct(
-        public $user,
-        public $addedTournaments,
-        public $removedTournaments
+        public \App\Models\User $user,
+        public \Illuminate\Support\Collection $addedTournaments,
+        public \Illuminate\Support\Collection $removedTournaments
     ) {
         // FIX A4: dispatch solo dopo il commit della transazione DB attiva
         // (evita invii orfani in caso di rollback). NB: $afterCommit è

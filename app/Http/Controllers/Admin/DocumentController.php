@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\UserType;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use Illuminate\Http\JsonResponse;
@@ -12,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * 📁 Admin DocumentController - Gestione documenti e file (Admin)
@@ -39,22 +39,22 @@ class DocumentController extends Controller
 
         // Filtri opzionali
         if ($request->filled('type')) {
-            $query->where('type', $request->type);
+            $query->where('type', $request->string('type')->toString());
         }
 
         if ($request->filled('category')) {
-            $query->where('category', $request->category);
+            $query->where('category', $request->string('category')->toString());
         }
 
         if ($request->filled('zone_id') && $user && $user->isNationalAdmin()) {
-            $query->where('zone_id', $request->zone_id);
+            $query->where('zone_id', $request->integer('zone_id'));
         }
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
-                $q->where('name', 'like', '%'.$request->search.'%')
-                    ->orWhere('description', 'like', '%'.$request->search.'%')
-                    ->orWhere('original_name', 'like', '%'.$request->search.'%');
+                $q->where('name', 'like', '%'.$request->string('search')->toString().'%')
+                    ->orWhere('description', 'like', '%'.$request->string('search')->toString().'%')
+                    ->orWhere('original_name', 'like', '%'.$request->string('search')->toString().'%');
             });
         }
 
@@ -114,7 +114,7 @@ class DocumentController extends Controller
                 time().'.'.$extension;
 
             // Determina il path di storage
-            $category = $request->category;
+            $category = $request->string('category')->toString();
             $year = now()->year;
             $month = now()->format('m');
             $storagePath = "documents/{$category}/{$year}/{$month}";
@@ -123,22 +123,22 @@ class DocumentController extends Controller
             $filePath = $file->storeAs($storagePath, $fileName, 'public');
 
             // Per admin, usa la zone_id fornita o quella dell'utente
-            $zoneId = $request->zone_id;
+            $zoneId = $request->integer('zone_id');
             if (! $zoneId && $user && $user->isZoneAdmin()) {
                 $zoneId = $user->zone_id;
             }
 
             // Crea record nel database
             $document = Document::create([
-                'name' => $request->name ?? pathinfo($originalName, PATHINFO_FILENAME),
+                'name' => $request->string('name')->toString() ?: pathinfo($originalName, PATHINFO_FILENAME),
                 'original_name' => $originalName,
                 'file_path' => $filePath,
                 'file_size' => $file->getSize(),
                 'mime_type' => $file->getMimeType(),
                 'category' => $category,
-                'type' => $this->determineDocumentType($file->getMimeType()),
-                'description' => $request->description,
-                'tournament_id' => $request->tournament_id,
+                'type' => $this->determineDocumentType($file->getMimeType() ?? ''),
+                'description' => $request->string('description')->toString() ?: null,
+                'tournament_id' => $request->integer('tournament_id'),
                 'zone_id' => $zoneId,
                 'uploader_id' => $user?->id,
                 'is_public' => $request->boolean('is_public', false),
@@ -170,51 +170,9 @@ class DocumentController extends Controller
     }
 
     /**
-     * Display the specified document
-     */
-    public function show(Document $document)
-    {
-        $this->authorizeDocumentAccess($document);
-
-        return view('documents.show', compact('document'));
-    }
-
-    /**
-     * Show the form for editing the document
-     */
-    public function edit(Document $document): View
-    {
-        $this->authorizeDocumentAccess($document, true);
-
-        return view('documents.edit', compact('document'));
-    }
-
-    /**
-     * Update the specified document
-     */
-    public function update(Request $request, Document $document): RedirectResponse
-    {
-        $this->authorizeDocumentAccess($document, true);
-
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:500',
-            'category' => 'required|string|in:general,tournament,regulation,form,template',
-            'is_public' => 'boolean',
-            'zone_id' => 'nullable|exists:zones,id',
-        ]);
-
-        $document->update($request->only(['name', 'description', 'category', 'is_public', 'zone_id']));
-
-        return redirect()
-            ->route('admin.documents.show', $document)
-            ->with('success', 'Documento aggiornato con successo!');
-    }
-
-    /**
      * Download a document
      */
-    public function download(Document $document)
+    public function download(Document $document): BinaryFileResponse
     {
         $this->authorizeDocumentAccess($document);
 

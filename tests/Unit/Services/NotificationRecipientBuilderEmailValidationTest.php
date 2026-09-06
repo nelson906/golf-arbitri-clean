@@ -20,6 +20,8 @@ class NotificationRecipientBuilderEmailValidationTest extends TestCase
     /**
      * Helper: usa reflection per testare i metodi privati addTo/addCc senza
      * dover instanziare un torneo completo + relazioni.
+     *
+     * @param  list<mixed>  $args
      */
     private function invokePrivate(NotificationRecipientBuilder $builder, string $method, array $args): void
     {

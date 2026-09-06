@@ -9,12 +9,13 @@ use App\Models\Assignment;
 use App\Models\Club;
 use App\Models\Tournament;
 use App\Models\User;
+use Illuminate\Contracts\View\View;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(): View
     {
-        $user = auth()->user();
+        $user = $this->authUser();
 
         $refereesQuery = User::where('user_type', 'referee');
         $tournamentsQuery = Tournament::query();

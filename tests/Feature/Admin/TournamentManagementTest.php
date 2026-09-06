@@ -33,7 +33,7 @@ class TournamentManagementTest extends TestCase
     {
         $admin = $this->createZoneAdmin(1);
         $club = Club::factory()->create(['zone_id' => 1]);
-        $type = TournamentType::first();
+        $type = TournamentType::firstOrFail();
 
         $tournamentData = [
             'name' => 'Test Tournament 2026',
@@ -62,7 +62,7 @@ class TournamentManagementTest extends TestCase
     {
         $admin = $this->createZoneAdmin(1);
         $clubZone2 = Club::factory()->create(['zone_id' => 2]);
-        $type = TournamentType::first();
+        $type = TournamentType::firstOrFail();
 
         $tournamentData = [
             'name' => 'Test Tournament',
@@ -101,7 +101,7 @@ class TournamentManagementTest extends TestCase
                 'club_id' => $club->id,
                 'tournament_type_id' => $tournament->tournament_type_id,
                 'start_date' => $tournament->start_date->format('Y-m-d'),
-                'end_date' => $tournament->end_date->format('Y-m-d'),
+                'end_date' => $tournament->end_date?->format('Y-m-d'),
                 'availability_deadline' => $tournament->availability_deadline->format('Y-m-d H:i:s'),
             ]);
 
@@ -185,6 +185,10 @@ class TournamentManagementTest extends TestCase
 
     /**
      * Test: Validazione campi required
+     *
+     * `club_id` NON e' fra i campi obbligatori: dal 2026-09 una gara puo'
+     * entrare in calendario con data e zona note e il circolo ancora T.B.A.
+     * (migration 2026_09_06_000001_make_tournaments_club_id_nullable).
      */
     public function test_tournament_creation_requires_required_fields(): void
     {
@@ -193,7 +197,73 @@ class TournamentManagementTest extends TestCase
         $response = $this->actingAs($admin)
             ->post(route('admin.tournaments.store'), []);
 
-        $response->assertSessionHasErrors(['name', 'club_id', 'start_date', 'end_date']);
+        $response->assertSessionHasErrors(['name', 'start_date', 'end_date']);
+        $response->assertSessionDoesntHaveErrors('club_id');
+    }
+
+    /**
+     * Test: un torneo T.B.A. (circolo da assegnare) si crea e prende la zona
+     * dell'admin che lo inserisce.
+     *
+     * Regressione del caso reale: nel calendario federale la data e' fissata
+     * prima del circolo. Con `club_id` NOT NULL quei tornei non erano
+     * rappresentabili e Tournaments2026Seeder li scartava.
+     */
+    public function test_admin_can_create_tournament_without_club(): void
+    {
+        $admin = $this->createZoneAdmin(1);
+        $type = TournamentType::firstOrFail();
+
+        $response = $this->actingAs($admin)
+            ->post(route('admin.tournaments.store'), [
+                'name' => 'Gara T.B.A. 2026',
+                'tournament_type_id' => $type->id,
+                'start_date' => now()->addDays(30)->format('Y-m-d'),
+                'end_date' => now()->addDays(31)->format('Y-m-d'),
+                'availability_deadline' => now()->addDays(20)->format('Y-m-d H:i:s'),
+                'status' => 'open',
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionDoesntHaveErrors();
+
+        $this->assertDatabaseHas('tournaments', [
+            'name' => 'Gara T.B.A. 2026',
+            'club_id' => null,
+            'zone_id' => 1,
+        ]);
+    }
+
+    /**
+     * Test: il torneo T.B.A. resta visibile all'admin della propria zona.
+     *
+     * E' il punto che rendeva la modifica utile: senza circolo la zona puo'
+     * arrivare solo dalla colonna `zone_id`, ed e' quella che
+     * TournamentVisibility deve interrogare.
+     */
+    public function test_tba_tournament_is_visible_to_its_zone_admin(): void
+    {
+        $admin = $this->createZoneAdmin(1);
+        $type = TournamentType::firstOrFail();
+
+        $tournament = Tournament::create([
+            'name' => 'Gara T.B.A. visibile',
+            'club_id' => null,
+            'zone_id' => 1,
+            'tournament_type_id' => $type->id,
+            'start_date' => now()->addDays(30),
+            'end_date' => now()->addDays(31),
+            'availability_deadline' => now()->addDays(20),
+            'status' => 'open',
+            'created_by' => $admin->id,
+        ]);
+
+        $tournament->refresh();
+
+        $this->assertTrue(
+            \App\Support\TournamentVisibility::canAccess($tournament, $admin),
+            'Un torneo T.B.A. della zona 1 deve essere visibile al suo admin di zona.'
+        );
     }
 
     /**
@@ -203,7 +273,7 @@ class TournamentManagementTest extends TestCase
     {
         $admin = $this->createZoneAdmin(1);
         $club = Club::factory()->create(['zone_id' => 1]);
-        $type = TournamentType::first();
+        $type = TournamentType::firstOrFail();
 
         $response = $this->actingAs($admin)
             ->post(route('admin.tournaments.store'), [

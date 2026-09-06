@@ -26,7 +26,7 @@ class NationalNotificationMailDispatchTest extends TestCase
         Mail::fake();
 
         // Setup: torneo nazionale con un arbitro assegnato
-        $nationalType = TournamentType::where('is_national', true)->first();
+        $nationalType = TournamentType::where('is_national', true)->firstOrFail();
         $tournament = Tournament::factory()->create([
             'tournament_type_id' => $nationalType->id,
         ]);

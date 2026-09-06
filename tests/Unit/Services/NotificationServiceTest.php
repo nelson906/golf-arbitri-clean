@@ -51,9 +51,8 @@ class NotificationServiceTest extends TestCase
 
         Assignment::factory()->forUser($referee)->forTournament($tournament)->create();
 
-        $notification = $this->preparationService->prepareNotification($tournament->fresh());
+        $notification = $this->preparationService->prepareNotification($tournament->refresh());
 
-        $this->assertInstanceOf(TournamentNotification::class, $notification);
         $this->assertEquals($tournament->id, $notification->tournament_id);
         $this->assertEquals('pending', $notification->status);
     }
@@ -66,7 +65,7 @@ class NotificationServiceTest extends TestCase
         $tournament = $this->createTournament();
 
         // notification_type deve corrispondere a tournamentType.is_national
-        $isNational = $tournament->tournamentType?->is_national ?? false;
+        $isNational = $tournament->tournamentType->is_national ?? false;
 
         $existing = TournamentNotification::create([
             'tournament_id' => $tournament->id,
@@ -94,7 +93,7 @@ class NotificationServiceTest extends TestCase
         Assignment::factory()->forUser($referee1)->forTournament($tournament)->create();
         Assignment::factory()->forUser($referee2)->forTournament($tournament)->create();
 
-        $notification = $this->preparationService->prepareNotification($tournament->fresh());
+        $notification = $this->preparationService->prepareNotification($tournament->refresh());
 
         $this->assertEquals(3, $notification->details['total_recipients'] ?? null); // 2 arbitri + circolo
         $this->assertStringContainsString($referee1->name, (string) $notification->referee_list);
@@ -197,14 +196,6 @@ class NotificationServiceTest extends TestCase
     // ==========================================
 
     /**
-     * Test: Service è istanziabile senza dipendenze
-     */
-    public function test_service_is_instantiable(): void
-    {
-        $this->assertInstanceOf(NotificationService::class, new NotificationService);
-    }
-
-    /**
      * Test: prepareNotification funziona con torneo senza assegnazioni
      */
     public function test_prepare_notification_works_with_no_assignments(): void
@@ -213,7 +204,6 @@ class NotificationServiceTest extends TestCase
 
         $notification = $this->preparationService->prepareNotification($tournament);
 
-        $this->assertInstanceOf(TournamentNotification::class, $notification);
         $this->assertEquals(1, $notification->details['total_recipients'] ?? null); // solo circolo
         $this->assertSame('', (string) $notification->referee_list);
     }
@@ -235,7 +225,7 @@ class NotificationServiceTest extends TestCase
             Assignment::factory()->forUser($referee)->forTournament($tournament)->create();
         }
 
-        $notification = $this->preparationService->prepareNotification($tournament->fresh());
+        $notification = $this->preparationService->prepareNotification($tournament->refresh());
 
         $this->assertEquals(11, $notification->details['total_recipients'] ?? null); // 10 arbitri + circolo
     }
@@ -258,6 +248,6 @@ class NotificationServiceTest extends TestCase
         // Update status
         $notification->update(['status' => 'sent']);
 
-        $this->assertEquals('sent', $notification->fresh()->status);
+        $this->assertEquals('sent', $notification->refresh()->status);
     }
 }

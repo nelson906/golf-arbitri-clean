@@ -3,6 +3,7 @@
 namespace Tests\Unit\Config;
 
 use App\Enums\AssignmentRole;
+use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
 
 /**
@@ -34,7 +35,7 @@ class GolfConfigTest extends TestCase
      */
     public function test_all_config_assignment_role_values_exist_in_enum(): void
     {
-        $configRoles = config('golf.assignment_roles');
+        $configRoles = Config::array('golf.assignment_roles');
         $this->assertIsArray($configRoles, 'golf.assignment_roles deve essere un array');
 
         $validEnumValues = AssignmentRole::values();
@@ -45,7 +46,7 @@ class GolfConfigTest extends TestCase
             $this->assertContains(
                 $label,
                 $validEnumValues,
-                "config('golf.assignment_roles.{$key}') = '{$label}' non è un valore valido " .
+                "config('golf.assignment_roles.{$key}') = '".(is_scalar($label) ? (string) $label : gettype($label))."' non è un valore valido " .
                 "dell'AssignmentRole enum. Valori validi: " . implode(', ', $validEnumValues)
             );
         }
@@ -56,7 +57,7 @@ class GolfConfigTest extends TestCase
      */
     public function test_assistant_role_is_not_in_config(): void
     {
-        $configRoles = config('golf.assignment_roles');
+        $configRoles = Config::array('golf.assignment_roles');
 
         $this->assertArrayNotHasKey(
             'assistant',
@@ -71,7 +72,7 @@ class GolfConfigTest extends TestCase
      */
     public function test_assistente_label_is_not_in_config_values(): void
     {
-        $configRoles = config('golf.assignment_roles');
+        $configRoles = Config::array('golf.assignment_roles');
 
         $this->assertNotContains(
             'Assistente',
@@ -89,7 +90,7 @@ class GolfConfigTest extends TestCase
      */
     public function test_required_assignment_roles_are_present_in_config(): void
     {
-        $configRoles = config('golf.assignment_roles');
+        $configRoles = Config::array('golf.assignment_roles');
 
         // Questi tre devono sempre esserci
         $this->assertArrayHasKey('director', $configRoles,
@@ -105,7 +106,7 @@ class GolfConfigTest extends TestCase
      */
     public function test_config_role_values_match_enum_exactly(): void
     {
-        $configRoles = config('golf.assignment_roles');
+        $configRoles = Config::array('golf.assignment_roles');
 
         // Verifica mapping diretto
         if (isset($configRoles['referee'])) {

@@ -4,18 +4,21 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class AdminOrSuperAdmin
 {
-    public function handle(Request $request, Closure $next)
+    public function handle(Request $request, Closure $next): Response
     {
-        if (! auth()->check()) {
+        $user = auth()->user();
+
+        if ($user === null) {
             return redirect()->route('login');
         }
 
-        $userType = auth()->user()->user_type;
+        $userType = $user->user_type;
 
-        if (! ($userType?->isAdmin() ?? false)) {
+        if (! $userType->isAdmin()) {
             abort(403, 'Access denied');
         }
 

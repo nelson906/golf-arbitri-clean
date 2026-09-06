@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property int $id
@@ -19,7 +19,6 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Availability extends Model
 {
-    use HasFactory;
 
     protected $fillable = [
         'tournament_id',
@@ -32,15 +31,19 @@ class Availability extends Model
         'submitted_at' => 'datetime',
     ];
 
+    // ── RELAZIONI ───────────────────────────────────────────────────
     /**
-     * RELAZIONI
+     * @return BelongsTo<Tournament, $this>
      */
-    public function tournament()
+    public function tournament(): BelongsTo
     {
         return $this->belongsTo(Tournament::class);
     }
 
-    public function user()
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
@@ -49,8 +52,9 @@ class Availability extends Model
      * Alias per retrocompatibilità
      *
      * @deprecated Usare user() invece
+     * @return BelongsTo<User, $this>
      */
-    public function referee()
+    public function referee(): BelongsTo
     {
         return $this->user();
     }

@@ -4,6 +4,9 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Services\Monitoring\SystemHealthService;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class HealthCheckController extends Controller
@@ -15,7 +18,7 @@ class HealthCheckController extends Controller
     /**
      * Health check completo sistema
      */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse|View
     {
         $response = $this->healthService->performHealthCheck();
         $overallHealth = $response['status'] === 'healthy';
@@ -31,7 +34,7 @@ class HealthCheckController extends Controller
     /**
      * Check singolo componente
      */
-    public function check(Request $request, string $component)
+    public function check(Request $request, string $component): JsonResponse|RedirectResponse
     {
         $result = match ($component) {
             'database' => $this->healthService->checkDatabase(),
@@ -50,23 +53,9 @@ class HealthCheckController extends Controller
     }
 
     /**
-     * Ottieni stato di salute generale
-     */
-    public function status(Request $request)
-    {
-        $status = $this->healthService->getHealthStatus();
-
-        if ($request->wantsJson()) {
-            return response()->json($status);
-        }
-
-        return view('super-admin.monitoring.status', compact('status'));
-    }
-
-    /**
      * Ottieni uptime sistema
      */
-    public function uptime(Request $request)
+    public function uptime(Request $request): JsonResponse|RedirectResponse
     {
         $uptime = $this->healthService->getUptime();
 

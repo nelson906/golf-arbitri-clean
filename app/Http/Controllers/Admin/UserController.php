@@ -10,6 +10,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Zone;
 use App\Traits\HasZoneVisibility;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
@@ -21,9 +23,9 @@ class UserController extends Controller
     /**
      * Display lista utenti (arbitri + admin)
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
-        $user = auth()->user();
+        $user = $this->authUser();
 
         // Usa metodi del trait per determinare i ruoli
         $isNationalAdmin = $this->isNationalAdmin($user);
@@ -35,12 +37,12 @@ class UserController extends Controller
 
         // Filtro per tipo utente
         if ($request->filled('user_type')) {
-            $query->where('user_type', $request->user_type);
+            $query->where('user_type', $request->string('user_type')->toString());
         }
 
         // Filtro per livello
         if ($request->filled('level')) {
-            $query->where('level', $request->level);
+            $query->where('level', $request->string('level')->toString());
         }
         if (request('sort')) {
             switch (request('sort')) {
@@ -57,12 +59,12 @@ class UserController extends Controller
         }
         // Filtro per zona
         if ($request->filled('zone_id')) {
-            $query->where('zone_id', $request->zone_id);
+            $query->where('zone_id', $request->integer('zone_id'));
         }
 
         // Filtro ricerca
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = $request->string('search')->toString();
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
@@ -75,9 +77,9 @@ class UserController extends Controller
 
         // Filtro per stato attivo (di default mostra solo attivi se non specificato)
         if ($request->has('status')) {
-            if ($request->status === 'active') {
+            if ($request->string('status')->toString() === 'active') {
                 $query->where('is_active', true);
-            } elseif ($request->status === 'inactive') {
+            } elseif ($request->string('status')->toString() === 'inactive') {
                 $query->where('is_active', false);
             }
             // Se status = 'all', non applica filtri
@@ -117,9 +119,9 @@ class UserController extends Controller
     /**
      * Mostra dettagli utente
      */
-    public function show(User $user)
+    public function show(User $user): View
     {
-        $currentUser = auth()->user();
+        $currentUser = $this->authUser();
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
         $isSuperAdmin = $this->isSuperAdmin($currentUser);
 
@@ -147,9 +149,9 @@ class UserController extends Controller
     /**
      * Form creazione utente
      */
-    public function create()
+    public function create(): View
     {
-        $currentUser = auth()->user();
+        $currentUser = $this->authUser();
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
         $isSuperAdmin = $this->isSuperAdmin($currentUser);
 
@@ -179,9 +181,9 @@ class UserController extends Controller
     /**
      * Salva nuovo utente
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
-        $currentUser = auth()->user();
+        $currentUser = $this->authUser();
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
 
         // Validazione base
@@ -229,9 +231,9 @@ class UserController extends Controller
     /**
      * Form modifica utente
      */
-    public function edit(User $user)
+    public function edit(User $user): View
     {
-        $currentUser = auth()->user();
+        $currentUser = $this->authUser();
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
         $isSuperAdmin = $this->isSuperAdmin($currentUser);
 
@@ -268,9 +270,9 @@ class UserController extends Controller
     /**
      * Aggiorna utente
      */
-    public function update(Request $request, User $user)
+    public function update(Request $request, User $user): RedirectResponse
     {
-        $currentUser = auth()->user();
+        $currentUser = $this->authUser();
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
 
         // Verifica permessi tramite trait
@@ -321,9 +323,9 @@ class UserController extends Controller
     /**
      * Elimina utente
      */
-    public function destroy(User $user)
+    public function destroy(User $user): RedirectResponse
     {
-        $currentUser = auth()->user();
+        $currentUser = $this->authUser();
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
 
         // Verifica permessi: admin nazionale può eliminare tutti, admin zonale solo utenti della propria zona
@@ -351,9 +353,9 @@ class UserController extends Controller
     /**
      * Toggle stato attivo/inattivo
      */
-    public function toggleActive(User $user)
+    public function toggleActive(User $user): RedirectResponse
     {
-        $currentUser = auth()->user();
+        $currentUser = $this->authUser();
         // Verifica permessi tramite trait
         if (! $this->isNationalAdmin($currentUser) && $this->getUserZoneId($currentUser) != $user->zone_id) {
             abort(403, 'Non autorizzato');

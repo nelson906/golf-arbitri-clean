@@ -10,11 +10,9 @@
  * @returns {number[]} Array of numbers
  */
 export const range = (start, end) => {
-  if (typeof end === 'undefined') {
-    end = start;
-    start = 0;
-  }
-  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  const from = typeof end === 'undefined' ? 0 : start;
+  const to   = typeof end === 'undefined' ? start : end;
+  return Array.from({ length: to - from + 1 }, (_, i) => from + i);
 };
 
 /**

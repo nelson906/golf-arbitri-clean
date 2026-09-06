@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -16,20 +16,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property \Illuminate\Support\Carbon|null $sent_at
  * @property int|null $sent_by
  * @property array<array-key, mixed>|null $details
- * @property array<array-key, mixed>|null $templates_used
  * @property string|null $error_message
  * @property array<array-key, mixed>|null $attachments
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read string $recipients_list
- * @property-read array $stats
+ * @property-read array<string, mixed> $stats
  * @property-read string $status_formatted
- * @property-read string $templates_formatted
  * @property-read string $time_ago
  * @property-read \App\Models\User|null $sentBy
  * @property-read \App\Models\Tournament $tournament
  *
- * @method static \Database\Factories\TournamentNotificationFactory factory($count = null, $state = [])
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification failed()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification forZone($zoneId)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification newModelQuery()
@@ -55,7 +51,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 class TournamentNotification extends Model
 {
-    use HasFactory;
 
     protected $fillable = [
         'tournament_id',
@@ -95,6 +90,8 @@ class TournamentNotification extends Model
 
     /**
      * 🏆 Relazione con torneo
+     *
+     * @return BelongsTo<Tournament, $this>
      */
     public function tournament(): BelongsTo
     {
@@ -103,6 +100,8 @@ class TournamentNotification extends Model
 
     /**
      * 👤 Relazione con utente che ha inviato
+     *
+     * @return BelongsTo<User, $this>
      */
     public function sentBy(): BelongsTo
     {
@@ -114,32 +113,44 @@ class TournamentNotification extends Model
 
     /**
      * 📊 Scope: Solo notifiche inviate con successo
+     *
+     * @param  Builder<TournamentNotification>  $query
+     * @return Builder<TournamentNotification>
      */
-    public function scopeSent($query)
+    public function scopeSent(Builder $query): Builder
     {
         return $query->where('status', 'sent');
     }
 
     /**
      * 📊 Scope: Solo notifiche fallite
+     *
+     * @param  Builder<TournamentNotification>  $query
+     * @return Builder<TournamentNotification>
      */
-    public function scopeFailed($query)
+    public function scopeFailed(Builder $query): Builder
     {
         return $query->where('status', 'failed');
     }
 
     /**
      * 📊 Scope: Notifiche di oggi
+     *
+     * @param  Builder<TournamentNotification>  $query
+     * @return Builder<TournamentNotification>
      */
-    public function scopeToday($query)
+    public function scopeToday(Builder $query): Builder
     {
         return $query->whereDate('sent_at', today());
     }
 
     /**
      * 📊 Scope: Notifiche per zona
+     *
+     * @param  Builder<TournamentNotification>  $query
+     * @return Builder<TournamentNotification>
      */
-    public function scopeForZone($query, $zoneId)
+    public function scopeForZone(Builder $query, int $zoneId): Builder
     {
         return $query->whereHas('tournament.club', function ($q) use ($zoneId) {
             $q->where('zone_id', $zoneId);
@@ -162,28 +173,80 @@ class TournamentNotification extends Model
     }
 
     /**
+     * Normalizza la colonna JSON `details` in un array.
+     *
+     * `details` e' scritta da versioni diverse del NotificationService e non ha
+     * una forma garantita: puo' essere un array, una stringa JSON (righe
+     * storiche) o null. Qui si valida, non si dichiara.
+     *
+     * @return array<array-key, mixed>
+     */
+    private function detailsArray(): array
+    {
+        $details = $this->details;
+
+        if (is_string($details)) {
+            $details = json_decode($details, true);
+        }
+
+        return is_array($details) ? $details : [];
+    }
+
+    /**
+     * Legge un intero da una struttura annidata non fidata.
+     *
+     * Ogni chiave mancante, o un valore non numerico, valgono 0: e' esattamente
+     * cio' che facevano i `?? 0` a catena, ma senza rompersi quando il livello
+     * intermedio non e' un array (formato "semplice" contro "complesso").
+     *
+     * @param  array<array-key, mixed>  $data
+     */
+    private static function intAt(array $data, string ...$path): int
+    {
+        $current = $data;
+
+        foreach ($path as $key) {
+            if (! is_array($current) || ! array_key_exists($key, $current)) {
+                return 0;
+            }
+            $current = $current[$key];
+        }
+
+        return is_numeric($current) ? (int) $current : 0;
+    }
+
+    /**
      * 📊 Accessor: Statistiche dettagliate
+     *
+     * @return array{
+     *     club_sent: int,
+     *     club_failed: int,
+     *     referees_sent: int,
+     *     referees_failed: int,
+     *     institutional_sent: int,
+     *     institutional_failed: int,
+     *     total_sent: int,
+     *     total_failed: int,
+     *     success_rate: float,
+     * }
      */
     public function getStatsAttribute(): array
     {
-        $details = $this->details ?? [];
-
-        // Se details è una stringa, decodificala
-        if (is_string($details)) {
-            $details = json_decode($details, true) ?? [];
-        }
+        $details = $this->detailsArray();
 
         // Gestisce sia il formato semplice che quello complesso
         if (isset($details['sent'])) {
             // Formato semplice: {"sent":4,"arbitri":3,"club":1}
+            $totalSent = self::intAt($details, 'sent');
+
             return [
-                'club_sent' => $details['club'] ?? 0,
+                'club_sent' => self::intAt($details, 'club'),
                 'club_failed' => 0,
-                'referees_sent' => $details['arbitri'] ?? 0,
+                'referees_sent' => self::intAt($details, 'arbitri'),
                 'referees_failed' => 0,
                 'institutional_sent' => 0,
                 'institutional_failed' => 0,
-                'total_sent' => $details['sent'] ?? $details['total_recipients'] ?? 0,
+                'total_sent' => $totalSent !== 0 ? $totalSent : self::intAt($details, 'total_recipients'),
                 'total_failed' => 0,
                 'success_rate' => 100.0,
             ];
@@ -191,60 +254,18 @@ class TournamentNotification extends Model
 
         // Formato complesso originale
         return [
-            'club_sent' => $details['club']['sent'] ?? 0,
-            'club_failed' => $details['club']['failed'] ?? 0,
-            'referees_sent' => $details['referees']['sent'] ?? 0,
-            'referees_failed' => $details['referees']['failed'] ?? 0,
-            'institutional_sent' => $details['institutional']['sent'] ?? 0,
-            'institutional_failed' => $details['institutional']['failed'] ?? 0,
-            'total_sent' => $details['total_recipients'] ?? 0,
-            'total_failed' => ($details['club']['failed'] ?? 0) +
-                ($details['referees']['failed'] ?? 0) +
-                ($details['institutional']['failed'] ?? 0),
+            'club_sent' => self::intAt($details, 'club', 'sent'),
+            'club_failed' => self::intAt($details, 'club', 'failed'),
+            'referees_sent' => self::intAt($details, 'referees', 'sent'),
+            'referees_failed' => self::intAt($details, 'referees', 'failed'),
+            'institutional_sent' => self::intAt($details, 'institutional', 'sent'),
+            'institutional_failed' => self::intAt($details, 'institutional', 'failed'),
+            'total_sent' => self::intAt($details, 'total_recipients'),
+            'total_failed' => self::intAt($details, 'club', 'failed')
+                + self::intAt($details, 'referees', 'failed')
+                + self::intAt($details, 'institutional', 'failed'),
             'success_rate' => $this->calculateSuccessRate(),
         ];
-    }
-
-    /**
-     * 🎯 Accessor: Template utilizzati formattati
-     */
-    public function getTemplatesFormattedAttribute(): string
-    {
-        $templates = $this->templates_used ?? [];
-        $formatted = [];
-
-        if (isset($templates['club'])) {
-            $formatted[] = "Circolo: {$templates['club']}";
-        }
-        if (isset($templates['referee'])) {
-            $formatted[] = "Arbitri: {$templates['referee']}";
-        }
-        if (isset($templates['institutional'])) {
-            $formatted[] = "Istituzionali: {$templates['institutional']}";
-        }
-
-        return implode(' | ', $formatted);
-    }
-
-    /**
-     * 📧 Accessor: Lista destinatari
-     */
-    public function getRecipientsListAttribute(): string
-    {
-        $stats = $this->stats;
-        $recipients = [];
-
-        if ($stats['club_sent'] > 0) {
-            $recipients[] = '1 circolo';
-        }
-        if ($stats['referees_sent'] > 0) {
-            $recipients[] = "{$stats['referees_sent']} arbitri";
-        }
-        if ($stats['institutional_sent'] > 0) {
-            $recipients[] = "{$stats['institutional_sent']} istituzionali";
-        }
-
-        return implode(', ', $recipients);
     }
 
     /**
@@ -282,11 +303,17 @@ class TournamentNotification extends Model
      */
     public function hasErrors(): bool
     {
-        $metadata = $this->metadata ?? [];
-        $details = $this->details ?? [];
+        $metadata = is_array($this->metadata) ? $this->metadata : [];
+        $details = $this->detailsArray();
 
-        return ! empty($metadata['last_error']) ||
-            ($details['failed'] ?? $details['errors'] ?? 0) > 0;
+        // `failed`/`errors` sono scritti come contatore int (NotificationService:212),
+        // ma righe storiche possono contenere la lista degli errori: entrambe le
+        // forme contavano come "ha errori" prima, ed entrambe contano ancora.
+        $failed = $details['failed'] ?? $details['errors'] ?? 0;
+
+        return ! empty($metadata['last_error'])
+            || (is_numeric($failed) && (float) $failed > 0)
+            || (is_array($failed) && $failed !== []);
     }
 
     /**
@@ -294,38 +321,23 @@ class TournamentNotification extends Model
      */
     private function calculateSuccessRate(): float
     {
-        $details = $this->details ?? [];
-        $totalSent = $details['total_recipients'] ?? 0;
-        $totalFailed = ($details['club']['failed'] ?? 0) +
-            ($details['referees']['failed'] ?? 0) +
-            ($details['institutional']['failed'] ?? 0);
+        $details = $this->detailsArray();
+        $totalSent = self::intAt($details, 'total_recipients');
+        $totalFailed = self::intAt($details, 'club', 'failed')
+            + self::intAt($details, 'referees', 'failed')
+            + self::intAt($details, 'institutional', 'failed');
 
-        if ($totalSent == 0) {
-            return 0;
+        if ($totalSent === 0) {
+            return 0.0;
         }
 
         return round((($totalSent - $totalFailed) / $totalSent) * 100, 1);
     }
 
     /**
-     * 🔍 Metodo: Ottieni dettagli errori
-     */
-    public function getErrorDetails(): array
-    {
-        $errors = [];
-        $details = $this->details ?? [];
-
-        foreach (['club', 'referees', 'institutional'] as $type) {
-            if (isset($details[$type]['errors'])) {
-                $errors[$type] = $details[$type]['errors'];
-            }
-        }
-
-        return $errors;
-    }
-
-    /**
      * 📊 Metodo statico: Statistiche globali
+     *
+     * @return array<string, mixed>
      */
     public static function getGlobalStats(): array
     {
@@ -355,6 +367,8 @@ class TournamentNotification extends Model
 
     /**
      * 📝 Relazione con le clausole selezionate
+     *
+     * @return HasMany<NotificationClauseSelection, $this>
      */
     public function clauseSelections(): HasMany
     {
@@ -363,6 +377,8 @@ class TournamentNotification extends Model
 
     /**
      * 📝 Accessor: Ottieni clausole selezionate organizzate
+     *
+     * @return array<string, mixed>
      */
     public function getSelectedClausesAttribute(): array
     {

@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Helpers\ZoneHelper;
 use App\Mail\ClubNotificationMail;
 use App\Models\TournamentNotification;
+use App\Support\Untrusted;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -73,13 +75,15 @@ class NotificationService
         $currentRefereeIds = $tournament->assignments()->pluck('user_id')->toArray();
 
         // Solo arbitri selezionati E ancora effettivamente assegnati al torneo
-        $selectedRefereeIds = is_array($recipients['referees'] ?? null) ? $recipients['referees'] : [];
+        // `recipients` e' una colonna JSON: gli ID non sono garantiti interi.
+        // Un elemento non numerico veniva passato dritto a un whereIn().
+        $selectedRefereeIds = Untrusted::intList($recipients['referees'] ?? null);
         $finalRefereeIds = array_values(array_intersect($selectedRefereeIds, $currentRefereeIds));
 
         $sendToClub = (bool) ($recipients['club'] ?? true);
         $sendToZone = (bool) ($recipients['zone'] ?? false);
-        $institutionalIds = is_array($recipients['institutional'] ?? null) ? $recipients['institutional'] : [];
-        $additional = is_array($recipients['additional'] ?? null) ? $recipients['additional'] : [];
+        $institutionalIds = Untrusted::intList($recipients['institutional'] ?? null);
+        $additional = Untrusted::rows($recipients['additional'] ?? null);
 
         // Traccia di ciò che verrà usato (solo audit — mai più riletta come input)
         $notification->recipients = [
@@ -122,8 +126,10 @@ class NotificationService
             }
 
             foreach ($additional as $extra) {
-                if (! empty($extra['email'])) {
-                    $builder->addCustomCc($extra['email'], $extra['name'] ?? null);
+                $email = Untrusted::string($extra['email'] ?? null);
+
+                if ($email !== '') {
+                    $builder->addCustomCc($email, Untrusted::stringOrNull($extra['name'] ?? null));
                 }
             }
 
@@ -254,8 +260,8 @@ class NotificationService
         }
 
         $zone = ZoneHelper::getFolderCodeForTournament($notification->tournament);
-        $docsRoot = config('golf.documents.storage_path', 'convocazioni');
-        $disk = \Illuminate\Support\Facades\Storage::disk(config('golf.documents.disk', 'docs'));
+        $docsRoot = Config::string('golf.documents.storage_path', 'convocazioni');
+        $disk = \Illuminate\Support\Facades\Storage::disk(Config::string('golf.documents.disk', 'docs'));
         $basePath = $disk->path("{$docsRoot}/{$zone}/generated/");
 
         $attachments = [];

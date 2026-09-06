@@ -16,6 +16,11 @@ use Tests\TestCase;
  */
 class PreflightRecipientsTest extends TestCase
 {
+    /**
+     * @param  array<string, mixed>  $clubAttrs
+     * @param  list<string>  $refereeEmails
+     * @return array<string, mixed>
+     */
     private function preflightFor(array $clubAttrs, array $refereeEmails = []): array
     {
         $club = $this->createClub(array_merge(['zone_id' => 1], $clubAttrs));
@@ -26,7 +31,7 @@ class PreflightRecipientsTest extends TestCase
             $this->createAssignment(['tournament_id' => $tournament->id, 'user_id' => $referee->id]);
         }
 
-        return app(NotificationPreparationService::class)->buildPreflight($tournament->fresh());
+        return app(NotificationPreparationService::class)->buildPreflight($tournament->refresh());
     }
 
     public function test_all_valid_emails_produce_zero_invalid(): void
@@ -38,7 +43,7 @@ class PreflightRecipientsTest extends TestCase
 
         $this->assertSame(0, $preflight['invalid']);
         // circolo + sezione zona + 1 arbitro
-        $this->assertCount(3, $preflight['entries']);
+        $this->assertCount(3, $this->arrayAt($preflight, 'entries'));
     }
 
     public function test_club_with_empty_email_is_flagged(): void
@@ -46,7 +51,8 @@ class PreflightRecipientsTest extends TestCase
         // clubs.email è NOT NULL: lo sporco reale è la stringa vuota
         $preflight = $this->preflightFor(['email' => '']);
 
-        $clubEntry = collect($preflight['entries'])->firstWhere('type', 'Circolo (TO)');
+        $clubEntry = collect($this->arrayAt($preflight, 'entries'))->firstWhere('type', 'Circolo (TO)');
+        $this->assertIsArray($clubEntry);
         $this->assertFalse($clubEntry['valid']);
         $this->assertGreaterThanOrEqual(1, $preflight['invalid']);
     }
@@ -58,10 +64,15 @@ class PreflightRecipientsTest extends TestCase
         $club->zone->update(['email' => 'Sezione Zonale Regole 6']);
         $tournament = $this->createTournament(['club_id' => $club->id]);
 
-        $preflight = app(NotificationPreparationService::class)->buildPreflight($tournament->fresh());
+        $preflight = app(NotificationPreparationService::class)->buildPreflight($tournament->refresh());
 
-        $zoneEntry = collect($preflight['entries'])->firstWhere('type', 'Sezione di zona (CC)');
+        $zoneEntry = collect((array) $preflight['entries'])->firstWhere('type', 'Sezione di zona (CC)');
+        $this->assertIsArray($zoneEntry);
         $this->assertFalse($zoneEntry['valid']);
+        // Il nome della zona deve arrivare dal DB, non dal fallback 'N/A':
+        // senza questa asserzione il mutante che sostituisce `$zone->name ?? 'N/A'`
+        // con la sola costante sopravvive (Infection 2026-09-05).
+        $this->assertSame($club->zone->name, $zoneEntry['name']);
     }
 
     public function test_referee_with_malformed_email_is_flagged_others_valid(): void
@@ -71,9 +82,12 @@ class PreflightRecipientsTest extends TestCase
             ['valido@example.test', 'non-una-email']
         );
 
-        $referees = collect($preflight['entries'])->where('type', 'Arbitro (CC)');
+        $referees = collect($this->arrayAt($preflight, 'entries'))->where('type', 'Arbitro (CC)');
         $this->assertCount(2, $referees);
         $this->assertSame(1, $referees->where('valid', false)->count());
-        $this->assertSame('non-una-email', $referees->firstWhere('valid', false)['email']);
+
+        $invalido = $referees->firstWhere('valid', false);
+        $this->assertIsArray($invalido);
+        $this->assertSame('non-una-email', $invalido['email']);
     }
 }

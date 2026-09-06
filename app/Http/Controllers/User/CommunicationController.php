@@ -5,7 +5,6 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use App\Models\Communication;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 /**
@@ -18,7 +17,7 @@ class CommunicationController extends Controller
      */
     public function index(Request $request): View
     {
-        $user = Auth::user();
+        $user = $this->authUser();
 
         $query = Communication::with(['author', 'zone'])
             ->where('status', 'published')
@@ -47,7 +46,7 @@ class CommunicationController extends Controller
      */
     public function show(Communication $communication): View
     {
-        $user = Auth::user();
+        $user = $this->authUser();
 
         if ($communication->status !== 'published') {
             abort(404);

@@ -6,7 +6,9 @@ use App\Enums\AssignmentRole;
 use App\Helpers\ZoneHelper;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
+use App\Support\Untrusted;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
@@ -24,6 +26,8 @@ class DocumentGenerationService
 
     /**
      * Generate convocation for entire tournament
+     *
+     * @return array{path: string, filename: string, type: 'convocation'}
      */
     public function generateConvocationForTournament(Tournament $tournament, ?TournamentNotification $notification = null): array
     {
@@ -70,7 +74,7 @@ class DocumentGenerationService
             $variables = [
                 'tournament_name' => ucwords(strtolower($tournament->name)), // ✅ Prima lettera maiuscola
                 'tournament_dates' => $this->formatTournamentDates($tournament), // ✅ Date formattate
-                'club_name' => $tournament->club->name,
+                'club_name' => $tournament->club->name ?? '',
                 'zone_name' => $tournament->zone->name ?? 'Zona Non Specificata',
                 'current_date' => Carbon::now()->format('d/m/Y'),
                 'clauses' => $selectedClauses,
@@ -78,9 +82,9 @@ class DocumentGenerationService
 
             // Genera nome file
             $tournamentName = preg_replace('/[^A-Za-z0-9\-]/', '_', $tournament->name);
-            $tournamentName = substr($tournamentName, 0, 50);
+            $tournamentName = substr((string) $tournamentName, 0, 50);
             $filename = "convocazione_{$tournament->id}_{$tournamentName}.docx";
-            $outputPath = storage_path(config('golf.documents.temp_path', 'app/temp').'/'.$filename);
+            $outputPath = storage_path(Config::string('golf.documents.temp_path', 'app/temp').'/'.$filename);
 
             // Carica template, sostituisci variabili e aggiungi arbitri (docType: referee)
             $this->processTemplateWithReferees($templatePath, $variables, $tournament, $outputPath, 'referee');
@@ -104,6 +108,8 @@ class DocumentGenerationService
 
     /**
      * Generate facsimile for club
+     *
+     * @return array{path: string, filename: string, type: 'club_letter'}
      */
     public function generateClubDocument(Tournament $tournament, ?TournamentNotification $notification = null): array
     {
@@ -154,9 +160,14 @@ class DocumentGenerationService
             $section = $phpWord->addSection();
 
             // Margini
+            // getStyle() e' nullable nell'API di PhpWord: su una sezione appena
+            // creata c'e' sempre, ma il tipo va ristretto senza uscire dal metodo.
             $sectionStyle = $section->getStyle();
-            $sectionStyle->setMarginLeft(\PhpOffice\PhpWord\Shared\Converter::cmToTwip(2.5));
-            $sectionStyle->setMarginRight(\PhpOffice\PhpWord\Shared\Converter::cmToTwip(2.5));
+
+            if ($sectionStyle instanceof \PhpOffice\PhpWord\Style\Section) {
+                $sectionStyle->setMarginLeft(\PhpOffice\PhpWord\Shared\Converter::cmToTwip(2.5));
+                $sectionStyle->setMarginRight(\PhpOffice\PhpWord\Shared\Converter::cmToTwip(2.5));
+            }
 
             // Titolo identico
             $section->addTitle(
@@ -173,7 +184,7 @@ class DocumentGenerationService
 
             foreach ($sortedAssignments as $assignment) {
                 // Controllo null safety
-                if ($assignment && $assignment->user && $assignment->user->name) {
+                if ($assignment->user && $assignment->user->name) {
                     $section->addText($assignment->user->name);
                 }
             }
@@ -221,9 +232,9 @@ class DocumentGenerationService
             // Lista arbitri con ruoli (usando il tuo sistema di ordinamento)
             foreach ($sortedAssignments as $assignment) {
                 // Controllo null safety
-                if ($assignment && $assignment->user && $assignment->user->name) {
+                if ($assignment->user && $assignment->user->name) {
                     // Gestione corretta di tutti i ruoli incluso Osservatore
-                    $ruolo = (AssignmentRole::tryFrom($assignment->role) ?? AssignmentRole::default())->value;
+                    $ruolo = (AssignmentRole::tryFrom($assignment->role ?? '') ?? AssignmentRole::default())->value;
                     $section->addText(
                         $assignment->user->name."\t".$ruolo,
                         ['bold' => true],
@@ -290,9 +301,9 @@ class DocumentGenerationService
 
             // Genera nome file con pattern standard come in gestione_arbitri
             $tournamentName = preg_replace('/[^A-Za-z0-9\-]/', '_', $tournament->name);
-            $tournamentName = substr($tournamentName, 0, 50);
+            $tournamentName = substr((string) $tournamentName, 0, 50);
             $filename = "lettera_circolo_{$tournament->id}_{$tournamentName}.docx";
-            $tempPath = storage_path(config('golf.documents.temp_path', 'app/temp').'/'.$filename);
+            $tempPath = storage_path(Config::string('golf.documents.temp_path', 'app/temp').'/'.$filename);
 
             if (! is_dir(dirname($tempPath))) {
                 mkdir(dirname($tempPath), 0777, true);
@@ -321,6 +332,8 @@ class DocumentGenerationService
 
     /**
      * Get zone template path
+     *
+     * @param  int|null  $zoneId
      */
     protected function getZoneTemplatePath($zoneId): string
     {
@@ -355,6 +368,8 @@ class DocumentGenerationService
 
     /**
      * Get zone code from zone ID
+     *
+     * @param  int|null  $zoneId
      */
     protected function getZoneCode($zoneId): string
     {
@@ -372,6 +387,10 @@ class DocumentGenerationService
 
     /**
      * Process template with referees list
+     *
+     * @param  string  $templatePath
+     * @param  string  $outputPath
+     * @param  array<string, mixed>  $variables
      */
     protected function processTemplateWithReferees($templatePath, array $variables, Tournament $tournament, $outputPath, string $docType): void
     {
@@ -395,8 +414,18 @@ class DocumentGenerationService
             // Ottieni i placeholder disponibili per questo tipo
             $availablePlaceholders = $this->getPlaceholdersForDocumentType($docType);
 
-            // Usa cloneBlock per rimuovere interi paragrafi quando la clausola non è selezionata
-            $clauses = $variables['clauses'] ?? [];
+            // Usa cloneBlock per rimuovere interi paragrafi quando la clausola non è selezionata.
+            // $variables e' array<string, mixed>: si normalizza al solo dato che
+            // processClauseBlocks() usa davvero, cioe' il contenuto testuale.
+            $clauses = [];
+            foreach (Untrusted::array($variables['clauses'] ?? null) as $code => $clause) {
+                $contenuto = Untrusted::string(Untrusted::at($clause, 'content'));
+
+                if (is_string($code) && $contenuto !== '') {
+                    $clauses[$code] = ['content' => $contenuto];
+                }
+            }
+
             $this->processClauseBlocks($templateProcessor, $clauses, $docType);
         }
 
@@ -404,7 +433,8 @@ class DocumentGenerationService
         $sortedAssignments = AssignmentRole::sortCollection($tournament->assignments);
 
         // Prepara lista arbitri
-        $refereesList = $sortedAssignments->map(function ($assignment) {
+        /** @var list<array{referee_name: string, referee_role: string, referee_code: string, referee_level: string}> $refereesList */
+        $refereesList = $sortedAssignments->values()->map(function ($assignment) {
             return [
                 'referee_name' => $assignment->user->name,
                 'referee_role' => $this->translateRole($assignment->role),
@@ -441,6 +471,8 @@ class DocumentGenerationService
     /**
      * Normalizza e traduce un ruolo in italiano.
      * Gestisce varianti inglesi tramite AssignmentRole::normalize().
+     *
+     * @param  string|null  $role
      */
     protected function translateRole($role): string
     {
@@ -472,6 +504,8 @@ class DocumentGenerationService
     /**
      * Get available placeholders for document type
      * Placeholder names are now document-specific to avoid conflicts
+     *
+     * @return list<string>
      */
     private function getPlaceholdersForDocumentType(string $type): array
     {
@@ -506,6 +540,9 @@ class DocumentGenerationService
     /**
      * Process clause blocks in document
      * Processes ALL clause types, filling selected ones and removing non-selected
+     *
+     * @param  \PhpOffice\PhpWord\TemplateProcessor  $templateProcessor
+     * @param  array<string, array{content: string}>  $clauses  solo le clausole con contenuto
      */
     private function processClauseBlocks($templateProcessor, array $clauses, string $docType): void
     {

@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Enums\UserType;
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,8 +19,13 @@ class RefereeOrAdmin
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Check if user is authenticated
-        if (! Auth::check()) {
+        // Check if user is authenticated.
+        // NB: si legge l'utente PRIMA e si controlla quello, invece di
+        // Auth::check(): il check non restringe il tipo di Auth::user(), che
+        // resterebbe User|null per tutto il resto del metodo.
+        $user = Auth::user();
+
+        if (! $user instanceof User) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'message' => 'Authentication required',
@@ -30,7 +36,6 @@ class RefereeOrAdmin
             return redirect()->guest(route('login'));
         }
 
-        $user = Auth::user();
         $userType = $user->user_type; // UserType enum or null
 
         // Allowed: any user with a valid user_type (all 4 enum values)
@@ -85,10 +90,12 @@ class RefereeOrAdmin
 
     /**
      * Check referee access to their own data
+     *
+     * @param  \App\Models\User  $user
      */
     private function checkRefereeAccess(Request $request, $user): void
     {
-        $routeParameters = $request->route()->parameters();
+        $routeParameters = $request->route()?->parameters() ?? [];
 
         // Check if referee is trying to access their own data
         foreach ($routeParameters as $key => $value) {
@@ -107,10 +114,12 @@ class RefereeOrAdmin
 
     /**
      * Check zone-based access for admins
+     *
+     * @param  \App\Models\User  $user
      */
     private function checkZoneAccess(Request $request, $user): void
     {
-        $routeParameters = $request->route()->parameters();
+        $routeParameters = $request->route()?->parameters() ?? [];
 
         // Check for zone-specific resources
         foreach ($routeParameters as $key => $value) {
@@ -130,6 +139,9 @@ class RefereeOrAdmin
 
     /**
      * Check if a referee is trying to access someone else's data
+     *
+     * @param  int|string  $resourceId
+     * @param  \App\Models\User  $user
      */
     private function isRefereeRestrictedResource(string $parameterName, $resourceId, $user): bool
     {
@@ -182,6 +194,9 @@ class RefereeOrAdmin
 
     /**
      * Check if a resource is zone-restricted for admins
+     *
+     * @param  int|string  $resourceId
+     * @param  \App\Models\User  $user
      */
     private function isZoneRestrictedResource(string $parameterName, $resourceId, $user): bool
     {

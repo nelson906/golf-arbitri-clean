@@ -148,6 +148,9 @@ class ArchiveCareerYear extends Command
         );
     }
 
+    /**
+     * @param  array<string, mixed>  $result
+     */
     private function displayUserResult(array $result): void
     {
         $this->table(
@@ -160,6 +163,15 @@ class ArchiveCareerYear extends Command
         );
     }
 
+    /**
+     * @param  array{
+     *     referees_processed: int,
+     *     assignments_archived: int,
+     *     availabilities_archived: int,
+     *     tournaments_archived: int,
+     *     errors: list<string>,
+     * }  $stats  esattamente cio' che restituisce CareerHistoryService::archiveYear()
+     */
     private function displayGlobalResults(array $stats): void
     {
         $this->table(

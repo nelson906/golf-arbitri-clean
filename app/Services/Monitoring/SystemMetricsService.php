@@ -10,6 +10,8 @@ class SystemMetricsService
 {
     /**
      * Ottiene tutte le metriche di sistema.
+     *
+     * @return array<string, mixed>
      */
     public function getAllMetrics(): array
     {
@@ -25,6 +27,8 @@ class SystemMetricsService
 
     /**
      * Ottiene metriche real-time.
+     *
+     * @return array<string, mixed>
      */
     public function getRealtimeMetrics(): array
     {
@@ -41,6 +45,8 @@ class SystemMetricsService
 
     /**
      * Ottiene statistiche real-time per dashboard.
+     *
+     * @return array<string, mixed>
      */
     public function getRealtimeStats(): array
     {
@@ -54,6 +60,8 @@ class SystemMetricsService
 
     /**
      * Ottiene panoramica performance.
+     *
+     * @return array<string, mixed>
      */
     public function getPerformanceOverview(): array
     {
@@ -67,6 +75,8 @@ class SystemMetricsService
 
     /**
      * Ottiene metriche performance dettagliate.
+     *
+     * @return array<string, mixed>
      */
     public function getDetailedPerformanceMetrics(string $timeframe = '1h'): array
     {
@@ -102,6 +112,8 @@ class SystemMetricsService
 
     /**
      * Ottiene alert di sistema basati sulle metriche.
+     *
+     * @return list<array<string, mixed>>
      */
     public function getSystemAlerts(): array
     {
@@ -142,6 +154,8 @@ class SystemMetricsService
 
     /**
      * Ottiene utilizzo memoria.
+     *
+     * @return array{used: string, limit: string, percentage: float}
      */
     public function getMemoryUsage(): array
     {
@@ -158,17 +172,18 @@ class SystemMetricsService
 
     /**
      * Ottiene utilizzo disco.
+     *
+     * @return array{used: string, total: string, percentage: float}
      */
     public function getDiskUsage(): array
     {
         $totalSpace = disk_total_space('/');
         $freeSpace = disk_free_space('/');
-        /** @phpstan-ignore booleanOr.alwaysFalse */
         if ($totalSpace === false || $freeSpace === false) {
             return [
                 'used' => 'N/A',
                 'total' => 'N/A',
-                'percentage' => 0,
+                'percentage' => 0.0,
             ];
         }
 
@@ -233,6 +248,8 @@ class SystemMetricsService
 
     /**
      * Ottiene tempi di risposta.
+     *
+     * @return array<string, mixed>
      */
     public function getResponseTimes(): array
     {
@@ -246,6 +263,8 @@ class SystemMetricsService
 
     /**
      * Ottiene tassi di errore.
+     *
+     * @return array<string, mixed>
      */
     public function getErrorRates(): array
     {
@@ -358,6 +377,8 @@ class SystemMetricsService
 
     /**
      * Ottiene dati storici.
+     *
+     * @return array<string, mixed>
      */
     public function getHistoricalData(string $period, string $metric): array
     {
@@ -367,6 +388,9 @@ class SystemMetricsService
 
     /**
      * Calcola trend.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
      */
     public function calculateTrends(array $data): array
     {

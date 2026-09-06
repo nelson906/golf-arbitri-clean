@@ -22,10 +22,15 @@ class ClubFactory extends Factory
     {
         return [
             'name' => 'Golf Club '.fake()->city(),
-            'zone_id' => Zone::inRandomOrder()->first()?->id ?? 1,
+            'zone_id' => Zone::inRandomOrder()->first()->id ?? 1,
             'code' => strtoupper(fake()->unique()->bothify('GC###??')),
             'city' => fake()->city(),
-            'province' => fake()->stateAbbr(),
+            // Sigle di province italiane: la colonna e' string(2) e i circoli
+            // sono tutti italiani. fake()->stateAbbr() e' un provider en_US.
+            'province' => fake()->randomElement([
+                'MI', 'RM', 'TO', 'NA', 'BO', 'FI', 'VE', 'GE', 'BA', 'PA',
+                'VR', 'BS', 'PD', 'CT', 'TS', 'BG', 'MO', 'PR', 'RE', 'CO',
+            ]),
             'address' => fake()->streetAddress(),
             'phone' => fake()->phoneNumber(),
             'email' => fake()->unique()->companyEmail(),

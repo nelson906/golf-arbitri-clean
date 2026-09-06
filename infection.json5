@@ -54,9 +54,20 @@
         }
     },
 
-    // RATCHET: baseline 2026-07-19 run 1 = 53.41%, run 2 = 58.58% → soglie a 55.
-    // Alzare di ~5 punti ogni volta che vengono superate stabilmente.
-    // Obiettivo di medio periodo: 75+ su app/Services.
-    "minMsi": 55,
-    "minCoveredMsi": 55
+    // RATCHET
+    //   2026-07-19: baseline run 1 = 53.41%, run 2 = 58.58% → soglie a 55.
+    //   2026-09-05: dopo la migrazione a PHPStan livello 6 (3361 → 0 errori) e
+    //     l'aggiunta dell'asserzione sul nome zona in PreflightRecipientsTest,
+    //     978 mutanti generati: 962 uccisi, 14 ignorati, 1 sopravvissuto, 1 errore.
+    //     MSI 99.9%, Covered Code MSI 99%, Mutation Code Coverage 100%.
+    //     Soglie alzate 55 → 99, che su 978 mutanti lascia ~10 mutanti di margine.
+    //   2026-09-05 (2° giro, dopo PHPStan livello 8 a zero): 981 mutanti,
+    //     967 uccisi, 14 ignorati, ZERO sopravvissuti e zero errori.
+    //     MSI 100%, Covered Code MSI 100%, Mutation Code Coverage 100%.
+    //     Soglie 99 → 100: da qui in poi un solo mutante sopravvissuto in
+    //     app/Services fa fallire il giro. E' voluto: nessun margine.
+    // Se un giro futuro scende sotto, NON abbassare la soglia: guardare il
+    // mutante sopravvissuto in storage/logs/infection.log — è una cecità del test.
+    "minMsi": 100,
+    "minCoveredMsi": 100
 }

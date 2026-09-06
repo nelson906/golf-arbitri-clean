@@ -26,21 +26,21 @@ class RefereeCareerController extends Controller
      */
     public function curricula(Request $request): View
     {
-        $year = $request->get('year', now()->year);
-        $search = $request->get('search');
-        $sort = $request->get('sort', 'last_name');
-        $direction = $request->get('direction', 'asc');
+        $year = $request->integer('year', now()->year);
+        $search = $request->string('search')->toString() ?: null;
+        $sort = $request->string('sort', 'last_name')->toString();
+        $direction = $request->string('direction', 'asc')->toString();
 
         // Gestione zona con default per admin zonale
         $user = auth()->user();
-        $zone = $request->get('zone');
+        $zone = $request->string('zone')->toString() ?: null;
 
         // Se non è specificata una zona e l'utente è admin zonale, usa la sua zona
         if (! $request->has('zone') && $this->isZoneAdmin($user)) {
             $zone = $this->getUserZoneId($user);
         }
 
-        $level = $request->get('level');
+        $level = $request->string('level')->toString() ?: null;
 
         // Ottieni gli anni disponibili dalla tabella referee_career_history
         $historyYears = DB::table('referee_career_history')
@@ -48,9 +48,11 @@ class RefereeCareerController extends Controller
             ->whereNotNull('assignments_by_year')
             ->get()
             ->flatMap(function ($record) {
-                $assignmentsByYear = json_decode($record->assignments_by_year, true);
+                // assignments_by_year e' una colonna JSON: json_decode puo'
+                // restituire qualunque cosa, comprese righe storiche malformate.
+                $assignmentsByYear = json_decode((string) $record->assignments_by_year, true);
 
-                return $assignmentsByYear ? array_keys($assignmentsByYear) : [];
+                return is_array($assignmentsByYear) ? array_keys($assignmentsByYear) : [];
             })
             ->unique()
             ->sort()

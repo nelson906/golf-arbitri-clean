@@ -2,6 +2,7 @@
 
 namespace App\Helpers;
 
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
@@ -9,6 +10,8 @@ class SystemInfo
 {
     /**
      * Ottieni informazioni sul sistema
+     *
+     * @return array<string, mixed>
      */
     public static function get(): array
     {
@@ -16,19 +19,21 @@ class SystemInfo
             'laravel_version' => app()->version(),
             'php_version' => PHP_VERSION,
             'server_software' => $_SERVER['SERVER_SOFTWARE'] ?? 'N/A',
-            'disk_free_space' => self::formatBytes(disk_free_space(base_path())),
-            'disk_total_space' => self::formatBytes(disk_total_space(base_path())),
+            'disk_free_space' => self::formatBytes(disk_free_space(base_path()) ?: 0),
+            'disk_total_space' => self::formatBytes(disk_total_space(base_path()) ?: 0),
             'memory_limit' => ini_get('memory_limit'),
             'max_execution_time' => ini_get('max_execution_time'),
             'upload_max_filesize' => ini_get('upload_max_filesize'),
-            'timezone' => config('app.timezone'),
+            'timezone' => Config::string('app.timezone'),
             'environment' => app()->environment(),
-            'debug_mode' => config('app.debug') ? 'ON' : 'OFF',
+            'debug_mode' => Config::boolean('app.debug') ? 'ON' : 'OFF',
         ];
     }
 
     /**
      * Verifica permessi cartelle critiche
+     *
+     * @return array<string, mixed>
      */
     public static function checkPermissions(): array
     {
@@ -57,12 +62,14 @@ class SystemInfo
 
     /**
      * Ottieni statistiche database (compatibile con vari setup)
+     *
+     * @return array<string, mixed>
      */
     public static function getDatabaseStats(): array
     {
         try {
-            $connection = config('database.default');
-            $driver = config("database.connections.{$connection}.driver");
+            $connection = Config::string('database.default');
+            $driver = Config::string("database.connections.{$connection}.driver");
 
             // Adatta query in base al driver
             if ($driver === 'mysql') {
@@ -75,7 +82,7 @@ class SystemInfo
                 $tables = [];
             }
 
-            $dbName = config("database.connections.{$connection}.database");
+            $dbName = Config::string("database.connections.{$connection}.database");
 
             return [
                 'connected' => true,
@@ -86,7 +93,7 @@ class SystemInfo
         } catch (\Exception $e) {
             return [
                 'connected' => false,
-                'driver' => config('database.default'),
+                'driver' => Config::string('database.default'),
                 'error' => $e->getMessage(),
             ];
         }
@@ -94,6 +101,8 @@ class SystemInfo
 
     /**
      * Formatta bytes in formato leggibile
+     *
+     * @param  float|int  $bytes
      */
     private static function formatBytes($bytes): string
     {
@@ -108,6 +117,8 @@ class SystemInfo
 
     /**
      * Ottieni ultimi log
+     *
+     * @return array<string, mixed>
      */
     public static function getLatestLogs(int $lines = 50): array
     {

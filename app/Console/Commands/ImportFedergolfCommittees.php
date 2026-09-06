@@ -6,10 +6,10 @@ use App\Enums\AssignmentRole;
 use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Services\FedergolfCommitteeService;
+use App\Services\FedergolfCompetitionsClient;
+use App\Support\Untrusted;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Importa in batch i Comitati di Gara da federgolf.it per un dato anno.
@@ -26,6 +26,24 @@ use Illuminate\Support\Facades\Log;
  *   php artisan federgolf:import-committees --anno=2025
  *   php artisan federgolf:import-committees --anno=2025 --dry-run
  *   php artisan federgolf:import-committees --anno=2025 --min-score=70
+ */
+/**
+ * @phpstan-type FigGara array{id: string, nome: string, data: string, club: string}
+ * @phpstan-type FigGaraGroup array{id: string, nome: string, data: string, club: string, fig_ids: list<string>}
+ * @phpstan-type GaraReport array{
+ *     fig_id: string,
+ *     fig_nome: string,
+ *     fig_data: string,
+ *     fig_club: string,
+ *     torneo_locale: string|null,
+ *     torneo_locale_id: int|null,
+ *     match_score: int,
+ *     comitato_size: int,
+ *     creati: int,
+ *     saltati: int,
+ *     senza_match: int,
+ *     stato: string,
+ * }
  */
 class ImportFedergolfCommittees extends Command
 {
@@ -48,10 +66,17 @@ class ImportFedergolfCommittees extends Command
     private int $assegnazioniSaltate = 0;
     private int $nomiSenzaMatch      = 0;
 
-    /** Nomi FIG non trovati nel DB: da creare come utenti */
+    /**
+     * Nomi FIG non trovati nel DB: da creare come utenti.
+     *
+     * @var list<array{nome_fig: string, ruolo: string, torneo: string, candidato: string}>
+     */
     private array $nomiDaCreare = [];
 
-    public function __construct(private readonly FedergolfCommitteeService $committeeService)
+    public function __construct(
+        private readonly FedergolfCommitteeService $committeeService,
+        private readonly FedergolfCompetitionsClient $competitions
+    )
     {
         parent::__construct();
     }
@@ -121,6 +146,11 @@ class ImportFedergolfCommittees extends Command
     // PROCESSAMENTO SINGOLA GARA
     // ─────────────────────────────────────────────────────────────────────────
 
+    /**
+     * @param  FigGaraGroup  $gara
+     * @param  \Illuminate\Database\Eloquent\Collection<int, \App\Models\Tournament>  $torneiLocali
+     * @return GaraReport
+     */
     private function processGara(
         array $gara,
         \Illuminate\Database\Eloquent\Collection $torneiLocali,
@@ -132,7 +162,7 @@ class ImportFedergolfCommittees extends Command
             'fig_id'          => $gara['id'],
             'fig_nome'        => $gara['nome'],
             'fig_data'        => $gara['data'],
-            'fig_club'        => $gara['club'] ?? null,
+            'fig_club'        => $gara['club'],
             'torneo_locale'   => null,
             'torneo_locale_id' => null,
             'match_score'     => 0,
@@ -163,7 +193,7 @@ class ImportFedergolfCommittees extends Command
 
         // ── Recupera comitato da FIG ─────────────────────────────────────────
         // Tenta tutti gli ID del gruppo (es. MASCHILE + FEMMINILE) finché trova dati
-        $figIds    = $gara['fig_ids'] ?? [$gara['id']];
+        $figIds    = $gara['fig_ids'] !== [] ? $gara['fig_ids'] : [$gara['id']];
         $committee = [];
 
         foreach ($figIds as $figId) {
@@ -291,6 +321,8 @@ class ImportFedergolfCommittees extends Command
      * Trova il torneo locale che meglio corrisponde a una gara FIG.
      * Combina similarità del nome (35%), club (35%) e prossimità della data (30%).
      *
+     * @param  FigGaraGroup  $gara
+     * @param  \Illuminate\Database\Eloquent\Collection<int, \App\Models\Tournament>  $tornei
      * @return array{torneo: Tournament, score: int}|null
      */
     private function findBestTournamentMatch(
@@ -299,8 +331,8 @@ class ImportFedergolfCommittees extends Command
         int $minScore
     ): ?array {
         $figNome  = $this->normalizeStr($gara['nome']);
-        $figClub  = $this->normalizeStr($gara['club'] ?? '');
-        $figData  = \DateTime::createFromFormat('d/m/Y', $gara['data'] ?? '');
+        $figClub  = $this->normalizeStr($gara['club']);
+        $figData  = \DateTime::createFromFormat('d/m/Y', $gara['data']);
 
         $best      = null;
         $bestScore = 0;
@@ -327,7 +359,7 @@ class ImportFedergolfCommittees extends Command
             // Score data (0-100) — 100 se stessa data, scala a 0 oltre 14 giorni
             $dataPct = 0.0;
             if ($figData && $localData) {
-                $diffDays = abs($figData->diff($localData->toDateTime())->days);
+                $diffDays = abs((int) $figData->diff($localData->toDateTime())->days);
                 $dataPct  = $diffDays === 0 ? 100.0 : max(0.0, 100.0 - ($diffDays * 7.0));
             }
 
@@ -370,7 +402,7 @@ class ImportFedergolfCommittees extends Command
         // 2. Segmento dopo l'ultimo trattino nel nome FIG
         //    Molti tornei FIG hanno la forma "N^ TAPPA CIRCOLO - NOME REALE"
         $afterDash = 0.0;
-        $parts = preg_split('/\s+-+\s*/', $figNome);
+        $parts = preg_split('/\s+-+\s*/', $figNome) ?: [];
         if (count($parts) > 1) {
             $lastPart = trim(end($parts));
             // Vale la pena solo se il segmento ha almeno 6 caratteri
@@ -405,51 +437,44 @@ class ImportFedergolfCommittees extends Command
     // CARICAMENTO GARE FIG
     // ─────────────────────────────────────────────────────────────────────────
 
+    /**
+     * @return list<FigGara>
+     */
     private function loadFigCompetitions(int $anno): array
     {
         try {
-            $response = Http::timeout(30)
-                ->asForm()
-                ->withHeaders([
-                    'User-Agent'       => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-                    'Accept'           => 'application/json',
-                    'X-Requested-With' => 'XMLHttpRequest',
-                ])
-                ->post(config('golf.fig.ajax_url'), [
-                    'action'  => 'competitions-search',
-                    'tipo'    => '',
-                    'keyword' => '',
-                    'anno'    => $anno,
-                    'mese'    => '',
-                ]);
+            $result = $this->competitions->fetchYear($anno);
 
-            if (! $response->successful()) {
+            if (! $result['ok']) {
                 return [];
             }
 
-            $data = $response->json();
+            // Il CONFINE e' in FedergolfCompetitionsClient. Qui ogni campo
+            // viene comunque convertito con un fallback esplicito, cosi' il
+            // tipo dichiarato (FigGara) e' vero per costruzione e non una
+            // promessa che il type system crederebbe sulla parola.
             $gare = [];
 
-            foreach ($data['data'] ?? [] as $gara) {
+            foreach ($result['rows'] as $gara) {
                 if ($gara['annullata'] ?? false) {
                     continue;
                 }
-                $nome = $gara['nome'] ?? $gara['title'] ?? '';
+                $nome = Untrusted::string($gara['nome'] ?? $gara['title'] ?? null);
                 if (preg_match('/ANNULLAT|RINVIAT/i', $nome)) {
                     continue;
                 }
                 $gare[] = [
-                    'id'   => $gara['competition_id'] ?? $gara['id'],
+                    'id'   => Untrusted::string($gara['competition_id'] ?? $gara['id'] ?? null),
                     'nome' => $nome,
-                    'data' => $gara['data'] ?? null,
-                    'club' => $gara['club'] ?? null,
+                    'data' => Untrusted::string($gara['data'] ?? null),
+                    'club' => Untrusted::string($gara['club'] ?? null),
                 ];
             }
 
             // Ordina per data crescente
-            usort($gare, function ($a, $b) {
-                $da = \DateTime::createFromFormat('d/m/Y', $a['data'] ?? '');
-                $db = \DateTime::createFromFormat('d/m/Y', $b['data'] ?? '');
+            usort($gare, function (array $a, array $b): int {
+                $da = \DateTime::createFromFormat('d/m/Y', $a['data']);
+                $db = \DateTime::createFromFormat('d/m/Y', $b['data']);
                 if (! $da || ! $db) {
                     return 0;
                 }
@@ -481,8 +506,8 @@ class ImportFedergolfCommittees extends Command
      * rappresentante (o la prima trovata) e si raccolgono entrambi gli ID
      * per il fetch del comitato (che è identico).
      *
-     * @param  array[] $gare
-     * @return array[]
+     * @param  list<FigGara>  $gare
+     * @return list<FigGaraGroup>
      */
     private function deduplicateGare(array $gare): array
     {
@@ -490,9 +515,9 @@ class ImportFedergolfCommittees extends Command
 
         foreach ($gare as $gara) {
             // Chiave di raggruppamento: data + circolo (senza MASCHILE/FEMMINILE nel nome)
-            $clubKey = $this->normalizeStr($gara['club'] ?? '');
-            $dataKey = $gara['data'] ?? '';
-            $key     = $dataKey . '|' . $clubKey;
+            $clubKey = $this->normalizeStr($gara['club']);
+            $dataKey = $gara['data'];
+            $key     = $dataKey.'|'.$clubKey;
 
             if (! isset($groups[$key])) {
                 $groups[$key] = $gara;
@@ -514,7 +539,7 @@ class ImportFedergolfCommittees extends Command
      */
     private function stripGenere(string $nome): string
     {
-        return trim(preg_replace('/\s*[-–]\s*(MASCHILE|FEMMINILE|MISTO)\s*$/i', '', $nome));
+        return trim((string) preg_replace('/\s*[-–]\s*(MASCHILE|FEMMINILE|MISTO)\s*$/i', '', $nome));
     }
 
     private function normalizeStr(string $s): string
@@ -527,10 +552,10 @@ class ImportFedergolfCommittees extends Command
         );
         // Rimuovi suffissi MASCHILE/FEMMINILE che differenziano gare FIG ma non i tornei locali
         $s = preg_replace('/\s*[-–]\s*(maschile|femminile|misto)\s*$/i', '', $s);
-        $s = preg_replace('/[^a-z0-9\s]/', '', $s);
-        $s = preg_replace('/\s+/', ' ', $s);
+        $s = preg_replace('/[^a-z0-9\s]/', '', (string) $s) ?? '';
+        $s = preg_replace('/\s+/', ' ', $s) ?? '';
 
-        return trim($s);
+        return trim((string) $s);
     }
 
     /**
@@ -538,11 +563,19 @@ class ImportFedergolfCommittees extends Command
      */
     private function getSystemUserId(): int
     {
-        return \App\Models\User::where('user_type', 'admin')
+        $id = \App\Models\User::where('user_type', 'admin')
             ->where('is_active', true)
-            ->value('id') ?? 1;
+            ->value('id');
+
+        // Fallback all'utente 1 se non c'e' nessun admin attivo (o se la
+        // colonna torna qualcosa di inatteso).
+        return Untrusted::int($id, 1) ?: 1;
     }
 
+    /**
+     * @param  list<GaraReport>  $report
+     * @param  \Illuminate\Database\Eloquent\Collection<int, \App\Models\Tournament>  $torneiLocali
+     */
     private function printSummary(
         array $report,
         bool $dryRun,
@@ -592,7 +625,7 @@ class ImportFedergolfCommittees extends Command
                 ['Torneo locale', 'Data inizio', 'Circolo', 'Assegnazioni'],
                 $torneiSenzaFig->map(fn ($t) => [
                     $t->name,
-                    $t->start_date?->format('d/m/Y') ?? '—',
+                    $t->start_date->format('d/m/Y') ?? '—',
                     $t->club->name ?? '—',
                     $t->assignments->count(),
                 ])->toArray()

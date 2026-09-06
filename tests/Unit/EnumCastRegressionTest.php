@@ -93,7 +93,6 @@ class EnumCastRegressionTest extends TestCase
             $color = $typeColors[$user->user_type->value] ?? 'bg-gray-100';
             $label = $typeLabels[$user->user_type->value] ?? $user->user_type->value;
 
-            $this->assertIsString($color);
             $this->assertIsString($label);
             $this->assertNotEmpty($label);
         }
@@ -241,10 +240,9 @@ class EnumCastRegressionTest extends TestCase
             $tournament = $this->createTournament(['status' => $case->value]);
 
             // Questo non deve lanciare eccezioni (era il bug su TournamentColorService:107)
-            $color = $statusColors[$tournament->status->value] ?? '#default';
-
-            $this->assertIsString($color);
-            $this->assertNotEmpty($color);
+            // La mappa deve coprire OGNI stato: se un case nuovo non c'e',
+            // il fallback '#default' lo nasconderebbe.
+            $this->assertArrayHasKey($tournament->status->value, $statusColors);
         }
     }
 
@@ -387,13 +385,13 @@ class EnumCastRegressionTest extends TestCase
         $calendarData = $calendarService->prepareAdminCalendarData($tournaments);
 
         $this->assertCount(1, $calendarData);
-        $event = $calendarData->first();
+        $event = $calendarData->firstOrFail();
 
-        $this->assertArrayHasKey('extendedProps', $event);
-        $this->assertArrayHasKey('status', $event['extendedProps']);
-        $this->assertIsString($event['extendedProps']['status'],
+        $props = $this->arrayAt($event, 'extendedProps');
+        $this->assertArrayHasKey('status', $props);
+        $this->assertIsString($props['status'],
             "extendedProps.status deve essere una stringa, non un'istanza Enum");
-        $this->assertSame('open', $event['extendedProps']['status']);
+        $this->assertSame('open', $props['status']);
     }
 
     /**
@@ -408,10 +406,11 @@ class EnumCastRegressionTest extends TestCase
 
         $calendarData = $calendarService->prepareRefereeCalendarData($tournaments, $referee);
 
-        $event = $calendarData->first();
-        $this->assertIsString($event['extendedProps']['status'],
+        $event = $calendarData->firstOrFail();
+        $props = $this->arrayAt($event, 'extendedProps');
+        $this->assertIsString($props['status'],
             "extendedProps.status deve essere una stringa per la vista arbitro");
-        $this->assertSame('closed', $event['extendedProps']['status']);
+        $this->assertSame('closed', $props['status']);
     }
 
     // ============================================================
@@ -441,6 +440,7 @@ class EnumCastRegressionTest extends TestCase
             $json = json_encode($userRoles);
             $this->assertIsString($json);
             $decoded = json_decode($json, true);
+            $this->assertIsArray($decoded);
             $this->assertSame($userRoles[0], $decoded[0]);
         }
     }
@@ -474,7 +474,6 @@ class EnumCastRegressionTest extends TestCase
     {
         $activeValues = TournamentStatus::activeValues();
 
-        $this->assertIsArray($activeValues);
         $this->assertNotEmpty($activeValues);
 
         foreach ($activeValues as $value) {
@@ -497,9 +496,8 @@ class EnumCastRegressionTest extends TestCase
     {
         foreach (TournamentStatus::cases() as $case) {
             $colorClass = $case->colorClass();
-            $this->assertIsString($colorClass,
-                "colorClass() deve essere una stringa per status '{$case->value}'");
-            $this->assertNotEmpty($colorClass);
+            $this->assertNotEmpty($colorClass,
+                "colorClass() deve essere una stringa non vuota per status '{$case->value}'");
         }
     }
 }

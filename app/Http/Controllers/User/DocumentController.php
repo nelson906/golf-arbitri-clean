@@ -7,10 +7,10 @@ use App\Models\Document;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
  * 📁 DocumentController - Gestione documenti e file
@@ -22,7 +22,7 @@ class DocumentController extends Controller
      */
     public function index(Request $request): View
     {
-        $user = Auth::user();
+        $user = $this->authUser();
 
         $query = Document::with(['uploader', 'tournament', 'zone'])
             ->orderBy('created_at', 'desc');
@@ -39,18 +39,18 @@ class DocumentController extends Controller
 
         // Filtri opzionali
         if ($request->filled('type')) {
-            $query->where('type', $request->type);
+            $query->where('type', $request->string('type')->toString());
         }
 
         if ($request->filled('category')) {
-            $query->where('category', $request->category);
+            $query->where('category', $request->string('category')->toString());
         }
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
-                $q->where('name', 'like', '%'.$request->search.'%')
-                    ->orWhere('description', 'like', '%'.$request->search.'%')
-                    ->orWhere('original_name', 'like', '%'.$request->search.'%');
+                $q->where('name', 'like', '%'.$request->string('search')->toString().'%')
+                    ->orWhere('description', 'like', '%'.$request->string('search')->toString().'%')
+                    ->orWhere('original_name', 'like', '%'.$request->string('search')->toString().'%');
             });
         }
 
@@ -84,7 +84,7 @@ class DocumentController extends Controller
 
         try {
             $file = $request->file('file');
-            $user = Auth::user();
+            $user = $this->authUser();
 
             // Genera nome file unico
             $originalName = $file->getClientOriginalName();
@@ -93,7 +93,7 @@ class DocumentController extends Controller
                 time().'.'.$extension;
 
             // Determina il path di storage
-            $category = $request->category;
+            $category = $request->string('category')->toString();
             $year = now()->year;
             $month = now()->format('m');
             $storagePath = "documents/{$category}/{$year}/{$month}";
@@ -109,9 +109,9 @@ class DocumentController extends Controller
                 'file_size' => $file->getSize(),
                 'mime_type' => $file->getMimeType(),
                 'category' => $category,
-                'type' => $this->determineDocumentType($file->getMimeType()),
-                'description' => $request->description,
-                'tournament_id' => $request->tournament_id,
+                'type' => $this->determineDocumentType($file->getMimeType() ?? ''),
+                'description' => $request->string('description')->toString() ?: null,
+                'tournament_id' => $request->integer('tournament_id'),
                 'zone_id' => $user->zone_id,
                 'uploader_id' => $user->id,
                 'is_public' => $request->boolean('is_public', false),
@@ -143,7 +143,7 @@ class DocumentController extends Controller
     /**
      * Download a document
      */
-    public function download(Document $document)
+    public function download(Document $document): BinaryFileResponse
     {
         $this->authorizeDocumentAccess($document);
 
@@ -238,7 +238,7 @@ class DocumentController extends Controller
      */
     private function authorizeDocumentAccess(Document $document, bool $requireOwnership = false): void
     {
-        $user = Auth::user();
+        $user = $this->authUser();
 
         // Super admin e national admin possono accedere a tutto
         if ($user->isNationalAdmin()) {

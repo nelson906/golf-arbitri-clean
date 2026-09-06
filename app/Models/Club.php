@@ -10,11 +10,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
  * @property string $name
- * @property int|null $zone_id
+ * @property int $zone_id
  * @property string|null $code
  * @property string|null $city
  * @property string|null $province
@@ -24,7 +26,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $website
  * @property bool $is_active
  * @property string|null $notes
- * @property-read Zone|null $zone
+ * @property-read Zone $zone  FK NOT NULL
  * @property-read Collection<int, Tournament> $tournaments
  *
  * @method static Builder|Club visible(?User $user = null)
@@ -33,6 +35,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Club extends Model
 {
+    /** @use HasFactory<\Database\Factories\ClubFactory> */
     use HasFactory;
 
     protected $fillable = [
@@ -51,31 +54,40 @@ class Club extends Model
         'is_active' => 'boolean',
     ];
 
+    // ── RELAZIONI ───────────────────────────────────────────────────
     /**
-     * RELAZIONI
+     * @return BelongsTo<Zone, $this>
      */
-    public function zone()
+    public function zone(): BelongsTo
     {
         return $this->belongsTo(Zone::class);
     }
 
-    public function tournaments()
+    /**
+     * @return HasMany<Tournament, $this>
+     */
+    public function tournaments(): HasMany
     {
         return $this->hasMany(Tournament::class);
     }
 
+    // ── SCOPES ──────────────────────────────────────────────────────
     /**
-     * SCOPES
+     * @param  Builder<Club>  $query
+     * @return Builder<Club>
      */
-    public function scopeActive($query)
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
     }
 
     /**
      * Order by name
+     *
+     * @param  Builder<Club>  $query
+     * @return Builder<Club>
      */
-    public function scopeOrdered($query)
+    public function scopeOrdered(Builder $query): Builder
     {
         return $query->orderBy('name');
     }
@@ -87,10 +99,10 @@ class Club extends Model
      * - super_admin/national_admin: vedono tutto
      * - admin zonale: solo circoli della propria zona
      *
-     * @param  Builder  $query
-     * @return Builder
+     * @param  Builder<Club>  $query
+     * @return Builder<Club>
      */
-    public function scopeVisible($query, ?User $user = null)
+    public function scopeVisible(Builder $query, ?User $user = null): Builder
     {
         $user = $user ?? auth()->user();
 

@@ -3,6 +3,8 @@
 namespace Tests\Unit\Enums;
 
 use App\Enums\AssignmentRole;
+use App\Models\Assignment;
+use App\Models\User;
 use Illuminate\Support\Collection;
 use Tests\TestCase;
 
@@ -101,12 +103,18 @@ class AssignmentRoleTest extends TestCase
     // sortCollection()
     // ──────────────────────────────────────────────
 
-    private function makeAssignment(string $role, string $name): object
+    private function makeAssignment(string $role, string $name): Assignment
     {
-        return (object) [
-            'role' => $role,
-            'user' => (object) ['name' => $name],
-        ];
+        // Model non persistiti: setRelation() collega lo User in memoria,
+        // sortCollection() legge solo ->role e ->user->name.
+        $user = new User;
+        $user->name = $name;
+
+        $assignment = new Assignment;
+        $assignment->role = $role;
+        $assignment->setRelation('user', $user);
+
+        return $assignment;
     }
 
     public function test_sort_collection_director_comes_first(): void
@@ -119,9 +127,9 @@ class AssignmentRoleTest extends TestCase
 
         $sorted = AssignmentRole::sortCollection($assignments)->values();
 
-        $this->assertEquals('Direttore di Torneo', $sorted[0]->role);
-        $this->assertEquals('Arbitro',             $sorted[1]->role);
-        $this->assertEquals('Osservatore',         $sorted[2]->role);
+        $this->assertEquals('Direttore di Torneo', $sorted->get(0)?->role);
+        $this->assertEquals('Arbitro',             $sorted->get(1)?->role);
+        $this->assertEquals('Osservatore',         $sorted->get(2)?->role);
     }
 
     public function test_sort_collection_alphabetical_within_same_role(): void
@@ -134,9 +142,9 @@ class AssignmentRoleTest extends TestCase
 
         $sorted = AssignmentRole::sortCollection($assignments)->values();
 
-        $this->assertEquals('Alpha', $sorted[0]->user->name);
-        $this->assertEquals('Mele',  $sorted[1]->user->name);
-        $this->assertEquals('Zeta',  $sorted[2]->user->name);
+        $this->assertEquals('Alpha', $sorted->get(0)?->user->name);
+        $this->assertEquals('Mele',  $sorted->get(1)?->user->name);
+        $this->assertEquals('Zeta',  $sorted->get(2)?->user->name);
     }
 
     public function test_sort_collection_handles_unknown_role_gracefully(): void
@@ -150,7 +158,7 @@ class AssignmentRoleTest extends TestCase
         $sorted = AssignmentRole::sortCollection($assignments)->values();
 
         // Il direttore deve venire prima, il ruolo sconosciuto (peso 999) dopo
-        $this->assertEquals('Direttore di Torneo', $sorted[0]->role);
+        $this->assertEquals('Direttore di Torneo', $sorted->get(0)?->role);
     }
 
     public function test_sort_collection_preserves_count(): void
@@ -170,7 +178,6 @@ class AssignmentRoleTest extends TestCase
     {
         $sorted = AssignmentRole::sortCollection(new Collection());
 
-        $this->assertInstanceOf(Collection::class, $sorted);
         $this->assertCount(0, $sorted);
     }
 

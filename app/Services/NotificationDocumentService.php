@@ -6,6 +6,7 @@ use App\Helpers\ZoneHelper;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -20,6 +21,8 @@ class NotificationDocumentService
 
     /**
      * Genera i documenti iniziali per una notifica
+     *
+     * @return array<string, string>
      */
     public function generateInitialDocuments(
         Tournament $tournament,
@@ -100,6 +103,8 @@ class NotificationDocumentService
 
     /**
      * Rigenera tutti i documenti con le clausole aggiornate
+     *
+     * @return array<string, string>
      */
     public function regenerateAllDocuments(TournamentNotification $notification): array
     {
@@ -198,6 +203,8 @@ class NotificationDocumentService
 
     /**
      * Carica un documento manualmente
+     *
+     * @param  \Illuminate\Http\UploadedFile  $file
      */
     public function uploadDocument(
         TournamentNotification $notification,
@@ -209,7 +216,7 @@ class NotificationDocumentService
 
         $filename = str_replace(' ', '_', $file->getClientOriginalName());
         // FIX M2: disk privato (era hardcoded 'public')
-        $file->storeAs($this->docsRoot()."/{$zone}/generated", $filename, config('golf.documents.disk', 'docs'));
+        $file->storeAs($this->docsRoot()."/{$zone}/generated", $filename, Config::string('golf.documents.disk', 'docs'));
 
         Log::info('Document uploaded', [
             'notification_id' => $notification->id,
@@ -222,6 +229,8 @@ class NotificationDocumentService
 
     /**
      * Ottiene lo stato dei documenti
+     *
+     * @return array<string, mixed>
      */
     public function getDocumentsStatus(TournamentNotification $notification): array
     {
@@ -269,6 +278,8 @@ class NotificationDocumentService
 
     /**
      * Verifica se i documenti esistono
+     *
+     * @return array<string, mixed>
      */
     public function checkDocumentsExist(TournamentNotification $notification): array
     {
@@ -311,14 +322,34 @@ class NotificationDocumentService
 
     /**
      * Parse documents field (può essere string JSON o array)
+     *
+     * `documents` e' una colonna JSON: { convocation: filename, club_letter: filename }.
+     * json_decode puo' restituire qualsiasi cosa (o null su JSON malformato) e le
+     * righe storiche la contengono come stringa: si filtra ai soli valori stringa
+     * invece di dichiarare una forma che il type system crederebbe sulla parola.
+     *
+     * @param  string|array<array-key, mixed>|null  $documents
+     * @return array<string, string>
      */
     private function parseDocuments($documents): array
     {
         if (is_string($documents)) {
-            return json_decode($documents, true) ?? [];
+            $documents = json_decode($documents, true);
         }
 
-        return $documents ?? [];
+        if (! is_array($documents)) {
+            return [];
+        }
+
+        $parsed = [];
+
+        foreach ($documents as $key => $value) {
+            if (is_string($key) && is_string($value)) {
+                $parsed[$key] = $value;
+            }
+        }
+
+        return $parsed;
     }
 
     /**
@@ -366,7 +397,7 @@ class NotificationDocumentService
      */
     private function docsRoot(): string
     {
-        return config('golf.documents.storage_path', 'convocazioni');
+        return Config::string('golf.documents.storage_path', 'convocazioni');
     }
 
     /**
@@ -379,6 +410,6 @@ class NotificationDocumentService
      */
     private function disk(): \Illuminate\Contracts\Filesystem\Filesystem
     {
-        return Storage::disk(config('golf.documents.disk', 'docs'));
+        return Storage::disk(Config::string('golf.documents.disk', 'docs'));
     }
 }

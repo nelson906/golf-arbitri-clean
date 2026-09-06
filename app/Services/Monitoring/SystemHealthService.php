@@ -4,12 +4,15 @@ namespace App\Services\Monitoring;
 
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 
 class SystemHealthService
 {
     /**
      * Esegue health check completo del sistema.
+     *
+     * @return array<string, mixed>
      */
     public function performHealthCheck(): array
     {
@@ -28,12 +31,14 @@ class SystemHealthService
             'timestamp' => Carbon::now()->toISOString(),
             'checks' => $checks,
             'uptime' => $this->getUptime(),
-            'version' => config('app.version', '1.0.0'),
+            'version' => Config::string('app.version', '1.0.0'),
         ];
     }
 
     /**
      * Ottiene stato di salute generale.
+     *
+     * @return array<string, mixed>
      */
     public function getHealthStatus(): array
     {
@@ -58,6 +63,8 @@ class SystemHealthService
 
     /**
      * Verifica connessione database.
+     *
+     * @return array<string, mixed>
      */
     public function checkDatabase(): array
     {
@@ -81,6 +88,8 @@ class SystemHealthService
 
     /**
      * Verifica funzionamento cache.
+     *
+     * @return array<string, mixed>
      */
     public function checkCache(): array
     {
@@ -94,7 +103,7 @@ class SystemHealthService
 
             return [
                 'status' => $retrieved === $testValue ? 'healthy' : 'unhealthy',
-                'driver' => config('cache.default'),
+                'driver' => Config::string('cache.default'),
             ];
         } catch (\Exception $e) {
             return [
@@ -106,6 +115,8 @@ class SystemHealthService
 
     /**
      * Verifica accesso storage.
+     *
+     * @return array<string, mixed>
      */
     public function checkStorage(): array
     {
@@ -129,23 +140,27 @@ class SystemHealthService
 
     /**
      * Verifica configurazione mail.
+     *
+     * @return array<string, mixed>
      */
     public function checkMail(): array
     {
         return [
             'status' => 'healthy',
-            'driver' => config('mail.default'),
+            'driver' => Config::string('mail.default'),
         ];
     }
 
     /**
      * Verifica stato queue.
+     *
+     * @return array<string, mixed>
      */
     public function checkQueue(): array
     {
         return [
             'status' => 'healthy',
-            'driver' => config('queue.default'),
+            'driver' => Config::string('queue.default'),
             'size' => $this->getQueueSize(),
         ];
     }

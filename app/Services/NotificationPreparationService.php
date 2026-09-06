@@ -30,7 +30,7 @@ class NotificationPreparationService
      */
     public function prepareNotification(Tournament $tournament): TournamentNotification
     {
-        $isNational = $tournament->tournamentType?->is_national ?? false;
+        $isNational = $tournament->tournamentType->is_national ?? false;
         $notificationType = $isNational ? 'crc_referees' : null;
 
         $total = $tournament->assignments->count() + 1;
@@ -55,6 +55,8 @@ class NotificationPreparationService
 
     /**
      * Salva le clausole selezionate per una notifica
+     *
+     * @param  array<string, mixed>  $clauses
      */
     public function saveClauseSelections(
         TournamentNotification $notification,
@@ -98,6 +100,8 @@ class NotificationPreparationService
 
     /**
      * Carica i dati necessari per il form di preparazione notifica
+     *
+     * @return array<string, mixed>
      */
     public function loadFormData(Tournament $tournament, ?TournamentNotification $notification = null): array
     {
@@ -185,6 +189,8 @@ class NotificationPreparationService
      * aggiunte sezione di zona ed email aggiuntive (prima inviate ma
      * invisibili in anteprima) e filtro is_active sugli istituzionali
      * (stesso filtro del NotificationRecipientBuilder in fase di invio).
+     *
+     * @return array<string, mixed>
      */
     public function prepareEmailPreview(
         TournamentNotification $notification,

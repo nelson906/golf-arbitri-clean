@@ -3,6 +3,7 @@
 namespace App\Helpers;
 
 use App\Models\Tournament;
+use Illuminate\Support\Facades\Config;
 
 /**
  * Helper centralizzato per la gestione delle zone
@@ -21,9 +22,10 @@ class ZoneHelper
             return 'SZR0';
         }
 
-        $mapping = config('golf.zones.folder_mapping', []);
+        $mapping = Config::array('golf.zones.folder_mapping', []);
+        $code = $mapping[$zoneId] ?? null;
 
-        return $mapping[$zoneId] ?? 'SZR'.$zoneId;
+        return is_string($code) ? $code : 'SZR'.$zoneId;
     }
 
     /**
@@ -36,7 +38,7 @@ class ZoneHelper
     {
         // Se è nazionale, usa il codice CRC
         if (self::isTournamentNational($tournament)) {
-            return config('golf.zones.national_folder_code', 'CRC');
+            return Config::string('golf.zones.national_folder_code', 'CRC');
         }
 
         // Altrimenti usa la zona del circolo
@@ -50,19 +52,29 @@ class ZoneHelper
      */
     public static function isTournamentNational(Tournament $tournament): bool
     {
-        return $tournament->is_national
-            || ($tournament->tournamentType && $tournament->tournamentType->is_national);
+        // NB: la colonna is_national sta su tournament_types, non su tournaments.
+        return (bool) ($tournament->tournamentType->is_national ?? false);
     }
 
     /**
      * Ottiene tutti i codici cartella disponibili
+     *
+     * @return list<string>
      */
     public static function getAllFolderCodes(): array
     {
-        $mapping = config('golf.zones.folder_mapping', []);
-        $nationalCode = config('golf.zones.national_folder_code', 'CRC');
+        $mapping = Config::array('golf.zones.folder_mapping', []);
+        $nationalCode = Config::string('golf.zones.national_folder_code', 'CRC');
 
-        return array_merge(array_values($mapping), [$nationalCode]);
+        $codes = [];
+        foreach ($mapping as $code) {
+            if (is_string($code)) {
+                $codes[] = $code;
+            }
+        }
+        $codes[] = $nationalCode;
+
+        return $codes;
     }
 
     /**
@@ -85,7 +97,7 @@ class ZoneHelper
      */
     public static function getEmailPattern(int $zoneId): string
     {
-        $pattern = config('golf.zones.default_email_pattern', 'szr{zone_id}@federgolf.it');
+        $pattern = Config::string('golf.zones.default_email_pattern', 'szr{zone_id}@federgolf.it');
 
         return str_replace('{zone_id}', (string) $zoneId, $pattern);
     }

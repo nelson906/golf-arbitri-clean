@@ -4,6 +4,7 @@ namespace App\Services\Statistics;
 
 use App\Models\User;
 use App\Traits\HasZoneVisibility;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class RefereeStatsService
@@ -12,6 +13,8 @@ class RefereeStatsService
 
     /**
      * Ottiene statistiche generali sugli arbitri.
+     *
+     * @return array<string, mixed>
      */
     public function getGeneralStats(?User $user = null): array
     {
@@ -27,6 +30,7 @@ class RefereeStatsService
 
     /**
      * Ottiene arbitri per livello.
+     * @return \Illuminate\Support\Collection<array-key, mixed>
      */
     public function getByLevel(?User $user = null): Collection
     {
@@ -42,6 +46,7 @@ class RefereeStatsService
 
     /**
      * Ottiene arbitri per zona.
+     * @return \Illuminate\Support\Collection<array-key, mixed>
      */
     public function getByZone(?User $user = null): Collection
     {
@@ -115,6 +120,8 @@ class RefereeStatsService
 
     /**
      * Ottiene statistiche attività arbitri.
+     *
+     * @return array<string, mixed>
      */
     public function getActivityStats(?User $user = null): array
     {
@@ -124,10 +131,10 @@ class RefereeStatsService
         $referees = $query->withCount(['assignments', 'availabilities'])->get();
 
         return [
-            'avg_assignments' => round($referees->avg('assignments_count'), 2),
+            'avg_assignments' => round((float) $referees->avg('assignments_count'), 2),
             'max_assignments' => $referees->max('assignments_count'),
             'min_assignments' => $referees->min('assignments_count'),
-            'avg_availabilities' => round($referees->avg('availabilities_count'), 2),
+            'avg_availabilities' => round((float) $referees->avg('availabilities_count'), 2),
         ];
     }
 
@@ -151,6 +158,8 @@ class RefereeStatsService
 
     /**
      * Ottiene statistiche complete per la vista arbitri.
+     *
+     * @return array<string, mixed>
      */
     public function getFullStats(?User $user = null): array
     {
@@ -170,8 +179,10 @@ class RefereeStatsService
 
     /**
      * Query base con visibilità applicata.
+     *
+     * @return Builder<\App\Models\User>
      */
-    protected function baseQuery(?User $user = null)
+    protected function baseQuery(?User $user = null): Builder
     {
         $user = $user ?? auth()->user();
         $query = User::query()->where('user_type', '=', 'referee');

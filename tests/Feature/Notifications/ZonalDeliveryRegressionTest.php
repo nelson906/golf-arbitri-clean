@@ -9,6 +9,7 @@ use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Models\TournamentType;
 use App\Models\User;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -86,10 +87,12 @@ class ZonalDeliveryRegressionTest extends TestCase
 
         // Documenti reali su disco nel percorso che NotificationService usa
         // per costruire gli allegati (convocazione + lettera circolo).
-        $zoneCode = ZoneHelper::getFolderCodeForTournament($tournament->fresh(['club', 'tournamentType']));
-        $docsRoot = config('golf.documents.storage_path');
+        $freshTournament = $tournament->fresh(['club', 'tournamentType']);
+        $this->assertNotNull($freshTournament);
+        $zoneCode = ZoneHelper::getFolderCodeForTournament($freshTournament);
+        $docsRoot = Config::string('golf.documents.storage_path');
         // FIX M2 (audit 2026-07): documenti sul disk privato, non più app/public
-        $dir = \Illuminate\Support\Facades\Storage::disk(config('golf.documents.disk', 'docs'))
+        $dir = \Illuminate\Support\Facades\Storage::disk(Config::string('golf.documents.disk', 'docs'))
             ->path("{$docsRoot}/{$zoneCode}/generated");
         File::ensureDirectoryExists($dir);
         file_put_contents($dir.'/test_convocation.docx', 'fake-docx-convocazione');
@@ -108,6 +111,10 @@ class ZonalDeliveryRegressionTest extends TestCase
         return [$tournament, $refA, $refB, $institutional, $notification];
     }
 
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return \Illuminate\Testing\TestResponse<\Illuminate\Http\Response>
+     */
     private function postSend(Tournament $tournament, array $overrides = []): \Illuminate\Testing\TestResponse
     {
         return $this->post(
@@ -153,13 +160,13 @@ class ZonalDeliveryRegressionTest extends TestCase
             ],
         ]);
 
-        app(\App\Services\NotificationService::class)->send($notification->fresh());
+        app(\App\Services\NotificationService::class)->send($notification->refresh());
 
         // UNA sola email
         Mail::assertQueued(ClubNotificationMail::class, 1);
 
         /** @var ClubNotificationMail $mailable */
-        $mailable = Mail::queued(ClubNotificationMail::class)->first();
+        $mailable = Mail::queued(ClubNotificationMail::class)->firstOrFail();
 
         // COMPETENZA: TO = solo il circolo
         $this->assertTrue($mailable->hasTo('circolo@example.test'),
@@ -181,10 +188,11 @@ class ZonalDeliveryRegressionTest extends TestCase
         }
 
         // ALLEGATI reali da disco (convocazione + lettera/facsimile)
-        $attachmentNames = array_map(
-            fn ($a) => $a->as,
-            $mailable->attachments()
-        );
+        $attachmentNames = [];
+        foreach ($mailable->attachments() as $allegato) {
+            $this->assertInstanceOf(\Illuminate\Mail\Mailables\Attachment::class, $allegato);
+            $attachmentNames[] = $allegato->as;
+        }
         $this->assertContains('Lettera_Circolo.docx', $attachmentNames,
             'REGRESSIONE: manca la lettera circolo (facsimile) in allegato.');
         $this->assertContains('Convocazione.docx', $attachmentNames,
@@ -193,7 +201,11 @@ class ZonalDeliveryRegressionTest extends TestCase
         // RENDER reale della view (ciò che la queue farebbe al momento
         // dell'invio): non deve lanciare e deve contenere i dati del torneo.
         $html = $mailable->render();
-        $this->assertStringContainsString($tournament->club->name, $html,
+
+        // e() come fa Blade con {{ }}: il nome del circolo arriva da fake()->city()
+        // e puo' contenere un apostrofo ("Borgo Filippo nell'emilia"), che nell'HTML
+        // diventa &#039;. Senza escape il confronto falliva a seconda del seed.
+        $this->assertStringContainsString(e((string) $tournament->club?->name), $html,
             'REGRESSIONE: il corpo email non contiene il nome del circolo.');
 
         // FIX C2 (audit 2026-07): il messaggio dell'admin (metadata['message'])
@@ -214,6 +226,7 @@ class ZonalDeliveryRegressionTest extends TestCase
 
         // Stato persistito coerente
         $final = $notification->fresh();
+        $this->assertNotNull($final);
         $this->assertEquals('sent', $final->status);
         $this->assertEquals(0, $final->metadata['error_count'] ?? -1);
     }
@@ -277,7 +290,7 @@ class ZonalDeliveryRegressionTest extends TestCase
         $response->assertRedirect(route('admin.tournaments.show-assignment-form', $tournament));
 
         Mail::assertNothingOutgoing();
-        $this->assertNotEquals('sent', $notification->fresh()->status,
+        $this->assertNotEquals('sent', $notification->refresh()->status,
             'REGRESSIONE D2: la notifica risulta "sent" ma non è stata inviata a nessuno.');
     }
 
@@ -293,7 +306,7 @@ class ZonalDeliveryRegressionTest extends TestCase
         [$tournament, $refA, $refB, $institutional] = $this->setupFullZonalScenario();
 
         // Circolo SENZA email → sendToClub fallirà silenziosamente
-        $tournament->club->update(['email' => '']); // colonna NOT NULL: '' = senza email
+        $tournament->club?->update(['email' => '']); // colonna NOT NULL: '' = senza email
 
         $this->actingAsSuperAdmin();
 

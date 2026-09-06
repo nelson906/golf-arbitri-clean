@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('assignment_id')->nullable()->constrained('assignments')->onDelete('cascade');
-            $table->foreignId('tournament_id')->nullable()->constrained('tournaments')->onDelete('cascade');
+            $table->foreignId('assignment_id')->nullable()->constrained('assignments')->cascadeOnDelete();
+            $table->foreignId('tournament_id')->nullable()->constrained('tournaments')->cascadeOnDelete();
             $table->enum('recipient_type', ['referee', 'club', 'institutional']);
             $table->string('recipient_email')->nullable();
             $table->string('recipient_name')->nullable();
@@ -39,7 +39,7 @@ return new class extends Migration
 
         Schema::create('tournament_notifications', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tournament_id')->constrained('tournaments')->onDelete('cascade');
+            $table->foreignId('tournament_id')->constrained('tournaments')->cascadeOnDelete();
             $table->string('notification_type', 50)->nullable();
             $table->text('referee_list')->nullable();
             $table->json('recipients')->nullable();
@@ -55,7 +55,7 @@ return new class extends Migration
             $table->timestamp('prepared_at')->nullable();
             $table->timestamp('configured_at')->nullable();
             $table->timestamp('generated_at')->nullable();
-            $table->foreignId('sent_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->foreignId('sent_by')->nullable()->constrained('users')->nullOnDelete();
             $table->json('details')->nullable();
             $table->json('attachments')->nullable();
             $table->timestamps();

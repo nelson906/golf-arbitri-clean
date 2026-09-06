@@ -18,7 +18,7 @@ class ClubTest extends TestCase
      */
     public function test_club_belongs_to_zone(): void
     {
-        $zone = Zone::first();
+        $zone = Zone::firstOrFail();
         $club = Club::factory()->create(['zone_id' => $zone->id]);
 
         $this->assertInstanceOf(Zone::class, $club->zone);
@@ -34,7 +34,7 @@ class ClubTest extends TestCase
 
         Tournament::factory()->count(3)->create(['club_id' => $club->id]);
 
-        $this->assertCount(3, $club->fresh()->tournaments);
+        $this->assertCount(3, $club->refresh()->tournaments);
     }
 
     // ==========================================
@@ -68,8 +68,8 @@ class ClubTest extends TestCase
 
         $clubs = Club::ordered()->get();
 
-        $this->assertEquals('Alpha Club', $clubs->first()->name);
-        $this->assertEquals('Zebra Club', $clubs->last()->name);
+        $this->assertEquals('Alpha Club', $clubs->firstOrFail()->name);
+        $this->assertEquals('Zebra Club', $clubs->last()?->name);
     }
 
     /**

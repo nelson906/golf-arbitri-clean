@@ -2,12 +2,15 @@
 
 namespace App\Helpers;
 
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
 
 class SystemOperations
 {
     /**
      * Esegui comando shell in modo sicuro
+     *
+     * @return array{success: bool, output: list<string>, exit_code: int}
      */
     private static function execCommand(string $command): array
     {
@@ -120,6 +123,8 @@ class SystemOperations
 
     /**
      * Composer dump-autoload (aggiornato)
+     *
+     * @return array{success: bool, output: string}
      */
     public static function composerDumpAutoload(): array
     {
@@ -143,6 +148,8 @@ class SystemOperations
 
     /**
      * Lista pacchetti Composer outdated (aggiornato)
+     *
+     * @return array{success: bool, packages: list<string>}
      */
     public static function composerOutdated(): array
     {
@@ -193,6 +200,8 @@ class SystemOperations
 
     /**
      * Git status
+     *
+     * @return array<string, mixed>
      */
     public static function gitStatus(): array
     {
@@ -216,20 +225,22 @@ class SystemOperations
 
     /**
      * Backup Database MySQL
+     *
+     * @return array{success: bool, output: string, filename: string, filepath: string, size: int}
      */
     public static function backupDatabase(): array
     {
-        $connection = config('database.default');
-        $driver = config("database.connections.{$connection}.driver");
+        $connection = Config::string('database.default');
+        $driver = Config::string("database.connections.{$connection}.driver");
 
         if ($driver !== 'mysql') {
-            return ['success' => false, 'output' => 'Solo MySQL supportato'];
+            return self::backupFailure('Solo MySQL supportato');
         }
 
-        $database = config("database.connections.{$connection}.database");
-        $username = config("database.connections.{$connection}.username");
-        $password = config("database.connections.{$connection}.password");
-        $host = config("database.connections.{$connection}.host");
+        $database = Config::string("database.connections.{$connection}.database");
+        $username = Config::string("database.connections.{$connection}.username");
+        $password = Config::string("database.connections.{$connection}.password");
+        $host = Config::string("database.connections.{$connection}.host");
 
         $backupPath = storage_path('backups/database');
 
@@ -242,7 +253,7 @@ class SystemOperations
 
         // Verifica se mysqldump esiste
         if (! self::commandExists('mysqldump')) {
-            return ['success' => false, 'output' => 'mysqldump non disponibile'];
+            return self::backupFailure('mysqldump non disponibile');
         }
 
         $command = sprintf(
@@ -258,6 +269,10 @@ class SystemOperations
 
         return [
             'success' => $result['success'],
+            // FIX: prima 'output' mancava in questo ramo, ma ArubaToolsController
+            // la legge quando success e' false — un mysqldump fallito produceva
+            // un "Undefined array key" invece del messaggio d'errore.
+            'output' => implode("\n", $result['output']),
             'filename' => $filename,
             'filepath' => $filepath,
             'size' => File::exists($filepath) ? File::size($filepath) : 0,
@@ -265,7 +280,26 @@ class SystemOperations
     }
 
     /**
+     * Fallimento di backupDatabase() nella stessa forma del successo, cosi'
+     * il chiamante puo' leggere 'output' senza controllare quale ramo e'.
+     *
+     * @return array{success: bool, output: string, filename: string, filepath: string, size: int}
+     */
+    private static function backupFailure(string $motivo): array
+    {
+        return [
+            'success' => false,
+            'output' => $motivo,
+            'filename' => '',
+            'filepath' => '',
+            'size' => 0,
+        ];
+    }
+
+    /**
      * Lista backup database
+     *
+     * @return list<array{filename: string, size: int, date: string, path: string}>
      */
     public static function listDatabaseBackups(): array
     {
@@ -299,6 +333,8 @@ class SystemOperations
 
     /**
      * Ripristina Database da backup
+     *
+     * @return array{success: bool, output: string}
      */
     public static function restoreDatabase(string $filename): array
     {
@@ -316,11 +352,11 @@ class SystemOperations
             return ['success' => false, 'output' => 'File backup non trovato'];
         }
 
-        $connection = config('database.default');
-        $database = config("database.connections.{$connection}.database");
-        $username = config("database.connections.{$connection}.username");
-        $password = config("database.connections.{$connection}.password");
-        $host = config("database.connections.{$connection}.host");
+        $connection = Config::string('database.default');
+        $database = Config::string("database.connections.{$connection}.database");
+        $username = Config::string("database.connections.{$connection}.username");
+        $password = Config::string("database.connections.{$connection}.password");
+        $host = Config::string("database.connections.{$connection}.host");
 
         if (! self::commandExists('mysql')) {
             return ['success' => false, 'output' => 'mysql command non disponibile'];
@@ -349,6 +385,8 @@ class SystemOperations
 
     /**
      * Ottieni dimensione directory
+     *
+     * @return array<string, mixed>
      */
     public static function getDirectorySize(string $path): array
     {
@@ -377,6 +415,8 @@ class SystemOperations
 
     /**
      * Lista processi PHP attivi
+     *
+     * @return array<string, mixed>
      */
     public static function listPhpProcesses(): array
     {
@@ -398,6 +438,8 @@ class SystemOperations
 
     /**
      * Ottieni utilizzo risorse server
+     *
+     * @return array<string, mixed>
      */
     public static function getServerLoad(): array
     {
@@ -448,6 +490,8 @@ class SystemOperations
 
     /**
      * Verifica permessi file sensibili
+     *
+     * @return array<string, mixed>
      */
     public static function checkSensitiveFiles(): array
     {
@@ -480,6 +524,8 @@ class SystemOperations
 
     /**
      * Cerca file potenzialmente pericolosi
+     *
+     * @return array<string, mixed>
      */
     public static function scanForSuspiciousFiles(): array
     {

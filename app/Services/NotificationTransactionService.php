@@ -102,6 +102,9 @@ class NotificationTransactionService
 
     /**
      * Salva una notifica come bozza con tutti i dati
+     *
+     * @param  array<string, mixed>  $metadata
+     * @param  array<string, mixed>  $clauses
      */
     public function saveAsDraft(
         TournamentNotification $notification,
@@ -153,6 +156,8 @@ class NotificationTransactionService
 
     /**
      * Salva le clausole all'interno di una transazione esistente
+     *
+     * @param  array<string, mixed>  $clauses
      */
     private function saveClausesInTransaction(
         TournamentNotification $notification,

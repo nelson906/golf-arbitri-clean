@@ -14,6 +14,10 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -25,7 +29,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string|null $last_name
  * @property string $email
  * @property string $password
- * @property UserType|null $user_type
+ * @property UserType $user_type
  * @property int|null $zone_id
  * @property string|null $referee_code
  * @property string|null $level
@@ -52,6 +56,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens;
+    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory;
     use MustVerifyEmailTrait;
     use Notifiable;
@@ -109,25 +114,37 @@ class User extends Authenticatable implements MustVerifyEmail
      */
 
     // Zona
-    public function zone()
+    /**
+     * @return BelongsTo<Zone, $this>
+     */
+    public function zone(): BelongsTo
     {
         return $this->belongsTo(Zone::class);
     }
 
     // Assegnazioni
-    public function assignments()
+    /**
+     * @return HasMany<Assignment, $this>
+     */
+    public function assignments(): HasMany
     {
         return $this->hasMany(Assignment::class, 'user_id');
     }
 
     // Disponibilità
-    public function availabilities()
+    /**
+     * @return HasMany<Availability, $this>
+     */
+    public function availabilities(): HasMany
     {
         return $this->hasMany(Availability::class, 'user_id');
     }
 
     // Tornei (attraverso assignments)
-    public function tournaments()
+    /**
+     * @return BelongsToMany<Tournament, $this>
+     */
+    public function tournaments(): BelongsToMany
     {
         return $this->belongsToMany(Tournament::class, 'assignments', 'user_id', 'tournament_id')
             ->withPivot('role', 'notes')
@@ -135,7 +152,10 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     // Storico carriera
-    public function careerHistory()
+    /**
+     * @return HasOne<RefereeCareerHistory, $this>
+     */
+    public function careerHistory(): HasOne
     {
         return $this->hasOne(RefereeCareerHistory::class);
     }
@@ -143,14 +163,20 @@ class User extends Authenticatable implements MustVerifyEmail
     // NON c'è una relazione 'referee' su User stesso!
     // Se il codice cerca $user->referee, probabilmente è un errore
 
+    // ── SCOPES ──────────────────────────────────────────────────────
     /**
-     * SCOPES
+     * @param  Builder<User>  $query
+     * @return Builder<User>
      */
     public function scopeReferees(Builder $query): Builder
     {
         return $query->where('user_type', UserType::Referee->value);
     }
 
+    /**
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
@@ -163,12 +189,15 @@ class User extends Authenticatable implements MustVerifyEmail
      * - super_admin:    vede tutto
      * - national_admin: solo arbitri nazionali/internazionali
      * - admin zonale:   solo arbitri della propria zona
+     *
+     * @param  Builder<User>  $query
+     * @return Builder<User>
      */
     public function scopeVisible(Builder $query, ?self $user = null): Builder
     {
         $user = $user ?? auth()->user();
 
-        if (! $user || ! $user->user_type) {
+        if (! $user) {
             return $query->whereRaw('1 = 0');
         }
 
@@ -205,7 +234,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     public function isAdmin(): bool
     {
-        return $this->user_type?->isAdmin() ?? false;
+        return $this->user_type->isAdmin();
     }
 
     public function isReferee(): bool
@@ -220,7 +249,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isNationalAdmin(): bool
     {
-        return $this->user_type?->isNational() ?? false;
+        return $this->user_type->isNational();
     }
 
     public function isZoneAdmin(): bool
@@ -255,7 +284,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'zone_admin'                            => $this->isZoneAdmin(),
             'admin', 'administrator'                => $this->isAdmin(),
             'referee'       => $this->isReferee(),
-            default         => $this->user_type?->value === $role,
+            default         => $this->user_type->value === $role,
         };
     }
 

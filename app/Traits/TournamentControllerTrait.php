@@ -32,11 +32,13 @@ trait TournamentControllerTrait
 
     /**
      * Applica filtri comuni alla query tornei
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<\App\Models\Tournament>  $query
      */
     protected function applyCommonFilters($query, Request $request): void
     {
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = $request->string('search')->toString();
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhereHas('club', function ($q2) use ($search) {
@@ -47,17 +49,18 @@ trait TournamentControllerTrait
 
         if ($request->filled('zone_id')) {
             $query->whereHas('club', function ($q) use ($request) {
-                $q->where('zone_id', $request->zone_id);
+                $q->where('zone_id', $request->integer('zone_id'));
             });
         }
 
         if ($request->filled('tournament_type_id')) {
-            $query->where('tournament_type_id', $request->tournament_type_id);
+            $query->where('tournament_type_id', $request->integer('tournament_type_id'));
         }
 
         if ($request->filled('month')) {
-            $startOfMonth = Carbon::parse($request->month)->startOfMonth();
-            $endOfMonth = Carbon::parse($request->month)->endOfMonth();
+            $month = $request->string('month')->toString();
+            $startOfMonth = Carbon::parse($month)->startOfMonth();
+            $endOfMonth = Carbon::parse($month)->endOfMonth();
             $query->where(function ($q) use ($startOfMonth, $endOfMonth) {
                 $q->whereBetween('start_date', [$startOfMonth, $endOfMonth])
                     ->orWhereBetween('end_date', [$startOfMonth, $endOfMonth])
@@ -76,6 +79,8 @@ trait TournamentControllerTrait
 
     /**
      * Calcola days_until_deadline per ogni torneo
+     *
+     * @param  \Illuminate\Pagination\LengthAwarePaginator<int, \App\Models\Tournament>  $tournaments
      */
     protected function addDeadlineInfo($tournaments): void
     {
@@ -94,11 +99,18 @@ trait TournamentControllerTrait
 
     /**
      * Prepara dati comuni per il calendario
+     *
+     * @param  \Illuminate\Pagination\LengthAwarePaginator<int, \App\Models\Tournament>|\Illuminate\Support\Collection<int, \App\Models\Tournament>  $tournaments
+     * @param  \App\Models\User  $user
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
      */
     protected function prepareCalendarData($tournaments, $user, string $mode, array $options = []): array
     {
         $calendarData = $this->calendarService->prepareFullCalendarData(
-            $tournaments,
+            $tournaments instanceof \Illuminate\Support\Collection
+                ? $tournaments
+                : $tournaments->getCollection(),
             $user,
             $mode,
             array_merge([
@@ -118,6 +130,9 @@ trait TournamentControllerTrait
 
     /**
      * Calcola statistiche tornei
+     *
+     * @param  \Illuminate\Pagination\LengthAwarePaginator<int, \App\Models\Tournament>|\Illuminate\Support\Collection<int, \App\Models\Tournament>  $tournaments
+     * @return array<string, mixed>
      */
     protected function calculateTournamentStats($tournaments): array
     {

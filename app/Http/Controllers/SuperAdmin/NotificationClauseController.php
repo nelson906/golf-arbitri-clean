@@ -4,6 +4,9 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use App\Models\NotificationClause;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,13 +17,13 @@ class NotificationClauseController extends Controller
     /**
      * Display a listing of clauses
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         $query = NotificationClause::query();
 
         // Filtro ricerca testuale
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = $request->string('search')->toString();
             $query->where(function ($q) use ($search) {
                 $q->where('code', 'like', "%{$search}%")
                     ->orWhere('title', 'like', "%{$search}%")
@@ -30,12 +33,12 @@ class NotificationClauseController extends Controller
 
         // Filtro categoria
         if ($request->filled('category')) {
-            $query->byCategory($request->category);
+            $query->byCategory($request->string('category')->toString());
         }
 
         // Filtro applies_to
         if ($request->filled('applies_to')) {
-            $query->where('applies_to', $request->applies_to);
+            $query->where('applies_to', $request->string('applies_to')->toString());
         }
 
         // Filtro stato attivo
@@ -54,7 +57,7 @@ class NotificationClauseController extends Controller
     /**
      * Show the form for creating a new clause
      */
-    public function create()
+    public function create(): View
     {
         $categories = NotificationClause::CATEGORIES;
         $appliesTo = NotificationClause::APPLIES_TO;
@@ -65,7 +68,7 @@ class NotificationClauseController extends Controller
     /**
      * Store a newly created clause
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'code' => [
@@ -109,19 +112,9 @@ class NotificationClauseController extends Controller
     }
 
     /**
-     * Display the specified clause
-     */
-    public function show(NotificationClause $clause)
-    {
-        $clause->loadCount('selections');
-
-        return view('super-admin.clauses.show', compact('clause'));
-    }
-
-    /**
      * Show the form for editing the clause
      */
-    public function edit(NotificationClause $clause)
+    public function edit(NotificationClause $clause): View
     {
         $categories = NotificationClause::CATEGORIES;
         $appliesTo = NotificationClause::APPLIES_TO;
@@ -133,7 +126,7 @@ class NotificationClauseController extends Controller
     /**
      * Update the specified clause
      */
-    public function update(Request $request, NotificationClause $clause)
+    public function update(Request $request, NotificationClause $clause): RedirectResponse
     {
         $validated = $request->validate([
             'code' => [
@@ -178,7 +171,7 @@ class NotificationClauseController extends Controller
     /**
      * Remove the specified clause
      */
-    public function destroy(NotificationClause $clause)
+    public function destroy(NotificationClause $clause): RedirectResponse
     {
         try {
             // Verifica se la clausola è in uso
@@ -207,7 +200,7 @@ class NotificationClauseController extends Controller
     /**
      * Toggle active status
      */
-    public function toggleActive(NotificationClause $clause)
+    public function toggleActive(NotificationClause $clause): RedirectResponse
     {
         try {
             $clause->update(['is_active' => ! $clause->is_active]);
@@ -231,7 +224,7 @@ class NotificationClauseController extends Controller
     /**
      * Reorder clauses (AJAX)
      */
-    public function reorder(Request $request)
+    public function reorder(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'items' => 'required|array',
@@ -267,7 +260,7 @@ class NotificationClauseController extends Controller
     /**
      * Preview clause formatted content (AJAX)
      */
-    public function preview(NotificationClause $clause)
+    public function preview(NotificationClause $clause): JsonResponse
     {
         return response()->json([
             'success' => true,

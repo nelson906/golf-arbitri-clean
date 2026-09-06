@@ -13,10 +13,14 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
         $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($viewsPath));
 
         foreach ($iterator as $file) {
+            if (! $file instanceof \SplFileInfo) {
+                continue;
+            }
+
             if ($file->isFile() && $file->getExtension() === 'php') {
-                $relativePath = str_replace($viewsPath.'/', '', $file->getPathname());
+                $relativePath = str_replace($viewsPath.'/', '', (string) $file->getPathname());
                 if (str_contains($relativePath, '.blade.php')) {
-                    $viewName = str_replace('.blade.php', '', $relativePath);
+                    $viewName = str_replace('.blade.php', '', (string) $relativePath);
                     $viewName = str_replace('/', '.', $viewName);
                     $allViews[] = [
                         'name' => $viewName,
@@ -27,7 +31,7 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
             }
         }
 
-        usort($allViews, fn ($a, $b) => strcmp($a['name'], $b['name']));
+        usort($allViews, fn ($a, $b) => strcmp((string) $a['name'], (string) $b['name']));
 
         return view('dev.view-list', ['views' => $allViews]);
     }
@@ -78,7 +82,7 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
         \Illuminate\Support\Facades\Auth::logout();
 
         // ⚠️ Se ha prodotto QUALCOSA, mostralo
-        if (! empty(trim($renderedView))) {
+        if (! empty(trim((string) $renderedView))) {
             if (DebugCollector::hasIssues()) {
                 $renderedView .= view('dev.debug-panel', [
                     'issues' => DebugCollector::getIssues(),
@@ -86,7 +90,7 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
                 ])->render();
             }
 
-            return response($renderedView);
+            return response((string) $renderedView);
         }
 
         // ⚠️ Se VUOTO: Mostra analisi del codice sorgente
@@ -96,7 +100,7 @@ Route::get('/dev/view-preview/{view?}', function ($view = null) {
             return response("<div style='padding:40px;'>View file non trovato</div>");
         }
 
-        $source = file_get_contents($viewFile);
+        $source = (string) file_get_contents($viewFile);
         $lines = explode("\n", $source);
 
         // Analizza contenuto
