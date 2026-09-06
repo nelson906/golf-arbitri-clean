@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Mail\NationalNotificationMail;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
+use App\Models\TournamentType;
 use App\Services\NotificationDocumentService;
 use App\Services\NotificationPreparationService;
 use App\Services\NotificationTransactionService;
@@ -107,9 +108,14 @@ class NotificationController extends Controller
         // Filtro visibilità per zona/ruolo (centralizzato nel trait)
         $this->applyTournamentVisibility($tournamentsQuery, $user);
 
-        // Filtro anno (sulla data del torneo)
-        if ($request->filled('anno')) {
-            $tournamentsQuery->whereYear('start_date', $request->integer('anno'));
+        // Filtro tipo di torneo.
+        //
+        // Qui prima c'era un filtro per ANNO, che il modello dati rende inutile:
+        // `tournaments` contiene solo gli anni non ancora archiviati, perche' a
+        // fine stagione l'archiviazione (/admin/career-history/archive) li
+        // condensa in referee_career_history e ne cancella le righe sorgente.
+        if ($request->filled('tournament_type_id')) {
+            $tournamentsQuery->where('tournament_type_id', $request->integer('tournament_type_id'));
         }
 
         // Filtro ricerca nome torneo
@@ -169,15 +175,16 @@ class NotificationController extends Controller
             ];
         });
 
-        // Anni disponibili per il filtro (ricavati dai tornei con notifiche)
-        $anniDisponibili = TournamentNotification::join('tournaments', 'tournament_notifications.tournament_id', '=', 'tournaments.id')
-            ->selectRaw('YEAR(tournaments.start_date) as anno')
-            ->whereNotNull('tournaments.start_date')
-            ->groupBy('anno')
-            ->orderByDesc('anno')
-            ->pluck('anno');
+        // Solo i tipi che hanno almeno un torneo con notifiche VISIBILE
+        // all'utente: un menu con voci che non danno mai risultati e' rumore.
+        $tipiConNotifiche = Tournament::query()->whereHas('notifications');
+        $this->applyTournamentVisibility($tipiConNotifiche, $user);
 
-        return view('admin.tournament-notifications.index', compact('tournamentNotifications', 'anniDisponibili'));
+        $tournamentTypes = TournamentType::whereIn('id', $tipiConNotifiche->select('tournament_type_id'))
+            ->orderBy('sort_order')
+            ->get();
+
+        return view('admin.tournament-notifications.index', compact('tournamentNotifications', 'tournamentTypes'));
     }
 
     /**
@@ -495,7 +502,7 @@ class NotificationController extends Controller
                 $this->transactionService->deleteWithCleanup($notification);
             }
 
-            return redirect()->route('admin.tournament-notifications.index', request()->only(['anno', 'cerca']))
+            return redirect()->route('admin.tournament-notifications.index', request()->only(['tournament_type_id', 'cerca']))
                 ->with('success', "Notifiche del torneo «{$tournament->name}» eliminate ({$notifications->count()}).");
         } catch (\Exception $e) {
             return redirect()->back()->with('error', "Errore durante l'eliminazione: ".$e->getMessage());

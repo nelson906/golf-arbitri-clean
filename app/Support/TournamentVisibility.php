@@ -50,14 +50,14 @@ final class TournamentVisibility
                 => $query->whereHas('tournamentType', fn (Builder $q) => $q->where('is_national', true)),
 
             $type === UserType::ZoneAdmin
-                => $query->whereHas('club', fn (Builder $q) => $q->where('zone_id', $user->zone_id)),
+                => self::applyZoneAdminFilter($query, $user),
 
             $type === UserType::Referee
                 => self::applyRefereeFilter($query, $user),
 
             // Fallback generico
             (bool) $user->zone_id
-                => $query->whereHas('club', fn (Builder $q) => $q->where('zone_id', $user->zone_id)),
+                => self::applyZoneAdminFilter($query, $user),
 
             default => $query->whereRaw('1 = 0'),
         };
@@ -99,10 +99,10 @@ final class TournamentVisibility
                 )),
 
             $type === UserType::ZoneAdmin
-                => $query->whereHas($tournamentRelation, fn (Builder $q) => $q->whereHas(
-                    'club',
-                    fn (Builder $sub) => $sub->where('zone_id', $user->zone_id)
-                )),
+                => $query->whereHas(
+                    $tournamentRelation,
+                    fn (Builder $q) => self::applyZoneAdminFilter($q, $user)
+                ),
 
             $type === UserType::Referee
                 => $query->whereHas(
@@ -111,10 +111,10 @@ final class TournamentVisibility
                 ),
 
             (bool) $user->zone_id
-                => $query->whereHas($tournamentRelation, fn (Builder $q) => $q->whereHas(
-                    'club',
-                    fn (Builder $sub) => $sub->where('zone_id', $user->zone_id)
-                )),
+                => $query->whereHas(
+                    $tournamentRelation,
+                    fn (Builder $q) => self::applyZoneAdminFilter($q, $user)
+                ),
 
             default => $query->whereRaw('1 = 0'),
         };
@@ -154,13 +154,39 @@ final class TournamentVisibility
 
         return match ($type) {
             UserType::NationalAdmin => $isNationalTournament,
-            UserType::ZoneAdmin     => $tournamentZoneId === $user->zone_id,
+            UserType::ZoneAdmin     => $tournamentZoneId === $user->zone_id || $isNationalTournament,
             UserType::Referee       => self::refereeCanAccess($tournament, $user, $tournamentZoneId, $isNationalTournament),
-            default                 => $tournamentZoneId === $user->zone_id,
+            default                 => $tournamentZoneId === $user->zone_id || $isNationalTournament,
         };
     }
 
     // ── Metodi privati ────────────────────────────────────────────────────────
+
+    /**
+     * Visibilità dell'admin di zona: i tornei della propria zona PIU' tutti i
+     * tornei nazionali, ovunque si giochino.
+     *
+     * Prima filtrava solo su `club.zone_id`, e questo aveva due conseguenze:
+     * un Campionato Nazionale ospitato in un'altra zona era invisibile, e un
+     * torneo T.B.A. (circolo non ancora assegnato) non compariva da nessuna
+     * parte. La zona si legge quindi da entrambe le fonti: la relazione col
+     * circolo quando c'e', e la colonna `tournaments.zone_id` — che
+     * TournamentObserver mantiene sincronizzata ed e' l'unica disponibile
+     * finche' il circolo non e' stato scelto.
+     *
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    private static function applyZoneAdminFilter(Builder $query, User $user): Builder
+    {
+        return $query->where(function (Builder $q) use ($user) {
+            $q->whereHas('club', fn (Builder $sub) => $sub->where('zone_id', $user->zone_id))
+                ->orWhere('zone_id', $user->zone_id)
+                ->orWhereHas('tournamentType', fn (Builder $sub) => $sub->where('is_national', true));
+        });
+    }
 
     /**
      * @template TModel of \Illuminate\Database\Eloquent\Model

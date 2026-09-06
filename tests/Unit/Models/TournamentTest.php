@@ -172,21 +172,72 @@ class TournamentTest extends TestCase
     }
 
     /**
-     * Test: scopeVisible - zone admin vede solo propria zona
+     * Test: scopeVisible - zone admin vede la propria zona PIU' i nazionali.
+     *
+     * Regola cambiata il 2026-09-06: prima filtrava solo sulla zona del circolo,
+     * quindi un Campionato Nazionale ospitato altrove era invisibile all'admin
+     * di zona. Ora e' "propria zona OPPURE tournamentType.is_national".
+     *
+     * NB: i tipi sono espliciti. Prima il test si affidava a
+     * TournamentFactory, che pesca un tipo A CASO: passava solo finche' il
+     * sorteggio non tirava fuori un tipo nazionale.
      */
-    public function test_scope_visible_zone_admin_sees_own_zone_only(): void
+    public function test_scope_visible_zone_admin_sees_own_zone_and_national(): void
     {
         $zoneAdmin = $this->createZoneAdmin(1);
+
+        $nationalType = TournamentType::where('is_national', true)->firstOrFail();
+        $zonalType = TournamentType::where('is_national', false)->firstOrFail();
 
         $club1 = Club::factory()->create(['zone_id' => 1]);
         $club2 = Club::factory()->create(['zone_id' => 2]);
 
-        Tournament::factory()->count(3)->create(['club_id' => $club1->id]);
-        Tournament::factory()->count(2)->create(['club_id' => $club2->id]);
+        // Zona propria, tornei zonali: visibili
+        Tournament::factory()->count(3)->create([
+            'club_id' => $club1->id,
+            'tournament_type_id' => $zonalType->id,
+        ]);
+
+        // Altra zona, tornei zonali: NON visibili
+        Tournament::factory()->count(2)->create([
+            'club_id' => $club2->id,
+            'tournament_type_id' => $zonalType->id,
+        ]);
+
+        // Altra zona, torneo nazionale: visibile (e' la modifica)
+        Tournament::factory()->create([
+            'club_id' => $club2->id,
+            'tournament_type_id' => $nationalType->id,
+        ]);
 
         $visible = Tournament::visible($zoneAdmin)->get();
 
-        $this->assertCount(3, $visible);
+        $this->assertCount(4, $visible);
+    }
+
+    /**
+     * Test: scopeVisible - un torneo T.B.A. della propria zona resta visibile.
+     *
+     * Senza circolo la zona sta solo sulla colonna `tournaments.zone_id`:
+     * finche' il filtro passava per whereHas('club', ...), questi tornei
+     * sparivano da ogni elenco filtrato per zona.
+     */
+    public function test_scope_visible_zone_admin_sees_tba_tournament_of_own_zone(): void
+    {
+        $zoneAdmin = $this->createZoneAdmin(1);
+        $zonalType = TournamentType::where('is_national', false)->firstOrFail();
+
+        Tournament::factory()->create([
+            'club_id' => null,
+            'zone_id' => 1,
+            'tournament_type_id' => $zonalType->id,
+            'name' => 'Gara T.B.A. zona 1',
+        ]);
+
+        $visible = Tournament::visible($zoneAdmin)->get();
+
+        $this->assertCount(1, $visible);
+        $this->assertSame('Gara T.B.A. zona 1', $visible->first()?->name);
     }
 
     /**
