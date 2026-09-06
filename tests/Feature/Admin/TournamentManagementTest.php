@@ -139,24 +139,91 @@ class TournamentManagementTest extends TestCase
     // ==========================================
 
     /**
-     * Test: Admin vede solo tornei della sua zona
+     * Test: l'admin di zona vede la propria zona e i tornei nazionali,
+     * non i tornei zonali delle altre zone.
+     *
+     * NB: i tipi sono espliciti. TournamentFactory pesca un tipo A CASO, quindi
+     * senza dirlo il test misurava il sorteggio invece della regola.
+     * Il periodo resta al default (tutti): qui si verificano le zone, non le date.
      */
-    public function test_zone_admin_sees_only_own_zone_tournaments(): void
+    public function test_zone_admin_sees_own_zone_and_national_tournaments(): void
     {
         $admin = $this->createZoneAdmin(1);
+
+        $nationalType = TournamentType::where('is_national', true)->firstOrFail();
+        $zonalType = TournamentType::where('is_national', false)->firstOrFail();
 
         $club1 = Club::factory()->create(['zone_id' => 1]);
         $club2 = Club::factory()->create(['zone_id' => 2]);
 
-        // zone_id esplicito per garantire il filtro corretto
-        $tournament1 = Tournament::factory()->create(['club_id' => $club1->id, 'zone_id' => 1, 'name' => 'Zone 1 Tournament']);
-        $tournament2 = Tournament::factory()->create(['club_id' => $club2->id, 'zone_id' => 2, 'name' => 'Zone 2 Tournament']);
+        Tournament::factory()->create([
+            'club_id' => $club1->id, 'zone_id' => 1,
+            'tournament_type_id' => $zonalType->id, 'name' => 'Zone 1 Tournament',
+        ]);
+        Tournament::factory()->create([
+            'club_id' => $club2->id, 'zone_id' => 2,
+            'tournament_type_id' => $zonalType->id, 'name' => 'Zone 2 Tournament',
+        ]);
+        Tournament::factory()->create([
+            'club_id' => $club2->id, 'zone_id' => 2,
+            'tournament_type_id' => $nationalType->id, 'name' => 'Campionato Nazionale Altrove',
+        ]);
 
         $response = $this->actingAs($admin)->get(route('tournaments.index'));
 
         $response->assertStatus(200);
         $response->assertSee('Zone 1 Tournament');
+        $response->assertSee('Campionato Nazionale Altrove');
         $response->assertDontSee('Zone 2 Tournament');
+    }
+
+    /**
+     * Test: il filtro periodo — tutti (default) / futuri / passati.
+     *
+     * Regressione della segnalazione del 2026-09-06: la lista filtrava sempre
+     * `start_date >= oggi`, quindi i tipi di torneo senza gare ancora da
+     * giocare (CI, GN72, PRO) risultavano invisibili anche a chi ne aveva
+     * pieno diritto. Non serve un selettore per ANNO: `tournaments` contiene
+     * solo gli anni non ancora travasati in referee_career_history.
+     */
+    public function test_period_filter_shows_all_by_default_and_can_split_past_and_future(): void
+    {
+        $admin = $this->createZoneAdmin(1);
+        $zonalType = TournamentType::where('is_national', false)->firstOrFail();
+        $club = Club::factory()->create(['zone_id' => 1]);
+
+        Tournament::factory()->create([
+            'club_id' => $club->id, 'zone_id' => 1,
+            'tournament_type_id' => $zonalType->id,
+            'name' => 'Torneo Gia Giocato',
+            'start_date' => now()->subMonths(2),
+            'end_date' => now()->subMonths(2)->addDay(),
+            'availability_deadline' => now()->subMonths(3),
+        ]);
+
+        Tournament::factory()->create([
+            'club_id' => $club->id, 'zone_id' => 1,
+            'tournament_type_id' => $zonalType->id,
+            'name' => 'Torneo Da Giocare',
+            'start_date' => now()->addMonth(),
+            'end_date' => now()->addMonth()->addDay(),
+            'availability_deadline' => now()->addWeeks(2),
+        ]);
+
+        $this->actingAs($admin)->get(route('tournaments.index'))
+            ->assertStatus(200)
+            ->assertSee('Torneo Gia Giocato')
+            ->assertSee('Torneo Da Giocare');
+
+        $this->actingAs($admin)->get(route('tournaments.index', ['periodo' => 'futuri']))
+            ->assertStatus(200)
+            ->assertSee('Torneo Da Giocare')
+            ->assertDontSee('Torneo Gia Giocato');
+
+        $this->actingAs($admin)->get(route('tournaments.index', ['periodo' => 'passati']))
+            ->assertStatus(200)
+            ->assertSee('Torneo Gia Giocato')
+            ->assertDontSee('Torneo Da Giocare');
     }
 
     /**

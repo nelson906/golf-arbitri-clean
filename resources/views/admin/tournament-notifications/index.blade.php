@@ -18,15 +18,18 @@
         {{-- Filtri --}}
         <form method="GET" action="{{ route('admin.tournament-notifications.index') }}"
               class="flex flex-wrap gap-3 mb-4 items-end">
-            {{-- Filtro anno --}}
+            {{-- Filtro tipo di torneo --}}
             <div>
-                <label class="block text-xs text-gray-500 mb-1">Anno torneo</label>
-                <select name="anno"
+                <label class="block text-xs text-gray-500 mb-1">Tipo torneo</label>
+                <select name="tournament_type_id"
                         class="rounded border-gray-300 text-sm py-1.5 pr-8 focus:ring-indigo-500 focus:border-indigo-500"
                         onchange="this.form.submit()">
-                    <option value="">Tutti gli anni</option>
-                    @foreach($anniDisponibili as $a)
-                        <option value="{{ $a }}" {{ request('anno') == $a ? 'selected' : '' }}>{{ $a }}</option>
+                    <option value="">Tutti i tipi</option>
+                    @foreach($tournamentTypes as $tipo)
+                        <option value="{{ $tipo->id }}"
+                                {{ (string) request('tournament_type_id') === (string) $tipo->id ? 'selected' : '' }}>
+                            {{ $tipo->name }}
+                        </option>
                     @endforeach
                 </select>
             </div>
@@ -43,7 +46,7 @@
                     </button>
                 </div>
             </div>
-            @if(request('anno') || request('cerca'))
+            @if(request('tournament_type_id') || request('cerca'))
                 <a href="{{ route('admin.tournament-notifications.index') }}"
                    class="self-end text-sm text-gray-500 hover:text-gray-700 underline">✕ Azzera</a>
             @endif

@@ -15,6 +15,13 @@ use Illuminate\Http\Request;
  */
 trait TournamentControllerTrait
 {
+    /** Valori del selettore periodo. Il default e' TUTTI. */
+    public const PERIODO_TUTTI = 'tutti';
+
+    public const PERIODO_FUTURI = 'futuri';
+
+    public const PERIODO_PASSATI = 'passati';
+
     protected TournamentColorService $colorService;
 
     protected CalendarDataService $calendarService;
@@ -57,6 +64,17 @@ trait TournamentControllerTrait
             $query->where('tournament_type_id', $request->integer('tournament_type_id'));
         }
 
+        // ── PERIODO ──────────────────────────────────────────────────────
+        // Il mese, se scelto, vince su tutto (contiene gia' l'anno).
+        // Altrimenti vale l'anno solare: quello scelto, oppure il corrente.
+        //
+        // Qui prima c'era `start_date >= oggi`, e con due effetti sbagliati:
+        // spariva tutto il calendario gia' giocato (un Campionato Internazionale
+        // senza gare future risultava invisibile anche al CRC, che pure ne ha
+        // pieno diritto), e il vincolo si disattivava da solo appena si scriveva
+        // qualcosa nella ricerca — quindi la stessa pagina si comportava in due
+        // modi diversi senza dirlo. Ora il criterio e' uno solo ed e' scritto
+        // nel selettore che l'utente vede.
         if ($request->filled('month')) {
             $month = $request->string('month')->toString();
             $startOfMonth = Carbon::parse($month)->startOfMonth();
@@ -69,12 +87,29 @@ trait TournamentControllerTrait
                             ->where('end_date', '>=', $endOfMonth);
                     });
             });
+
+            return;
         }
 
-        // Filtra per tornei futuri - solo se non ci sono filtri temporali
-        if (! $request->filled('month') && ! $request->filled('search')) {
+        // Un selettore per ANNO qui sarebbe superfluo: `tournaments` contiene
+        // solo gli anni non ancora archiviati. A fine stagione il super_admin
+        // archivia da /admin/career-history/archive: i dati vengono condensati
+        // in referee_career_history e le righe sorgente cancellate. A regime la
+        // tabella e' l'anno corrente, piu' quello in attesa di archiviazione.
+        // Cio' che serve distinguere e' il PERIODO.
+        $periodo = $request->string('periodo')->toString();
+
+        if ($periodo === self::PERIODO_FUTURI) {
             $query->where('start_date', '>=', Carbon::now()->startOfDay());
+
+            return;
         }
+
+        if ($periodo === self::PERIODO_PASSATI) {
+            $query->where('start_date', '<', Carbon::now()->startOfDay());
+        }
+
+        // PERIODO_TUTTI (default): nessun vincolo temporale.
     }
 
     /**

@@ -112,7 +112,18 @@
                     </select>
                 </div>
 
-                {{-- Month Filter --}}
+                {{-- Period Filter --}}
+                <div>
+                    <label for="periodo" class="block text-sm font-medium text-gray-700 mb-1">Periodo</label>
+                    <select name="periodo" id="periodo"
+                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="tutti" {{ request('periodo', 'tutti') === 'tutti' ? 'selected' : '' }}>Tutti</option>
+                        <option value="futuri" {{ request('periodo') === 'futuri' ? 'selected' : '' }}>Da giocare</option>
+                        <option value="passati" {{ request('periodo') === 'passati' ? 'selected' : '' }}>Gia giocati</option>
+                    </select>
+                </div>
+
+                {{-- Month Filter (se valorizzato ha la precedenza sull'anno) --}}
                 <div>
                     <label for="month" class="block text-sm font-medium text-gray-700 mb-1">Mese</label>
                     <input type="month" name="month" id="month" value="{{ request('month') }}"
