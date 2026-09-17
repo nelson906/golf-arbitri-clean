@@ -10,13 +10,17 @@ import {
     COMPETITION_TYPES,
     COMPETITION_FORMATS,
     parseForma,
-    ROUND_TYPES
+    ROUND_TYPES,
+    COMPACT_TYPES,
+    STACCO_BREVE
 } from './config.js';
 
 import {
     range,
     addTime,
     halfTime,
+    toMinutes,
+    formatMinutes,
     storage,
     escapeHtml
 } from './utils.js';
@@ -681,6 +685,67 @@ export class QuadrantiLogic {
   }
 
   /**
+   * Stacco Early -> Late (incrocio). Dipende dalla Modalita' (#compatto):
+   * - COMPACT_TYPES.EARLY_LATE: mezzo giro, il tempo perche' l'ultimo volo
+   *   Early concluda le prime nove buche prima di far partire il blocco Late.
+   * - COMPACT_TYPES.CONTINUOUS ('Early(<14)'): nessun incrocio, stacco breve
+   *   di 00:10 -> Early e Late risultano accorpati in un blocco unico.
+   * @returns {string} stacco in formato hh:mm
+   */
+  staccoIncrocio() {
+    return this.config.compatto === COMPACT_TYPES.CONTINUOUS
+      ? STACCO_BREVE
+      : halfTime(this.config.round);
+  }
+
+  /**
+   * Margine all'incrocio per la modalita' CONTINUOUS ('Early(<14)').
+   *
+   * In quella modalita' non c'e' attesa di mezzo giro: tutte le partenze — Early
+   * e Late — formano un'onda unica. Il vincolo reale non e' fra i due blocchi
+   * (la prima Late e' calcolata proprio dallo stacco, quindi quel confronto
+   * sarebbe sempre lo stesso numero), ma fra la CODA delle partenze e la TESTA
+   * del campo che torna all'incrocio: il primo volo partito dal Tee 1 arriva
+   * alla buca 10 dopo mezzo giro. Se si sta ancora facendo partire gente dopo
+   * quell'istante, coda e testa si incontrano all'incrocio.
+   *
+   *   incrocio = prima partenza + mezzo giro
+   *   margine  = incrocio - ultima partenza
+   *
+   * La soglia NON e' zero: margine 0 significa due flight in partenza alla
+   * stessa ora, che e' gia' una collisione. Serve almeno STACCO_BREVE (10').
+   *
+   * - margine >= 10' -> onda unica pulita, il campo e' tutto in gioco con
+   *   almeno uno stacco di distanza dai primi voli che rientrano.
+   * - margine <  10' -> SOVRAPPOSIZIONE (zero e i valori negativi compresi):
+   *   `serve` e' il tempo che manca per rispettare lo stacco minimo.
+   *
+   * `voliEntro` = quante partenze restano almeno uno stacco prima dell'incrocio,
+   * contate sugli orari effettivi (anche gli stacchi fra blocchi consumano
+   * capacita'): e' il vero significato dell'etichetta "Early(<14)".
+   *
+   * @param {string} lastDeparture  ultima partenza della giornata (hh:mm)
+   * @param {string[]} orari        orari di tutte le righe della tabella
+   * @returns {{minuti:number, incrocio:string, serve:string, gap:string, sovrapposizione:boolean, voliPerTee:number, voliEntro:number}}
+   */
+  margineIncrocio(lastDeparture, orari) {
+    const minimo = toMinutes(STACCO_BREVE);
+    const incrocio = addTime(this.config.startTime, halfTime(this.config.round));
+    const minuti = toMinutes(incrocio) - toMinutes(lastDeparture);
+    // Ultima partenza ammessa: l'incrocio meno lo stacco minimo.
+    const limite = toMinutes(incrocio) - minimo;
+    return {
+      minuti,
+      incrocio,
+      serve: formatMinutes(Math.max(0, minimo - minuti)),
+      gap: `${minuti < 0 ? '\u2212' : '+'}${formatMinutes(Math.abs(minuti))}`,
+      sovrapposizione: minuti < minimo,
+      voliPerTee: orari.length,
+      voliEntro: orari.filter((t) => toMinutes(t) <= limite).length
+    };
+  }
+
+  /**
    * RENDERER UNICO a blocchi (doppio tee). Riceve i blocchi GIÀ costruiti
    * (`{cat, session, tee1[], tee10[]}`), assegna i flightNumber (regola unica),
    * impagina la tabella, calcola gli orari (stacco incrocio Early→Late = mezzo
@@ -700,6 +765,8 @@ export class QuadrantiLogic {
     let bodyHtml = this.generateTableHeader(true);
     let blockTime = this.config.startTime;
     let lastEarlyTime = '', firstLateTime = '', lastDeparture = this.config.startTime;
+    let hasLate = false;
+    const orari = [];
 
     costruiti.forEach((b, bi) => {
       const { tee1, tee10 } = b;
@@ -717,11 +784,16 @@ export class QuadrantiLogic {
       this.pushFigQuadrante(catLabel, `Blocco ${bi + 1} · Tee 1`, tee1);
       this.pushFigQuadrante(catLabel, `Blocco ${bi + 1} · Tee 10`, tee10);
       const rows = Math.max(tee1.length, tee10.length);
+      // Orari reali di ogni riga: servono per contare quante partenze cadono
+      // prima dell'incrocio senza rifare (male) il calcolo con una formula.
+      let t = blockTime;
+      for (let i = 0; i < rows; i++) { orari.push(t); t = addTime(t, gap); }
       // Ultima partenza del blocco = firstDep + (rows-1) stacchi.
       let blockLastDep = blockTime;
       for (let i = 0; i < rows - 1; i++) blockLastDep = addTime(blockLastDep, gap);
       if (rows > 0) {
         if (b.session === 'early') lastEarlyTime = blockLastDep;
+        if (b.session === 'late') hasLate = true;
         if (b.session === 'late' && !firstLateTime) firstLateTime = firstDep;
         lastDeparture = blockLastDep;
       }
@@ -729,17 +801,30 @@ export class QuadrantiLogic {
       const next = costruiti[bi + 1];
       if (next) {
         const crossing = b.session === 'early' && next.session === 'late';
-        blockTime = addTime(blockTime, crossing ? halfTime(this.config.round) : '00:10');
+        blockTime = addTime(blockTime, crossing ? this.staccoIncrocio() : STACCO_BREVE);
       }
     });
     bodyHtml += '</tbody>';
 
-    // Info box a 3 campi (doppio tee): Ultima Early, Prima Late, Fine Gara.
+    // Info box (doppio tee): Ultima Early, Prima Late, Fine Gara + Margine
+    // all'incrocio quando esiste un blocco Late.
     if (!lastEarlyTime) lastEarlyTime = this.config.startTime;
     if (!firstLateTime) firstLateTime = lastEarlyTime;
     const finishTime = addTime(lastDeparture, this.config.round);
+    // Il margine ha senso solo in Early(<14): in Early/Late l'incrocio e'
+    // rispettato per costruzione e il numero sarebbe sempre lo stesso.
+    const m = (hasLate && this.config.compatto === COMPACT_TYPES.CONTINUOUS)
+      ? this.margineIncrocio(lastDeparture, orari)
+      : null;
+    const margineHTML = m ? `
+        <div style="text-align: center; padding: 10px; background: ${m.sovrapposizione ? '#fdecea' : 'white'}; border-radius: 4px;">
+          <strong style="display: block; font-size: 18px; color: ${m.sovrapposizione ? '#b3261e' : '#2c5530'};">${m.gap}</strong>
+          <span>${m.sovrapposizione
+            ? `Sovrapposizione all'incrocio (${m.incrocio}) &middot; servono altri ${m.serve} &middot; solo ${m.voliEntro} voli/tee su ${m.voliPerTee} restano a stacco`
+            : `Margine all'incrocio (${m.incrocio}) &middot; ${m.voliPerTee} voli/tee, tutti a stacco pieno`}</span>
+        </div>` : '';
     const infoHTML = `
-      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; padding: 15px; background: #e8f5e8; border-radius: 8px;">
+      <div style="display: grid; grid-template-columns: repeat(${m ? 4 : 3}, 1fr); gap: 15px; margin-bottom: 20px; padding: 15px; background: #e8f5e8; border-radius: 8px;">
         <div style="text-align: center; padding: 10px; background: white; border-radius: 4px;">
           <strong style="display: block; font-size: 18px; color: #2c5530;">${lastEarlyTime}</strong>
           <span>Ultima Partenza Early</span>
@@ -751,7 +836,7 @@ export class QuadrantiLogic {
         <div style="text-align: center; padding: 10px; background: white; border-radius: 4px;">
           <strong style="display: block; font-size: 18px; color: #2c5530;">${finishTime}</strong>
           <span>Fine Gara Stimata</span>
-        </div>
+        </div>${margineHTML}
       </div>
     `;
     this.figFlights = this._figFlightsBuffer;
