@@ -380,7 +380,9 @@ class FedergolfController extends Controller
                 }
             }
 
-            $oggi = new \DateTime;
+            // Confronto a giorni: una gara resta in elenco fino alla sua
+            // data di CHIUSURA compresa (serve lavorarci anche se in corso).
+            $oggi = (new \DateTime)->setTime(0, 0);
             $gare = [];
 
             foreach ($entries as $gara) {
@@ -398,8 +400,8 @@ class FedergolfController extends Controller
                 }
 
                 $dataFig = Untrusted::string($gara['data'] ?? null);
-                $dataGara = \DateTime::createFromFormat('d/m/Y', $dataFig);
-                if ($dataGara && $dataGara < $oggi) {
+                $fineGara = self::dataChiusura($gara, $dataFig);
+                if ($fineGara !== null && $fineGara < $oggi) {
                     continue;
                 }
 
@@ -421,10 +423,11 @@ class FedergolfController extends Controller
             }
 
             usort($gare, function (array $a, array $b): int {
-                $dateA = \DateTime::createFromFormat('d/m/Y', $a['date']);
-                $dateB = \DateTime::createFromFormat('d/m/Y', $b['date']);
+                $dateA = self::primaData($a['date']);
+                $dateB = self::primaData($b['date']);
 
-                return $dateA <=> $dateB;
+                return ($dateA === null ? PHP_INT_MAX : $dateA->getTimestamp())
+                    <=> ($dateB === null ? PHP_INT_MAX : $dateB->getTimestamp());
             });
 
             return response()->json(['success' => true, 'gare' => $gare]);
@@ -439,6 +442,67 @@ class FedergolfController extends Controller
                 'message' => 'Errore imprevisto nel caricamento delle gare. Il dettaglio è in storage/logs/laravel.log.',
             ]);
         }
+    }
+
+    /**
+     * Giorni aggiunti alla data di apertura quando federgolf non indica la
+     * chiusura: copre la gara più lunga (72 buche = 4 giorni consecutivi).
+     */
+    private const DURATA_MASSIMA_GIORNI = 3;
+
+    /** Campi in cui federgolf potrebbe esporre la data di chiusura. */
+    private const CAMPI_CHIUSURA = ['data_fine', 'datafine', 'data_al', 'al', 'fine', 'end_date'];
+
+    /**
+     * Data di chiusura della gara (ore 00:00), o null se non ricavabile.
+     *
+     * Ordine: un campo esplicito di chiusura; altrimenti l'ultima data
+     * presente nel testo (es. "17/09/2026 - 19/09/2026"); altrimenti la
+     * data di apertura + DURATA_MASSIMA_GIORNI.
+     *
+     * @param  array<array-key, mixed>  $gara
+     */
+    protected static function dataChiusura(array $gara, string $dataTesto): ?\DateTime
+    {
+        foreach (self::CAMPI_CHIUSURA as $campo) {
+            $fine = self::primaData(Untrusted::string($gara[$campo] ?? null));
+            if ($fine !== null) {
+                return $fine;
+            }
+        }
+
+        $date = self::tutteLeDate($dataTesto);
+        if (count($date) >= 2) {
+            return $date[count($date) - 1];
+        }
+
+        return $date === [] ? null : $date[0]->modify('+'.self::DURATA_MASSIMA_GIORNI.' days');
+    }
+
+    /** Prima data (d/m/Y oppure Y-m-d) presente nel testo, alle 00:00. */
+    protected static function primaData(string $testo): ?\DateTime
+    {
+        return self::tutteLeDate($testo)[0] ?? null;
+    }
+
+    /**
+     * Tutte le date valide nel testo, nell'ordine in cui compaiono.
+     *
+     * @return list<\DateTime>
+     */
+    protected static function tutteLeDate(string $testo): array
+    {
+        preg_match_all('#\b(\d{1,2}/\d{1,2}/\d{4}|\d{4}-\d{2}-\d{2})\b#', $testo, $m);
+        $out = [];
+        foreach ($m[1] as $pezzo) {
+            $formato = str_contains($pezzo, '/') ? '!d/m/Y' : '!Y-m-d';
+            $data = \DateTime::createFromFormat($formato, $pezzo);
+            if ($data !== false) {
+                $out[] = $data;
+            }
+        }
+
+        return $out;
     }
 
     /** Motivo macchina dell'ultimo fallimento di fetchCompetitionsYear. */
