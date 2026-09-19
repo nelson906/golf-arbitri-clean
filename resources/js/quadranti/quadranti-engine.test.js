@@ -239,12 +239,37 @@ describe('MOTORE · Modalità Early/Late vs Early(<14)', () => {
     expect(min(firstLate) - min(lastEarly)).toBe(10 + 10);
   });
 
-  // Il margine e' mostrato SOLO in Early(<14): in Early/Late l'incrocio e'
-  // rispettato per costruzione e il numero sarebbe una costante inutile.
-  it('Early/Late: nessun campo margine (info-box a 3 colonne)', () => {
+  // Il margine e' mostrato SEMPRE quando c'e' un blocco Late, anche in
+  // Early/Late: con la Ripartenza impostata a mano puo' cambiare.
+  it('Early/Late: campo margine presente, un stacco dopo il giro dell\'ultima Early', () => {
     const html = mk({ ...base, compatto: 'Early/Late' }).generateDoubleTee('prima');
-    expect(html).toContain('repeat(3, 1fr)');
-    expect(html).not.toContain("all'incrocio");
+    expect(html).toContain('repeat(4, 1fr)');
+    expect(html).toContain("Margine all'incrocio");
+    expect(html).not.toContain('Sovrapposizione');
+    expect(html).toMatch(/>\+0:10<\/strong>/);
+  });
+
+  it('Early/Late: Ripartenza manuale troppo presto → sovrapposizione', () => {
+    const l = mk({ ...base, compatto: 'Early/Late' });
+    l.generateDoubleTee('prima');
+    const late = l.figQuadranti.find((q) => q.blocco.sessione === 'late');
+    const early = l.figQuadranti.filter((q) => q.blocco.sessione === 'early').pop();
+    // Ripartenza 10 minuti dopo l'ultima partenza Early: il campo e' tutto
+    // in gioco quando i primi tornano? No (102 giocatori) → incrocio violato.
+    l.orariBlocchi = { [late.blocco.chiave]: '10:00' };
+    const html = l.generateDoubleTee('prima');
+    expect(early).toBeTruthy();
+    expect(html).toContain("Sovrapposizione all'incrocio");
+  });
+
+  it('Early/Late: campo piccolo con Ripartenza anticipata → onda unica, nessun conflitto', () => {
+    const l = mk({ ...base, compatto: 'Early/Late', players: 30, proette: 6 });
+    l.generateDoubleTee('prima');
+    const late = l.figQuadranti.find((q) => q.blocco.sessione === 'late');
+    l.orariBlocchi = { [late.blocco.chiave]: '08:50' };
+    const html = l.generateDoubleTee('prima');
+    expect(html).toContain("Margine all'incrocio");
+    expect(html).toContain('tutti a stacco pieno');
   });
 
   it('Early(<14): il margine CAMBIA col numero di giocatori', () => {
