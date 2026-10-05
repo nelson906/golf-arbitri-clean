@@ -87,8 +87,8 @@ class ClubController extends Controller
                 ->whereIn('tournament_id', $club->tournaments()->pluck('id'))
                 ->count(),
             'upcoming_tournaments' => $club->tournaments()->upcoming()->count(),
-            'completed_tournaments' => $club->tournaments()->where('status', 'completed')->count(),
-            'active_tournaments' => $club->tournaments()->active()->count(),
+            'completed_tournaments' => $club->tournaments()->where('end_date', '<', now()->startOfDay())->count(),
+            'active_tournaments' => $club->tournaments()->where('end_date', '>=', now()->startOfDay())->count(),
         ];
 
         $isNationalAdmin = $this->isNationalAdmin();
@@ -215,12 +215,12 @@ class ClubController extends Controller
         }
 
         // Verifica se ha tornei associati
-        $tournaments = $club->tournaments()->get(['id', 'name', 'start_date', 'status']);
+        $tournaments = $club->tournaments()->get(['id', 'name', 'start_date']);
         if ($tournaments->isNotEmpty()) {
             $tournamentList = $tournaments->map(function ($t) {
                 $date = $t->start_date ? $t->start_date->format('d/m/Y') : 'N/A';
 
-                return "- {$t->name} ({$date}) [{$t->status->value}]";
+                return "- {$t->name} ({$date})";
             })->implode("\n");
 
             return back()->with('error', "Impossibile eliminare: il circolo ha {$tournaments->count()} tornei associati:\n{$tournamentList}");

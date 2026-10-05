@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Enums\TournamentStatus;
 use App\Enums\UserType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TournamentRequest;
@@ -16,10 +15,8 @@ use App\Services\TournamentColorService;
 use App\Traits\HasZoneVisibility;
 use App\Traits\TournamentControllerTrait;
 use Illuminate\Contracts\View\View;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class TournamentController extends Controller
 {
@@ -42,9 +39,6 @@ class TournamentController extends Controller
         $this->applyTournamentVisibility($query, $user);
 
         // Filtro status specifico admin
-        if ($request->has('status') && $request->status !== '') {
-            $query->where('status', $request->status);
-        }
 
         // Filtro club specifico admin
         if ($request->filled('club_id')) {
@@ -54,6 +48,15 @@ class TournamentController extends Controller
         // Usa metodo condiviso dal trait
         $this->applyCommonFilters($query, $request);
 
+        // Riepilogo per data (lo stato del torneo non esiste piu': decisione 2026-10-03)
+        $today = now()->startOfDay();
+        $summary = [
+            'total' => (clone $query)->count(),
+            'upcoming' => (clone $query)->where('start_date', '>=', $today)->count(),
+            'past' => (clone $query)->where('end_date', '<', $today)->count(),
+            'without_referees' => (clone $query)->where('start_date', '>=', $today)->doesntHave('assignments')->count(),
+        ];
+
         $tournaments = $query->orderBy('start_date', 'asc')->paginate(20);
 
         // Usa metodo condiviso dal trait
@@ -61,13 +64,12 @@ class TournamentController extends Controller
 
         $zones = $this->isNationalAdmin($user) ? Zone::orderBy('name', 'asc')->get() : collect();
         $tournamentTypes = TournamentType::active()->ordered()->get();
-        $statuses = Tournament::STATUSES;
 
         return view('admin.tournaments.index', compact(
             'tournaments',
             'zones',
             'tournamentTypes',
-            'statuses'
+            'summary'
         ))->with('isNationalAdmin', $this->isNationalAdmin($user));
     }
 
@@ -147,19 +149,12 @@ class TournamentController extends Controller
     /**
      * Show the form for editing the specified tournament.
      */
-    public function edit(Tournament $tournament): RedirectResponse|View
+    public function edit(Tournament $tournament): View
     {
         // Check access usando il trait
         $this->checkTournamentAccess($tournament);
 
         $user = $this->authUser();
-
-        // Check if editable — il super_admin bypassa qualunque vincolo di stato
-        if (! $tournament->isEditableBy($user)) {
-            return redirect()
-                ->route('admin.tournaments.show', $tournament)
-                ->with('error', 'Questo torneo non può essere modificato nel suo stato attuale.');
-        }
 
         // Tutti gli admin vedono tutti i tipi di torneo attivi
         $tournamentTypes = TournamentType::active()->ordered()->get();
@@ -243,7 +238,7 @@ class TournamentController extends Controller
             'assigned_referees' => $assignedReferees ? $assignedReferees->count() : 0,
             'required_referees' => $tournament->tournamentType->min_referees ?? 2,
             'days_until_deadline' => $tournament->availability_deadline
-                ? now()->diffInDays($tournament->availability_deadline, false)
+                ? (int) now()->startOfDay()->diffInDays($tournament->availability_deadline->copy()->startOfDay(), false)
                 : null,
         ];
 
@@ -262,12 +257,6 @@ class TournamentController extends Controller
     {
         // Check access
         $this->checkTournamentAccess($tournament);
-
-        // Check if editable — il super_admin bypassa qualunque vincolo di stato
-        if (! $tournament->isEditableBy($this->authUser())) {
-            return redirect()
-                ->route('admin.tournaments.show', $tournament)->with('error', 'Questo torneo non può essere modificato nel suo stato attuale.');
-        }
 
         $data = $request->validated();
 
@@ -306,50 +295,6 @@ class TournamentController extends Controller
         return redirect()
             ->route('admin.tournaments.index')
             ->with('success', 'Torneo eliminato con successo!');
-    }
-
-    /**
-     * Change tournament status with override (bypasses workflow validation).
-     * Use this for manual corrections or administrative overrides.
-     */
-    public function changeStatus(Request $request, Tournament $tournament): JsonResponse|RedirectResponse
-    {
-        // Check access
-        $this->checkTournamentAccess($tournament);
-
-        $request->validate([
-            'status' => ['required', 'in:'.implode(',', array_keys(Tournament::STATUSES))],
-        ]);
-
-        $oldStatus = $tournament->status; // TournamentStatus enum
-        $newStatus = $request->string('status')->toString();
-
-        // Update status directly (no workflow validation)
-        $tournament->update(['status' => $newStatus]);
-
-        // Log the override for audit trail
-        Log::info('Tournament status override', [
-            'tournament_id' => $tournament->id,
-            'tournament_name' => $tournament->name,
-            'old_status' => $oldStatus->value,
-            'new_status' => $newStatus,
-            'user_id' => auth()->id(),
-            'user_name' => $this->authUser()->name,
-        ]);
-
-        if ($request->wantsJson() || $request->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => "Stato cambiato da '{$oldStatus->value}' a '{$newStatus}'.",
-                'old_status' => $oldStatus->value,
-                'new_status' => $newStatus,
-                'new_status_label' => Tournament::STATUSES[$newStatus],
-            ]);
-        }
-
-        return redirect()
-            ->back()
-            ->with('success', "Stato torneo cambiato da '".Tournament::STATUSES[$oldStatus->value]."' a '".Tournament::STATUSES[$newStatus]."'.");
     }
 
     /**

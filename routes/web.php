@@ -128,6 +128,7 @@ Route::middleware(['auth', 'referee_or_admin'])->group(function () {
 
         // ===== MODULAR USER ROUTES =====
         require __DIR__.'/user/availability.php';
+        require __DIR__.'/user/assignments.php';
         require __DIR__.'/user/quadranti.php';
         require __DIR__.'/user/curriculum.php';
         require __DIR__.'/user/documents.php';

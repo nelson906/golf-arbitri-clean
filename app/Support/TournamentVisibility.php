@@ -17,9 +17,9 @@ use Illuminate\Database\Eloquent\Builder;
  * Regole:
  * - SuperAdmin:    vede tutto
  * - NationalAdmin: solo tornei con TournamentType.is_national = true
- * - ZoneAdmin:     solo tornei della propria zona (via club.zone_id)
+ * - ZoneAdmin:     solo tornei della propria zona, zonali e nazionali (P9)
  * - Referee Naz.:  propria zona + tornei nazionali
- * - Referee Zon.:  solo propria zona
+ * - Referee Zon.:  solo propria zona (zonali e nazionali che vi si giocano)
  * - Fallback:      filtra per zona se presente, altrimenti nessun risultato
  */
 final class TournamentVisibility
@@ -154,7 +154,9 @@ final class TournamentVisibility
 
         return match ($type) {
             UserType::NationalAdmin => $isNationalTournament,
-            UserType::ZoneAdmin     => $tournamentZoneId === $user->zone_id || $isNationalTournament,
+            // P9 (2026-10-03): l'admin di zona vede SOLO i tornei della propria zona,
+            // zonali e nazionali; i nazionali delle altre zone sono del CRC.
+            UserType::ZoneAdmin     => $tournamentZoneId === $user->zone_id,
             UserType::Referee       => self::refereeCanAccess($tournament, $user, $tournamentZoneId, $isNationalTournament),
             default                 => $tournamentZoneId === $user->zone_id || $isNationalTournament,
         };
@@ -163,13 +165,12 @@ final class TournamentVisibility
     // ── Metodi privati ────────────────────────────────────────────────────────
 
     /**
-     * Visibilità dell'admin di zona: i tornei della propria zona PIU' tutti i
-     * tornei nazionali, ovunque si giochino.
+     * Visibilità dell'admin di zona: SOLO i tornei della propria zona, zonali
+     * e nazionali (decisione 2026-10-03, P9: i nazionali delle altre zone sono
+     * del CRC; quelli della propria zona servono alla SZR per gli osservatori).
      *
-     * Prima filtrava solo su `club.zone_id`, e questo aveva due conseguenze:
-     * un Campionato Nazionale ospitato in un'altra zona era invisibile, e un
-     * torneo T.B.A. (circolo non ancora assegnato) non compariva da nessuna
-     * parte. La zona si legge quindi da entrambe le fonti: la relazione col
+     * Un torneo T.B.A. (circolo non ancora assegnato) deve comunque comparire:
+     * la zona si legge quindi da entrambe le fonti: la relazione col
      * circolo quando c'e', e la colonna `tournaments.zone_id` — che
      * TournamentObserver mantiene sincronizzata ed e' l'unica disponibile
      * finche' il circolo non e' stato scelto.
@@ -181,10 +182,10 @@ final class TournamentVisibility
      */
     private static function applyZoneAdminFilter(Builder $query, User $user): Builder
     {
+        // P9 (2026-10-03): solo la propria zona (zonali e nazionali che vi si giocano)
         return $query->where(function (Builder $q) use ($user) {
             $q->whereHas('club', fn (Builder $sub) => $sub->where('zone_id', $user->zone_id))
-                ->orWhere('zone_id', $user->zone_id)
-                ->orWhereHas('tournamentType', fn (Builder $sub) => $sub->where('is_national', true));
+                ->orWhere('zone_id', $user->zone_id);
         });
     }
 
@@ -201,6 +202,7 @@ final class TournamentVisibility
         if ($isNational && $user->zone_id) {
             return $query->where(function (Builder $q) use ($user) {
                 $q->whereHas('club', fn (Builder $sub) => $sub->where('zone_id', $user->zone_id))
+                  ->orWhere('zone_id', $user->zone_id)
                   ->orWhereHas('tournamentType', fn (Builder $sub) => $sub->where('is_national', true));
             });
         }
@@ -211,8 +213,14 @@ final class TournamentVisibility
         }
 
         if ($user->zone_id) {
-            // Zonale: solo propria zona
-            return $query->whereHas('club', fn (Builder $q) => $q->where('zone_id', $user->zone_id));
+            // Zonale: tutti i tornei della propria zona, compresi i nazionali che vi
+            // si giocano (servono per la disponibilita' come osservatore). La zona si
+            // legge anche da tournaments.zone_id, come per l'admin di zona: un torneo
+            // T.B.A. (circolo non ancora scelto) non ha il club da cui leggerla.
+            return $query->where(function (Builder $q) use ($user) {
+                $q->whereHas('club', fn (Builder $sub) => $sub->where('zone_id', $user->zone_id))
+                  ->orWhere('zone_id', $user->zone_id);
+            });
         }
 
         // Referee senza zona e non nazionale: nessun risultato

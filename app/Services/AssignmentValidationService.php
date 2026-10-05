@@ -58,7 +58,8 @@ class AssignmentValidationService
     {
         $query = Assignment::with(['user', 'tournament.club', 'tournament.zone'])
             ->whereHas('tournament', function ($q) use ($zoneId) {
-                $q->whereIn('status', ['open', 'closed']);
+                // Solo tornei non ancora conclusi (lo stato del torneo non esiste piu')
+                $q->where('end_date', '>=', now()->startOfDay());
                 if ($zoneId) {
                     $q->whereHas('club', fn ($c) => $c->where('zone_id', $zoneId));
                 }
@@ -105,7 +106,7 @@ class AssignmentValidationService
     public function findMissingRequirements(?int $zoneId = null): Collection
     {
         $query = Tournament::with(['tournamentType', 'assignments.user', 'club.zone'])
-            ->whereIn('status', ['open', 'closed']);
+            ->where('end_date', '>=', now()->startOfDay());
 
         if ($zoneId) {
             $query->whereHas('club', fn ($q) => $q->where('zone_id', $zoneId));
@@ -201,8 +202,7 @@ class AssignmentValidationService
             ->where('is_active', true)
             ->withCount(['assignments' => function ($q) {
                 $q->whereHas('tournament', function ($tq) {
-                    $tq->whereIn('status', ['open', 'closed'])
-                        ->whereYear('start_date', date('Y'));
+                    $tq->whereYear('start_date', date('Y'));
                 });
             }]);
 
@@ -214,8 +214,7 @@ class AssignmentValidationService
         $overassigned = $query
             ->with(['zone', 'assignments' => function ($q) {
                 $q->whereHas('tournament', function ($tq) {
-                    $tq->whereIn('status', ['open', 'closed'])
-                        ->whereYear('start_date', date('Y'));
+                    $tq->whereYear('start_date', date('Y'));
                 })->with('tournament');
             }])
             ->get()
@@ -251,8 +250,7 @@ class AssignmentValidationService
             ->where('is_active', true)
             ->withCount(['assignments' => function ($q) {
                 $q->whereHas('tournament', function ($tq) {
-                    $tq->whereIn('status', ['open', 'closed'])
-                        ->whereYear('start_date', date('Y'));
+                    $tq->whereYear('start_date', date('Y'));
                 });
             }]);
 
@@ -319,73 +317,6 @@ class AssignmentValidationService
         });
 
         return $rows;
-    }
-
-    /**
-     * Applica correzioni automatiche (quando possibile)
-     *
-     * @return array{
-     *     fixed: list<array<string, mixed>>,
-     *     failed: list<array<string, mixed>>,
-     *     summary: array{total_fixed: int, total_failed: int},
-     * }
-     */
-    public function applyAutomaticFixes(?int $zoneId = null): array
-    {
-        $fixed = [];
-        $failed = [];
-
-        // 1. Risolvi conflitti semplici sostituendo arbitri
-        $conflicts = $this->detectDateConflicts($zoneId);
-
-        DB::beginTransaction();
-
-        try {
-            foreach ($conflicts as $conflict) {
-                if ($conflict['severity'] === 'high') {
-                    $alternatives = $this->findAlternativeReferees(
-                        $conflict['assignment2']->tournament,
-                        $conflict['referee']->id
-                    );
-
-                    $replacement = $alternatives->first();
-
-                    if ($replacement !== null) {
-                        try {
-                            $conflict['assignment2']->update([
-                                'user_id' => $replacement->id,
-                            ]);
-                            $fixed[] = [
-                                'type' => 'conflict_resolved',
-                                'tournament' => $conflict['assignment2']->tournament->name,
-                                'old_referee' => $conflict['referee']->name,
-                                'new_referee' => $replacement->name,
-                            ];
-                        } catch (\Exception $e) {
-                            $failed[] = [
-                                'type' => 'conflict_resolution_failed',
-                                'tournament' => $conflict['assignment2']->tournament->name,
-                                'error' => $e->getMessage(),
-                            ];
-                        }
-                    }
-                }
-            }
-
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            throw $e;
-        }
-
-        return [
-            'fixed' => $fixed,
-            'failed' => $failed,
-            'summary' => [
-                'total_fixed' => count($fixed),
-                'total_failed' => count($failed),
-            ],
-        ];
     }
 
     // ============ METODI PRIVATI HELPER ============

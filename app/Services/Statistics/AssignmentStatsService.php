@@ -25,8 +25,6 @@ class AssignmentStatsService
 
         return [
             'total' => $query->count(),
-            'confirmed' => $query->clone()->where('is_confirmed', true)->count(),
-            'pending' => $query->clone()->where('is_confirmed', false)->count(),
         ];
     }
 
@@ -162,8 +160,6 @@ class AssignmentStatsService
 
         return [
             'total' => $generalStats['total'],
-            'confirmed' => $generalStats['confirmed'],
-            'pending' => $generalStats['pending'],
             'by_role' => $this->getByRole($user),
             'by_zone' => $this->getByZone($user),
             'by_level' => $this->getByLevel($user),

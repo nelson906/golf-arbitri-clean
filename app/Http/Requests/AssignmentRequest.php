@@ -3,8 +3,6 @@
 namespace App\Http\Requests;
 
 use App\Enums\AssignmentRole;
-use App\Enums\RefereeLevel;
-use App\Enums\TournamentStatus;
 use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Models\User;
@@ -49,28 +47,11 @@ class AssignmentRequest extends FormRequest
     public function rules(): array
     {
         return [
+            // P6 (2026-10-03): arbitri minimi/massimi e livello richiesto del tipo
+            // torneo sono solo INDICAZIONI: nessun blocco in assegnazione.
             'tournament_id' => [
                 'required',
                 'exists:tournaments,id',
-                function (string $attribute, mixed $value, \Closure $fail): void {
-                    /** @var Tournament|null $tournament */
-                    $tournament = Tournament::with('tournamentType')->find($value);
-
-                    if (! $tournament instanceof Tournament) {
-                        return;
-                    }
-
-                    // Usa l'Enum TournamentStatus per verificare lo stato
-                    if (! $tournament->status->isActive()) {
-                        $fail('Il torneo non è in uno stato che permette assegnazioni (stato: '.$tournament->status->label().').');
-                    }
-
-                    // Verifica limite massimo arbitri
-                    $maxReferees = $tournament->tournamentType->max_referees ?? 4;
-                    if ($tournament->assignments()->count() >= $maxReferees) {
-                        $fail('Il torneo ha già raggiunto il numero massimo di '.$maxReferees.' arbitri.');
-                    }
-                },
             ],
             'user_id' => [
                 'required',
@@ -99,18 +80,6 @@ class AssignmentRequest extends FormRequest
                         ->exists()
                     ) {
                         $fail('Questo arbitro è già stato assegnato a questo torneo.');
-                    }
-
-                    // Verifica livello minimo richiesto
-                    if ($tournament?->tournamentType && $tournament->tournamentType->required_level) {
-                        $requiredLevel = $tournament->tournamentType->required_level;
-                        $levels        = array_keys(RefereeLevel::selectOptions(true));
-                        $requiredIndex = array_search($requiredLevel, $levels);
-                        $userIndex     = array_search($user->level, $levels);
-
-                        if ($userIndex !== false && $requiredIndex !== false && $userIndex < $requiredIndex) {
-                            $fail("L'arbitro non ha il livello richiesto per questo torneo.");
-                        }
                     }
 
                     // Per tornei zonali: stesso zona

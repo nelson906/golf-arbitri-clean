@@ -28,6 +28,22 @@ class NotificationPreparationService
      * Per tornei nazionali, sendNationalNotification() gestirà poi la distinzione
      * CRC/SZR e la pulizia di eventuali bozze.
      */
+    /**
+     * Torneo nazionale: la notifica di chi apre il form (CRC = arbitri,
+     * SZR = osservatori), senza salvarla. Nasce solo all'invio, in
+     * sendNationalNotification(). Decisione 2026-10-03 (P13): aprire il form
+     * non crea record, e la SZR non crea mai la notifica del CRC.
+     */
+    public function prepareNationalNotification(Tournament $tournament, \App\Models\User $user): TournamentNotification
+    {
+        $type = $user->isNationalAdmin() ? 'crc_referees' : 'zone_observers';
+
+        return TournamentNotification::firstOrNew([
+            'tournament_id' => $tournament->id,
+            'notification_type' => $type,
+        ]);
+    }
+
     public function prepareNotification(Tournament $tournament): TournamentNotification
     {
         $isNational = $tournament->tournamentType->is_national ?? false;

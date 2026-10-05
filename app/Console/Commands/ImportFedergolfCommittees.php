@@ -10,6 +10,7 @@ use App\Services\FedergolfCompetitionsClient;
 use App\Support\Untrusted;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Importa in batch i Comitati di Gara da federgolf.it per un dato anno.
@@ -26,6 +27,13 @@ use Illuminate\Console\Command;
  *   php artisan federgolf:import-committees --anno=2025
  *   php artisan federgolf:import-committees --anno=2025 --dry-run
  *   php artisan federgolf:import-committees --anno=2025 --min-score=70
+ *   php artisan federgolf:import-committees --anno=2026 --replace --dry-run
+ *
+ * --replace (decisione 2026-10-04, caricamento completo che sovrascrive):
+ *   per ogni torneo locale abbinato, TUTTE le assegnazioni esistenti
+ *   (importate o fatte a mano) vengono tolte e sostituite dal Comitato FIG.
+ *   Un torneo si sostituisce una volta sola per esecuzione; se nessun nome
+ *   del comitato trova un arbitro locale, il torneo non viene toccato.
  */
 /**
  * @phpstan-type FigGara array{id: string, nome: string, data: string, club: string}
@@ -54,7 +62,11 @@ class ImportFedergolfCommittees extends Command
                             {--min-name-score=82 : Score minimo per il match nome arbitro (sotto soglia → da creare manualmente)}
                             {--skip-existing : Salta gare FIG per cui tutti gli arbitri sono già assegnati}
                             {--force-before= : Sovrascrivi assegnazioni create PRIMA di questa data (es. 2025-09-01)}
-                            {--force : Sovrascrivi TUTTE le assegnazioni esistenti}';
+                            {--force : Sovrascrivi TUTTE le assegnazioni esistenti}
+                            {--replace : Sostituisci tutte le assegnazioni di ogni torneo abbinato con il comitato FIG}
+                            {--offset=0 : Prima gara da elaborare (esecuzione a blocchi dalla pagina web)}
+                            {--limit=0 : Numero di gare da elaborare, 0 = tutte}
+                            {--run= : Identificativo dell\'esecuzione a blocchi (ricorda i tornei gia\' sostituiti)}';
 
     protected $description = 'Importa i Comitati di Gara da federgolf.it per un anno intero';
 
@@ -65,6 +77,25 @@ class ImportFedergolfCommittees extends Command
     private int $assegnazioniCreate  = 0;
     private int $assegnazioniSaltate = 0;
     private int $nomiSenzaMatch      = 0;
+    private int $assegnazioniRimosse = 0;
+
+    /**
+     * Tornei gia' sostituiti in questa esecuzione (--replace): una gara FIG
+     * successiva sullo stesso torneo aggiunge, non ricancella.
+     *
+     * @var array<int, true>
+     */
+    private array $torneiSostituiti = [];
+
+    /** Gare FIG uniche dell'anno, prima del taglio a blocchi. */
+    private int $gareDisponibili = 0;
+
+    /**
+     * Gare FIG senza torneo locale, per il riepilogo.
+     *
+     * @var list<array{nome: string, data: string, club: string}>
+     */
+    private array $gareSenzaTorneo = [];
 
     /**
      * Nomi FIG non trovati nel DB: da creare come utenti.
@@ -112,6 +143,23 @@ class ImportFedergolfCommittees extends Command
         $this->info("   → " . count($gareFig) . " gare uniche dopo de-duplicazione (MASCHILE/FEMMINILE).");
         $this->newLine();
 
+        // ── Esecuzione a blocchi (pagina web: ogni richiesta elabora poche gare)
+        $this->gareDisponibili = count($gareFig);
+        $offset = max(0, (int) $this->option('offset'));
+        $limit = max(0, (int) $this->option('limit'));
+        $blocchi = $limit > 0;
+        if ($blocchi) {
+            $gareFig = array_slice($gareFig, $offset, $limit);
+        }
+
+        // Tornei gia' sostituiti nei blocchi precedenti della stessa esecuzione
+        $runKey = $this->runCacheKey();
+        if ($runKey !== null) {
+            /** @var array<int, true> $giaSostituiti */
+            $giaSostituiti = Cache::get($runKey, []);
+            $this->torneiSostituiti = $giaSostituiti;
+        }
+
         // ── 2. Carica tornei locali ─────────────────────────────────────────
         $torneiLocali = Tournament::with(['club', 'assignments'])
             ->whereIn('status', ['draft', 'open', 'assigned', 'completed'])
@@ -135,9 +183,15 @@ class ImportFedergolfCommittees extends Command
             }
         }
 
-        // ── 4. Report finale ────────────────────────────────────────────────
-        $this->newLine();
-        $this->printSummary($report, $dryRun, $torneiLocali);
+        if ($runKey !== null) {
+            Cache::put($runKey, $this->torneiSostituiti, now()->addHours(6));
+        }
+
+        // ── 4. Report finale (a blocchi lo compone la pagina web) ───────────
+        if (! $blocchi) {
+            $this->newLine();
+            $this->printSummary($report, $dryRun, $torneiLocali);
+        }
 
         return self::SUCCESS;
     }
@@ -182,6 +236,7 @@ class ImportFedergolfCommittees extends Command
             $result['stato'] = 'no_torneo_locale';
             $this->line("    <fg=yellow>⚠ Nessun torneo locale con score ≥{$minScore}% — saltato</>");
             $this->gareSenzaMatch++;
+            $this->gareSenzaTorneo[] = ['nome' => $gara['nome'], 'data' => $gara['data'], 'club' => $gara['club']];
 
             return $result;
         }
@@ -223,9 +278,37 @@ class ImportFedergolfCommittees extends Command
         $torneoId    = $bestMatch['torneo']->id;
         $assegnedBy  = $this->getSystemUserId();
         $force       = (bool) $this->option('force');
+        $replace     = (bool) $this->option('replace');
         $forceBefore = $this->option('force-before')
             ? Carbon::parse($this->option('force-before'))
             : null;
+
+        // ── --replace: toglie tutte le assegnazioni del torneo ──────────────
+        $sostituitoOra = false;
+        $nomiValidi = array_filter(
+            $matched,
+            fn ($row) => $row['match'] && $row['match']['score'] >= $minNameScore
+        );
+
+        if ($replace && ! isset($this->torneiSostituiti[$torneoId])) {
+            if ($nomiValidi === []) {
+                $this->line("    <fg=yellow>⚠ Nessun nome del comitato trovato tra gli arbitri: assegnazioni non toccate</>");
+            } else {
+                $daTogliere = Assignment::where('tournament_id', $torneoId)->count();
+                $this->line("    <fg=yellow>  ✂ tolte {$daTogliere} assegnazioni precedenti</>");
+                $this->assegnazioniRimosse += $daTogliere;
+
+                if (! $dryRun) {
+                    Assignment::where('tournament_id', $torneoId)->delete();
+                }
+
+                $this->torneiSostituiti[$torneoId] = true;
+                $sostituitoOra = true;
+            }
+        }
+
+        /** @var array<int, true> $assegnatiOra */
+        $assegnatiOra = [];
 
         foreach ($matched as $row) {
             $nomeFig = $row['fig']['nome_completo'];
@@ -255,10 +338,22 @@ class ImportFedergolfCommittees extends Command
             $nome   = $row['match']['name'];
             $score  = $row['match']['score'];
 
-            // Cerca assegnazione esistente con data e note
-            $existing = Assignment::where('tournament_id', $torneoId)
-                ->where('user_id', $userId)
-                ->first(['id', 'tournament_id', 'user_id', 'created_at', 'notes', 'role']);
+            // Cerca assegnazione esistente con data e note. Appena sostituito
+            // (--replace) il torneo e' vuoto: anche in dry-run si simula cosi'.
+            // Due nomi FIG sullo stesso arbitro: una sola assegnazione
+            if (isset($assegnatiOra[$userId])) {
+                $result['saltati']++;
+                $this->assegnazioniSaltate++;
+
+                continue;
+            }
+            $assegnatiOra[$userId] = true;
+
+            $existing = $sostituitoOra
+                ? null
+                : Assignment::where('tournament_id', $torneoId)
+                    ->where('user_id', $userId)
+                    ->first(['id', 'tournament_id', 'user_id', 'created_at', 'notes', 'role']);
 
             if ($existing) {
                 $dataCreazione = $existing->created_at?->format('d/m/Y');
@@ -573,6 +668,47 @@ class ImportFedergolfCommittees extends Command
     }
 
     /**
+     * Contatori ed elenchi dell'ultima esecuzione, per la pagina web.
+     *
+     * @return array{
+     *   gare_disponibili: int,
+     *   gare_elaborate: int,
+     *   gare_senza_torneo: int,
+     *   gare_senza_comitato: int,
+     *   create: int,
+     *   gia_presenti: int,
+     *   tolte: int,
+     *   nomi_senza_match: int,
+     *   elenco_gare_senza_torneo: list<array{nome: string, data: string, club: string}>,
+     *   elenco_nomi_da_creare: list<array{nome_fig: string, ruolo: string, torneo: string, candidato: string}>
+     * }
+     */
+    public function stats(): array
+    {
+        return [
+            'gare_disponibili' => $this->gareDisponibili,
+            'gare_elaborate' => $this->gareTotali,
+            'gare_senza_torneo' => $this->gareSenzaMatch,
+            'gare_senza_comitato' => $this->gareSenzaComitato,
+            'create' => $this->assegnazioniCreate,
+            'gia_presenti' => $this->assegnazioniSaltate,
+            'tolte' => $this->assegnazioniRimosse,
+            'nomi_senza_match' => $this->nomiSenzaMatch,
+            'elenco_gare_senza_torneo' => $this->gareSenzaTorneo,
+            'elenco_nomi_da_creare' => $this->nomiDaCreare,
+        ];
+    }
+
+    private function runCacheKey(): ?string
+    {
+        $run = $this->option('run');
+
+        return is_string($run) && preg_match('/^[A-Za-z0-9-]{8,64}$/', $run) === 1
+            ? 'fig-import-run:'.$run
+            : null;
+    }
+
+    /**
      * @param  list<GaraReport>  $report
      * @param  \Illuminate\Database\Eloquent\Collection<int, \App\Models\Tournament>  $torneiLocali
      */
@@ -603,6 +739,7 @@ class ImportFedergolfCommittees extends Command
                 ['Tornei locali senza gara FIG corrispondente',              $torneiSenzaFig->count()],
                 ['Assegnazioni create' . ($dryRun ? ' (simulato)' : ''),     $this->assegnazioniCreate],
                 ['Assegnazioni già presenti',                                 $this->assegnazioniSaltate],
+                ['Assegnazioni precedenti tolte (--replace)' . ($dryRun ? ' (simulato)' : ''), $this->assegnazioniRimosse],
                 ['Arbitri senza match locale',                                $this->nomiSenzaMatch],
             ]
         );

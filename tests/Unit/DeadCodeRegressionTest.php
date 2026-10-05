@@ -44,16 +44,18 @@ class DeadCodeRegressionTest extends TestCase
     }
 
     /**
-     * Verifica che changeStatus() (il metodo reale, registrato nella route) esista ancora.
+     * Decisione 2026-10-03 (P3): lo stato del torneo non esiste piu' come
+     * concetto applicativo, quindi anche changeStatus() e la sua rotta spariscono.
      */
-    public function test_dead01_change_status_still_exists(): void
+    public function test_dead01_change_status_removed_with_tournament_status(): void
     {
         $rc = new ReflectionClass(TournamentController::class);
 
-        $this->assertTrue(
+        $this->assertFalse(
             $rc->hasMethod('changeStatus'),
-            'DEAD-01: changeStatus() è il metodo di route reale e non deve essere rimosso.'
+            'P3: lo stato del torneo e\' stato eliminato, changeStatus() non deve esistere.'
         );
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('admin.tournaments.change-status'));
     }
 
     // ====================================================================

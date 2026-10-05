@@ -20,7 +20,6 @@ Route::prefix('tournaments')->name('tournaments.')->group(function () {
     Route::resource('/', TournamentController::class)->parameters(['' => 'tournament']);
 
     // Status Management
-    Route::post('/{tournament}/status', [TournamentController::class, 'changeStatus'])->name('change-status');
 
     // Tournament-specific sub-routes
     Route::prefix('{tournament}')->group(function () {

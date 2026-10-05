@@ -110,23 +110,6 @@ class TournamentRequest extends FormRequest
                 'before:start_date',
             ]),
             'notes' => 'nullable|string|max:1000',
-            'status' => [
-                'sometimes',
-                Rule::in(array_keys(Tournament::STATUSES)),
-                function ($attribute, $value, $fail) use ($isUpdate, $tournament) {
-                    if (! $isUpdate) {
-                        // For new tournaments, only draft and open are allowed
-                        if (! in_array($value, ['draft', 'open'])) {
-                            $fail('Stato non valido per un nuovo torneo.');
-                        }
-                    } else {
-                        // Per updates, il super_admin bypassa il vincolo di stato
-                        if (! $this->authUser()->isSuperAdmin() && $tournament instanceof Tournament && ! $tournament->isEditable()) {
-                            $fail('Questo torneo non può essere modificato nel suo stato attuale.');
-                        }
-                    }
-                },
-            ],
         ];
 
         // Zone ID is required for national admins (not super_admin, who can set it via club)
@@ -166,7 +149,6 @@ class TournamentRequest extends FormRequest
             'availability_deadline.after_or_equal' => 'La scadenza per le disponibilità non può essere nel passato.',
             'availability_deadline.before' => 'La scadenza per le disponibilità deve essere prima dell\'inizio del torneo.',
             'notes.max' => 'Le note non possono superare i 1000 caratteri.',
-            'status.in' => 'Lo stato selezionato non è valido.',
         ];
     }
 
@@ -185,12 +167,6 @@ class TournamentRequest extends FormRequest
             }
         }
 
-        // Set default status if not provided
-        if (! $this->has('status') && ! $this->route('tournament')) {
-            $this->merge([
-                'status' => 'draft',
-            ]);
-        }
     }
 
     /**
@@ -207,7 +183,6 @@ class TournamentRequest extends FormRequest
             'end_date' => 'data fine',
             'availability_deadline' => 'scadenza disponibilità',
             'notes' => 'note',
-            'status' => 'stato',
         ];
     }
 }

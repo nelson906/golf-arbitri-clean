@@ -119,38 +119,6 @@
         </div>
 
         @if ($conflictsWithSuggestions->count() > 0)
-            <!-- Azione Risoluzione Automatica -->
-            <div class="bg-white shadow rounded-lg mb-8">
-                <div class="p-6">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <svg class="h-10 w-10 text-blue-600 mr-4" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                            </svg>
-                            <div>
-                                <h3 class="text-lg font-medium text-gray-900">Risoluzione Automatica</h3>
-                                <p class="text-sm text-gray-600">Il sistema può tentare di risolvere automaticamente alcuni
-                                    conflitti sostituendo gli arbitri con alternative valide</p>
-                            </div>
-                        </div>
-                        <form action="{{ route('admin.assignment-validation.fix-conflicts') }}" method="POST"
-                            onsubmit="return confirm('Vuoi procedere con la risoluzione automatica? Alcune assegnazioni verranno modificate.')">
-                            @csrf
-                            <button type="submit"
-                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                                Risolvi Automaticamente
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
             <!-- Lista Conflitti -->
             <div class="space-y-6">
                 @foreach ($conflictsWithSuggestions as $index => $conflict)

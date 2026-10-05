@@ -41,8 +41,26 @@
                 @csrf
                 @method('PUT')
 
-                {{-- Hidden field for user_type --}}
-                <input type="hidden" name="user_type" value="{{ old('user_type', $user->user_type) }}">
+                {{-- Tipo utente (P14): ogni admin puo' promuovere un arbitro ad admin di zona;
+                     solo il super admin gestisce i super admin. Se il tipo attuale non e'
+                     tra quelli assegnabili, resta invariato (campo nascosto). --}}
+                @php $currentType = old('user_type', $user->user_type->value); @endphp
+                @if (array_key_exists($currentType, $userTypes))
+                    <div>
+                        <label for="user_type" class="block text-sm font-medium text-gray-700 mb-1">Tipo utente *</label>
+                        <select name="user_type" id="user_type"
+                            class="w-full md:w-1/2 border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('user_type') border-red-500 @enderror">
+                            @foreach ($userTypes as $value => $label)
+                                <option value="{{ $value }}" {{ $currentType === $value ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        @error('user_type')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                @else
+                    <input type="hidden" name="user_type" value="{{ $currentType }}">
+                @endif
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {{-- Nome --}}

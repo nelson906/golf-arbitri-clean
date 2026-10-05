@@ -30,6 +30,22 @@
                         <h3 class="text-xs font-semibold text-blue-300 uppercase tracking-wider">Sistema</h3>
                     </li>
                     <li>
+                        <a href="{{ route('super-admin.zones.index') }}"
+                            class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('super-admin.zones.*') ? 'bg-blue-900' : '' }}">
+                            <span class="mr-3">🌍</span>
+                            Zone
+                        </a>
+                    </li>
+                    @if (\App\Support\FigImportAccess::allows(auth()->user()))
+                        <li>
+                            <a href="{{ route('super-admin.fig-import.index') }}"
+                                class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('super-admin.fig-import.*') ? 'bg-blue-900' : '' }}">
+                                <span class="mr-3">📡</span>
+                                Carica comitati FIG
+                            </a>
+                        </li>
+                    @endif
+                    <li>
                         <a href="{{ route('super-admin.tournament-types.index') }}"
                             class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('super-admin.tournament-types.*') ? 'bg-blue-900' : '' }}">
                             <span class="mr-3">🏆</span>

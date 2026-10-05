@@ -141,7 +141,9 @@ class AssignmentController extends Controller
             }
         }
 
-        $tournaments = Tournament::where('status', 'open')->get();
+        $tournamentsQuery = Tournament::where('end_date', '>=', now()->startOfDay());
+        $this->applyTournamentVisibility($tournamentsQuery, $user);
+        $tournaments = $tournamentsQuery->orderBy('start_date')->get();
 
         return view('admin.assignments.create', compact(
             'tournament',
@@ -156,7 +158,8 @@ class AssignmentController extends Controller
      *
      * NOTA (audit 2026-06): usa AssignmentRequest (prima era FormRequest orfana,
      * mai cablata): authorize() verifica ruolo+zona, rules() aggiunge controlli
-     * business (stato torneo, max arbitri, livello richiesto, stessa zona).
+     * business (arbitro attivo, non gia' assegnato, stessa zona per i zonali).
+     * P6 (2026-10-03): max arbitri e livello richiesto sono solo indicazioni.
      */
     public function store(AssignmentRequest $request): RedirectResponse
     {
@@ -176,8 +179,16 @@ class AssignmentController extends Controller
             return back()->with('error', 'Arbitro già assegnato a questo torneo');
         }
 
-        if (empty($validated['role'])) {
-            $validated['role'] = AssignmentRole::default()->value;
+        $role = $validated['role'] ?? null;
+        if (! is_string($role) || $role === '') {
+            $role = $this->isObserverOnly($tournament)
+                ? AssignmentRole::Observer->value
+                : AssignmentRole::default()->value;
+        }
+        $validated['role'] = $role;
+
+        if (! $this->observerRoleAllowed($tournament, $role)) {
+            return back()->withInput()->with('error', 'Sui tornei nazionali l\'admin di zona designa solo osservatori.');
         }
 
         Assignment::create(array_merge($validated, [
@@ -269,6 +280,12 @@ class AssignmentController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
+        // P9: sui nazionali l'admin di zona modifica solo osservatori, e solo come osservatori
+        if (! $this->observerRoleAllowed($assignment->tournament, $assignment->role)
+            || ! $this->observerRoleAllowed($assignment->tournament, $request->string('role')->toString())) {
+            return back()->withInput()->with('error', 'Sui tornei nazionali l\'admin di zona gestisce solo gli osservatori.');
+        }
+
         // Verifica che il nuovo arbitro non sia già assegnato allo stesso torneo
         // Usa !== (strict) per evitare problemi di type juggling stringa/int
         if ((int) $validated['user_id'] !== (int) $assignment->user_id) {
@@ -313,30 +330,6 @@ class AssignmentController extends Controller
     }
 
     /**
-     * Confirm assignment.
-     */
-    public function confirm(Assignment $assignment): RedirectResponse
-    {
-        $this->checkAssignmentAccess($assignment);
-
-        try {
-            $assignment->is_confirmed = true;
-            $assignment->save();
-
-            return redirect()->back()
-                ->with('success', 'Assegnazione confermata con successo.');
-        } catch (\Exception $e) {
-            Log::error('Error confirming assignment', [
-                'assignment_id' => $assignment->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return redirect()->back()
-                ->with('error', 'Errore durante la conferma dell\'assegnazione: '.$e->getMessage());
-        }
-    }
-
-    /**
      * Mostra form per assegnare arbitri a un torneo
      */
     public function assignReferees(Tournament $tournament): View
@@ -372,13 +365,97 @@ class AssignmentController extends Controller
         // Ottieni arbitri nazionali (per tornei nazionali)
         $nationalReferees = $this->getNationalReferees($tournament, $assignedRefereeIds, $availableReferees);
 
+        // P7 (2026-10-03): altre designazioni della stagione e conflitti di date
+        $refereeLoad = $this->buildRefereeLoad(
+            $tournament,
+            collect([$availableReferees, $possibleReferees, $nationalReferees])->flatten(1)->pluck('id')
+        );
+
+        // P9 (2026-10-03): sui tornei nazionali l'admin di zona designa solo osservatori
+        $observerOnly = $this->isObserverOnly($tournament);
+
         return view('admin.assignments.assign-referees', compact(
             'tournament',
             'availableReferees',
             'possibleReferees',
             'nationalReferees',
-            'assignedReferees'
+            'assignedReferees',
+            'refereeLoad',
+            'observerOnly'
         ))->with('isNationalAdmin', $this->isNationalAdmin());
+    }
+
+    /**
+     * P9 (2026-10-03): sui tornei nazionali l'admin di zona (SZR) designa solo
+     * gli osservatori; arbitri e Direttore di Torneo sono del CRC.
+     */
+    private function isObserverOnly(Tournament $tournament): bool
+    {
+        return $this->isZoneAdmin() && ($tournament->tournamentType->is_national ?? false);
+    }
+
+    /**
+     * P9: un admin di zona su un torneo nazionale puo' toccare solo il ruolo Osservatore.
+     */
+    private function observerRoleAllowed(Tournament $tournament, ?string $role): bool
+    {
+        return ! $this->isObserverOnly($tournament) || $role === AssignmentRole::Observer->value;
+    }
+
+    /**
+     * P7 (2026-10-03): per ogni arbitro candidato, le altre designazioni della
+     * stessa stagione e quelle che si sovrappongono alle date del torneo.
+     *
+     * @param  \Illuminate\Support\Collection<int, mixed>  $refereeIds
+     * @return array<int, array{count: int, conflicts: list<array{name: string, dates: string, role: string}>, others: list<array{name: string, dates: string, role: string}>}>
+     */
+    private function buildRefereeLoad(Tournament $tournament, Collection $refereeIds): array
+    {
+        if ($refereeIds->isEmpty()) {
+            return [];
+        }
+
+        $start = $tournament->start_date->copy()->startOfDay();
+        $end = ($tournament->end_date ?? $tournament->start_date)->copy()->endOfDay();
+
+        $others = Assignment::with('tournament:id,name,start_date,end_date')
+            ->whereIn('user_id', $refereeIds->all())
+            ->where('tournament_id', '!=', $tournament->id)
+            ->whereHas('tournament', fn ($q) => $q->whereYear('start_date', $start->year))
+            ->get()
+            ->groupBy('user_id');
+
+        $load = [];
+
+        foreach ($others as $userId => $assignments) {
+            $entry = ['count' => 0, 'conflicts' => [], 'others' => []];
+
+            foreach ($assignments->sortBy('tournament.start_date') as $a) {
+                $t = $a->tournament;
+                if (! $t) {
+                    continue;
+                }
+
+                $tStart = $t->start_date;
+                $tEnd = $t->end_date ?? $t->start_date;
+                $row = [
+                    'name' => $t->name,
+                    'dates' => $tStart->format('d/m').($tEnd->isSameDay($tStart) ? '' : '–'.$tEnd->format('d/m')),
+                    'role' => (string) $a->role,
+                ];
+
+                $entry['count']++;
+                $entry['others'][] = $row;
+
+                if ($tStart <= $end && $tEnd >= $start) {
+                    $entry['conflicts'][] = $row;
+                }
+            }
+
+            $load[(int) $userId] = $entry;
+        }
+
+        return $load;
     }
 
     /**
@@ -548,6 +625,7 @@ class AssignmentController extends Controller
                 ->toArray();
 
             $roles = $request->array('roles');
+            $observerOnly = $this->isObserverOnly($tournament);
 
             foreach ($request->array('referee_ids') as $refereeId) {
                 if (in_array($refereeId, $existingUserIds)) {
@@ -555,9 +633,22 @@ class AssignmentController extends Controller
                     continue;
                 }
 
-                $role = is_string($refereeId) || is_int($refereeId)
-                    ? ($roles[$refereeId] ?? AssignmentRole::default()->value)
+                $defaultRole = $observerOnly
+                    ? AssignmentRole::Observer->value
                     : AssignmentRole::default()->value;
+
+                $role = is_string($refereeId) || is_int($refereeId)
+                    ? ($roles[$refereeId] ?? null)
+                    : null;
+                // "Seleziona ruolo" lasciato vuoto = ruolo di default
+                $role = is_string($role) && $role !== '' ? $role : $defaultRole;
+
+                // P9: sui nazionali l'admin di zona designa solo osservatori
+                if (! $this->observerRoleAllowed($tournament, $role)) {
+                    DB::rollBack();
+
+                    return back()->with('error', 'Sui tornei nazionali l\'admin di zona designa solo osservatori: arbitri e Direttore di Torneo sono del CRC.');
+                }
 
                 $data = [
                     'tournament_id' => $tournament->id,
@@ -578,13 +669,14 @@ class AssignmentController extends Controller
                 // ✅ HOOK: Auto-crea TournamentNotification se non esiste
                 $existingNotification = TournamentNotification::where('tournament_id', $tournament->id)->first();
 
-                if (! $existingNotification && $created > 0) {
-                    // Determina notification_type dalla fonte di verità (tournamentType.is_national)
-                    $isNational = $tournament->tournamentType->is_national ?? false;
+                // P13 (2026-10-03): solo i tornei zonali hanno una bozza automatica.
+                // Le notifiche nazionali (CRC arbitri, SZR osservatori) nascono all'invio.
+                $isNational = $tournament->tournamentType->is_national ?? false;
 
+                if (! $existingNotification && $created > 0 && ! $isNational) {
                     TournamentNotification::create([
                         'tournament_id'     => $tournament->id,
-                        'notification_type' => $isNational ? 'crc_referees' : null,
+                        'notification_type' => null,
                         'status'            => 'draft',
                         'sent_by'           => auth()->id(),
                         'details'           => [
@@ -636,6 +728,10 @@ class AssignmentController extends Controller
             ->where('user_id', $referee->id)
             ->first();
 
+        if ($assignment && ! $this->observerRoleAllowed($tournament, $assignment->role)) {
+            return back()->with('error', 'Sui tornei nazionali l\'admin di zona può rimuovere solo gli osservatori.');
+        }
+
         if ($assignment) {
             $assignment->delete();
 
@@ -670,6 +766,9 @@ class AssignmentController extends Controller
             // Verifica permessi usando il trait
             if ($assignment->tournament && ! $this->canAccessTournament($assignment->tournament)) {
                 return back()->with('error', 'Non hai i permessi per rimuovere questa assegnazione');
+            }
+            if ($assignment->tournament && ! $this->observerRoleAllowed($assignment->tournament, $assignment->role)) {
+                return back()->with('error', 'Sui tornei nazionali l\'admin di zona può rimuovere solo gli osservatori.');
             }
             // Salva info per il messaggio e il redirect
             $refereeName = $assignment->user->name ?? 'Arbitro';
@@ -706,7 +805,7 @@ class AssignmentController extends Controller
                 $q->whereHas('tournament', fn ($tq) => $tq->where('zone_id', $zoneId));
             })->count(),
 
-            'active_tournaments' => Tournament::whereIn('status', ['open', 'closed'])
+            'active_tournaments' => Tournament::where('end_date', '>=', now()->startOfDay())
                 ->when($zoneId, fn ($q) => $q->where('zone_id', $zoneId))
                 ->count(),
 
@@ -854,40 +953,5 @@ class AssignmentController extends Controller
             'stats',
             'threshold'
         ));
-    }
-
-    /**
-     * Applica correzioni automatiche ai conflitti
-     * POST /admin/assignment-validation/fix-conflicts
-     */
-    public function fixConflicts(Request $request): RedirectResponse
-    {
-        $user = auth()->user();
-        $zoneId = $this->getZoneIdForUser($user);
-
-        try {
-            $result = $this->validationService->applyAutomaticFixes($zoneId);
-
-            if ($result['summary']['total_fixed'] > 0) {
-                $message = "Risolti automaticamente {$result['summary']['total_fixed']} conflitti.";
-
-                if ($result['summary']['total_failed'] > 0) {
-                    $message .= " {$result['summary']['total_failed']} correzioni non sono riuscite.";
-                }
-
-                return redirect()
-                    ->route('admin.assignment-validation.conflicts')
-                    ->with('success', $message)
-                    ->with('fix_details', $result);
-            } else {
-                return redirect()
-                    ->route('admin.assignment-validation.conflicts')
-                    ->with('info', 'Nessun conflitto può essere risolto automaticamente.');
-            }
-        } catch (\Exception $e) {
-            return redirect()
-                ->route('admin.assignment-validation.conflicts')
-                ->with('error', 'Errore durante la risoluzione automatica: '.$e->getMessage());
-        }
     }
 }

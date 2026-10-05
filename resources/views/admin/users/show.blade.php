@@ -98,8 +98,8 @@
                                         - {{ $assignment->tournament->club->name ?? 'Club N/A' }}
                                     </p>
                                 </div>
-                                <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $assignment->is_confirmed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
-                                    {{ $assignment->is_confirmed ? 'Confermato' : 'In attesa' }}
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                    {{ $assignment->role }}
                                 </span>
                             </div>
                         @endforeach
@@ -118,10 +118,6 @@
                     <div class="flex justify-between">
                         <span class="text-sm text-gray-600">Assegnazioni Totali</span>
                         <span class="text-sm font-semibold text-gray-900">{{ $stats['total_assignments'] }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-sm text-gray-600">Confermate</span>
-                        <span class="text-sm font-semibold text-green-600">{{ $stats['confirmed_assignments'] }}</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-sm text-gray-600">Quest'Anno</span>

@@ -271,6 +271,13 @@ class NotificationRecipientBuilder
         if (! $this->alreadyAdded($this->to, $email)) {
             $this->to[] = ['email' => $email, 'name' => $name];
         }
+
+        // Un indirizzo riceve una sola copia (decisione 2026-10-04): se era gia'
+        // in copia, resta solo come destinatario principale.
+        $this->cc = array_values(array_filter(
+            $this->cc,
+            fn (array $existing) => strtolower($existing['email']) !== strtolower($email)
+        ));
     }
 
     private function addCc(string $email, string $name): void
@@ -278,7 +285,8 @@ class NotificationRecipientBuilder
         if (! $this->isValidEmail($email, $name)) {
             return;
         }
-        if (! $this->alreadyAdded($this->cc, $email)) {
+        // Gia' destinatario principale o gia' in copia: nessuna seconda copia
+        if (! $this->alreadyAdded($this->to, $email) && ! $this->alreadyAdded($this->cc, $email)) {
             $this->cc[] = ['email' => $email, 'name' => $name];
         }
     }
@@ -308,7 +316,7 @@ class NotificationRecipientBuilder
     }
 
     /**
-     * Evita duplicati nella stessa lista.
+     * Vero se l'indirizzo e' gia' nella lista (confronto senza maiuscole).
      *
      * @param  array<array{email: string, name: string}>  $list
      */

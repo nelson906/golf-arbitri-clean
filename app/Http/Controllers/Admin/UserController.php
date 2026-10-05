@@ -8,6 +8,7 @@ use App\Enums\RefereeLevel;
 use App\Enums\UserType;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\FigImportAccess;
 use App\Models\Zone;
 use App\Traits\HasZoneVisibility;
 use Illuminate\Contracts\View\View;
@@ -75,6 +76,11 @@ class UserController extends Controller
         // Applica filtro visibilità utenti tramite trait
         $this->applyUserVisibility($query, $user);
 
+        // Account riservato (caricamento comitati FIG): invisibile agli altri
+        if (! FigImportAccess::isAccount($user)) {
+            $query->where('email', '!=', FigImportAccess::EMAIL);
+        }
+
         // Filtro per stato attivo (di default mostra solo attivi se non specificato)
         if ($request->has('status')) {
             if ($request->string('status')->toString() === 'active') {
@@ -122,6 +128,9 @@ class UserController extends Controller
     public function show(User $user): View
     {
         $currentUser = $this->authUser();
+        if (FigImportAccess::hiddenFrom($user, $currentUser)) {
+            abort(404);
+        }
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
         $isSuperAdmin = $this->isSuperAdmin($currentUser);
 
@@ -165,11 +174,13 @@ class UserController extends Controller
         // Circoli disponibili (tutti, anche fuori zona)
         $clubs = \App\Models\Club::orderBy('name')->get();
 
-        // Tipi utente che può creare
-        $userTypes = [UserType::Referee->value => 'Arbitro'];
-        if ($isNationalAdmin) {
-            $userTypes[UserType::ZoneAdmin->value] = 'Admin Zona';
-        }
+        // Tipi utente che può creare.
+        // Decisione 2026-10-03 (P14): ogni admin puo' promuovere un arbitro ad
+        // admin di zona; solo il super admin crea super admin.
+        $userTypes = [
+            UserType::Referee->value => 'Arbitro',
+            UserType::ZoneAdmin->value => 'Admin Zona',
+        ];
         if ($isSuperAdmin) {
             $userTypes[UserType::NationalAdmin->value] = 'Admin Nazionale';
             $userTypes[UserType::SuperAdmin->value]    = 'Super Admin';
@@ -234,6 +245,14 @@ class UserController extends Controller
     public function edit(User $user): View
     {
         $currentUser = $this->authUser();
+        if (FigImportAccess::hiddenFrom($user, $currentUser)) {
+            abort(404);
+        }
+
+        // P14: un account super admin lo gestisce solo un super admin
+        if ($user->isSuperAdmin() && ! $this->isSuperAdmin($currentUser)) {
+            abort(403, 'Solo un super admin può modificare un super admin');
+        }
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
         $isSuperAdmin = $this->isSuperAdmin($currentUser);
 
@@ -254,14 +273,17 @@ class UserController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Tipi utente modificabili
-        $userTypes = [UserType::Referee->value => 'Arbitro'];
-        if ($isNationalAdmin) {
-            $userTypes[UserType::ZoneAdmin->value] = 'Admin Zona';
-        }
+        // Tipi utente modificabili (stessa regola di update(), P14)
+        $userTypes = [
+            UserType::Referee->value => 'Arbitro',
+            UserType::ZoneAdmin->value => 'Admin Zona',
+        ];
         if ($isSuperAdmin) {
             $userTypes[UserType::NationalAdmin->value] = 'Admin Nazionale';
             $userTypes[UserType::SuperAdmin->value]    = 'Super Admin';
+        } elseif ($isNationalAdmin && $user->user_type === UserType::NationalAdmin) {
+            // Evita che la select ricada su "Arbitro" e declassi l'utente
+            $userTypes[UserType::NationalAdmin->value] = 'Admin Nazionale';
         }
 
         return view('admin.users.edit', compact('user', 'zones', 'clubs', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
@@ -273,6 +295,14 @@ class UserController extends Controller
     public function update(Request $request, User $user): RedirectResponse
     {
         $currentUser = $this->authUser();
+        if (FigImportAccess::hiddenFrom($user, $currentUser)) {
+            abort(404);
+        }
+
+        // P14: un account super admin lo gestisce solo un super admin
+        if ($user->isSuperAdmin() && ! $this->isSuperAdmin($currentUser)) {
+            abort(403, 'Solo un super admin può modificare un super admin');
+        }
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
 
         // Verifica permessi tramite trait
@@ -285,7 +315,10 @@ class UserController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
-            'user_type' => 'required|in:referee,admin'.($isNationalAdmin ? ',national_admin,super_admin' : ''),
+            // P14: solo il super admin assegna il tipo super_admin
+            'user_type' => 'required|in:referee,admin'
+                .($isNationalAdmin ? ',national_admin' : '')
+                .($this->isSuperAdmin($currentUser) ? ',super_admin' : ''),
             'zone_id' => 'required|exists:zones,id',
             'referee_code' => 'nullable|string|max:20|unique:users,referee_code,'.$user->id,
             'level' => 'nullable|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio',
@@ -326,6 +359,14 @@ class UserController extends Controller
     public function destroy(User $user): RedirectResponse
     {
         $currentUser = $this->authUser();
+        if (FigImportAccess::hiddenFrom($user, $currentUser)) {
+            abort(404);
+        }
+
+        // P14: un account super admin lo gestisce solo un super admin
+        if ($user->isSuperAdmin() && ! $this->isSuperAdmin($currentUser)) {
+            abort(403, 'Solo un super admin può eliminare un super admin');
+        }
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
 
         // Verifica permessi: admin nazionale può eliminare tutti, admin zonale solo utenti della propria zona
@@ -356,6 +397,9 @@ class UserController extends Controller
     public function toggleActive(User $user): RedirectResponse
     {
         $currentUser = $this->authUser();
+        if (FigImportAccess::hiddenFrom($user, $currentUser)) {
+            abort(404);
+        }
         // Verifica permessi tramite trait
         if (! $this->isNationalAdmin($currentUser) && $this->getUserZoneId($currentUser) != $user->zone_id) {
             abort(403, 'Non autorizzato');

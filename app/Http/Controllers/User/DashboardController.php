@@ -30,8 +30,6 @@ class DashboardController extends Controller
                     $q->whereYear('start_date', now()->year);
                 })
                 ->count(),
-            'confirmed_assignments' => $user->assignments()->where('is_confirmed', true)->count(),
-            'pending_assignments' => $user->assignments()->where('is_confirmed', false)->count(),
         ];
 
         // Upcoming assignments
@@ -55,8 +53,8 @@ class DashboardController extends Controller
 
         // Tournaments open for availability
         $openTournamentsQuery = Tournament::with(['club', 'zone', 'tournamentType'])
-            ->where('status', 'open')
-            ->where('availability_deadline', '>=', Carbon::today());
+            ->where('availability_deadline', '>=', Carbon::today())
+            ->where('start_date', '>=', Carbon::today());
 
         // Filter by zone for non-national referees
         if (! $isNationalReferee) {
@@ -83,8 +81,7 @@ class DashboardController extends Controller
                 $q->where('user_id', $user->id);
             })
             ->whereHas('tournament', function ($q) {
-                $q->whereIn('status', ['open', 'closed'])
-                    ->where('start_date', '>=', Carbon::today());
+                $q->where('start_date', '>=', Carbon::today());
             })
             ->limit(5)
             ->get();
@@ -139,7 +136,7 @@ class DashboardController extends Controller
                 'title' => $assignment->tournament->name,
                 'start' => $assignment->tournament->start_date->format('Y-m-d'),
                 'end' => $assignment->tournament->end_date ? $assignment->tournament->end_date->addDay()->format('Y-m-d') : $assignment->tournament->start_date->format('Y-m-d'),
-                'color' => $assignment->is_confirmed ? '#10b981' : '#f59e0b',
+                'color' => '#10b981',
                 'textColor' => '#ffffff',
             ];
         }

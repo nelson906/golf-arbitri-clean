@@ -187,7 +187,6 @@ class CalendarDataService
             'zone' => $tournament->zone->name ?? 'N/A',
             'zone_id' => $tournament->zone_id,
             'tournament_type' => $tournament->tournamentType->name ?? 'N/A',
-            'status' => $tournament->status->value,
             'tournament_url' => route('admin.tournaments.show', $tournament),
             'deadline' => $tournament->availability_deadline ? $tournament->availability_deadline->format('d/m/Y') : 'N/A',
             'type_id' => $tournament->tournament_type_id,
@@ -209,7 +208,6 @@ class CalendarDataService
             'club' => $tournament->club->name ?? 'N/A',
             'zone' => $tournament->club->zone->name ?? 'N/A',
             'category' => $tournament->tournamentType->name ?? 'N/A',
-            'status' => $tournament->status->value ?? 'active',
             'is_available' => $isAvailable,
             'is_assigned' => $isAssigned,
             'personal_status' => $this->colorService->getPersonalStatus($isAssigned, $isAvailable),
@@ -230,7 +228,6 @@ class CalendarDataService
             'type_id' => $tournament->tournament_type_id,
             'zone_id' => $tournament->zone_id,
             'club_id' => $tournament->club_id,
-            'status' => $tournament->status->value,
         ];
 
         if ($isAdmin) {
@@ -341,25 +338,5 @@ class CalendarDataService
                 $this->colorService->getRefereeLegendColors()
             ),
         };
-    }
-
-    /**
-     * Ottieni statistiche tornei per dashboard
-     *
-     * @return array<string, mixed>
-     * @param  \Illuminate\Support\Collection<int, \App\Models\Tournament>  $tournaments
-     */
-    public function getTournamentStats(Collection $tournaments): array
-    {
-        $byStatus = $tournaments->groupBy(fn ($t) => $t->status->value);
-
-        return [
-            'total' => $tournaments->count(),
-            'draft' => $byStatus->get('draft', collect())->count(),
-            'open' => $byStatus->get('open', collect())->count(),
-            'closed' => $byStatus->get('closed', collect())->count(),
-            'assigned' => $byStatus->get('assigned', collect())->count(),
-            'completed' => $byStatus->get('completed', collect())->count(),
-        ];
     }
 }

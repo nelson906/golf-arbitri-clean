@@ -205,26 +205,6 @@
                     <p class="mt-1 text-xs text-gray-500">Note aggiuntive per gli arbitri</p>
                 </div>
 
-                {{-- Status --}}
-                <div>
-                    <label for="status" class="block text-sm font-medium text-gray-700">
-                        Stato Iniziale <span class="text-red-500">*</span>
-                    </label>
-                    <select name="status"
-                            id="status"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 @error('status') border-red-500 @enderror"
-                            required>
-                        <option value="draft" {{ old('status', 'draft') == 'draft' ? 'selected' : '' }}>
-                            Bozza (non visibile agli arbitri)
-                        </option>
-                        <option value="open" {{ old('status') == 'open' ? 'selected' : '' }}>
-                            Aperto (visibile e aperto per disponibilità)
-                        </option>
-                    </select>
-                    @error('status')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
             </div>
         </div>
 

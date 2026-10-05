@@ -103,14 +103,6 @@
                         <dt class="text-sm font-medium text-gray-500">Zona</dt>
                         <dd class="mt-1 text-sm text-gray-900">{{ $assignment->tournament->zone->name }}</dd>
                     </div>
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">Stato Torneo</dt>
-                        <dd class="mt-1">
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-{{ $assignment->tournament->status_color }}-100 text-{{ $assignment->tournament->status_color }}-800">
-                                {{ $assignment->tournament->status_label }}
-                            </span>
-                        </dd>
-                    </div>
                 </dl>
             </div>
 
@@ -123,14 +115,6 @@
                         <dd class="mt-1 text-sm text-gray-900">{{ $assignment->role }}</dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">Stato</dt>
-                        <dd class="mt-1">
-                            <span class="px-2 py-1 text-xs font-semibold rounded-full bg-{{ $assignment->status_color }}-100 text-{{ $assignment->status_color }}-800">
-                                {{ $assignment->status_label }}
-                            </span>
-                        </dd>
-                    </div>
-                    <div>
                         <dt class="text-sm font-medium text-gray-500">Assegnato il</dt>
                         <dd class="mt-1 text-sm text-gray-900">{{ $assignment->assigned_at->format('d/m/Y H:i') }}</dd>
                     </div>
@@ -138,12 +122,6 @@
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Assegnato da</dt>
                         <dd class="mt-1 text-sm text-gray-900">{{ $assignment->assignedBy->name }}</dd>
-                    </div>
-                    @endif
-                    @if($assignment->confirmed_at)
-                    <div>
-                        <dt class="text-sm font-medium text-gray-500">Confermato il</dt>
-                        <dd class="mt-1 text-sm text-gray-900">{{ $assignment->confirmed_at->format('d/m/Y H:i') }}</dd>
                     </div>
                     @endif
                 </dl>
@@ -173,18 +151,6 @@
                         Visualizza Arbitro
                     </a>
 
-                    @if(!$assignment->is_confirmed && $assignment->tournament->status->value === 'assigned')
-                        <form action="{{ route('admin.assignments.confirm', $assignment) }}" method="POST" class="w-full">
-                            @csrf
-                            <button type="submit"
-                                    class="block w-full text-center px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700"
-                                    onclick="return confirm('Confermare questa assegnazione?')">
-                                Conferma Assegnazione
-                            </button>
-                        </form>
-                    @endif
-
-                    @if($assignment->tournament->status->value !== 'completed')
                         <form action="{{ route('admin.assignments.destroy', $assignment) }}" method="POST" class="w-full">
                             @csrf
                             @method('DELETE')
@@ -194,7 +160,6 @@
                                 Rimuovi Assegnazione
                             </button>
                         </form>
-                    @endif
                 </div>
             </div>
 
@@ -226,34 +191,6 @@
                                 </div>
                             </div>
                         </li>
-
-                        @if($assignment->is_confirmed)
-                        <li>
-                            <div class="relative">
-                                <div class="relative flex space-x-3">
-                                    <div>
-                                        <span class="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
-                                            <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                            </svg>
-                                        </span>
-                                    </div>
-                                    <div class="min-w-0 flex-1">
-                                        <div>
-                                            <p class="text-sm text-gray-500">
-                                                Assegnazione confermata
-                                                @if($assignment->confirmed_at)
-                                                    <time datetime="{{ $assignment->confirmed_at->toISOString() }}">
-                                                        {{ $assignment->confirmed_at->format('d/m/Y H:i') }}
-                                                    </time>
-                                                @endif
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </li>
-                        @endif
                     </ul>
                 </div>
             </div>

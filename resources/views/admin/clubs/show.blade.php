@@ -136,7 +136,6 @@
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Torneo</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Stato</th>
                                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Azioni</th>
                                 </tr>
                             </thead>
@@ -149,11 +148,6 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                         {{ $tournament->start_date->format('d/m/Y') }}
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-center">
-                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-{{ $tournament->status_color }}-100 text-{{ $tournament->status_color }}-800">
-                                            {{ $tournament->status_label }}
-                                        </span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right">
                                         <a href="{{ route('tournaments.show', $tournament) }}" class="text-indigo-600 hover:text-indigo-900">
@@ -191,11 +185,11 @@
                         <span class="text-sm font-medium text-gray-900">{{ $stats['upcoming_tournaments'] }}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-sm text-gray-600">Tornei Attivi</span>
+                        <span class="text-sm text-gray-600">Tornei da giocare</span>
                         <span class="text-sm font-medium text-gray-900">{{ $stats['active_tournaments'] }}</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-sm text-gray-600">Tornei Completati</span>
+                        <span class="text-sm text-gray-600">Tornei già giocati</span>
                         <span class="text-sm font-medium text-gray-900">{{ $stats['completed_tournaments'] }}</span>
                     </div>
                 </div>

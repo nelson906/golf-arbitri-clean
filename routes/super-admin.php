@@ -15,6 +15,17 @@ Route::prefix('super-admin')->name('super-admin.')->middleware(['auth', 'super_a
     // (audit 2026-07: sostituito placeholder con redirect).
     Route::get('/users', fn () => redirect()->route('admin.users.index'))->name('users.index');
 
+    // Zone (P18, 2026-10-03): elenco e modifica, nessuna cancellazione
+    Route::resource('zones', \App\Http\Controllers\SuperAdmin\ZoneController::class)
+        ->only(['index', 'edit', 'update']);
+
+    // Caricamento completo comitati FIG (2026-10-05): riservato a un solo
+    // account, controllo in FigImportController / App\Support\FigImportAccess
+    Route::get('fig-import', [\App\Http\Controllers\SuperAdmin\FigImportController::class, 'index'])
+        ->name('fig-import.index');
+    Route::post('fig-import/block', [\App\Http\Controllers\SuperAdmin\FigImportController::class, 'block'])
+        ->name('fig-import.block');
+
     // Tournament Types
     Route::resource('tournament-types', TournamentTypeController::class);
     Route::patch('tournament-types/{tournamentType}/toggle-active', [TournamentTypeController::class, 'toggleActive'])

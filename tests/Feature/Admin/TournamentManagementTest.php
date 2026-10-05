@@ -146,7 +146,7 @@ class TournamentManagementTest extends TestCase
      * senza dirlo il test misurava il sorteggio invece della regola.
      * Il periodo resta al default (tutti): qui si verificano le zone, non le date.
      */
-    public function test_zone_admin_sees_own_zone_and_national_tournaments(): void
+    public function test_zone_admin_sees_only_own_zone_tournaments_zonal_and_national(): void
     {
         $admin = $this->createZoneAdmin(1);
 
@@ -168,12 +168,18 @@ class TournamentManagementTest extends TestCase
             'club_id' => $club2->id, 'zone_id' => 2,
             'tournament_type_id' => $nationalType->id, 'name' => 'Campionato Nazionale Altrove',
         ]);
+        Tournament::factory()->create([
+            'club_id' => $club1->id, 'zone_id' => 1,
+            'tournament_type_id' => $nationalType->id, 'name' => 'Campionato Nazionale In Zona',
+        ]);
 
         $response = $this->actingAs($admin)->get(route('tournaments.index'));
 
+        // P9 (2026-10-03): solo la propria zona, zonali e nazionali
         $response->assertStatus(200);
         $response->assertSee('Zone 1 Tournament');
-        $response->assertSee('Campionato Nazionale Altrove');
+        $response->assertSee('Campionato Nazionale In Zona');
+        $response->assertDontSee('Campionato Nazionale Altrove');
         $response->assertDontSee('Zone 2 Tournament');
     }
 

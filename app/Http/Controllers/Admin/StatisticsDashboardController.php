@@ -111,7 +111,6 @@ class StatisticsDashboardController extends Controller
         $user = auth()->user();
         $isNationalAdmin = $this->isNationalAdmin($user);
 
-        $status = $request->string('status')->toString() ?: null;
         $dateFrom = $request->string('date_from')->toString() ?: null;
         $dateTo = $request->string('date_to')->toString() ?: null;
 
@@ -120,7 +119,6 @@ class StatisticsDashboardController extends Controller
 
         $this->applyTournamentRelationVisibility($query, $user);
         $this->applyDateFilters($query, $dateFrom, $dateTo);
-        $this->applyStatusFilter($query, $status);
 
         $assignments = $query->paginate(50);
 
@@ -131,7 +129,6 @@ class StatisticsDashboardController extends Controller
             'assignments',
             'stats',
             'isNationalAdmin',
-            'status',
             'dateFrom',
             'dateTo'
         ));
@@ -145,7 +142,6 @@ class StatisticsDashboardController extends Controller
         $user = auth()->user();
         $isNationalAdmin = $this->isNationalAdmin($user);
 
-        $status = $request->string('status')->toString() ?: null;
         $category = $request->string('category')->toString() ?: null;
         $dateFrom = $request->string('date_from')->toString() ?: null;
         $dateTo = $request->string('date_to')->toString() ?: null;
@@ -159,9 +155,6 @@ class StatisticsDashboardController extends Controller
         }
         if ($dateTo) {
             $query->where('start_date', '<=', $dateTo);
-        }
-        if ($status) {
-            $query->where('status', $status);
         }
         if ($category) {
             $query->where('tournament_type_id', $category);
@@ -178,7 +171,6 @@ class StatisticsDashboardController extends Controller
             'tournaments',
             'stats',
             'isNationalAdmin',
-            'status',
             'category',
             'dateFrom',
             'dateTo'
@@ -341,7 +333,6 @@ class StatisticsDashboardController extends Controller
             'total_referees' => $refereeStats['total'],
             'active_referees' => $refereeStats['active'],
             'total_assignments' => $assignmentStats['total'],
-            'pending_assignments' => $assignmentStats['pending'],
         ];
     }
 
@@ -410,20 +401,6 @@ class StatisticsDashboardController extends Controller
 
         if ($month) {
             $query->whereHas('tournament', fn ($q) => $q->whereMonth('start_date', $month));
-        }
-    }
-
-    /**
-     * @template TModel of \Illuminate\Database\Eloquent\Model
-     *
-     * @param  \Illuminate\Database\Eloquent\Builder<TModel>  $query
-     */
-    private function applyStatusFilter($query, ?string $status): void
-    {
-        if ($status === 'confirmed') {
-            $query->where('is_confirmed', true);
-        } elseif ($status === 'pending') {
-            $query->where('is_confirmed', false);
         }
     }
 

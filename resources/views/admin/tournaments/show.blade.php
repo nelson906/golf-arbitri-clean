@@ -104,25 +104,6 @@
                             </div>
                         @endif
 
-                        @if (\Schema::hasColumn('tournaments', 'status'))
-                            <div>
-                                <label class="text-sm font-medium text-gray-500">Stato</label>
-                                <form action="{{ route('admin.tournaments.change-status', $tournament) }}" method="POST"
-                                    class="mt-1 flex items-center gap-2">
-                                    @csrf
-                                    <select name="status" onchange="this.form.submit()"
-                                        class="text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                                        @foreach (\App\Models\Tournament::STATUSES as $value => $label)
-                                            <option value="{{ $value }}"
-                                                {{ $tournament->status->value === $value ? 'selected' : '' }}>
-                                                {{ $label }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <span class="text-xs text-gray-400">(override)</span>
-                                </form>
-                            </div>
-                        @endif
                     </div>
                 </div>
 
@@ -165,6 +146,17 @@
                         Vedi Assegnazioni
                     </a>
 
+                    {{-- Vedi Disponibilità (P17, 2026-10-03) --}}
+                    <a href="{{ route('admin.tournaments.availabilities.index', $tournament) }}"
+                        class="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors inline-flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z">
+                            </path>
+                        </svg>
+                        Vedi Disponibilità
+                    </a>
+
                     {{-- Modifica Torneo --}}
                     <a href="{{ route('admin.tournaments.edit', $tournament) }}"
                         class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors inline-flex items-center">
@@ -189,18 +181,6 @@
                         </a>
                     @endif
 
-                    {{-- Duplica Torneo (opzionale) --}}
-                    @if (isset($canDuplicate) && $canDuplicate)
-                        <a href="{{ route('admin.tournaments.duplicate', $tournament) }}"
-                            class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors inline-flex items-center">
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z">
-                                </path>
-                            </svg>
-                            Duplica Torneo
-                        </a>
-                    @endif
                 </div>
             </div>
         </div>
@@ -243,25 +223,6 @@
                                     </div>
                                 </div>
                                 <div class="flex items-center space-x-2">
-                                    @if (\Schema::hasColumn('assignments', 'status') && $assignment->status)
-                                        @php
-                                            $statusColors = [
-                                                'confirmed' => 'bg-green-100 text-green-800',
-                                                'pending' => 'bg-yellow-100 text-yellow-800',
-                                                'cancelled' => 'bg-red-100 text-red-800',
-                                            ];
-                                            $statusLabels = [
-                                                'confirmed' => 'Confermato',
-                                                'pending' => 'In Attesa',
-                                                'cancelled' => 'Cancellato',
-                                            ];
-                                        @endphp
-                                        <span
-                                            class="px-2 py-1 text-xs font-semibold rounded-full {{ $statusColors[$assignment->status] ?? 'bg-gray-100 text-gray-800' }}">
-                                            {{ $statusLabels[$assignment->status] ?? $assignment->status }}
-                                        </span>
-                                    @endif
-
                                     <a href="{{ route('admin.assignments.edit', $assignment) }}"
                                         class="text-yellow-600 hover:text-yellow-800" title="Modifica">
                                         ✏️
@@ -308,32 +269,20 @@
 
             <div class="bg-white rounded-lg shadow p-4">
                 <div class="flex items-center">
-                    <span class="text-2xl mr-3">✅</span>
+                    <span class="text-2xl mr-3">🙋</span>
                     <div>
-                        <p class="text-sm text-gray-500">Confermati</p>
-                        <p class="text-xl font-semibold text-gray-900">
-                            @if (isset($assignments))
-                                {{ $assignments->where('status', 'confirmed')->count() }}
-                            @else
-                                0
-                            @endif
-                        </p>
+                        <p class="text-sm text-gray-500">Disponibilità Ricevute</p>
+                        <p class="text-xl font-semibold text-gray-900">{{ $stats['total_availabilities'] ?? 0 }}</p>
                     </div>
                 </div>
             </div>
 
             <div class="bg-white rounded-lg shadow p-4">
                 <div class="flex items-center">
-                    <span class="text-2xl mr-3">⏳</span>
+                    <span class="text-2xl mr-3">🎯</span>
                     <div>
-                        <p class="text-sm text-gray-500">In Attesa</p>
-                        <p class="text-xl font-semibold text-gray-900">
-                            @if (isset($assignments))
-                                {{ $assignments->where('status', 'pending')->count() }}
-                            @else
-                                0
-                            @endif
-                        </p>
+                        <p class="text-sm text-gray-500">Arbitri Richiesti</p>
+                        <p class="text-xl font-semibold text-gray-900">{{ $stats['required_referees'] ?? '-' }}</p>
                     </div>
                 </div>
             </div>

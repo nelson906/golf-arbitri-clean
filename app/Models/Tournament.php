@@ -123,17 +123,6 @@ class Tournament extends Model
     /** @deprecated Use TournamentStatus::Cancelled->value */
     public const STATUS_CANCELLED = 'cancelled';
 
-    /**
-     * @deprecated Usare TournamentStatus::selectOptions() o TournamentStatus::cases().
-     */
-    public const STATUSES = [
-        self::STATUS_DRAFT => 'Bozza',
-        self::STATUS_OPEN => 'Aperto',
-        self::STATUS_CLOSED => 'Chiuso',
-        self::STATUS_ASSIGNED => 'Assegnato',
-        self::STATUS_COMPLETED => 'Completato',
-        self::STATUS_CANCELLED => 'Annullato',
-    ];
 
     /**
      * RELAZIONI
@@ -294,14 +283,6 @@ class Tournament extends Model
     }
 
     // ── SCOPES ──────────────────────────────────────────────────────
-    /**
-     * @param  Builder<Tournament>  $query
-     * @return Builder<Tournament>
-     */
-    public function scopeActive(Builder $query): Builder
-    {
-        return $query->whereIn('status', TournamentStatus::activeValues());
-    }
 
     /**
      * Scope a query to only include upcoming tournaments.
@@ -328,28 +309,35 @@ class Tournament extends Model
     }
 
     /**
-     * Verifica se il torneo è modificabile.
-     * Delega la logica di stato all'Enum TournamentStatus.
+     * Istante in cui si chiudono le disponibilita': fine (23:59:59) del giorno
+     * di scadenza scritto nel torneo (decisione 2026-10-03, P4).
      */
-    public function isEditable(): bool
+    public function availabilityClosesAt(): ?Carbon
     {
-        // Un torneo è sempre modificabile dall'admin, tranne se Completed o Cancelled.
-        // Rimosso il vincolo sulla data: un admin deve poter correggere dati anche dopo lo svolgimento.
-        return $this->status->isEditable();
+        // Difensivo: la colonna e' NOT NULL, ma un record importato a mano potrebbe non averla
+        $deadline = $this->getAttribute('availability_deadline');
+
+        return $deadline instanceof Carbon ? $deadline->copy()->endOfDay() : null;
     }
 
     /**
-     * Verifica se il torneo è modificabile dall'utente specificato.
-     * Il super_admin bypassa qualunque vincolo di stato — può modificare anche
-     * tornei Completati o Annullati per correggere dati storici.
+     * Il torneo accetta ancora disponibilita' (sia dichiarazione sia ritiro).
+     *
+     * Unica regola, usata da controller e viste: torneo non ancora iniziato e
+     * scadenza non passata, contando tutto il giorno di scadenza fino alle
+     * 23:59 (P4). Lo stato del torneo non conta piu' (P3).
      */
-    public function isEditableBy(\App\Models\User $user): bool
+    public function acceptsAvailability(): bool
     {
-        if ($user->isSuperAdmin()) {
-            return true;
+        $now = now();
+
+        if ($this->start_date < $now) {
+            return false;
         }
 
-        return $this->isEditable();
+        $closesAt = $this->availabilityClosesAt();
+
+        return ! ($closesAt && $closesAt < $now);
     }
 
     /**
