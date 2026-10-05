@@ -22,9 +22,9 @@
 
 
         {{-- Zone Management --}}
-        {{-- <x-nav-link :href="route('super-admin.zones.index')" :active="request()->routeIs('super-admin.zones.*')">
+        <x-nav-link :href="route('super-admin.zones.index')" :active="request()->routeIs('super-admin.zones.*')">
             🌍 Gestione Zone
-        </x-nav-link> --}}
+        </x-nav-link>
 
         {{-- Tournament Types --}}
         <x-nav-link :href="route('super-admin.tournament-types.index')" :active="request()->routeIs('super-admin.tournament-types.*')">
@@ -166,6 +166,11 @@
             📝 Le Mie Disponibilità
         </x-nav-link>
 
+        {{-- Le Mie Assegnazioni (P16) --}}
+        <x-nav-link :href="route('user.assignments.index')" :active="request()->routeIs('user.assignments.*')">
+            🏌️ Le Mie Assegnazioni
+        </x-nav-link>
+
         {{-- Personal Calendar --}}
         <x-nav-link :href="route('user.availability.calendar')" :active="request()->routeIs('user.availability.calendar')">
             📅 Il Mio Calendario
@@ -288,9 +293,9 @@
                 <x-responsive-nav-link :href="route('super-admin.users.index')" :active="request()->routeIs('super-admin.users.*')">
                     👥 Gestione Utenti
                 </x-responsive-nav-link>
-                {{-- <x-responsive-nav-link :href="route('super-admin.zones.index')" :active="request()->routeIs('super-admin.zones.*')">
+                <x-responsive-nav-link :href="route('super-admin.zones.index')" :active="request()->routeIs('super-admin.zones.*')">
                     🌍 Gestione Zone
-                </x-responsive-nav-link> --}}
+                </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('super-admin.tournament-types.index')" :active="request()->routeIs('super-admin.tournament-types.*')">
                     🏆 Categorie Tornei
                 </x-responsive-nav-link>
@@ -369,14 +374,9 @@
                 <x-responsive-nav-link :href="route('user.quadranti.index')" :active="request()->routeIs('user.quadranti.*')">
                     ⏰ Simulatore Tempi Partenza
                 </x-responsive-nav-link>
-                {{-- TODO: create these routes
                 <x-responsive-nav-link :href="route('user.assignments.index')" :active="request()->routeIs('user.assignments.*')">
-                    📋 Le Mie Assegnazioni
+                    🏌️ Le Mie Assegnazioni
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('user.applications.index')" :active="request()->routeIs('user.applications.*')">
-                    📋 Le Mie Candidature
-                </x-responsive-nav-link>
-                --}}
                 <x-responsive-nav-link :href="route('user.documents.index')" :active="request()->routeIs('user.documents.*')">
                     📁 I Miei Documenti
                 </x-responsive-nav-link>

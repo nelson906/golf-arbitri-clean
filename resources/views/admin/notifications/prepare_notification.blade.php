@@ -127,11 +127,11 @@
                                 </div>
                                 <div>
                                     <dt class="text-gray-600">Circolo:</dt>
-                                    <dd class="font-medium text-gray-900">{{ $tournament->club->name }}</dd>
+                                    <dd class="font-medium text-gray-900">{{ $tournament->club?->name ?? 'da definire' }}</dd>
                                 </div>
                                 <div>
                                     <dt class="text-gray-600">Zona:</dt>
-                                    <dd class="font-medium text-gray-900">{{ $tournament->club->zone->name }}</dd>
+                                    <dd class="font-medium text-gray-900">{{ $tournament->zone?->name ?? 'N/A' }}</dd>
                                 </div>
                                 @if ($tournament->tournamentType)
                                     <div>
@@ -719,6 +719,29 @@
                                     </div>
                                 </div>
 
+                                {{-- Allegato convocazione (decisione 2026-10-04): spuntata di default;
+                                     tolta, la mail parte con la sola lettera al circolo.
+                                     Hidden value=0 per lo stesso motivo di send_to_club (FIX C3). --}}
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-3">
+                                        📎 Allegati
+                                    </label>
+                                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                        <div class="flex items-center">
+                                            <input type="hidden" name="attach_convocation" value="0">
+                                            <input type="checkbox" name="attach_convocation" id="attach_convocation" value="1"
+                                                {{ ($notification->metadata['attach_convocation'] ?? true) ? 'checked' : '' }}
+                                                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                            <label for="attach_convocation" class="ml-2 text-sm text-gray-700">
+                                                <span class="font-medium">Allega convocazione</span>
+                                            </label>
+                                        </div>
+                                        <p class="mt-2 ml-6 text-xs text-gray-500">
+                                            La lettera al circolo è sempre allegata. Togli la spunta per inviare senza convocazione.
+                                        </p>
+                                    </div>
+                                </div>
+
                                 {{-- Sezione Mittente --}}
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-3">
@@ -988,7 +1011,7 @@
             <div class="bg-yellow-50 p-4 rounded-lg">
                 <h4 class="font-medium text-yellow-700 mb-2">Allegati DOCX:</h4>
                 <ul class="text-sm text-gray-700">
-                    <li>• Convocazione.docx (per arbitri)</li>
+                    ${document.getElementById('attach_convocation')?.checked ? '<li>• Convocazione.docx (per arbitri)</li>' : ''}
                     <li>• Lettera_Circolo.docx (per circolo)</li>
                 </ul>
             </div>
@@ -1025,6 +1048,8 @@ function getSelectedClauses() {
     return clauses;
 }
 
+@unless ($tournament->tournamentType?->is_national ?? false)
+{{-- Solo tornei zonali: clausole e documenti Word (sui nazionali non esistono) --}}
 // Salva le clausole via AJAX
 async function saveClauses() {
     const clauses = getSelectedClauses();
@@ -1108,6 +1133,7 @@ async function saveClauses() {
                 button.innerHTML = originalText;
             }
         }
+@endunless
 
         function toggleSection(sectionId) {
             const content = document.getElementById(`${sectionId}-content`);

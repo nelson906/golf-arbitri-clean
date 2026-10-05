@@ -25,8 +25,9 @@ class TournamentStatsService
 
         return [
             'total' => $query->count(),
-            'active' => $query->clone()->whereIn('status', ['open', 'closed', 'assigned'])->count(),
-            'completed' => $query->clone()->where('status', 'completed')->count(),
+            // Per data: lo stato del torneo non esiste piu' (decisione 2026-10-03)
+            'active' => $query->clone()->where('end_date', '>=', now()->startOfDay())->count(),
+            'completed' => $query->clone()->where('end_date', '<', now()->startOfDay())->count(),
         ];
     }
 
@@ -47,20 +48,6 @@ class TournamentStatsService
             ->orderBy('tournament_types.name')
             ->groupBy('tournament_types.name')
             ->pluck('totale', 'name');
-    }
-
-    /**
-     * Ottiene tornei per stato.
-     * @return \Illuminate\Support\Collection<array-key, mixed>
-     */
-    public function getByStatus(?User $user = null): Collection
-    {
-        $user = $user ?? auth()->user();
-        $query = $this->baseQuery($user);
-
-        return $query->selectRaw('status, COUNT(*) as totale')
-            ->groupBy('status')
-            ->pluck('totale', 'status');
     }
 
     /**
@@ -160,7 +147,6 @@ class TournamentStatsService
 
         return [
             'totale_tornei' => $this->getTotal($user),
-            'per_stato' => $this->getByStatus($user),
             'per_zona' => $this->getByZone($user),
             'by_type' => $this->getByType($user),
             'by_month' => $this->getByMonth($user),

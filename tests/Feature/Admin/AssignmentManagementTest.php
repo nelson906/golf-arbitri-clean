@@ -3,11 +3,21 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Assignment;
+use App\Models\TournamentType;
 use App\Models\User;
 use Tests\TestCase;
 
 class AssignmentManagementTest extends TestCase
 {
+    /**
+     * Questi test descrivono il flusso zonale. Sui tornei nazionali l'admin di
+     * zona designa solo osservatori (P9, 2026-10-03): vedi ObserverOnlyOnNationalTest.
+     */
+    private function zonalTypeId(): int
+    {
+        return TournamentType::where('is_national', false)->firstOrFail()->id;
+    }
+
     // ==========================================
     // ASSIGNMENT CREATE TESTS
     // ==========================================
@@ -18,8 +28,8 @@ class AssignmentManagementTest extends TestCase
     public function test_admin_can_assign_referee_to_tournament(): void
     {
         $admin = $this->createZoneAdmin(1);
-        $referee = User::factory()->referee()->inZone(1)->create();
-        $tournament = $this->createTournament();
+        $referee = User::factory()->referee()->inZone(1)->withLevel('Regionale')->create();
+        $tournament = $this->createTournament(['tournament_type_id' => $this->zonalTypeId()]);
 
         $response = $this->actingAs($admin)
             ->post(route('admin.assignments.store'), [
@@ -43,7 +53,7 @@ class AssignmentManagementTest extends TestCase
     {
         $admin = $this->createZoneAdmin(1);
         $referee = User::factory()->referee()->inZone(1)->withLevel('Nazionale')->create();
-        $tournament = $this->createTournament();
+        $tournament = $this->createTournament(['tournament_type_id' => $this->zonalTypeId()]);
 
         $response = $this->actingAs($admin)
             ->post(route('admin.assignments.store'), [
@@ -64,8 +74,8 @@ class AssignmentManagementTest extends TestCase
     public function test_admin_can_assign_observer(): void
     {
         $admin = $this->createZoneAdmin(1);
-        $referee = User::factory()->referee()->inZone(1)->create();
-        $tournament = $this->createTournament();
+        $referee = User::factory()->referee()->inZone(1)->withLevel('Regionale')->create();
+        $tournament = $this->createTournament(['tournament_type_id' => $this->zonalTypeId()]);
 
         $response = $this->actingAs($admin)
             ->post(route('admin.assignments.store'), [
@@ -90,9 +100,9 @@ class AssignmentManagementTest extends TestCase
     public function test_admin_can_update_assignment_role(): void
     {
         $admin = $this->createZoneAdmin(1);
-        $referee = User::factory()->referee()->inZone(1)->create();
+        $referee = User::factory()->referee()->inZone(1)->withLevel('Regionale')->create();
         $club = $this->createClub(['zone_id' => 1]);
-        $tournament = $this->createTournament(['club_id' => $club->id]);
+        $tournament = $this->createTournament(['club_id' => $club->id, 'tournament_type_id' => $this->zonalTypeId()]);
 
         $assignment = Assignment::factory()
             ->forUser($referee)
@@ -123,9 +133,9 @@ class AssignmentManagementTest extends TestCase
     public function test_admin_can_delete_assignment(): void
     {
         $admin = $this->createZoneAdmin(1);
-        $referee = User::factory()->referee()->inZone(1)->create();
+        $referee = User::factory()->referee()->inZone(1)->withLevel('Regionale')->create();
         $club = $this->createClub(['zone_id' => 1]);
-        $tournament = $this->createTournament(['club_id' => $club->id]);
+        $tournament = $this->createTournament(['club_id' => $club->id, 'tournament_type_id' => $this->zonalTypeId()]);
 
         $assignment = Assignment::factory()
             ->forUser($referee)
@@ -151,8 +161,8 @@ class AssignmentManagementTest extends TestCase
     public function test_cannot_assign_same_referee_twice_to_same_tournament(): void
     {
         $admin = $this->createZoneAdmin(1);
-        $referee = User::factory()->referee()->inZone(1)->create();
-        $tournament = $this->createTournament();
+        $referee = User::factory()->referee()->inZone(1)->withLevel('Regionale')->create();
+        $tournament = $this->createTournament(['tournament_type_id' => $this->zonalTypeId()]);
 
         // Prima assegnazione
         Assignment::factory()
@@ -181,8 +191,8 @@ class AssignmentManagementTest extends TestCase
     public function test_role_must_be_valid(): void
     {
         $admin = $this->createZoneAdmin(1);
-        $referee = User::factory()->referee()->inZone(1)->create();
-        $tournament = $this->createTournament();
+        $referee = User::factory()->referee()->inZone(1)->withLevel('Regionale')->create();
+        $tournament = $this->createTournament(['tournament_type_id' => $this->zonalTypeId()]);
 
         $response = $this->actingAs($admin)
             ->post(route('admin.assignments.store'), [
@@ -204,7 +214,7 @@ class AssignmentManagementTest extends TestCase
     public function test_referee_cannot_create_assignments(): void
     {
         $referee = $this->createReferee();
-        $tournament = $this->createTournament();
+        $tournament = $this->createTournament(['tournament_type_id' => $this->zonalTypeId()]);
 
         $response = $this->actingAs($referee)
             ->post(route('admin.assignments.store'), [
@@ -226,8 +236,8 @@ class AssignmentManagementTest extends TestCase
     public function test_assignment_created_with_correct_assigned_by(): void
     {
         $admin = $this->createZoneAdmin(1);
-        $referee = User::factory()->referee()->inZone(1)->create();
-        $tournament = $this->createTournament();
+        $referee = User::factory()->referee()->inZone(1)->withLevel('Regionale')->create();
+        $tournament = $this->createTournament(['tournament_type_id' => $this->zonalTypeId()]);
 
         $this->actingAs($admin)
             ->post(route('admin.assignments.store'), [
@@ -249,8 +259,8 @@ class AssignmentManagementTest extends TestCase
     public function test_assignment_has_assigned_at_timestamp(): void
     {
         $admin = $this->createZoneAdmin(1);
-        $referee = User::factory()->referee()->inZone(1)->create();
-        $tournament = $this->createTournament();
+        $referee = User::factory()->referee()->inZone(1)->withLevel('Regionale')->create();
+        $tournament = $this->createTournament(['tournament_type_id' => $this->zonalTypeId()]);
 
         $this->actingAs($admin)
             ->post(route('admin.assignments.store'), [

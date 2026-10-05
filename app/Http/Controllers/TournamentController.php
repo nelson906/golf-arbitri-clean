@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\TournamentStatus;
 use App\Models\Tournament;
 use App\Services\CalendarDataService;
 use App\Services\TournamentColorService;
@@ -37,11 +36,6 @@ class TournamentController extends Controller
 
         $query = Tournament::with(['tournamentType', 'zone', 'club']);
         $this->applyTournamentVisibility($query, $user);
-
-        // Per i non-admin, mostra solo tornei con status visibili
-        if (! $this->isAdmin($user)) {
-            $query->whereIn('status', ['open', 'closed', 'assigned', 'completed']);
-        }
 
         // Usa metodo condiviso dal trait
         $this->applyCommonFilters($query, $request);
@@ -82,10 +76,6 @@ class TournamentController extends Controller
         }
 
         $this->applyTournamentVisibility($query, $user);
-
-        if (! $isAdmin) {
-            $query->whereIn('status', ['open', 'closed', 'assigned', 'completed']);
-        }
 
         $currentYear = $request->integer('year', now()->year);
         $query->whereBetween('start_date', [
@@ -158,7 +148,6 @@ class TournamentController extends Controller
                 'days_until_deadline' => $tournament->availability_deadline
                     ? Carbon::parse($tournament->availability_deadline)->diffInDays(now(), false)
                     : null,
-                'is_editable' => $tournament->isEditable(),
             ];
 
             $assignedReferees = $tournament->assignments()->with('user')->get();
@@ -193,11 +182,6 @@ class TournamentController extends Controller
      */
     private function checkTournamentAccess($tournament, $user, $isAdmin): void
     {
-        // Non-admin non possono vedere tornei in draft
-        if (! $isAdmin && $tournament->status === TournamentStatus::Draft) {
-            abort(404);
-        }
-
         // Usa il metodo centralizzato del trait per verificare l'accesso
         if (! $this->canAccessTournament($tournament, $user)) {
             abort(403, 'Non hai accesso a questo torneo.');

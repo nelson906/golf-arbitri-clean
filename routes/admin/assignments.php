@@ -47,8 +47,6 @@ Route::prefix('assignments')->name('assignments.')->group(function () {
     Route::delete('/{assignment}', [App\Http\Controllers\Admin\AssignmentController::class, 'destroy'])
         ->name('destroy');
 
-    Route::post('/{assignment}/confirm', [App\Http\Controllers\Admin\AssignmentController::class, 'confirm'])
-        ->name('confirm');
 });
 
 // Assignment Validation & Quality Control
@@ -58,5 +56,4 @@ Route::prefix('assignment-validation')->name('assignment-validation.')->group(fu
     Route::get('/missing-requirements', [AssignmentController::class, 'missingRequirements'])->name('missing-requirements');
     Route::get('/overassigned-referees', [AssignmentController::class, 'overassignedReferees'])->name('overassigned');
     Route::get('/underassigned-referees', [AssignmentController::class, 'underassignedReferees'])->name('underassigned');
-    Route::post('/fix-conflicts', [AssignmentController::class, 'fixConflicts'])->name('fix-conflicts');
 });

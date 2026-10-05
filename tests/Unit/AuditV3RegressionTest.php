@@ -566,19 +566,6 @@ class AuditV3RegressionTest extends TestCase
     }
 
     /**
-     * L'array STATUSES deve contenere tutte le chiavi-status.
-     */
-    public function test_dup05_statuses_array_contains_all_statuses(): void
-    {
-        $this->assertArrayHasKey('draft',     Tournament::STATUSES, 'DUP-05: STATUSES[draft]');
-        $this->assertArrayHasKey('open',      Tournament::STATUSES, 'DUP-05: STATUSES[open]');
-        $this->assertArrayHasKey('closed',    Tournament::STATUSES, 'DUP-05: STATUSES[closed]');
-        $this->assertArrayHasKey('assigned',  Tournament::STATUSES, 'DUP-05: STATUSES[assigned]');
-        $this->assertArrayHasKey('completed', Tournament::STATUSES, 'DUP-05: STATUSES[completed]');
-        $this->assertArrayHasKey('cancelled', Tournament::STATUSES, 'DUP-05: STATUSES[cancelled]');
-    }
-
-    /**
      * Le docblock delle costanti devono contenere @deprecated.
      * Questo garantisce che i dev siano avvisati dagli IDE.
      */

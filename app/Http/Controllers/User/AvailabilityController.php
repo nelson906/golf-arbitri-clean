@@ -137,7 +137,7 @@ class AvailabilityController extends Controller
 
             if ($tournament->start_date < now()) {
                 $errorMessage = 'Non puoi dichiarare disponibilità per tornei con date antecedenti a oggi.';
-            } elseif ($tournament->availability_deadline && $tournament->availability_deadline < now()) {
+            } elseif (! $tournament->acceptsAvailability()) {
                 $errorMessage = 'Il termine per dichiarare disponibilità per questo torneo è scaduto.';
             }
 
@@ -168,7 +168,7 @@ class AvailabilityController extends Controller
             $message = 'Disponibilità dichiarata con successo.';
 
             // Invia notifiche per disponibilità aggiunta
-            $this->handleSingleNotification($user, $tournament, 'added');
+            $mailWarning = $this->handleSingleNotification($user, $tournament, 'added');
         } else {
             // Rimuovi disponibilità
             Availability::where('user_id', $user->id)
@@ -177,7 +177,7 @@ class AvailabilityController extends Controller
             $message = 'Disponibilità rimossa con successo.';
 
             // Invia notifiche per disponibilità rimossa
-            $this->handleSingleNotification($user, $tournament, 'removed');
+            $mailWarning = $this->handleSingleNotification($user, $tournament, 'removed');
         }
 
         // Return JSON for AJAX requests
@@ -185,10 +185,12 @@ class AvailabilityController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $message,
+                'email_sent' => $mailWarning === null,
+                'warning' => $mailWarning,
             ]);
         }
 
-        return back()->with('success', $message);
+        return back()->with('success', $message)->with('warning', $mailWarning);
     }
 
     /**
@@ -204,83 +206,79 @@ class AvailabilityController extends Controller
 
         $tournament = $availability->tournament;
 
+        // Decisione 2026-10-03 (P2): dopo la scadenza la disponibilita' resta
+        if ($tournament && ! $tournament->acceptsAvailability()) {
+            return back()->withErrors([
+                'availability' => 'La scadenza è passata: la disponibilità non si può più ritirare. Contatta la zona o il CRC.',
+            ]);
+        }
+
         $availability->delete();
 
         // FIX A5: notifica arbitro + SZR/CRC anche su questo percorso di rimozione
         // (prima solo store(available=false) notificava — workflow asimmetrico)
-        if ($tournament) {
-            $this->handleSingleNotification($user, $tournament, 'removed');
-        }
+        $mailWarning = $tournament
+            ? $this->handleSingleNotification($user, $tournament, 'removed')
+            : null;
 
-        return back()->with('success', 'Disponibilità rimossa con successo.');
+        return back()->with('success', 'Disponibilità rimossa con successo.')
+            ->with('warning', $mailWarning);
     }
 
     /**
-     * Save batch availabilities
+     * Salva le disponibilita' della pagina "Dichiara Disponibilita'".
+     *
+     * Decisione 2026-10-03 (P1, P2): le disponibilita' devono rimanere SEMPRE.
+     * Il salvataggio modifica solo i tornei che il form dichiara di aver
+     * mostrato (`page_tournaments[]`) e che accettano ancora disponibilita'
+     * (torneo non iniziato, scadenza non passata, visibile all'arbitro).
+     * Disponibilita' su tornei di altre pagine, esclusi dai filtri o con
+     * scadenza passata non vengono mai toccate.
      */
     public function saveBatch(Request $request): RedirectResponse
     {
         $request->validate([
             'availabilities' => 'array',
             'availabilities.*' => 'exists:tournaments,id',
+            'page_tournaments' => 'array',
+            'page_tournaments.*' => 'integer',
         ]);
 
         $user = $this->authUser();
-        // Lista di ID dal form: si tiene solo cio' che e' davvero un intero,
-        // perche' finisce in whereIn() e in Availability::create().
-        $selectedTournaments = Untrusted::intList($request->array('availabilities'));
 
-        // Recupera i tornei nella pagina corrente con filtro visibilità centralizzato
-        $pageQuery = Tournament::with(['club', 'zone', 'tournamentType'])
-            ->where('start_date', '>=', now());
+        $selected = Untrusted::intList($request->array('availabilities'));
+        $shown = Untrusted::intList($request->array('page_tournaments'));
 
-        // Usa il trait per il filtro visibilità
-        $this->applyTournamentVisibility($pageQuery, $user);
+        // Tornei mostrati E ancora modificabili da questo arbitro
+        $editableIds = Untrusted::intList(
+            Tournament::whereIn('id', $shown)
+                ->get()
+                ->filter(fn (Tournament $t) => $this->canDeclareAvailability($user, $t))
+                ->pluck('id')
+                ->all()
+        );
 
-        // Applica gli stessi filtri della vista
-        if ($request->filled('zone_id')) {
-            $pageQuery->whereHas('club', function ($q) use ($request) {
-                $q->where('zone_id', $request->integer('zone_id'));
-            });
-        }
-        if ($request->filled('tournament_type_id')) {
-            $pageQuery->where('tournament_type_id', $request->integer('tournament_type_id'));
-        }
-        if ($request->filled('month')) {
-            $pageQuery->whereMonth('start_date', $request->integer('month'));
-        }
+        $existing = Untrusted::intList(
+            Availability::where('user_id', $user->id)
+                ->whereIn('tournament_id', $editableIds)
+                ->pluck('tournament_id')
+                ->toArray()
+        );
 
-        // Ottieni solo i tornei della pagina corrente
-        $pageTournamentIds = $pageQuery->pluck('id')->toArray();
-
-        // Filtra solo i tornei selezionati che sono nella pagina corrente
-        $selectedTournaments = array_values(array_intersect($selectedTournaments, $pageTournamentIds));
-
-        // Ottieni le disponibilità esistenti solo per i tornei della pagina corrente
-        $existingAvailabilities = Availability::where('user_id', $user->id)
-            ->whereIn('tournament_id', $pageTournamentIds)
-            ->pluck('tournament_id')
-            ->toArray();
+        $wanted = array_values(array_intersect($selected, $editableIds));
+        $toAdd = array_values(array_diff($wanted, $existing));
+        $toRemove = array_values(array_diff($existing, $wanted));
 
         DB::beginTransaction();
 
         try {
-            // Rimuovi disponibilità solo per i tornei della pagina corrente
-            Availability::where('user_id', $user->id)
-                ->whereIn('tournament_id', $pageTournamentIds)
-                ->delete();
+            if ($toRemove !== []) {
+                Availability::where('user_id', $user->id)
+                    ->whereIn('tournament_id', $toRemove)
+                    ->delete();
+            }
 
-            // Aggiungi le nuove disponibilità selezionate
-            // Verifica visibilità per ciascun torneo per prevenire IDOR:
-            // un utente non dovrebbe poter dichiarare disponibilità per tornei fuori dalla sua zona.
-            // FIX M3: una sola query whereIn invece di Tournament::find() in loop
-            $selectedModels = Tournament::whereIn('id', $selectedTournaments)->get()->keyBy('id');
-
-            foreach ($selectedTournaments as $tournamentId) {
-                $tournament = $selectedModels->get($tournamentId);
-                if (! $tournament || ! $this->canDeclareAvailability($user, $tournament)) {
-                    continue; // Salta tornei non accessibili silenziosamente
-                }
+            foreach ($toAdd as $tournamentId) {
                 Availability::create([
                     'user_id' => $user->id,
                     'tournament_id' => $tournamentId,
@@ -289,18 +287,9 @@ class AvailabilityController extends Controller
             }
 
             DB::commit();
-
-            // Gestione notifiche
-            $this->handleNotifications(
-                $user,
-                $selectedTournaments,
-                Untrusted::intList($existingAvailabilities)
-            );
-
-            return redirect()->route('user.availability.index')
-                ->with('success', 'Disponibilità aggiornate con successo!');
         } catch (\Exception $e) {
             DB::rollback();
+
             Log::error('Errore salvataggio disponibilità batch', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
@@ -309,6 +298,13 @@ class AvailabilityController extends Controller
             return redirect()->back()
                 ->withErrors(['error' => 'Errore durante il salvataggio. Riprova.']);
         }
+
+        // Notifiche solo sulle differenze reali
+        $mailWarning = $this->handleNotifications($user, $wanted, $existing);
+
+        return redirect()->route('user.availability.index')
+            ->with('success', 'Disponibilità aggiornate con successo!')
+            ->with('warning', $mailWarning);
     }
 
     /**
@@ -375,13 +371,8 @@ class AvailabilityController extends Controller
      */
     private function canDeclareAvailability($user, $tournament): bool
     {
-        // Verifica se il torneo è futuro
-        if ($tournament->start_date < now()) {
-            return false;
-        }
-
-        // Verifica deadline disponibilità se presente
-        if ($tournament->availability_deadline && $tournament->availability_deadline < now()) {
+        // Torneo non iniziato e scadenza non passata (regola unica nel model)
+        if (! $tournament->acceptsAvailability()) {
             return false;
         }
 
@@ -392,66 +383,29 @@ class AvailabilityController extends Controller
     /**
      * Gestisce l'invio delle notifiche per aggiornamenti batch di disponibilità.
      *
-     * NUOVA LOGICA: Separa notifiche zonali e nazionali
-     * - SZR riceve SOLO disponibilità tornei zonali
-     * - CRC riceve SOLO disponibilità tornei nazionali
-     * - Arbitro riceve TUTTE le disponibilità
+     * - Arbitro: memo con TUTTE le disponibilita' modificate
+     * - SZR: tutti i tornei della propria zona, zonali e nazionali (P5, 2026-10-03)
+     * - CRC: i tornei nazionali
+     * (dettaglio in sendSeparatedAdminNotifications)
      *
      * @param  User  $user  L'arbitro che ha modificato le disponibilità
      * @param  list<int>  $newAvailabilities  ID tornei con nuova disponibilità
      * @param  list<int>  $oldAvailabilities  ID tornei con disponibilità precedente
      */
-    private function handleNotifications($user, $newAvailabilities, $oldAvailabilities): void
+    private function handleNotifications(User $user, array $newAvailabilities, array $oldAvailabilities): ?string
     {
         $added = array_diff($newAvailabilities, $oldAvailabilities);
         $removed = array_diff($oldAvailabilities, $newAvailabilities);
 
         if (count($added) === 0 && count($removed) === 0) {
-            return; // Nessuna modifica, nessuna notifica
+            return null; // Nessuna modifica, nessuna notifica
         }
 
-        try {
-            // Carica i tornei con le relazioni necessarie
-            $addedTournaments = Tournament::with(['club', 'tournamentType'])
-                ->whereIn('id', $added)
-                ->get();
-
-            $removedTournaments = Tournament::with(['club', 'tournamentType'])
-                ->whereIn('id', $removed)
-                ->get();
-
-            // ═══════════════════════════════════════════════════════════════
-            // 1. MEMO ALL'ARBITRO - Tutte le disponibilità (zonali + nazionali)
-            // ═══════════════════════════════════════════════════════════════
-            if (! empty($user->email)) {
-                Mail::to($user->email)->send(new BatchAvailabilityNotification(
-                    $user,
-                    $addedTournaments,
-                    $removedTournaments
-                ));
-            }
-
-            // ═══════════════════════════════════════════════════════════════
-            // 2. NOTIFICHE ADMIN SEPARATE - Usa il nuovo servizio
-            // ═══════════════════════════════════════════════════════════════
-            $this->sendSeparatedAdminNotifications(
-                $user,
-                $addedTournaments,
-                $removedTournaments
-            );
-
-            Log::info('Notifiche batch disponibilità inviate (separate)', [
-                'user_id' => $user->id,
-                'added_count' => count($added),
-                'removed_count' => count($removed),
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Errore invio notifiche disponibilità batch', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-        }
+        return $this->notifyAvailabilityChanges(
+            $user,
+            Tournament::with(['club', 'tournamentType'])->whereIn('id', $added)->get(),
+            Tournament::with(['club', 'tournamentType'])->whereIn('id', $removed)->get()
+        );
     }
 
     /**
@@ -465,125 +419,131 @@ class AvailabilityController extends Controller
      * @param  Tournament  $tournament  Il torneo per cui è stata modificata la disponibilità
      * @param  string  $action  'added' o 'removed'
      */
-    private function handleSingleNotification($user, $tournament, $action): void
+    private function handleSingleNotification(User $user, Tournament $tournament, string $action): ?string
     {
-        try {
-            $tournament->load(['club', 'tournamentType']);
+        $tournament->load(['club', 'tournamentType']);
 
-            $addedTournaments = $action === 'added' ? collect([$tournament]) : collect();
-            $removedTournaments = $action === 'removed' ? collect([$tournament]) : collect();
+        return $this->notifyAvailabilityChanges(
+            $user,
+            $action === 'added' ? collect([$tournament]) : collect(),
+            $action === 'removed' ? collect([$tournament]) : collect()
+        );
+    }
 
-            // MEMO ALL'ARBITRO
-            if (! empty($user->email)) {
+    /**
+     * Riepilogo all'arbitro + avvisi agli admin.
+     *
+     * Decisione 2026-10-04: l'arbitro deve avere un ritorno sicuro. Le due parti
+     * sono indipendenti (un errore sugli avvisi admin non blocca il riepilogo
+     * all'arbitro, e viceversa) e il metodo restituisce l'avviso da mostrare
+     * all'arbitro quando il SUO riepilogo non e' partito; null se e' partito.
+     * Gli errori sugli avvisi admin restano solo nel log.
+     *
+     * @param  Collection<int, Tournament>  $addedTournaments
+     * @param  Collection<int, Tournament>  $removedTournaments
+     */
+    private function notifyAvailabilityChanges(User $user, Collection $addedTournaments, Collection $removedTournaments): ?string
+    {
+        $warning = null;
+
+        if (empty($user->email)) {
+            $warning = 'Il tuo profilo non ha un indirizzo email: non riceverai il riepilogo. '
+                .'Le disponibilità sono comunque salvate.';
+        } else {
+            try {
                 Mail::to($user->email)->send(new BatchAvailabilityNotification(
                     $user,
                     $addedTournaments,
                     $removedTournaments
                 ));
+            } catch (\Throwable $e) {
+                Log::error('Riepilogo disponibilità all\'arbitro non inviato', [
+                    'user_id' => $user->id,
+                    'error' => $e->getMessage(),
+                ]);
+                $warning = 'L\'email di riepilogo non è partita. Le disponibilità sono comunque salvate: '
+                    .'puoi controllarle in «Le Mie Disponibilità».';
             }
+        }
 
-            // NOTIFICA ADMIN SEPARATA - Usa stesso metodo del batch
-            $this->sendSeparatedAdminNotifications(
-                $user,
-                $addedTournaments,
-                $removedTournaments
-            );
-
-            Log::info('Notifiche disponibilità singola inviate (separate)', [
+        try {
+            $this->sendSeparatedAdminNotifications($user, $addedTournaments, $removedTournaments);
+        } catch (\Throwable $e) {
+            Log::error('Avviso disponibilità agli admin non inviato', [
                 'user_id' => $user->id,
-                'tournament_id' => $tournament->id,
-                'is_national' => $tournament->tournamentType->is_national ?? false,
-                'action' => $action,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Errore invio notifica disponibilità singola', [
-                'user_id' => $user->id,
-                'tournament_id' => $tournament->id,
-                'action' => $action,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
             ]);
         }
+
+        return $warning;
     }
 
     /**
-     * Invia notifiche separate agli admin in base al tipo di torneo.
+     * Avvisi agli amministratori per le disponibilita' aggiunte/tolte.
      *
-     * LOGICA SEPARAZIONE:
-     * ┌────────────────────────────────────────────────────────────┐
-     * │ Destinatario │ Riceve                                      │
-     * ├────────────────────────────────────────────────────────────┤
-     * │ SZR (zona)   │ SOLO disponibilità tornei ZONALI           │
-     * │ CRC          │ SOLO disponibilità tornei NAZIONALI        │
-     * │ Arbitro      │ TUTTE le disponibilità (già gestito sopra) │
-     * └────────────────────────────────────────────────────────────┘
+     * Decisione 2026-10-03 (P5):
+     * - ogni zona riceve l'avviso per TUTTI i tornei che si giocano nella sua
+     *   zona, zonali e nazionali (la SZR designa gli osservatori dei nazionali);
+     * - il CRC riceve l'avviso per i tornei nazionali.
+     * Una mail per zona: gli admin di una zona non vedono i tornei (ne' gli
+     * indirizzi) delle altre.
      *
-     * @param  \App\Models\User  $user
-     * @param  \Illuminate\Support\Collection<int, \App\Models\Tournament>  $addedTournaments
-     * @param  \Illuminate\Support\Collection<int, \App\Models\Tournament>  $removedTournaments
+     * @param  \Illuminate\Support\Collection<int, Tournament>  $addedTournaments
+     * @param  \Illuminate\Support\Collection<int, Tournament>  $removedTournaments
      */
-    private function sendSeparatedAdminNotifications($user, $addedTournaments, $removedTournaments): void
+    private function sendSeparatedAdminNotifications(User $user, Collection $addedTournaments, Collection $removedTournaments): void
     {
-        // Combina tutti i tornei
         $allTournaments = $addedTournaments->merge($removedTournaments);
 
-        // Raggruppa direttamente per tipo (no servizio esterno)
-        $zonalTournaments = $allTournaments->filter(function ($tournament) {
-            return ! ($tournament->tournamentType->is_national ?? false);
-        });
+        // ── SZR: una mail per zona, tornei zonali e nazionali della zona ──
+        $byZone = $allTournaments->groupBy(
+            fn (Tournament $t): int => (int) ($t->club->zone_id ?? $t->zone_id ?? 0)
+        );
 
-        $nationalTournaments = $allTournaments->filter(function ($tournament) {
-            return $tournament->tournamentType->is_national ?? false;
-        });
-
-        // ═══════════════════════════════════════════════════════════════
-        // NOTIFICHE ZONE (SOLO tornei zonali)
-        // ═══════════════════════════════════════════════════════════════
-        if ($zonalTournaments->isNotEmpty()) {
-            $zonalIds = $zonalTournaments->pluck('id');
-
-            $zonalAdded = $addedTournaments->whereIn('id', $zonalIds);
-            $zonalRemoved = $removedTournaments->whereIn('id', $zonalIds);
-
-            $zoneEmails = $this->collectZoneAdminEmails($zonalTournaments);
-
-            if (! empty($zoneEmails)) {
-                Mail::to($zoneEmails)->send(new BatchAvailabilityAdminNotification(
-                    $user,
-                    $zonalAdded,
-                    $zonalRemoved
-                ));
-
-                Log::info('Notifica SZR inviata (solo tornei zonali)', [
-                    'user_id' => $user->id,
-                    'zone_emails' => count($zoneEmails),
-                    'tournaments_count' => $zonalAdded->count() + $zonalRemoved->count(),
-                ]);
+        foreach ($byZone as $zoneId => $zoneTournaments) {
+            if ($zoneId === 0) {
+                continue;
             }
+
+            $zoneEmails = $this->collectZoneAdminEmails($zoneTournaments);
+            if (empty($zoneEmails)) {
+                continue;
+            }
+
+            $ids = $zoneTournaments->pluck('id');
+
+            Mail::to($zoneEmails)->send(new BatchAvailabilityAdminNotification(
+                $user,
+                $addedTournaments->whereIn('id', $ids),
+                $removedTournaments->whereIn('id', $ids)
+            ));
+
+            Log::info('Notifica SZR disponibilità inviata', [
+                'user_id' => $user->id,
+                'zone_id' => $zoneId,
+                'tournaments_count' => $ids->count(),
+            ]);
         }
 
-        // ═══════════════════════════════════════════════════════════════
-        // NOTIFICHE CRC (SOLO tornei nazionali)
-        // ═══════════════════════════════════════════════════════════════
-        if ($nationalTournaments->isNotEmpty()) {
-            $nationalIds = $nationalTournaments->pluck('id');
+        // ── CRC: solo tornei nazionali ──
+        $nationalIds = $allTournaments
+            ->filter(fn ($t) => $t->tournamentType->is_national ?? false)
+            ->pluck('id');
 
-            $nationalAdded = $addedTournaments->whereIn('id', $nationalIds);
-            $nationalRemoved = $removedTournaments->whereIn('id', $nationalIds);
-
+        if ($nationalIds->isNotEmpty()) {
             $crcEmails = $this->collectNationalAdminEmails();
 
             if (! empty($crcEmails)) {
                 Mail::to($crcEmails)->send(new BatchAvailabilityAdminNotification(
                     $user,
-                    $nationalAdded,
-                    $nationalRemoved
+                    $addedTournaments->whereIn('id', $nationalIds),
+                    $removedTournaments->whereIn('id', $nationalIds)
                 ));
 
-                Log::info('Notifica CRC inviata (solo tornei nazionali)', [
+                Log::info('Notifica CRC disponibilità inviata (solo tornei nazionali)', [
                     'user_id' => $user->id,
                     'crc_emails' => count($crcEmails),
-                    'tournaments_count' => $nationalAdded->count() + $nationalRemoved->count(),
+                    'tournaments_count' => $nationalIds->count(),
                 ]);
             }
         }

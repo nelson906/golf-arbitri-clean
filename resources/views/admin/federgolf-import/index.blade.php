@@ -280,7 +280,7 @@
             <h3 class="font-semibold text-gray-800 mb-1">Torneo locale di destinazione</h3>
             <p class="text-sm text-gray-500 mb-3">
                 Seleziona il torneo del sistema a cui agganciare queste assegnazioni.
-                I tornei con assegnazioni già presenti sono segnalati.
+                Il comitato FIG sostituisce tutte le assegnazioni già presenti sul torneo.
             </p>
 
             {{-- Filtro anno tornei locali --}}
@@ -315,7 +315,7 @@
             <div x-show="torneoLocaleSelezionato?.n_assegnazioni > 0"
                  class="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
                 ⚠️ Questo torneo ha già <strong x-text="torneoLocaleSelezionato?.n_assegnazioni"></strong> assegnazioni.
-                Le nuove verranno aggiunte solo se non già presenti (nessuna sovrascrittura).
+                Con la conferma verranno <strong>tutte tolte</strong> e sostituite dal comitato FIG.
             </div>
             <p x-show="!torneoLocaleId" class="text-xs text-orange-600 mt-1">
                 ⚠️ Devi selezionare un torneo prima di poter importare.
@@ -325,7 +325,7 @@
         {{-- Avviso chiarezza --}}
         <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 text-sm text-amber-800">
             <strong>Nota:</strong> le righe con spunta ✓ e arbitro selezionato verranno importate come assegnazioni.
-            Le assegnazioni già esistenti su quel torneo non verranno sovrascritte (saltate).
+            Tutte le assegnazioni già esistenti su quel torneo, anche quelle fatte a mano, verranno tolte e sostituite.
         </div>
 
         {{-- Bottoni navigazione --}}
@@ -363,6 +363,10 @@
                         <span class="text-gray-500">Assegnazioni da creare:</span>
                         <span class="ml-2 font-bold text-blue-700" x-text="righeValide.length"></span>
                     </div>
+                    <div>
+                        <span class="text-gray-500">Assegnazioni attuali da togliere:</span>
+                        <span class="ml-2 font-bold text-red-700" x-text="torneoLocaleSelezionato?.n_assegnazioni ?? 0"></span>
+                    </div>
                 </div>
             </div>
 
@@ -399,10 +403,10 @@
 
                 {{-- Messaggio principale --}}
                 <div class="p-4 rounded-xl text-sm"
-                     :class="importResult?.creati > 0
+                     :class="importResult?.success === false
+                             ? 'bg-red-50 border border-red-200 text-red-800'
+                             : importResult?.creati > 0
                              ? 'bg-green-50 border border-green-200 text-green-800'
-                             : importResult?.saltati > 0
-                             ? 'bg-blue-50 border border-blue-200 text-blue-800'
                              : 'bg-yellow-50 border border-yellow-200 text-yellow-800'">
                     <p class="font-medium" x-text="importResult?.messaggio"></p>
                     <template x-if="importResult?.errori?.length">
@@ -431,10 +435,10 @@
                               :class="importResult?.debug?.tournament_nome?.startsWith('⚠️') ? 'text-red-600 font-bold' : ''"></span>
                     </div>
 
-                    {{-- Dettaglio assegnazioni già presenti --}}
-                    <template x-if="importResult?.debug?.assegnazioni_gia_presenti?.length">
+                    {{-- Dettaglio assegnazioni tolte e sostituite --}}
+                    <template x-if="importResult?.debug?.assegnazioni_sostituite?.length">
                         <div class="mt-2">
-                            <p class="text-gray-500 mb-1">Assegnazioni già presenti nel DB:</p>
+                            <p class="text-gray-500 mb-1">Assegnazioni precedenti tolte:</p>
                             <table class="w-full text-xs">
                                 <thead>
                                     <tr class="text-gray-400">
@@ -446,7 +450,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <template x-for="d in importResult.debug.assegnazioni_gia_presenti" :key="d.assignment_id">
+                                    <template x-for="d in importResult.debug.assegnazioni_sostituite" :key="d.assignment_id">
                                         <tr class="border-t border-gray-100">
                                             <td class="pr-3 py-0.5" x-text="d.user_id"></td>
                                             <td class="pr-3 py-0.5" x-text="d.assignment_id"></td>
@@ -483,7 +487,7 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                     </svg>
-                    <span x-text="importing ? 'Importazione…' : '✅ Conferma e importa'"></span>
+                    <span x-text="importing ? 'Importazione…' : '✅ Conferma e sostituisci'"></span>
                 </button>
             </div>
         </div>
@@ -675,6 +679,10 @@ function figImport() {
 
         async executeImport() {
             if (!this.righeValide.length || !this.torneoLocaleId) return;
+            const esistenti = this.torneoLocaleSelezionato?.n_assegnazioni ?? 0;
+            if (esistenti > 0 && !window.confirm(
+                'Le ' + esistenti + ' assegnazioni attuali del torneo verranno tolte e sostituite dal comitato FIG. Procedere?'
+            )) return;
             this.importing = true;
 
             try {

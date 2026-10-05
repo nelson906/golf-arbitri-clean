@@ -45,7 +45,7 @@
                 </div>
                 <div class="mt-2">
                     <div class="text-sm text-gray-600">
-                        Attivi: <span class="font-medium text-green-600">{{ $generalStats['active_tournaments'] }}</span>
+                        Da giocare: <span class="font-medium text-green-600">{{ $generalStats['active_tournaments'] }}</span>
                     </div>
                 </div>
             </div>
@@ -87,11 +87,6 @@
                             <dt class="text-sm font-medium text-gray-500 truncate">Assegnazioni</dt>
                             <dd class="text-lg font-medium text-gray-900">{{ number_format($generalStats['total_assignments']) }}</dd>
                         </dl>
-                    </div>
-                </div>
-                <div class="mt-2">
-                    <div class="text-sm text-gray-600">
-                        Pending: <span class="font-medium text-yellow-600">{{ $generalStats['pending_assignments'] }}</span>
                     </div>
                 </div>
             </div>

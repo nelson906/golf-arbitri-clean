@@ -93,6 +93,7 @@
                     @foreach($tournaments as $tournament)
                         @php
                             $isAvailable = in_array($tournament->id, $userAvailabilities);
+                            $isLocked = ! $tournament->acceptsAvailability();
                         @endphp
 
                         <div class="bg-white rounded-lg shadow p-4">
@@ -100,11 +101,17 @@
                                 <div class="flex-1">
                                     <div class="flex items-start">
                                         <div class="flex-shrink-0 pt-0.5">
+                                            {{-- Elenco dei tornei mostrati: il salvataggio modifica SOLO questi (le disponibilita' degli altri restano) --}}
+                                            @unless ($isLocked)
+                                                <input type="hidden" name="page_tournaments[]" value="{{ $tournament->id }}">
+                                            @endunless
                                             <input type="checkbox"
                                                    name="availabilities[]"
                                                    value="{{ $tournament->id }}"
                                                    {{ $isAvailable ? 'checked' : '' }}
-                                                   class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
+                                                   {{ $isLocked ? 'disabled' : '' }}
+                                                   title="{{ $isLocked ? 'Scadenza passata: la disponibilità non si può più cambiare' : '' }}"
+                                                   class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded disabled:opacity-50">
                                         </div>
                                         <div class="ml-3 flex-1">
                                             <div class="block text-sm font-medium text-gray-900">
@@ -132,7 +139,10 @@
                                             </div>
                                             @if($tournament->availability_deadline)
                                                 <p class="mt-1 text-xs {{ $tournament->availability_deadline < now()->addDays(7) ? 'text-red-600' : 'text-gray-500' }}">
-                                                    Scadenza disponibilità: {{ Carbon\Carbon::parse($tournament->availability_deadline)->format('d/m/Y H:i') }}
+                                                    Scadenza disponibilità: {{ Carbon\Carbon::parse($tournament->availability_deadline)->format('d/m/Y') }} ore 23:59
+                                                    @if ($isLocked)
+                                                        — scaduta, non modificabile
+                                                    @endif
                                                 </p>
                                             @endif
                                         </div>

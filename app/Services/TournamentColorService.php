@@ -53,16 +53,12 @@ class TournamentColorService
     ];
 
     /**
-     * Colori per stato torneo (border admin)
+     * Colori bordo vista admin: torneo da giocare / gia' giocato.
+     * (Lo stato del torneo non esiste piu': decisione 2026-10-03.)
      */
-    private const STATUS_COLORS = [
-        'draft' => '#F59E0B',       // Amber
-        'open' => '#10B981',        // Green
-        'closed' => '#6B7280',      // Gray
-        'assigned' => '#059669',    // Dark Green
-        'completed' => '#374151',   // Dark Gray
-        'cancelled' => '#EF4444',   // Red
-    ];
+    private const BORDER_UPCOMING = '#10B981'; // Green
+
+    private const BORDER_PAST = '#374151';     // Dark Gray
 
     /**
      * Colori per stato personale arbitro
@@ -84,7 +80,6 @@ class TournamentColorService
 
     private const DEFAULT_COLOR = '#3B82F6';
 
-    private const DEFAULT_BORDER = '#10B981';
 
     // Aggiunto qui per visibilità dal metodo pubblico
     public const TYPE_COLORS_MAP = self::TYPE_COLORS;
@@ -100,11 +95,13 @@ class TournamentColorService
     }
 
     /**
-     * Ottieni colore bordo per vista ADMIN (basato su stato torneo)
+     * Ottieni colore bordo per vista ADMIN (torneo da giocare o gia' giocato)
      */
     public function getAdminBorderColor(Tournament $tournament): string
     {
-        return self::STATUS_COLORS[$tournament->status->value] ?? self::DEFAULT_BORDER;
+        $end = $tournament->end_date ?? $tournament->start_date;
+
+        return $end < now()->startOfDay() ? self::BORDER_PAST : self::BORDER_UPCOMING;
     }
 
     /**

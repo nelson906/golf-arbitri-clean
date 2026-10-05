@@ -127,7 +127,10 @@
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                         {{-- Prossimi Tornei Assegnati --}}
                         <div>
-                            <h3 class="text-lg font-semibold mb-4">Prossimi Tornei Assegnati</h3>
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-semibold">Prossimi Tornei Assegnati</h3>
+                                <a href="{{ route('user.assignments.index') }}" class="text-sm text-indigo-600 hover:text-indigo-900">Tutte le mie assegnazioni →</a>
+                            </div>
                             @if ($upcomingAssignments->isEmpty())
                                 <p class="text-gray-500">Nessun torneo assegnato in programma.</p>
                             @else
@@ -148,10 +151,6 @@
                                                     <p class="text-sm text-gray-500">
                                                         {{ $assignment->tournament->club->name ?? 'N/A' }}</p>
                                                 </div>
-                                                <span
-                                                    class="px-2 py-1 text-xs rounded-full {{ $assignment->is_confirmed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
-                                                    {{ $assignment->is_confirmed ? 'Confermato' : 'In attesa' }}
-                                                </span>
                                             </div>
                                             @if ($assignment->role)
                                                 <p class="text-sm text-indigo-600 mt-1">Ruolo: {{ $assignment->role }}</p>

@@ -55,17 +55,6 @@
                             </dd>
                         </div>
 
-                        <div>
-                            <dt class="text-sm font-medium text-gray-500">Stato</dt>
-                            <dd class="mt-1">
-                                <span
-                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                                {{ $tournament->status->value === 'open' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
-                                    {{ $tournament->status->value === 'open' ? 'Aperto' : ucfirst($tournament->status->value) }}
-                                </span>
-                            </dd>
-                        </div>
-
                         <div class="sm:col-span-2">
                             <dt class="text-sm font-medium text-gray-500">Circolo</dt>
                             <dd class="mt-1 text-sm text-gray-900">
@@ -108,7 +97,7 @@
                                     </div>
                                 </div>
                             </div>
-                        @elseif($tournament->status->value === 'open')
+                        @elseif($tournament->acceptsAvailability())
                             <button
                                 onclick="openAvailabilityModal('{{ $tournament->id }}', '{{ $tournament->name }}', {{ $userAvailability ? 'true' : 'false' }})"
                                 class="w-full px-4 py-2 rounded-md transition duration-200 {{ $userAvailability ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white' }}">
@@ -128,7 +117,7 @@
                         @else
                             <div class="bg-gray-50 border border-gray-200 rounded-md p-4">
                                 <p class="text-sm text-gray-600">
-                                    Questo torneo non è più aperto per nuove disponibilità.
+                                    La scadenza per dare o togliere la disponibilità è passata.
                                 </p>
                             </div>
                         @endif

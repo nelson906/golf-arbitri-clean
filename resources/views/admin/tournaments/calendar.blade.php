@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function() {
         eventDidMount: function(info) {
             // Tooltip con dettagli
             const props = info.event.extendedProps;
-            info.el.title = `${info.event.title}\n${props.club || ''}\nStato: ${props.status || 'N/A'}`;
+            info.el.title = `${info.event.title}\n${props.club || ''}\nScadenza disponibilità: ${props.deadline || 'N/A'}`;
         }
     });
 

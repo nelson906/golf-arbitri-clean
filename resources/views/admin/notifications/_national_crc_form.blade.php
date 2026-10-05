@@ -5,12 +5,6 @@
 --}}
 
 @php
-    // DEBUG: mostra quanti arbitri ci sono
-    \Log::info('Form CRC - assignedReferees', [
-        'count' => $assignedReferees->count(),
-        'referees' => $assignedReferees->map(fn($r) => ['id' => $r->id, 'name' => $r->name, 'role' => $r->pivot->role ?? 'N/A'])->toArray(),
-    ]);
-
     // Filtra solo arbitri designati (esclude osservatori che sono di competenza ZONA)
     $designatedReferees = $assignedReferees->filter(fn($ref) => $ref->pivot->role !== 'Osservatore');
 
@@ -24,10 +18,12 @@
 
 {$refereesList}
 
+Si invita la Sezione Zonale Regole competente a comunicare i nominativi degli osservatori.
+
 Torneo: {$tournament->name}
 Date: {$tournament->start_date->format('d/m/Y')}" .
 ($tournament->start_date->format('d/m/Y') != $tournament->end_date->format('d/m/Y') ? " - {$tournament->end_date->format('d/m/Y')}" : "") . "
-Circolo: {$tournament->club->name}
+Circolo: " . ($tournament->club?->name ?? 'da definire') . "
 
 Cordiali saluti";
 
@@ -36,7 +32,7 @@ Cordiali saluti";
 
     // Admin zonali della zona del torneo
     $zoneAdmins = \App\Models\User::where('user_type', 'admin')
-        ->where('zone_id', $tournament->club->zone_id)
+        ->where('zone_id', $tournament->zone_id)
         ->where('is_active', true)
         ->get();
 

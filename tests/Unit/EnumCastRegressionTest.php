@@ -387,11 +387,10 @@ class EnumCastRegressionTest extends TestCase
         $this->assertCount(1, $calendarData);
         $event = $calendarData->firstOrFail();
 
+        // P3 (2026-10-03): lo stato del torneo non viene piu' esposto al calendario
         $props = $this->arrayAt($event, 'extendedProps');
-        $this->assertArrayHasKey('status', $props);
-        $this->assertIsString($props['status'],
-            "extendedProps.status deve essere una stringa, non un'istanza Enum");
-        $this->assertSame('open', $props['status']);
+        $this->assertArrayNotHasKey('status', $props);
+        $this->assertJson((string) json_encode($props));
     }
 
     /**
@@ -407,10 +406,10 @@ class EnumCastRegressionTest extends TestCase
         $calendarData = $calendarService->prepareRefereeCalendarData($tournaments, $referee);
 
         $event = $calendarData->firstOrFail();
+        // P3 (2026-10-03): lo stato del torneo non viene piu' esposto al calendario
         $props = $this->arrayAt($event, 'extendedProps');
-        $this->assertIsString($props['status'],
-            "extendedProps.status deve essere una stringa per la vista arbitro");
-        $this->assertSame('closed', $props['status']);
+        $this->assertArrayNotHasKey('status', $props);
+        $this->assertJson((string) json_encode($props));
     }
 
     // ============================================================

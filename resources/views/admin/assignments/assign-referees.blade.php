@@ -119,6 +119,13 @@
 <form id="assignmentForm" action="{{ route('admin.assignments.storeMultiple', $tournament) }}" method="POST">
            @csrf
 
+        @if ($observerOnly ?? false)
+        <div class="bg-purple-50 border border-purple-200 text-purple-800 rounded-lg p-4 mb-6 text-sm">
+            Torneo nazionale: qui designi solo gli <strong>osservatori</strong>.
+            Arbitri e Direttore di Torneo li designa il CRC.
+        </div>
+        @endif
+
         {{-- Arbitri Disponibili --}}
         @if($availableReferees && $availableReferees->count() > 0)
         <div class="bg-white rounded-lg shadow mb-6">
@@ -145,6 +152,7 @@
                             @if($referee->zone)
                                 <span class="text-sm text-gray-500 ml-2">- {{ $referee->zone->name }}</span>
                             @endif
+                            @include('admin.assignments._referee-load', ['referee' => $referee])
                         </label>
                     </div>
                     @endforeach
@@ -179,6 +187,7 @@
                             @if($referee->zone)
                                 <span class="text-sm text-gray-500 ml-2">- {{ $referee->zone->name }}</span>
                             @endif
+                            @include('admin.assignments._referee-load', ['referee' => $referee])
                         </label>
                         {{-- <select name="roles[{{ $referee->id }}]"
                                 class="w-48 px-2 py-1 text-sm border border-gray-300 rounded">
@@ -225,6 +234,7 @@
                             @if($referee->zone)
                                 <span class="text-sm text-gray-500 ml-2">- {{ $referee->zone->name }}</span>
                             @endif
+                            @include('admin.assignments._referee-load', ['referee' => $referee])
                         </label>
 <div class="role-select" style="display:inline-block;">
 </div>
@@ -296,7 +306,10 @@ window.addEventListener('DOMContentLoaded', function() {
                     select.id = 'select_' + refereeId;
                     select.name = 'roles[' + refereeId + ']';
                     select.className = 'ml-2 px-2 py-1 text-sm border border-gray-300 rounded';
-                    select.innerHTML = `
+                    // P9: sui tornei nazionali l'admin di zona designa solo osservatori
+                    select.innerHTML = @json($observerOnly ?? false)
+                        ? `<option value="Osservatore" selected>Osservatore</option>`
+                        : `
                         <option value="">Seleziona ruolo</option>
                         <option value="Direttore di Torneo">Direttore di Torneo</option>
                         <option value="Arbitro">Arbitro</option>

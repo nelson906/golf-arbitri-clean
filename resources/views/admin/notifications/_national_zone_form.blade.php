@@ -21,7 +21,7 @@
 Torneo: {$tournament->name}
 Date: {$tournament->start_date->format('d/m/Y')}" .
 ($tournament->start_date->format('d/m/Y') != $tournament->end_date->format('d/m/Y') ? " - {$tournament->end_date->format('d/m/Y')}" : "") . "
-Circolo: {$tournament->club->name}
+Circolo: " . ($tournament->club?->name ?? 'da definire') . "
 
 Cordiali saluti";
 

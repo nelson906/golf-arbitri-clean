@@ -9,9 +9,11 @@ use App\Models\Tournament;
 use App\Models\User;
 use App\Services\FedergolfCommitteeService;
 use App\Services\FedergolfCompetitionsClient;
+use App\Support\TournamentVisibility;
 use App\Support\Untrusted;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
@@ -23,7 +25,8 @@ use Illuminate\View\View;
  *  2. Il sistema recupera il Comitato di Gara dalla pagina FIG
  *  3. I nomi vengono messi in corrispondenza (fuzzy) con gli arbitri locali
  *  4. L'admin rivede, corregge, associa il torneo locale
- *  5. Solo dopo conferma esplicita vengono create le assegnazioni
+ *  5. Solo dopo conferma esplicita il comitato FIG SOSTITUISCE tutte le
+ *     assegnazioni del torneo locale (decisione 2026-10-04)
  *
  * Nessuna scrittura automatica sul DB. Nessuna migration richiesta.
  */
@@ -43,10 +46,11 @@ class FedergolfImportController extends Controller
      */
     public function index(): View
     {
-        // Tornei locali: tutti gli anni per flessibilità, raggruppati per anno
-        // Includono anche tornei già assegnati (l'admin potrebbe voler integrare)
-        $torneiLocali = Tournament::with(['club', 'tournamentType'])
-            ->whereIn('status', ['draft', 'open', 'assigned'])
+        // Tornei locali visibili all'admin, tutti gli anni, raggruppati per anno.
+        // Niente filtro sullo stato del torneo: e' stato eliminato (P3,
+        // 2026-10-03) e ora escluderebbe tornei gia' giocati da ricaricare.
+        $torneiLocali = Tournament::visible()
+            ->with(['club', 'tournamentType'])
             ->orderBy('start_date')   // crescente: i più imminenti prima
             ->get()
             ->map(fn (Tournament $t) => [
@@ -192,12 +196,15 @@ class FedergolfImportController extends Controller
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Crea le assegnazioni sul torneo locale selezionato dall'admin.
+     * Sostituisce le assegnazioni del torneo locale con il Comitato FIG.
      *
      * Viene chiamato SOLO quando l'admin ha revisionato tutti i match
-     * e ha cliccato "Conferma importazione".
+     * e ha cliccato "Conferma e importa".
      *
-     * Gestisce gracefully i duplicati (li salta, non sovrascrive).
+     * Decisione 2026-10-04: il caricamento da FIG sovrascrive i precedenti.
+     * Tutte le assegnazioni del torneo (importate o fatte a mano) vengono
+     * tolte e sostituite dalle righe confermate, in un'unica transazione:
+     * se una riga fallisce non cambia niente.
      */
     public function executeImport(Request $request): JsonResponse
     {
@@ -208,75 +215,94 @@ class FedergolfImportController extends Controller
             'assegnazioni.*.ruolo'   => ['required', 'string'],
         ]);
 
-        $tournamentId  = $request->integer('tournament_id');
-        // La validazione garantisce array di array con user_id e ruolo, ma
-        // l'input resta non tipizzato: si tengono solo le righe che sono array.
-        $assegnazioni  = Untrusted::rows($request->array('assegnazioni'));
+        $tournament = Tournament::with(['club', 'tournamentType'])->findOrFail($request->integer('tournament_id'));
 
-        $creati       = 0;
-        $saltati      = 0;
-        $errori       = [];
-        $dettagliSaltati = []; // diagnostica: mostra COSA era già presente
-
-        // ── Diagnostica DB: verifica connessione e contesto ──────────────────
-        $dbName      = \DB::connection()->getDatabaseName();
-        $tournamentOk = Tournament::find($tournamentId);
-
-        foreach ($assegnazioni as $idx => $item) {
-            $userId = Untrusted::int($item['user_id'] ?? null);
-            $ruolo  = AssignmentRole::normalize(Untrusted::string($item['ruolo'] ?? null))->value;
-
-            // Controlla se l'assegnazione esiste già
-            $existing = Assignment::where('tournament_id', $tournamentId)
-                ->where('user_id', $userId)
-                ->first(['id', 'role', 'assigned_at', 'notes']);
-
-            if ($existing) {
-                $saltati++;
-                $dettagliSaltati[] = [
-                    'user_id'       => $userId,
-                    'assignment_id' => $existing->id,
-                    'ruolo_attuale' => $existing->role,
-                    'assegnato_il'  => $existing->assigned_at?->format('d/m/Y H:i'),
-                    'note'          => $existing->notes,
-                ];
-                continue;
-            }
-
-            try {
-                Assignment::create([
-                    'tournament_id' => $tournamentId,
-                    'user_id'       => $userId,
-                    'role'          => $ruolo,
-                    'assigned_by'   => auth()->id(),
-                    'assigned_at'   => now(),
-                    'status'        => 'assigned',
-                    'is_confirmed'  => false,
-                    'notes'         => 'Importato da federgolf.it',
-                ]);
-                $creati++;
-            } catch (\Throwable $e) {
-                Log::warning('FedergolfImportController::executeImport singola assegnazione', [
-                    'tournament_id' => $tournamentId,
-                    'user_id'       => $userId,
-                    'error'         => $e->getMessage(),
-                ]);
-                $errori[] = "Riga {$idx}: " . $e->getMessage();
-            }
+        // Operazione distruttiva: solo su tornei che l'admin vede
+        if (! TournamentVisibility::canAccess($tournament)) {
+            abort(403, 'Non autorizzato a modificare le assegnazioni di questo torneo');
         }
 
+        // La validazione garantisce array di array con user_id e ruolo, ma
+        // l'input resta non tipizzato: si tengono solo le righe che sono array.
+        $assegnazioni = Untrusted::rows($request->array('assegnazioni'));
+
+        // Righe da creare, una per arbitro (un doppione nella lista si salta)
+        $nuove = [];
+        $saltati = 0;
+        foreach ($assegnazioni as $item) {
+            $userId = Untrusted::int($item['user_id'] ?? null);
+            if (isset($nuove[$userId])) {
+                $saltati++;
+
+                continue;
+            }
+            $nuove[$userId] = AssignmentRole::normalize(Untrusted::string($item['ruolo'] ?? null))->value;
+        }
+
+        $precedenti = Assignment::where('tournament_id', $tournament->id)
+            ->get(['id', 'user_id', 'role', 'assigned_at', 'notes']);
+
+        $sostituite = $precedenti->map(fn (Assignment $a) => [
+            'user_id'       => $a->user_id,
+            'assignment_id' => $a->id,
+            'ruolo_attuale' => $a->role,
+            'assegnato_il'  => $a->assigned_at?->format('d/m/Y H:i'),
+            'note'          => $a->notes,
+        ])->values()->all();
+
+        try {
+            DB::transaction(function () use ($tournament, $nuove) {
+                Assignment::where('tournament_id', $tournament->id)->delete();
+
+                foreach ($nuove as $userId => $ruolo) {
+                    Assignment::create([
+                        'tournament_id' => $tournament->id,
+                        'user_id'       => $userId,
+                        'role'          => $ruolo,
+                        'assigned_by'   => auth()->id(),
+                        'assigned_at'   => now(),
+                        'notes'         => 'Importato da federgolf.it',
+                    ]);
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::warning('FedergolfImportController::executeImport', [
+                'tournament_id' => $tournament->id,
+                'error'         => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success'   => false,
+                'creati'    => 0,
+                'rimossi'   => 0,
+                'saltati'   => 0,
+                'errori'    => [$e->getMessage()],
+                'messaggio' => 'Importazione non riuscita: nessuna assegnazione è stata modificata.',
+                'debug'     => [
+                    'database'        => DB::connection()->getDatabaseName(),
+                    'tournament_id'   => $tournament->id,
+                    'tournament_nome' => $tournament->name,
+                    'assegnazioni_sostituite' => [],
+                ],
+            ]);
+        }
+
+        $creati = count($nuove);
+        $rimossi = count($sostituite);
+
         return response()->json([
-            'success'          => true,
-            'creati'           => $creati,
-            'saltati'          => $saltati,
-            'errori'           => $errori,
-            'messaggio'        => $this->buildResultMessage($creati, $saltati, $errori),
+            'success'   => true,
+            'creati'    => $creati,
+            'rimossi'   => $rimossi,
+            'saltati'   => $saltati,
+            'errori'    => [],
+            'messaggio' => $this->buildResultMessage($creati, $rimossi, $saltati),
             // ── diagnostica (utile per debug ambiente) ────────────────────
             'debug' => [
-                'database'          => $dbName,
-                'tournament_id'     => $tournamentId,
-                'tournament_nome'   => $tournamentOk->name ?? '⚠️ NON TROVATO',
-                'assegnazioni_gia_presenti' => $dettagliSaltati,
+                'database'                => DB::connection()->getDatabaseName(),
+                'tournament_id'           => $tournament->id,
+                'tournament_nome'         => $tournament->name,
+                'assegnazioni_sostituite' => $sostituite,
             ],
         ]);
     }
@@ -297,19 +323,14 @@ class FedergolfImportController extends Controller
         return 'MF';
     }
 
-    /**
-     * @param  list<string>  $errori
-     */
-    private function buildResultMessage(int $creati, int $saltati, array $errori): string
+    private function buildResultMessage(int $creati, int $rimossi, int $saltati): string
     {
-        $msg = "{$creati} assegnazioni create";
+        $msg = $rimossi > 0
+            ? "Comitato sostituito: {$rimossi} assegnazioni precedenti tolte, {$creati} caricate da FIG"
+            : "{$creati} assegnazioni caricate da FIG";
 
         if ($saltati > 0) {
-            $msg .= ", {$saltati} già presenti (saltate)";
-        }
-
-        if (! empty($errori)) {
-            $msg .= ', ' . count($errori) . ' errori';
+            $msg .= " ({$saltati} righe doppie ignorate)";
         }
 
         return $msg . '.';

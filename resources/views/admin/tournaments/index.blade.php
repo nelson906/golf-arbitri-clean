@@ -66,20 +66,6 @@
                         class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                 </div>
 
-                {{-- Status Filter --}}
-                <div>
-                    <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Stato</label>
-                    <select name="status" id="status"
-                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        <option value="">Tutti gli stati</option>
-                        @foreach ($statuses as $value => $label)
-                            <option value="{{ $value }}" {{ request('status') == $value ? 'selected' : '' }}>
-                                {{ $label }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
                 {{-- Zone Filter (only for national admins) --}}
                 @if ($isNationalAdmin)
                     <div>
@@ -239,13 +225,6 @@
                                     Disp: {{ $tournament->availabilities()->count() }}
                                 </div>
                             </td>
-                            {{-- <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <span
-                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                            bg-{{ $tournament->status_color }}-100 text-{{ $tournament->status_color }}-800">
-                                    {{ $tournament->status_label }}
-                                </span>
-                            </td> --}}
 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
     <div class="flex flex-col space-y-2 items-end">
 
@@ -296,28 +275,20 @@
         {{-- Summary Stats --}}
         <div class="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="bg-white rounded-lg shadow p-6 text-center">
-                <div class="text-3xl font-bold text-indigo-600">
-                    {{ $tournaments->total() }}
-                </div>
+                <div class="text-3xl font-bold text-indigo-600">{{ $summary['total'] }}</div>
                 <div class="text-sm text-gray-600 mt-1">Tornei Totali</div>
             </div>
             <div class="bg-white rounded-lg shadow p-6 text-center">
-                <div class="text-3xl font-bold text-green-600">
-                    {{ $tournaments->count() }}
-                </div>
-                <div class="text-sm text-gray-600 mt-1">Aperti</div>
+                <div class="text-3xl font-bold text-green-600">{{ $summary['upcoming'] }}</div>
+                <div class="text-sm text-gray-600 mt-1">Da giocare</div>
             </div>
             <div class="bg-white rounded-lg shadow p-6 text-center">
-                <div class="text-3xl font-bold text-yellow-600">
-                    {{ $tournaments->whereIn('status', ['closed', 'assigned'])->count() }}
-                </div>
-                <div class="text-sm text-gray-600 mt-1">In Corso</div>
+                <div class="text-3xl font-bold text-gray-600">{{ $summary['past'] }}</div>
+                <div class="text-sm text-gray-600 mt-1">Già giocati</div>
             </div>
             <div class="bg-white rounded-lg shadow p-6 text-center">
-                <div class="text-3xl font-bold text-gray-600">
-                    {{ $tournaments->count() }}
-                </div>
-                <div class="text-sm text-gray-600 mt-1">Completati</div>
+                <div class="text-3xl font-bold text-red-600">{{ $summary['without_referees'] }}</div>
+                <div class="text-sm text-gray-600 mt-1">Da giocare senza arbitri</div>
             </div>
         </div>
     </div>

@@ -91,6 +91,9 @@
                                 </div>
                             </div>
                             <div class="mt-4 flex justify-end">
+                                @if ($availability->tournament && ! $availability->tournament->acceptsAvailability())
+                                    <span class="text-sm text-gray-500">Scadenza passata: non modificabile</span>
+                                @else
                                 <form method="POST" action="{{ route('user.availability.store') }}" 
                                       onsubmit="return confirm('Sei sicuro di voler rimuovere la tua disponibilità per questo torneo?');">
                                     @csrf
@@ -101,6 +104,7 @@
                                         Rimuovi disponibilità
                                     </button>
                                 </form>
+                                @endif
                             </div>
                         </li>
                     @endforeach

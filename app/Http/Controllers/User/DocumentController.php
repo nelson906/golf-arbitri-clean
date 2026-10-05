@@ -4,11 +4,8 @@ namespace App\Http\Controllers\User;
 
 use App\Http\Controllers\Controller;
 use App\Models\Document;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -70,77 +67,6 @@ class DocumentController extends Controller
     }
 
     /**
-     * Upload a new document
-     */
-    public function upload(Request $request): JsonResponse|RedirectResponse
-    {
-        $request->validate([
-            'file' => 'required|file|max:10240', // Max 10MB
-            'category' => 'required|string|in:general,tournament,regulation,form,template',
-            'description' => 'nullable|string|max:500',
-            'tournament_id' => 'nullable|exists:tournaments,id',
-            'is_public' => 'boolean',
-        ]);
-
-        try {
-            $file = $request->file('file');
-            $user = $this->authUser();
-
-            // Genera nome file unico
-            $originalName = $file->getClientOriginalName();
-            $extension = $file->getClientOriginalExtension();
-            $fileName = Str::slug(pathinfo($originalName, PATHINFO_FILENAME)).'_'.
-                time().'.'.$extension;
-
-            // Determina il path di storage
-            $category = $request->string('category')->toString();
-            $year = now()->year;
-            $month = now()->format('m');
-            $storagePath = "documents/{$category}/{$year}/{$month}";
-
-            // Salva il file
-            $filePath = $file->storeAs($storagePath, $fileName, 'public');
-
-            // Crea record nel database
-            $document = Document::create([
-                'name' => pathinfo($originalName, PATHINFO_FILENAME),
-                'original_name' => $originalName,
-                'file_path' => $filePath,
-                'file_size' => $file->getSize(),
-                'mime_type' => $file->getMimeType(),
-                'category' => $category,
-                'type' => $this->determineDocumentType($file->getMimeType() ?? ''),
-                'description' => $request->string('description')->toString() ?: null,
-                'tournament_id' => $request->integer('tournament_id'),
-                'zone_id' => $user->zone_id,
-                'uploader_id' => $user->id,
-                'is_public' => $request->boolean('is_public', false),
-            ]);
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Documento caricato con successo!',
-                    'document' => $document,
-                ]);
-            }
-
-            return back()->with('success', 'Documento caricato con successo!');
-        } catch (\Exception $e) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Errore durante il caricamento: '.$e->getMessage(),
-                ], 500);
-            }
-
-            return back()
-                ->withInput()
-                ->with('error', 'Errore durante il caricamento: '.$e->getMessage());
-        }
-    }
-
-    /**
      * Download a document
      */
     public function download(Document $document): BinaryFileResponse
@@ -194,43 +120,6 @@ class DocumentController extends Controller
 
         // Altrimenti usa quello salvato nel database
         return $storedMimeType ?? 'application/octet-stream';
-    }
-
-    /**
-     * Remove a document
-     */
-    public function destroy(Document $document): RedirectResponse
-    {
-        $this->authorizeDocumentAccess($document, true);
-
-        try {
-            // Elimina il file fisico
-            if (Storage::disk('public')->exists($document->file_path)) {
-                Storage::disk('public')->delete($document->file_path);
-            }
-
-            // Elimina il record dal database
-            $document->delete();
-
-            return back()->with('success', 'Documento eliminato con successo!');
-        } catch (\Exception $e) {
-            return back()->with('error', 'Errore durante l\'eliminazione: '.$e->getMessage());
-        }
-    }
-
-    /**
-     * Determine document type from MIME type
-     */
-    private function determineDocumentType(string $mimeType): string
-    {
-        return match (true) {
-            str_contains($mimeType, 'pdf') => 'pdf',
-            str_contains($mimeType, 'word') || str_contains($mimeType, 'document') => 'document',
-            str_contains($mimeType, 'spreadsheet') || str_contains($mimeType, 'excel') => 'spreadsheet',
-            str_contains($mimeType, 'image') => 'image',
-            str_contains($mimeType, 'text') => 'text',
-            default => 'other',
-        };
     }
 
     /**

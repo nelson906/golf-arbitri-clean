@@ -262,21 +262,22 @@ class AssignmentValidationServiceTest extends TestCase
     /**
      * Test: Ignora tornei completed/cancelled
      */
-    public function test_ignores_completed_tournaments(): void
+    public function test_ignores_already_played_tournaments(): void
     {
         $referee = $this->createReferee();
 
-        // Due tornei sovrapposti ma completed
+        // P3 (2026-10-03): niente piu' stato "completed": contano le date.
+        // Due tornei sovrapposti ma gia' giocati.
         $t1 = Tournament::factory()->create([
-            'start_date' => $this->futureDate(0),
-            'end_date' => $this->futureDate(2),
-            'status' => 'completed',
+            'start_date' => now()->subDays(20)->startOfDay(),
+            'end_date' => now()->subDays(18)->startOfDay(),
+            'availability_deadline' => now()->subDays(30)->startOfDay(),
         ]);
 
         $t2 = Tournament::factory()->create([
-            'start_date' => $this->futureDate(1),
-            'end_date' => $this->futureDate(3),
-            'status' => 'completed',
+            'start_date' => now()->subDays(19)->startOfDay(),
+            'end_date' => now()->subDays(17)->startOfDay(),
+            'availability_deadline' => now()->subDays(30)->startOfDay(),
         ]);
 
         Assignment::factory()->forUser($referee)->forTournament($t1)->create();
@@ -284,7 +285,7 @@ class AssignmentValidationServiceTest extends TestCase
 
         $conflicts = $this->service->detectDateConflicts();
 
-        // Non dovrebbe rilevare conflitti perché completed
+        // Non dovrebbe rilevare conflitti: tornei gia' giocati
         $this->assertCount(0, $conflicts);
     }
 }

@@ -200,11 +200,17 @@ class NotificationController extends Controller
                 ->with('error', 'Il torneo non ha arbitri assegnati. Completare prima le assegnazioni tramite <strong>Setup e Arbitri</strong>.');
         }
 
-        // Prepara o recupera la notifica
-        $notification = $this->preparationService->prepareNotification($tournament);
+        $isNational = $tournament->tournamentType->is_national ?? false;
 
-        // Genera documenti se non esistono
-        if (empty($notification->documents)) {
+        // Prepara o recupera la notifica.
+        // Nazionale (P12/P13, 2026-10-03): solo la notifica di chi apre il form,
+        // non salvata, e nessun documento Word.
+        $notification = $isNational
+            ? $this->preparationService->prepareNationalNotification($tournament, $this->authUser())
+            : $this->preparationService->prepareNotification($tournament);
+
+        // Genera documenti se non esistono (solo tornei zonali)
+        if (! $isNational && empty($notification->documents)) {
             try {
                 $documents = $this->documentService->generateInitialDocuments($tournament, $notification);
                 $notification->update(['documents' => $documents]);
@@ -218,8 +224,10 @@ class NotificationController extends Controller
             }
         }
 
-        // Controlla stato documenti
-        $documentStatus = $this->documentService->checkDocumentsExist($notification);
+        // Controlla stato documenti (sui nazionali non esistono)
+        $documentStatus = $isNational
+            ? ['hasConvocation' => false, 'hasClubLetter' => false]
+            : $this->documentService->checkDocumentsExist($notification);
         $hasExistingConvocation = $documentStatus['hasConvocation'] || $documentStatus['hasClubLetter'];
 
         // Carica dati per il form, passando la notifica esistente per pre-popolare i destinatari salvati
@@ -568,9 +576,17 @@ class NotificationController extends Controller
 
         $action = $request->input('action', 'save');
 
+        // P12 (2026-10-03): questo e' il form ZONALE. Sui tornei nazionali esistono
+        // solo le due comunicazioni separate CRC (arbitri) e SZR (osservatori).
+        if ($tournament->tournamentType->is_national ?? false) {
+            return redirect()->route('admin.tournaments.show-assignment-form', $tournament)
+                ->with('error', 'Torneo nazionale: usa la comunicazione CRC (arbitri) o SZR (osservatori).');
+        }
+
         try {
-            // Recupera la notifica
+            // Recupera la notifica zonale (tipo vuoto), mai una delle nazionali
             $notification = TournamentNotification::where('tournament_id', $tournament->id)
+                ->whereNull('notification_type')
                 ->orderBy('created_at', 'desc')
                 ->firstOrFail();
 
@@ -741,6 +757,13 @@ class NotificationController extends Controller
 
         $notificationType = $validated['notification_type'];
         $isCrcNotification = $notificationType === 'crc_referees';
+
+        // P9/P12 (2026-10-03): la SZR comunica solo gli osservatori
+        if ($isCrcNotification && $this->authUser()->isZoneAdmin()) {
+            return redirect()->back()->with('error',
+                'La comunicazione degli arbitri dei tornei nazionali spetta al CRC: la zona comunica solo gli osservatori.'
+            );
+        }
 
         // GUARD: solo tornei nazionali possono avere notifiche CRC/SZR
         $isNational = $tournament->tournamentType->is_national ?? false;

@@ -198,35 +198,6 @@
             </div>
         </form>
 
-        {{-- Status Override (separate form) --}}
-        <form action="{{ route('admin.tournaments.change-status', $tournament) }}" method="POST" class="mt-6">
-            @csrf
-            <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h3 class="text-sm font-medium text-amber-800">Cambio Stato (Override)</h3>
-                        <p class="text-xs text-amber-600 mt-1">Stato attuale:
-                            <strong>{{ \App\Models\Tournament::STATUSES[$tournament->status->value] ?? $tournament->status->value }}</strong>
-                        </p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <select name="status"
-                            class="text-sm rounded-md border-amber-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
-                            @foreach (\App\Models\Tournament::STATUSES as $value => $label)
-                                <option value="{{ $value }}"
-                                    {{ $tournament->status->value === $value ? 'selected' : '' }}>
-                                    {{ $label }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <button type="submit"
-                            class="px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-100 border border-amber-300 rounded-md hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500">
-                            Cambia
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </form>
     </div>
 
     @push('scripts')

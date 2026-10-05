@@ -104,10 +104,6 @@
                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Assegnato
                         </th>
-                        <th scope="col"
-                            class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Stato
-                        </th>
                         <th scope="col" class="relative px-6 py-3">
                             <span class="sr-only">Azioni</span>
                         </th>
@@ -154,12 +150,6 @@
                                     </div>
                                 @endif
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <span
-                                    class="inline-flex items-center px-2 py-1 rounded text-xs font-medium {{ $assignment->is_confirmed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
-                                    {{ $assignment->is_confirmed ? '✅ Confermato' : '⏳ Da confermare' }}
-                                </span>
-                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div class="flex items-center justify-end space-x-2">
                                     <a href="{{ route('admin.assignments.show', $assignment) }}"
@@ -172,22 +162,6 @@
                                             </path>
                                         </svg>
                                     </a>
-
-                                    @if (!$assignment->is_confirmed)
-                                        <form action="{{ route('admin.assignments.confirm', $assignment) }}" method="POST"
-                                            class="inline">
-                                            @csrf
-                                            <button type="submit" class="text-green-600 hover:text-green-900"
-                                                title="Conferma"
-                                                onclick="return confirm('Confermare questa assegnazione?')">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor"
-                                                    viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                </svg>
-                                            </button>
-                                        </form>
-                                    @endif
 
                                     <a href="{{ route('admin.tournaments.show-assignment-form', $assignment->tournament) }}"
                                         class="text-indigo-600 hover:text-indigo-900" title="Invia Notifiche">
@@ -218,7 +192,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-12 text-center">
+                            <td colspan="5" class="px-6 py-12 text-center">
                                 <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

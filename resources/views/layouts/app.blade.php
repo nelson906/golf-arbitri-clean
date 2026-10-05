@@ -36,6 +36,34 @@
 
             <!-- Page Content -->
             <main>
+                {{-- Esito delle azioni (decisione 2026-10-04: ritorno sicuro all'arbitro).
+                     Prima questo layout non mostrava ne' conferme ne' errori. --}}
+                @if (session('success') || session('warning') || session('error') || $errors->any())
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-3">
+                        @if (session('success'))
+                            <div class="rounded-md bg-green-50 border border-green-200 p-4 text-sm text-green-800" role="status">
+                                {{ session('success') }}
+                            </div>
+                        @endif
+                        @if (session('warning'))
+                            <div class="rounded-md bg-yellow-50 border border-yellow-300 p-4 text-sm text-yellow-800" role="alert">
+                                ⚠️ {{ session('warning') }}
+                            </div>
+                        @endif
+                        @if (session('error'))
+                            <div class="rounded-md bg-red-50 border border-red-200 p-4 text-sm text-red-800" role="alert">
+                                {{ session('error') }}
+                            </div>
+                        @endif
+                        @if ($errors->any())
+                            <div class="rounded-md bg-red-50 border border-red-200 p-4 text-sm text-red-800" role="alert">
+                                @foreach ($errors->all() as $message)
+                                    <p>{{ $message }}</p>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                @endif
 @yield('content')
 
 </main>

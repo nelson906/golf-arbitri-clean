@@ -182,7 +182,7 @@ class TournamentTest extends TestCase
      * TournamentFactory, che pesca un tipo A CASO: passava solo finche' il
      * sorteggio non tirava fuori un tipo nazionale.
      */
-    public function test_scope_visible_zone_admin_sees_own_zone_and_national(): void
+    public function test_scope_visible_zone_admin_sees_only_own_zone_zonal_and_national(): void
     {
         $zoneAdmin = $this->createZoneAdmin(1);
 
@@ -204,7 +204,13 @@ class TournamentTest extends TestCase
             'tournament_type_id' => $zonalType->id,
         ]);
 
-        // Altra zona, torneo nazionale: visibile (e' la modifica)
+        // P9 (2026-10-03): nazionale della propria zona visibile...
+        Tournament::factory()->create([
+            'club_id' => $club1->id,
+            'tournament_type_id' => $nationalType->id,
+        ]);
+
+        // ...nazionale di un'altra zona NON visibile (e' del CRC)
         Tournament::factory()->create([
             'club_id' => $club2->id,
             'tournament_type_id' => $nationalType->id,
@@ -213,6 +219,7 @@ class TournamentTest extends TestCase
         $visible = Tournament::visible($zoneAdmin)->get();
 
         $this->assertCount(4, $visible);
+        $this->assertTrue($visible->every(fn (Tournament $t) => $t->zone_id === 1));
     }
 
     /**

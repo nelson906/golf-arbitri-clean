@@ -99,10 +99,6 @@
                                 Arbitri
                             </th>
                             <th scope="col"
-                                class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Stato
-                            </th>
-                            <th scope="col"
                                 class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Azioni
                             </th>
@@ -165,13 +161,6 @@
                                         Disp: {{ $tournament->availabilities()->count() }}
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-center">
-                                    <span
-                                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                    bg-{{ $tournament->status_color }}-100 text-{{ $tournament->status_color }}-800">
-                                        {{ $tournament->status_label }}
-                                    </span>
-                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div class="flex items-center justify-end space-x-2">
                                         <a href="{{ route('tournaments.show', $tournament) }}"
@@ -188,7 +177,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-12 text-center">
+                                <td colspan="6" class="px-6 py-12 text-center">
                                     <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor"
                                         viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

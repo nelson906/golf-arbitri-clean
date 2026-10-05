@@ -121,9 +121,10 @@ trait TournamentControllerTrait
     {
         $tournaments->getCollection()->transform(function ($tournament) {
             if ($tournament->availability_deadline) {
-                $now = Carbon::now();
-                $deadline = Carbon::parse($tournament->availability_deadline);
-                $tournament->days_until_deadline = (int) $now->diffInDays($deadline, false);
+                // Giorni di calendario: 0 = scade oggi (vale fino alle 23:59, P4)
+                $today = Carbon::today();
+                $deadline = Carbon::parse($tournament->availability_deadline)->startOfDay();
+                $tournament->days_until_deadline = (int) $today->diffInDays($deadline, false);
             } else {
                 $tournament->days_until_deadline = null;
             }
@@ -171,23 +172,17 @@ trait TournamentControllerTrait
      */
     protected function calculateTournamentStats($tournaments): array
     {
-        if (is_object($tournaments) && method_exists($tournaments, 'getCollection')) {
-            $collection = $tournaments->getCollection();
-            $total = $tournaments->count();
-        } else {
-            $collection = $tournaments;
-            $total = $tournaments->count();
-        }
+        $collection = $tournaments instanceof \Illuminate\Pagination\LengthAwarePaginator
+            ? $tournaments->getCollection()
+            : $tournaments;
 
-        $byStatus = $collection->groupBy(fn ($t) => $t->status->value);
+        $today = now()->startOfDay();
+        $isPast = fn (\App\Models\Tournament $t): bool => ($t->end_date ?? $t->start_date) < $today;
 
         return [
-            'total' => $total,
-            'draft' => $byStatus->get('draft', collect())->count(),
-            'open' => $byStatus->get('open', collect())->count(),
-            'closed' => $byStatus->get('closed', collect())->count(),
-            'assigned' => $byStatus->get('assigned', collect())->count(),
-            'completed' => $byStatus->get('completed', collect())->count(),
+            'total' => $tournaments->count(),
+            'upcoming' => $collection->reject($isPast)->count(),
+            'past' => $collection->filter($isPast)->count(),
         ];
     }
 }
