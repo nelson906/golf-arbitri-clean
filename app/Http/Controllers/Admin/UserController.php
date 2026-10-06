@@ -77,8 +77,9 @@ class UserController extends Controller
         $this->applyUserVisibility($query, $user);
 
         // Account riservato (caricamento comitati FIG): invisibile agli altri
-        if (! FigImportAccess::isAccount($user)) {
-            $query->where('email', '!=', FigImportAccess::EMAIL);
+        $riservato = FigImportAccess::email();
+        if ($riservato !== null && ! FigImportAccess::isAccount($user)) {
+            $query->where('email', '!=', $riservato);
         }
 
         // Filtro per stato attivo (di default mostra solo attivi se non specificato)

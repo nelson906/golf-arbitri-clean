@@ -13,13 +13,22 @@ use Tests\TestCase;
 
 /**
  * Decisione 2026-10-05: caricamento completo dei comitati FIG dalla pagina
- * web, riservato a un solo account super admin (FigImportAccess::EMAIL).
+ * web, riservato a un solo account super admin il cui indirizzo sta solo
+ * nel .env (FIG_IMPORT_EMAIL): nei test lo si imposta in setUp().
  */
 class FigImportPageTest extends TestCase
 {
+    private const RISERVATO = 'riservato@example.test';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['golf.fig.import_email' => self::RISERVATO]);
+    }
+
     private function owner(): User
     {
-        return $this->createSuperAdmin(['email' => FigImportAccess::EMAIL]);
+        return $this->createSuperAdmin(['email' => self::RISERVATO]);
     }
 
     /**
@@ -78,17 +87,18 @@ class FigImportPageTest extends TestCase
             ->assertSee('Esegui');
 
         $altroSuper = $this->createSuperAdmin(['email' => 'altro.super@example.test']);
-        $this->actingAs($altroSuper)->get(route('super-admin.fig-import.index'))->assertForbidden();
+        $this->actingAs($altroSuper)->get(route('super-admin.fig-import.index'))->assertNotFound();
         $this->actingAs($altroSuper)->get(route('super-admin.zones.index'))
             ->assertOk()
             ->assertDontSee(route('super-admin.fig-import.index'));
 
+        // Fermato prima dal filtro super admin, uguale per tutte le pagine Sistema
         $this->actingAs($this->createNationalAdmin())->get(route('super-admin.fig-import.index'))->assertForbidden();
     }
 
     public function test_dedicated_email_without_super_admin_powers_is_refused(): void
     {
-        $user = $this->createNationalAdmin(['email' => FigImportAccess::EMAIL]);
+        $user = $this->createNationalAdmin(['email' => self::RISERVATO]);
 
         $this->assertFalse(FigImportAccess::allows($user));
     }
@@ -99,7 +109,7 @@ class FigImportPageTest extends TestCase
             ->postJson(route('super-admin.fig-import.block'), [
                 'anno' => now()->year, 'offset' => 0, 'replace' => true, 'dry_run' => false, 'run' => 'abcdefgh-1234',
             ])
-            ->assertForbidden();
+            ->assertNotFound();
     }
 
     public function test_blocks_run_in_sequence_and_replace_assignments(): void
@@ -151,7 +161,7 @@ class FigImportPageTest extends TestCase
 
         $this->actingAs($altroSuper)->get(route('admin.users.index', ['status' => 'all']))
             ->assertOk()
-            ->assertDontSee(FigImportAccess::EMAIL);
+            ->assertDontSee(self::RISERVATO);
         $this->actingAs($altroSuper)->get(route('admin.users.show', $riservato))->assertNotFound();
         $this->actingAs($altroSuper)->get(route('admin.users.edit', $riservato))->assertNotFound();
         $this->actingAs($altroSuper)->patch(route('admin.users.toggle-active', $riservato))->assertNotFound();
@@ -160,9 +170,32 @@ class FigImportPageTest extends TestCase
 
         $this->actingAs($this->createNationalAdmin())->get(route('admin.users.index', ['status' => 'all']))
             ->assertOk()
-            ->assertDontSee(FigImportAccess::EMAIL);
+            ->assertDontSee(self::RISERVATO);
 
         // L'account vede se stesso
         $this->actingAs($riservato)->get(route('admin.users.show', $riservato))->assertOk();
+    }
+
+    public function test_without_env_line_the_feature_does_not_exist(): void
+    {
+        config(['golf.fig.import_email' => null]);
+        $riservato = $this->owner();
+        $altroSuper = $this->createSuperAdmin(['email' => 'altro.super@example.test']);
+
+        $this->assertNull(FigImportAccess::email());
+        $this->actingAs($riservato)->get(route('super-admin.fig-import.index'))->assertNotFound();
+        $this->actingAs($riservato)->get(route('super-admin.zones.index'))
+            ->assertOk()
+            ->assertDontSee(route('super-admin.fig-import.index'));
+
+        // Nessun account nascosto quando la funzione e' spenta
+        $this->actingAs($altroSuper)->get(route('admin.users.show', $riservato))->assertOk();
+    }
+
+    public function test_reserved_address_is_not_in_the_code(): void
+    {
+        $sorgente = (string) file_get_contents(app_path('Support/FigImportAccess.php'));
+
+        $this->assertDoesNotMatchRegularExpression('/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[a-z]{2,}/', $sorgente);
     }
 }

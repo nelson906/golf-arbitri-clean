@@ -23,6 +23,11 @@ return [
         // Federazione Italiana Golf - endpoint pubblici (sito WordPress)
         'base' => env('GOLF_FIG_BASE', 'https://www.federgolf.it'),
         'ajax_url' => env('GOLF_FIG_AJAX_URL', 'https://www.federgolf.it/wp-admin/admin-ajax.php'),
+
+        // Account riservato al caricamento completo dei comitati (pagina
+        // Sistema -> Carica comitati FIG). Solo nel .env del server, mai nel
+        // codice: senza questa riga la funzione non esiste.
+        'import_email' => env('FIG_IMPORT_EMAIL'),
     ],
 
     'backup' => [
