@@ -100,7 +100,7 @@
 
                 <li>
                     <a href="{{ route('admin.tournaments.index') ?? '#' }}"
-                        class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.tournaments.*') ? 'bg-blue-900' : '' }}">
+                        class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.tournaments.*') && ! request()->routeIs('admin.tournaments.calendar') ? 'bg-blue-900' : '' }}">
                         <span class="mr-3">🏆</span>
                         Tornei
                     </a>
@@ -131,7 +131,7 @@
 
                 <li>
                     <a href="{{ route('admin.referees.curricula') ?? '#' }}"
-                        class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('referees.*') ? 'bg-blue-900' : '' }}">
+                        class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.referees.*') ? 'bg-blue-900' : '' }}">
                         <span class="mr-3">📋</span>
                         Curriculum
                     </a>
@@ -146,7 +146,7 @@
                 </li>
                 <li>
                     <a href="{{ route('admin.assignment-validation.index') }}"
-                        class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.statistics.*') ? 'bg-blue-900' : '' }}">
+                        class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.assignment-validation.*') ? 'bg-blue-900' : '' }}">
                         <span class="mr-3">✅</span>
                         Validazione Assegnazioni
                     </a>
@@ -184,7 +184,7 @@
 
                 <li>
                     <a href="{{ route('admin.tournament-notifications.index') ?? '#' }}"
-                        class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.tournament-notifications.*') || request()->routeIs('admin.notifications.*') ? 'bg-blue-900' : '' }}">
+                        class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('admin.tournament-notifications.*') ? 'bg-blue-900' : '' }}">
                         <span class="mr-3">🔔</span>
                         Notifiche
                     </a>

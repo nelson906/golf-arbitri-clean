@@ -20,8 +20,8 @@ use Tests\TestCase;
  * anche a tornei zonali.
  *
  * CORREZIONE: la fonte di verità è SEMPRE tournament.tournamentType.is_national.
- * I record TournamentNotification con notification_type sbagliato vengono corretti dal
- * comando `federgolf:fix-notification-types`.
+ * I record storici con notification_type sbagliato sono stati corretti ad aprile 2026
+ * (comando una tantum, rimosso il 6 ottobre 2026).
  *
  * Eseguire con:
  *   php artisan test --filter=NotificationNationalZonalClassificationTest
@@ -272,7 +272,6 @@ class NotificationNationalZonalClassificationTest extends TestCase
             'assigned_at'   => now(),
             'notes'         => 'Import batch FIG '.$this->futureYear(),
             'role'          => 'Arbitro',
-            'is_confirmed'  => false,
         ]);
 
         $this->artisanCommand('federgolf:mark-notified', [
@@ -315,7 +314,6 @@ class NotificationNationalZonalClassificationTest extends TestCase
             'assigned_at'   => now(),
             'notes'         => 'Import batch FIG '.$this->futureYear(),
             'role'          => 'Arbitro',
-            'is_confirmed'  => false,
         ]);
 
         $this->artisanCommand('federgolf:mark-notified', [
@@ -372,7 +370,6 @@ class NotificationNationalZonalClassificationTest extends TestCase
                 'assigned_at'   => now(),
                 'notes'         => 'Import batch FIG '.$this->futureYear(),
                 'role'          => 'Arbitro',
-                'is_confirmed'  => false,
             ]);
         }
 
@@ -392,161 +389,6 @@ class NotificationNationalZonalClassificationTest extends TestCase
             'crc_referees',
             $notifNazionale->notification_type,
             'Il torneo nazionale deve avere notification_type=crc_referees.'
-        );
-    }
-
-    // -------------------------------------------------------------------------
-    // SCENARIO D — Comando FixNotificationTypes
-    // -------------------------------------------------------------------------
-
-    /**
-     * Il comando fix-notification-types corregge un record con tipo sbagliato
-     * su un torneo zonale (crc_referees → null).
-     */
-    public function test_fix_notification_types_corrects_zonal_tournament_with_wrong_type(): void
-    {
-        $zonalType = TournamentType::where('is_national', false)->firstOrFail();
-        $club      = $this->createClub(['zone_id' => 1]);
-        $torneo    = $this->createTournament([
-            'club_id'            => $club->id,
-            'tournament_type_id' => $zonalType->id,
-        ]);
-
-        $notif = TournamentNotification::create([
-            'tournament_id'     => $torneo->id,
-            'notification_type' => 'crc_referees',   // ← sbagliato per torneo zonale
-            'status'            => 'sent',
-        ]);
-
-        $this->artisanCommand('federgolf:fix-notification-types')
-             ->assertExitCode(0);
-
-        $notif->refresh();
-
-        $this->assertNull(
-            $notif->notification_type,
-            'Dopo fix-notification-types, un torneo zonale deve avere notification_type=null.'
-        );
-    }
-
-    /**
-     * Il comando fix-notification-types in --dry-run non modifica il DB.
-     */
-    public function test_fix_notification_types_dry_run_does_not_modify_db(): void
-    {
-        $zonalType = TournamentType::where('is_national', false)->firstOrFail();
-        $club      = $this->createClub(['zone_id' => 1]);
-        $torneo    = $this->createTournament([
-            'club_id'            => $club->id,
-            'tournament_type_id' => $zonalType->id,
-        ]);
-
-        $notif = TournamentNotification::create([
-            'tournament_id'     => $torneo->id,
-            'notification_type' => 'crc_referees',
-            'status'            => 'sent',
-        ]);
-
-        $this->artisanCommand('federgolf:fix-notification-types', ['--dry-run' => true])
-             ->assertExitCode(0);
-
-        $notif->refresh();
-
-        $this->assertEquals(
-            'crc_referees',
-            $notif->notification_type,
-            'Con --dry-run il record NON deve essere modificato.'
-        );
-    }
-
-    /**
-     * Il comando fix-notification-types non tocca i record già corretti.
-     */
-    public function test_fix_notification_types_leaves_correct_records_unchanged(): void
-    {
-        $zonalType    = TournamentType::where('is_national', false)->firstOrFail();
-        $nationalType = TournamentType::where('is_national', true)->firstOrFail();
-        $club         = $this->createClub(['zone_id' => 1]);
-
-        // Torneo zonale con tipo corretto (null)
-        $torneoZ = $this->createTournament([
-            'club_id'            => $club->id,
-            'tournament_type_id' => $zonalType->id,
-        ]);
-        $notifZ = TournamentNotification::create([
-            'tournament_id'     => $torneoZ->id,
-            'notification_type' => null,
-            'status'            => 'sent',
-        ]);
-
-        // Torneo nazionale con tipo corretto (crc_referees)
-        $torneoN = $this->createTournament([
-            'club_id'            => $club->id,
-            'tournament_type_id' => $nationalType->id,
-        ]);
-        $notifN = TournamentNotification::create([
-            'tournament_id'     => $torneoN->id,
-            'notification_type' => 'crc_referees',
-            'status'            => 'sent',
-        ]);
-
-        $this->artisanCommand('federgolf:fix-notification-types')
-             ->assertExitCode(0);
-
-        $notifZ->refresh();
-        $notifN->refresh();
-
-        $this->assertNull(
-            $notifZ->notification_type,
-            'Il record del torneo zonale (già corretto) deve rimanere null.'
-        );
-        $this->assertEquals(
-            'crc_referees',
-            $notifN->notification_type,
-            'Il record del torneo nazionale (già corretto) deve rimanere crc_referees.'
-        );
-    }
-
-    // -------------------------------------------------------------------------
-    // SCENARIO E — is_confirmed aggiornato da mark-notified
-    // -------------------------------------------------------------------------
-
-    /**
-     * Il comando mark-notified deve impostare is_confirmed=true sulle assegnazioni
-     * interessate, indipendentemente dal tipo torneo.
-     */
-    public function test_mark_notified_sets_is_confirmed_on_assignments(): void
-    {
-        $zonalType = TournamentType::where('is_national', false)->firstOrFail();
-        $club      = $this->createClub(['zone_id' => 1]);
-        $torneo    = Tournament::factory()->create([
-            'club_id'            => $club->id,
-            'tournament_type_id' => $zonalType->id,
-            'start_date'         => $this->futureDate(87),
-            'end_date'           => $this->futureDate(88),
-        ]);
-
-        $arbitro = $this->createReferee(['zone_id' => 1]);
-        $assignment = Assignment::create([
-            'tournament_id' => $torneo->id,
-            'user_id'       => $arbitro->id,
-            'assigned_by'   => $arbitro->id,
-            'assigned_at'   => now(),
-            'notes'         => 'Import batch FIG '.$this->futureYear(),
-            'role'          => 'Arbitro',
-            'is_confirmed'  => false,
-        ]);
-
-        $this->artisanCommand('federgolf:mark-notified', [
-            '--anno' => $this->futureYear(),
-            '--type' => 'auto',
-        ])->assertExitCode(0);
-
-        $assignment->refresh();
-
-        $this->assertTrue(
-            (bool) $assignment->is_confirmed,
-            'Dopo mark-notified, is_confirmed deve essere true sulle assegnazioni FIG.'
         );
     }
 }

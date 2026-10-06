@@ -64,14 +64,6 @@ class RefereeCareerHistory extends Model
         return $this->assignments_by_year[$year] ?? [];
     }
 
-    /**
-     * @return array<array-key, mixed>
-     */
-    public function getAvailabilitiesForYear(int $year): array
-    {
-        return $this->availabilities_by_year[$year] ?? [];
-    }
-
     // Helper methods
     /**
      * @return array<string, mixed>

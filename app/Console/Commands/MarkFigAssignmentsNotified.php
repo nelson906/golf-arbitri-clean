@@ -6,7 +6,6 @@ use App\Models\Assignment;
 use App\Models\TournamentNotification;
 use App\Models\User;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Marca come "notificate" le assegnazioni create via import batch FIG.
@@ -18,8 +17,6 @@ use Illuminate\Support\Facades\DB;
  * Il tipo viene rilevato automaticamente dal campo is_national del tipo torneo:
  *   - torneo nazionale  → notification_type = 'crc_referees'
  *   - torneo zonale     → notification_type = null
- *
- * Imposta anche is_confirmed=true sulle assegnazioni interessate.
  *
  * Utilizzo:
  *   php artisan federgolf:mark-notified --anno=2025 --dry-run
@@ -75,7 +72,6 @@ class MarkFigAssignmentsNotified extends Command
 
         $createdNotif  = 0;
         $skippedNotif  = 0;
-        $confirmedAsgn = 0;
 
         foreach ($byTournament as $tournamentId => $tournamentAssignments) {
             $prima      = $tournamentAssignments->first();
@@ -102,7 +98,6 @@ class MarkFigAssignmentsNotified extends Command
             };
 
             // Controlla se esiste già una notifica del tipo corretto per questo torneo
-            $refereeNames = '';
             $existingNotif = TournamentNotification::where('tournament_id', $tournamentId)
                 ->where(function ($q) use ($notificationType) {
                     $notificationType === null
@@ -116,60 +111,41 @@ class MarkFigAssignmentsNotified extends Command
                 $sentAt = $existingNotif->sent_at?->format('d/m/Y H:i') ?? '—';
                 $this->line("  <fg=gray>  ↷ {$nomeTorneo} ({$dataStr}) [{$typeLabel}] — già notificato il {$sentAt}</>");
                 $skippedNotif++;
-                // Anche se la notifica esiste, aggiorna is_confirmed sulle assegnazioni
-            } else {
-                // Costruisci referee_list e details
-                $refereeNames = $tournamentAssignments
-                    ->map(fn ($a) => $a->user->name ?? '?')
-                    ->filter()
-                    ->implode(', ');
 
-                $sentAt = $tournamentAssignments->max('assigned_at') ?? now();
-
-                $this->line("  <fg=green>  + {$nomeTorneo}</> ({$dataStr}) [{$typeLabel}]");
-                $this->line("      arbitri: {$refereeNames}");
-                $createdNotif++;
+                continue;
             }
 
-            // Imposta is_confirmed=true sulle assegnazioni non ancora confermate
-            $daConfermare = $tournamentAssignments->where('is_confirmed', false);
-            if ($daConfermare->isNotEmpty()) {
-                $this->line("      <fg=cyan>✓ confermo {$daConfermare->count()} assegnazioni</>");
-                $confirmedAsgn += $daConfermare->count();
-            }
+            // Costruisci referee_list e details
+            $refereeNames = $tournamentAssignments
+                ->map(fn ($a) => $a->user->name ?? '?')
+                ->filter()
+                ->implode(', ');
 
-            // Scritture DB atomiche: notifica + conferma assegnazioni in un'unica transazione
-            if (! $dryRun && (! $existingNotif || $daConfermare->isNotEmpty())) {
-                DB::transaction(function () use (
-                    $existingNotif, $tournamentId, $notificationType, $sentAt,
-                    $adminId, $refereeNames, $tournamentAssignments, $anno, $daConfermare
-                ) {
-                    if (! $existingNotif) {
-                        TournamentNotification::create([
-                            'tournament_id'     => $tournamentId,
-                            'notification_type' => $notificationType,
-                            'status'            => 'sent',
-                            'sent_at'           => $sentAt,
-                            'sent_by'           => $adminId,
-                            'referee_list'      => $refereeNames,
-                            'details'           => [
-                                'sent'             => $tournamentAssignments->count(),
-                                'arbitri'          => $tournamentAssignments->count(),
-                                'total_recipients' => $tournamentAssignments->count(),
-                                'note'             => "Import automatico FIG {$anno}",
-                            ],
-                            'metadata'          => [
-                                'source'  => "Import batch FIG {$anno}",
-                                'command' => 'federgolf:mark-notified',
-                            ],
-                        ]);
-                    }
+            $sentAt = $tournamentAssignments->max('assigned_at') ?? now();
 
-                    if ($daConfermare->isNotEmpty()) {
-                        Assignment::whereIn('id', $daConfermare->pluck('id'))
-                            ->update(['is_confirmed' => true]);
-                    }
-                });
+            $this->line("  <fg=green>  + {$nomeTorneo}</> ({$dataStr}) [{$typeLabel}]");
+            $this->line("      arbitri: {$refereeNames}");
+            $createdNotif++;
+
+            if (! $dryRun) {
+                TournamentNotification::create([
+                    'tournament_id'     => $tournamentId,
+                    'notification_type' => $notificationType,
+                    'status'            => 'sent',
+                    'sent_at'           => $sentAt,
+                    'sent_by'           => $adminId,
+                    'referee_list'      => $refereeNames,
+                    'details'           => [
+                        'sent'             => $tournamentAssignments->count(),
+                        'arbitri'          => $tournamentAssignments->count(),
+                        'total_recipients' => $tournamentAssignments->count(),
+                        'note'             => "Import automatico FIG {$anno}",
+                    ],
+                    'metadata'          => [
+                        'source'  => "Import batch FIG {$anno}",
+                        'command' => 'federgolf:mark-notified',
+                    ],
+                ]);
             }
         }
 
@@ -183,7 +159,6 @@ class MarkFigAssignmentsNotified extends Command
             [
                 ['Notifiche create',            $createdNotif],
                 ['Tornei già notificati (skip)', $skippedNotif],
-                ['Assegnazioni confermate',      $confirmedAsgn],
             ]
         );
 

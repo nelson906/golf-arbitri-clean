@@ -375,26 +375,4 @@ class SystemMetricsService
         return round($bytes, $precision).' '.$units[$i];
     }
 
-    /**
-     * Ottiene dati storici.
-     *
-     * @return array<string, mixed>
-     */
-    public function getHistoricalData(string $period, string $metric): array
-    {
-        // Placeholder - implementare con storage reale se necessario
-        return [];
-    }
-
-    /**
-     * Calcola trend.
-     *
-     * @param  array<string, mixed>  $data
-     * @return array<string, mixed>
-     */
-    public function calculateTrends(array $data): array
-    {
-        // Placeholder - implementare con logica reale
-        return [];
-    }
 }

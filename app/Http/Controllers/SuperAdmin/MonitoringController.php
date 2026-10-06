@@ -42,24 +42,6 @@ class MonitoringController extends Controller
     }
 
     /**
-     * Health check completo sistema
-     *
-     * @deprecated Usa HealthCheckController@index
-     */
-    public function healthCheck(Request $request): JsonResponse|View
-    {
-        $response = $this->healthService->performHealthCheck();
-        $overallHealth = $response['status'] === 'healthy';
-        $checks = $response['checks'];
-
-        if ($request->wantsJson()) {
-            return response()->json($response, $overallHealth ? 200 : 503);
-        }
-
-        return view('super-admin.monitoring.health', compact('response', 'overallHealth', 'checks'));
-    }
-
-    /**
      * Metriche real-time
      */
     public function realtimeMetrics(Request $request): JsonResponse|View
@@ -85,18 +67,4 @@ class MonitoringController extends Controller
         return view('super-admin.monitoring.performance', compact('metrics', 'timeframe'));
     }
 
-    /**
-     * API endpoint per metriche
-     */
-    public function apiMetrics(Request $request, string $type): JsonResponse
-    {
-        return match ($type) {
-            'realtime' => response()->json($this->metricsService->getRealtimeMetrics()),
-            'stats' => response()->json($this->metricsService->getRealtimeStats()),
-            'performance' => response()->json($this->metricsService->getPerformanceOverview()),
-            'alerts' => response()->json($this->metricsService->getSystemAlerts()),
-            'health' => response()->json($this->healthService->getHealthStatus()),
-            default => response()->json(['error' => 'Tipo non valido'], 400),
-        };
-    }
 }

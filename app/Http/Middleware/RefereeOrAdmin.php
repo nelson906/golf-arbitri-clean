@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Enums\UserType;
 use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
@@ -66,24 +65,10 @@ class RefereeOrAdmin
             $this->checkRefereeAccess($request, $user);
         }
 
-        // Solo gli admin ZONALI sono vincolati alla propria zona.
-        // FIX (audit 2026-07, G3): il national_admin NON va filtrato per zona —
-        // il CRC vede tutti i tornei nazionali a prescindere da un eventuale
-        // zone_id valorizzato sul suo utente (la visibilità dati è gestita
-        // da TournamentVisibility / scopeVisible).
-        if ($user->isZoneAdmin() && $user->zone_id) {
-            $this->checkZoneAccess($request, $user);
-        }
-
-        // Log successful access
-        Log::info('Referee/Admin access granted', [
-            'user_id' => $user->id,
-            'user_email' => $user->email,
-            'user_type' => $userType->value,
-            'zone_id' => $user->zone_id,
-            'requested_url' => $request->fullUrl(),
-            'ip_address' => $request->ip(),
-        ]);
+        // NB (pulizia 2026-10-06): tolti il controllo di zona per gli admin
+        // (agiva su parametri che le rotte protette da questo middleware non
+        // hanno) e il log INFO scritto a ogni richiesta. La visibilita' dei
+        // dati e' in TournamentVisibility.
 
         return $next($request);
     }
@@ -108,31 +93,6 @@ class RefereeOrAdmin
                 ]);
 
                 abort(403, 'Accesso negato. Puoi accedere solo ai tuoi dati personali.');
-            }
-        }
-    }
-
-    /**
-     * Check zone-based access for admins
-     *
-     * @param  \App\Models\User  $user
-     */
-    private function checkZoneAccess(Request $request, $user): void
-    {
-        $routeParameters = $request->route()?->parameters() ?? [];
-
-        // Check for zone-specific resources
-        foreach ($routeParameters as $key => $value) {
-            if ($this->isZoneRestrictedResource($key, $value, $user)) {
-                Log::warning('Zone access violation attempt', [
-                    'user_id' => $user->id,
-                    'user_zone_id' => $user->zone_id,
-                    'requested_resource' => $key,
-                    'resource_id' => $value,
-                    'url' => $request->fullUrl(),
-                ]);
-
-                abort(403, 'Accesso negato. Non hai i permessi per accedere a risorse di altre zone.');
             }
         }
     }
@@ -192,60 +152,4 @@ class RefereeOrAdmin
         return false;
     }
 
-    /**
-     * Check if a resource is zone-restricted for admins
-     *
-     * @param  int|string  $resourceId
-     * @param  \App\Models\User  $user
-     */
-    private function isZoneRestrictedResource(string $parameterName, $resourceId, $user): bool
-    {
-        // Define which resources require zone checking for admins
-        $zoneRestrictedResources = [
-            'tournament' => \App\Models\Tournament::class,
-            'referee' => \App\Models\User::class,
-            'club' => \App\Models\Club::class,
-        ];
-
-        if (! isset($zoneRestrictedResources[$parameterName])) {
-            return false;
-        }
-
-        $modelClass = $zoneRestrictedResources[$parameterName];
-
-        try {
-            /** @var \Illuminate\Database\Eloquent\Model|null $resource */
-            $resource = $modelClass::find($resourceId);
-
-            if (! $resource) {
-                return false; // Resource not found, let the controller handle it
-            }
-
-            // Check if resource belongs to user's zone
-            $resourceZoneId = $resource->getAttribute('zone_id');
-            if ($resourceZoneId !== null && $resourceZoneId !== $user->zone_id) {
-                // Allow access to global resources (zone_id = null) for all admins
-
-                return true; // Access violation
-            }
-
-            // Special handling for users (referees)
-            if (
-                $parameterName === 'referee' &&
-                $resource->getAttribute('user_type') === UserType::Referee &&
-                $resource->getAttribute('zone_id') !== $user->zone_id) {
-
-                return true;
-            }
-        } catch (\Exception $e) {
-            Log::error('Error checking zone access', [
-                'error' => $e->getMessage(),
-                'parameter' => $parameterName,
-                'resource_id' => $resourceId,
-                'user_id' => $user->id,
-            ]);
-        }
-
-        return false;
-    }
 }

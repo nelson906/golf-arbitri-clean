@@ -88,46 +88,10 @@ class CalendarDataService
     }
 
     /**
-     * Prepara dati calendario per vista MISTA (admin/referee).
-     * Usato quando la stessa vista serve entrambi i ruoli.
-     *
-     * @param  \Illuminate\Support\Collection<int, \App\Models\Tournament>  $tournaments
-     * @param  list<int>  $availableTournamentIds
-     * @param  list<int>  $assignedTournamentIds
-     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
-     */
-    public function prepareMixedCalendarData(
-        Collection $tournaments,
-        User $user,
-        array $availableTournamentIds = [],
-        array $assignedTournamentIds = []
-    ): Collection {
-        $isAdmin = $user->isAdmin();
-
-        /** @var \Illuminate\Support\Collection<int, array<string, mixed>> $rows */
-        $rows = $tournaments->map(function ($tournament) use ($isAdmin, $availableTournamentIds, $assignedTournamentIds) {
-            $isAvailable = in_array($tournament->id, $availableTournamentIds);
-            $isAssigned = in_array($tournament->id, $assignedTournamentIds);
-
-            return [
-                'id' => $tournament->id,
-                'title' => $tournament->name,
-                'start' => $tournament->start_date->format('Y-m-d'),
-                'end' => ($tournament->end_date ?? $tournament->start_date)->copy()->addDay()->format('Y-m-d'),
-                'color' => $this->colorService->getEventColor($tournament, $isAssigned, $isAvailable, $isAdmin),
-                'borderColor' => $this->colorService->getBorderColor($tournament, $isAssigned, $isAvailable, $isAdmin),
-                'extendedProps' => $this->getMixedExtendedProps($tournament, $isAvailable, $isAssigned, $isAdmin),
-            ];
-        });
-
-        return $rows;
-    }
-
-    /**
      * Prepara dati completi per la pagina calendario (tornei + filtri + metadata).
      *
      * @param  \Illuminate\Support\Collection<int, \App\Models\Tournament>  $tournaments
-     * @param  string  $viewType  'admin' | 'referee' | 'mixed'
+     * @param  string  $viewType  'admin' | 'referee'
      * @param  array<string, mixed>  $options  chiavi riconosciute:
      *   availableTournamentIds, assignedTournamentIds (liste di ID),
      *   zones, clubs, tournamentTypes (Collection gia' caricate)
@@ -143,7 +107,7 @@ class CalendarDataService
     public function prepareFullCalendarData(
         Collection $tournaments,
         User $user,
-        string $viewType = 'mixed',
+        string $viewType = 'referee',
         array $options = []
     ): array {
         // $options arriva da array_merge nei controller: le chiavi ci sono,
@@ -154,8 +118,7 @@ class CalendarDataService
         // Prepara tornei in base al tipo di vista
         $calendarTournaments = match ($viewType) {
             'admin' => $this->prepareAdminCalendarData($tournaments),
-            'referee' => $this->prepareRefereeCalendarData($tournaments, $user, $availableTournamentIds, $assignedTournamentIds),
-            default => $this->prepareMixedCalendarData($tournaments, $user, $availableTournamentIds, $assignedTournamentIds),
+            default => $this->prepareRefereeCalendarData($tournaments, $user, $availableTournamentIds, $assignedTournamentIds),
         };
 
         // Prepara filtri
@@ -217,35 +180,6 @@ class CalendarDataService
             'is_assigned' => $isAssigned,
             'personal_status' => $this->colorService->getPersonalStatus($isAssigned, $isAvailable),
         ];
-    }
-
-    /**
-     * Extended props per vista MISTA
-     *
-     * @return array<string, mixed>
-     */
-    protected function getMixedExtendedProps(Tournament $tournament, bool $isAvailable, bool $isAssigned, bool $isAdmin): array
-    {
-        $props = [
-            'club' => $tournament->club->name ?? 'N/A',
-            'zone' => $tournament->zone->name ?? 'N/A',
-            'category' => $tournament->tournamentType->name ?? 'N/A',
-            'type_id' => $tournament->tournament_type_id,
-            'zone_id' => $tournament->zone_id,
-            'club_id' => $tournament->club_id,
-        ];
-
-        if ($isAdmin) {
-            $props['tournament_url'] = route('admin.tournaments.show', $tournament);
-            $props['availabilities_count'] = $tournament->availabilities_count ?? $tournament->availabilities->count();
-            $props['assignments_count'] = $tournament->assignments_count ?? $tournament->assignments->count();
-        } else {
-            $props['is_available'] = $isAvailable;
-            $props['is_assigned'] = $isAssigned;
-            $props['personal_status'] = $this->colorService->getPersonalStatus($isAssigned, $isAvailable);
-        }
-
-        return $props;
     }
 
     /**
@@ -337,11 +271,7 @@ class CalendarDataService
     {
         return match ($viewType) {
             'admin' => $this->colorService->getAdminLegendColors(),
-            'referee' => $this->colorService->getRefereeLegendColors(),
-            default => array_merge(
-                $this->colorService->getAdminLegendColors(),
-                $this->colorService->getRefereeLegendColors()
-            ),
+            default => $this->colorService->getRefereeLegendColors(),
         };
     }
 }

@@ -207,39 +207,6 @@ class RefereeLevelsHelperTest extends TestCase
     }
 
     /**
-     * Test: getAllVariants ritorna tutte le varianti
-     */
-    public function test_get_all_variants_returns_all_variants(): void
-    {
-        $variants = RefereeLevelsHelper::getAllVariants();
-
-        $this->assertNotEmpty($variants);
-        $this->assertContains('Aspirante', $variants);
-        $this->assertContains('aspirante', $variants);
-        $this->assertContains('primo livello', $variants);
-    }
-
-    /**
-     * Test: debugLevel ritorna informazioni complete
-     */
-    public function test_debug_level_returns_complete_info(): void
-    {
-        $debug = RefereeLevelsHelper::debugLevel('naz');
-
-        $this->assertArrayHasKey('original', $debug);
-        $this->assertArrayHasKey('lowercase', $debug);
-        $this->assertArrayHasKey('normalized', $debug);
-        $this->assertArrayHasKey('label', $debug);
-        $this->assertArrayHasKey('is_valid', $debug);
-        $this->assertArrayHasKey('can_access_national', $debug);
-
-        $this->assertEquals('naz', $debug['original']);
-        $this->assertEquals('Nazionale', $debug['normalized']);
-        $this->assertTrue($debug['is_valid']);
-        $this->assertTrue($debug['can_access_national']);
-    }
-
-    /**
      * Test: funzioni helper globali funzionano
      */
     public function test_global_helper_functions_work(): void

@@ -26,10 +26,7 @@ use Illuminate\Support\Facades\Storage;
  * @property int $download_count Numero di download
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read string $download_url
  * @property-read string $file_size_human
- * @property-read string $file_url
- * @property-read string $type_icon
  * @property-read \App\Models\Tournament|null $tournament
  * @property-read \App\Models\User $uploader
  * @property-read \App\Models\Zone|null $zone
@@ -167,37 +164,6 @@ class Document extends Model
         }
 
         return round($bytes, 2).' '.$units[$i];
-    }
-
-    /**
-     * Get file URL
-     */
-    public function getFileUrlAttribute(): string
-    {
-        return Storage::disk('public')->url($this->file_path);
-    }
-
-    /**
-     * Get download URL
-     */
-    public function getDownloadUrlAttribute(): string
-    {
-        return route('documents.download', $this);
-    }
-
-    /**
-     * Get type icon
-     */
-    public function getTypeIconAttribute(): string
-    {
-        return match ($this->type) {
-            self::TYPE_PDF => 'fas fa-file-pdf text-red-500',
-            self::TYPE_DOCUMENT => 'fas fa-file-word text-blue-500',
-            self::TYPE_SPREADSHEET => 'fas fa-file-excel text-green-500',
-            self::TYPE_IMAGE => 'fas fa-file-image text-purple-500',
-            self::TYPE_TEXT => 'fas fa-file-alt text-gray-500',
-            default => 'fas fa-file text-gray-400',
-        };
     }
 
     /**

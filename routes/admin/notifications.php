@@ -37,7 +37,6 @@ Route::prefix('tournament-notifications')->name('tournament-notifications.')->gr
     // Core notification operations
     Route::post('/{notification}/send', [NotificationController::class, 'send'])->name('send');
     Route::post('/{notification}/resend', [NotificationController::class, 'resend'])->name('resend');
-    Route::get('/{notification}/edit', [NotificationController::class, 'edit'])->name('edit');
     Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
     Route::get('/{notification}', [NotificationController::class, 'show'])->name('show');
 });

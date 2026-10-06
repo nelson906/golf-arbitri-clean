@@ -66,11 +66,6 @@ class TournamentNotification extends Model
         'sent_at',
         'is_prepared',
         'referee_list',
-        'workflow_status',
-        'last_step_completed',
-        'workflow_data',
-        'prepared_at',
-        'configured_at',
         'generated_at',
     ];
 
@@ -81,10 +76,7 @@ class TournamentNotification extends Model
         'metadata' => 'array',
         'details' => 'array',
         'attachments' => 'array',
-        'workflow_data' => 'array',
         'sent_at' => 'datetime',
-        'prepared_at' => 'datetime',
-        'configured_at' => 'datetime',
         'generated_at' => 'datetime',
     ];
 
@@ -299,24 +291,6 @@ class TournamentNotification extends Model
     }
 
     /**
-     * ❌ Metodo: Ha errori?
-     */
-    public function hasErrors(): bool
-    {
-        $metadata = is_array($this->metadata) ? $this->metadata : [];
-        $details = $this->detailsArray();
-
-        // `failed`/`errors` sono scritti come contatore int (NotificationService:212),
-        // ma righe storiche possono contenere la lista degli errori: entrambe le
-        // forme contavano come "ha errori" prima, ed entrambe contano ancora.
-        $failed = $details['failed'] ?? $details['errors'] ?? 0;
-
-        return ! empty($metadata['last_error'])
-            || (is_numeric($failed) && (float) $failed > 0)
-            || (is_array($failed) && $failed !== []);
-    }
-
-    /**
      * 📊 Metodo: Calcola percentuale successo
      */
     private function calculateSuccessRate(): float
@@ -335,37 +309,6 @@ class TournamentNotification extends Model
     }
 
     /**
-     * 📊 Metodo statico: Statistiche globali
-     *
-     * @return array<string, mixed>
-     */
-    public static function getGlobalStats(): array
-    {
-        return [
-            'total_tournaments_notified' => self::count(),
-            'total_recipients_reached' => self::where('status', 'sent')->count(),
-            'success_rate' => self::calculateGlobalSuccessRate(),
-            'this_month' => self::whereMonth('sent_at', now()->month)->count(),
-            'this_week' => self::whereBetween('sent_at', [
-                now()->startOfWeek(),
-                now()->endOfWeek(),
-            ])->count(),
-            'today' => self::whereDate('sent_at', today())->count(),
-        ];
-    }
-
-    /**
-     * 📊 Metodo statico: Calcola percentuale successo globale
-     */
-    private static function calculateGlobalSuccessRate(): float
-    {
-        $total = self::count();
-        $sent = self::where('status', 'sent')->count();
-
-        return $total > 0 ? round(($sent / $total) * 100, 1) : 0;
-    }
-
-    /**
      * 📝 Relazione con le clausole selezionate
      *
      * @return HasMany<NotificationClauseSelection, $this>
@@ -375,25 +318,4 @@ class TournamentNotification extends Model
         return $this->hasMany(NotificationClauseSelection::class);
     }
 
-    /**
-     * 📝 Accessor: Ottieni clausole selezionate organizzate
-     *
-     * @return array<string, mixed>
-     */
-    public function getSelectedClausesAttribute(): array
-    {
-        return $this->clauseSelections()
-            ->with('clause')
-            ->get()
-            ->mapWithKeys(function ($selection) {
-                return [
-                    $selection->placeholder_code => [
-                        'content' => $selection->clause->content,
-                        'title' => $selection->clause->title,
-                        'category' => $selection->clause->category,
-                    ],
-                ];
-            })
-            ->toArray();
-    }
 }

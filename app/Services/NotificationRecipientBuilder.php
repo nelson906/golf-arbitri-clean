@@ -128,37 +128,6 @@ class NotificationRecipientBuilder
     }
 
     /**
-     * Aggiunge gli admin zonali della zona del torneo in CC.
-     *
-     * @api Non usato nei flussi correnti (le route usano le varianti *ByIds);
-     *      mantenuto come API del builder, coperto dai test AuditV3RegressionTest.
-     */
-    public function addZoneAdmins(Tournament $tournament): static
-    {
-        User::where('user_type', UserType::ZoneAdmin->value)
-            ->where('zone_id', $tournament->club?->zone_id)
-            ->where('is_active', true)
-            ->each(fn (User $u) => $this->addCc($u->email, $u->name));
-
-        return $this;
-    }
-
-    /**
-     * Aggiunge gli admin nazionali in CC.
-     *
-     * @api Non usato nei flussi correnti (le route usano le varianti *ByIds);
-     *      mantenuto come API del builder, coperto dai test AuditV3RegressionTest.
-     */
-    public function addNationalAdmins(): static
-    {
-        User::where('user_type', UserType::NationalAdmin->value)
-            ->where('is_active', true)
-            ->each(fn (User $u) => $this->addCc($u->email, $u->name));
-
-        return $this;
-    }
-
-    /**
      * Aggiunge gli admin zonali (o nazionali: stessa implementazione,
      * il chiamante passa gli ID) con ID specifici in CC.
      *

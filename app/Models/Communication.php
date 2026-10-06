@@ -23,8 +23,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\User $author
- * @property-read string $priority_badge
- * @property-read string $type_badge
  * @property-read \App\Models\Zone|null $zone
  *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication active()
@@ -74,12 +72,6 @@ class Communication extends Model
     public const STATUS_PUBLISHED = 'published';
 
     public const STATUS_EXPIRED = 'expired';
-
-    public const STATUSES = [
-        self::STATUS_DRAFT => 'Bozza',
-        self::STATUS_PUBLISHED => 'Pubblicato',
-        self::STATUS_EXPIRED => 'Scaduto',
-    ];
 
     // Priority levels
     public const PRIORITY_LOW = 'low';
@@ -157,31 +149,4 @@ class Communication extends Model
                ($this->expires_at === null || $this->expires_at > now());
     }
 
-    /**
-     * Get priority badge class
-     */
-    public function getPriorityBadgeAttribute(): string
-    {
-        return match ($this->priority) {
-            self::PRIORITY_LOW => 'bg-gray-100 text-gray-800',
-            self::PRIORITY_NORMAL => 'bg-blue-100 text-blue-800',
-            self::PRIORITY_HIGH => 'bg-yellow-100 text-yellow-800',
-            self::PRIORITY_URGENT => 'bg-red-100 text-red-800',
-            default => 'bg-gray-100 text-gray-800',
-        };
-    }
-
-    /**
-     * Get type badge class
-     */
-    public function getTypeBadgeAttribute(): string
-    {
-        return match ($this->type) {
-            self::TYPE_ANNOUNCEMENT => 'bg-green-100 text-green-800',
-            self::TYPE_ALERT => 'bg-red-100 text-red-800',
-            self::TYPE_MAINTENANCE => 'bg-orange-100 text-orange-800',
-            self::TYPE_INFO => 'bg-blue-100 text-blue-800',
-            default => 'bg-gray-100 text-gray-800',
-        };
-    }
 }

@@ -194,7 +194,6 @@ class RefereeCareerService
                     'tournament_name' => $assignment->tournament->name ?? 'N/A',
                     'tournament_date' => $assignment->tournament->start_date,
                     'year' => $year,
-                    'is_confirmed' => $assignment->is_confirmed ?? false,
                 ];
             })
             ->values()
@@ -222,7 +221,6 @@ class RefereeCareerService
                     'role' => $assignment->role,
                     'tournament_name' => $assignment->tournament->name ?? 'N/A',
                     'tournament_date' => $assignment->tournament->start_date ?? null,
-                    'is_confirmed' => $assignment->is_confirmed ?? false,
                 ];
             })
             ->values()
@@ -252,9 +250,6 @@ class RefereeCareerService
                     'end_date' => $tournament->end_date instanceof \Carbon\Carbon
                         ? $tournament->end_date->format('Y-m-d')
                         : ($tournament->end_date ?? $tournament->start_date),
-                    'status' => $tournament->status instanceof \BackedEnum
-                        ? $tournament->status->value
-                        : $tournament->status,
                 ];
             })
             ->values()
@@ -318,36 +313,4 @@ class RefereeCareerService
         ];
     }
 
-    /**
-     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
-     */
-    public function getHistoricalStats(?int $year = null): Collection
-    {
-        $query = RefereeCareerHistory::with('user');
-
-        if ($year) {
-            // Add any year-specific filtering if needed
-        }
-
-        /** @var \Illuminate\Support\Collection<int, array<string, mixed>> $rows */
-        $rows = $query->get()->map(function ($history) use ($year) {
-            /** @var \App\Models\User $user */
-            $user = $history->user;
-
-            $data = $this->getCareerData($user, $year);
-
-            return [
-                'user' => $user,
-                'stats' => $data['career_summary'] ?? null,
-                'year_data' => $year ? ($data['year_summary'] ?? null) : null,
-            ];
-        });
-
-        return $rows;
-    }
-
-    public function archiveYear(int $year): void
-    {
-        throw new \Exception('Not implemented yet');
-    }
 }

@@ -100,18 +100,6 @@ class AssignmentRequest extends FormRequest
     }
 
     /**
-     * Restituisce il ruolo come valore Enum tipizzato.
-     */
-    public function resolvedRole(): AssignmentRole
-    {
-        $role = $this->string('role')->toString();
-
-        return $role !== ''
-            ? AssignmentRole::from($role)
-            : AssignmentRole::Referee;
-    }
-
-    /**
      * Get custom messages for validator errors.
      */
     public function messages(): array

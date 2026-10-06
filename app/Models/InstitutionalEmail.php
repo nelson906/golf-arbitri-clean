@@ -18,8 +18,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property array<array-key, mixed>|null $notification_types
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read mixed $category_badge_color
- * @property-read mixed $category_display
  * @property-read \App\Models\Zone|null $zone
  *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail active()
@@ -120,35 +118,4 @@ class InstitutionalEmail extends Model
         return $query->where('category', $category);
     }
 
-    /**
-     * Get category badge color
-     */
-    public function getCategoryBadgeColorAttribute(): string
-    {
-        return match ($this->category) {
-            'federazione' => 'bg-red-100 text-red-800',
-            'comitati' => 'bg-blue-100 text-blue-800',
-            'zone' => 'bg-green-100 text-green-800',
-            'altro' => 'bg-gray-100 text-gray-800',
-            default => 'bg-gray-100 text-gray-800',
-        };
-    }
-
-    /**
-     * Get category display name
-     */
-    public function getCategoryDisplayAttribute(): string
-    {
-        return self::CATEGORIES[$this->category] ?? ucfirst($this->category);
-    }
-
-    /**
-     * Get all available categories
-     *
-     * @return array<string, string>
-     */
-    public static function getCategories(): array
-    {
-        return self::CATEGORIES;
-    }
 }

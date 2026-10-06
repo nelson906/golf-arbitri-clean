@@ -124,30 +124,6 @@ class AssignmentTest extends TestCase
     // ==========================================
 
     /**
-     * Test: Factory confirmed state
-     */
-    public function test_factory_confirmed_state(): void
-    {
-        $assignment = Assignment::factory()->confirmed()->create();
-
-        $this->assertTrue($assignment->is_confirmed);
-        $this->assertNotNull($assignment->confirmed_at);
-        $this->assertEquals('confirmed', $assignment->status);
-    }
-
-    /**
-     * Test: Factory completed state
-     */
-    public function test_factory_completed_state(): void
-    {
-        $assignment = Assignment::factory()->completed()->create();
-
-        $this->assertTrue($assignment->is_confirmed);
-        $this->assertNotNull($assignment->confirmed_at);
-        $this->assertEquals('completed', $assignment->status);
-    }
-
-    /**
      * Test: Factory asTournamentDirector state
      */
     public function test_factory_as_tournament_director_state(): void
@@ -207,13 +183,4 @@ class AssignmentTest extends TestCase
         $this->assertContains($assignment->role, $validRoles);
     }
 
-    /**
-     * Test: is_confirmed è boolean
-     */
-    public function test_is_confirmed_is_boolean(): void
-    {
-        $assignment = Assignment::factory()->create(['is_confirmed' => true]);
-
-        $this->assertTrue(is_bool($assignment->is_confirmed) || $assignment->is_confirmed === 1);
-    }
 }

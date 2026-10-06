@@ -64,18 +64,6 @@ class NotificationClause extends Model
      * @param  Builder<NotificationClause>  $query
      * @return Builder<NotificationClause>
      */
-    public function scopeForRecipientType(Builder $query, string $type): Builder
-    {
-        return $query->where(function ($q) use ($type) {
-            $q->where('applies_to', $type)
-                ->orWhere('applies_to', 'all');
-        });
-    }
-
-    /**
-     * @param  Builder<NotificationClause>  $query
-     * @return Builder<NotificationClause>
-     */
     public function scopeByCategory(Builder $query, string $category): Builder
     {
         return $query->where('category', $category);
@@ -99,15 +87,5 @@ class NotificationClause extends Model
     public function getAppliesToLabelAttribute(): string
     {
         return self::APPLIES_TO[$this->applies_to] ?? $this->applies_to;
-    }
-
-    public function getFormattedContentAttribute(): string
-    {
-        return nl2br(e($this->content));
-    }
-
-    public function getUsageCountAttribute(): int
-    {
-        return $this->selections()->count();
     }
 }
