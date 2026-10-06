@@ -273,9 +273,11 @@ const AdminCalendar = ({ calendarData }) => {
 
                                     <div className="border-t pt-4 text-sm">
                                         <span className="font-medium">Scadenza disponibilità:</span> {selectedEvent.extendedProps.deadline || 'N/A'}
-                                        <span className="ml-2 text-xs">
-                                            ({(selectedEvent.extendedProps.days_until_deadline || 0) < 0 ? 'Scaduta!' : (selectedEvent.extendedProps.days_until_deadline || 0) + ' giorni'})
-                                        </span>
+                                        {selectedEvent.extendedProps.days_until_deadline != null && (
+                                            <span className="ml-2 text-xs">
+                                                ({selectedEvent.extendedProps.days_until_deadline < 0 ? 'Scaduta!' : selectedEvent.extendedProps.days_until_deadline + ' giorni'})
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
 

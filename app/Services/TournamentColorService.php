@@ -89,9 +89,25 @@ class TournamentColorService
      */
     public function getAdminEventColor(Tournament $tournament): string
     {
-        $shortName = $tournament->tournamentType->short_name ?? 'default';
+        return $this->typeColor($tournament->tournamentType);
+    }
 
-        return self::TYPE_COLORS[$shortName] ?? self::DEFAULT_COLOR;
+    /**
+     * Colore del tipo torneo: quello impostato in Tipi Torneo; in mancanza la
+     * mappa storica per sigla, poi il colore predefinito.
+     */
+    private function typeColor(?TournamentType $type): string
+    {
+        if ($type === null) {
+            return self::DEFAULT_COLOR;
+        }
+
+        $color = trim((string) $type->calendar_color);
+        if ($color !== '') {
+            return $color;
+        }
+
+        return self::TYPE_COLORS[$type->short_name] ?? self::DEFAULT_COLOR;
     }
 
     /**
@@ -200,10 +216,7 @@ class TournamentColorService
 
         $legend = [];
         foreach ($types as $type) {
-            $shortName = $type->short_name ?? $type->name;
-            // Usa short_name come chiave per il mapping colore, ma nome completo come label
-            $color = self::TYPE_COLORS[$shortName] ?? self::DEFAULT_COLOR;
-            $legend[$type->name] = $color;
+            $legend[$type->name] = $this->typeColor($type);
         }
 
         return $legend;
