@@ -207,7 +207,8 @@ class Pulizia20261006Test extends TestCase
             'admin.admins.index',
             'admin.referees.show',
             'admin.statistics.api',
-            'super-admin.monitoring.api',
+            'super-admin.monitoring.dashboard',
+            'super-admin.monitoring.logs',
             'verification.notice',
         ] as $name) {
             $this->assertFalse(\Illuminate\Support\Facades\Route::has($name), "La rotta {$name} non deve esistere");
@@ -229,5 +230,75 @@ class Pulizia20261006Test extends TestCase
         $this->actingAs($this->createSuperAdmin())
             ->get(route('super-admin.tournament-types.index'))
             ->assertOk();
+    }
+
+    // ── D10: i tornei senza circolo (T.B.A.) contano nella zona ─────────────
+
+    private function tbaTournament(int $zoneId, bool $national = false): Tournament
+    {
+        return Tournament::factory()->create([
+            'club_id' => null,
+            'zone_id' => $zoneId,
+            'tournament_type_id' => ($national ? $this->nationalType() : $this->zonalType())->id,
+            'start_date' => now()->addDays(30)->startOfDay(),
+            'end_date' => now()->addDays(31)->startOfDay(),
+            'availability_deadline' => now()->addDays(20)->startOfDay(),
+        ]);
+    }
+
+    public function test_d10_zone_admin_dashboard_counts_tba_tournaments(): void
+    {
+        $this->tbaTournament(1);
+        $this->tbaTournament(2);
+
+        $response = $this->actingAs($this->createZoneAdmin(1))->get(route('admin.dashboard'))->assertOk();
+
+        $stats = $this->viewArray($response, 'stats');
+        $this->assertSame(1, $stats['total_tournaments']);
+    }
+
+    public function test_d10_validation_sees_tba_tournaments_of_the_zone(): void
+    {
+        $tba = $this->tbaTournament(1);
+        $this->tbaTournament(2);
+
+        $issues = app(\App\Services\AssignmentValidationService::class)->findMissingRequirements(1);
+
+        $ids = $issues->map(fn ($row) => $this->issueTournamentId($row))->values()->all();
+        $this->assertSame([$tba->id], $ids);
+    }
+
+    // ── D11: Direttore di Torneo mancante solo sui tornei nazionali ─────────
+
+    public function test_d11_missing_director_uses_is_national(): void
+    {
+        $zonalWithNationalLevel = $this->zonalType();
+        $zonalWithNationalLevel->update(['level' => 'nazionale', 'min_referees' => 0]);
+        $national = $this->nationalType();
+        $national->update(['level' => 'zonale', 'min_referees' => 0]);
+
+        $zonal = $this->futureTournament(1);
+        $nat = $this->futureTournament(1, true);
+
+        $issues = app(\App\Services\AssignmentValidationService::class)->findMissingRequirements();
+        $missingDirector = $issues
+            ->filter(fn ($row) => collect($this->arrayAt($row, 'issues'))->contains('type', 'missing_role'))
+            ->map(fn ($row) => $this->issueTournamentId($row))
+            ->values()
+            ->all();
+
+        $this->assertContains($nat->id, $missingDirector);
+        $this->assertNotContains($zonal->id, $missingDirector);
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $row
+     */
+    private function issueTournamentId(array $row): int
+    {
+        $tournament = $row['tournament'] ?? null;
+        $this->assertInstanceOf(Tournament::class, $tournament);
+
+        return $tournament->id;
     }
 }

@@ -61,7 +61,10 @@ class AssignmentValidationService
                 // Solo tornei non ancora conclusi (lo stato del torneo non esiste piu')
                 $q->where('end_date', '>=', now()->startOfDay());
                 if ($zoneId) {
-                    $q->whereHas('club', fn ($c) => $c->where('zone_id', $zoneId));
+                    // Zona dal circolo o, per i tornei T.B.A., dalla colonna (D10)
+                    $q->where(fn ($z) => $z
+                        ->whereHas('club', fn ($c) => $c->where('zone_id', $zoneId))
+                        ->orWhere('zone_id', $zoneId));
                 }
             });
 
@@ -109,7 +112,9 @@ class AssignmentValidationService
             ->where('end_date', '>=', now()->startOfDay());
 
         if ($zoneId) {
-            $query->whereHas('club', fn ($q) => $q->where('zone_id', $zoneId));
+            $query->where(fn ($z) => $z
+                ->whereHas('club', fn ($q) => $q->where('zone_id', $zoneId))
+                ->orWhere('zone_id', $zoneId));
         }
 
         $tournaments = $query->get();
@@ -172,7 +177,8 @@ class AssignmentValidationService
 
             // Controlla presenza ruoli chiave
             $roles = $tournament->assignments->pluck('role');
-            if (! $roles->contains(AssignmentRole::TournamentDirector->value) && $tournament->tournamentType->level === 'nazionale') {
+            // D11: nazionale secondo is_national, unica fonte di verita'
+            if (! $roles->contains(AssignmentRole::TournamentDirector->value) && ($tournament->tournamentType->is_national ?? false)) {
                 $tournamentIssues[] = [
                     'type' => 'missing_role',
                     'message' => 'Manca il Direttore di Torneo',

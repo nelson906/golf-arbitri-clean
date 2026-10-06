@@ -22,10 +22,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail forNotificationType($type)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail forZone($zoneId = null)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail ofCategory($category)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail query()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail whereCategory($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail whereCreatedAt($value)
@@ -87,35 +85,6 @@ class InstitutionalEmail extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
-    }
-
-    /**
-     * Scope for specific zone
-     *
-     * @param  Builder<InstitutionalEmail>  $query
-     * @return Builder<InstitutionalEmail>
-     */
-    public function scopeForZone(Builder $query, ?int $zoneId = null): Builder
-    {
-        if ($zoneId) {
-            return $query->where(function ($q) use ($zoneId) {
-                $q->where('zone_id', $zoneId)
-                    ->orWhereNull('zone_id');
-            });
-        }
-
-        return $query->whereNull('zone_id');
-    }
-
-    /**
-     * Scope for specific category
-     *
-     * @param  Builder<InstitutionalEmail>  $query
-     * @return Builder<InstitutionalEmail>
-     */
-    public function scopeOfCategory(Builder $query, string $category): Builder
-    {
-        return $query->where('category', $category);
     }
 
 }

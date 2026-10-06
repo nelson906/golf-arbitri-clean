@@ -31,10 +31,8 @@ use Illuminate\Support\Facades\Storage;
  * @property-read \App\Models\User $uploader
  * @property-read \App\Models\Zone|null $zone
  *
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Document category(string $category)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Document public()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document query()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereCategory($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereCreatedAt($value)
@@ -166,25 +164,4 @@ class Document extends Model
         return round($bytes, 2).' '.$units[$i];
     }
 
-    /**
-     * Scope for public documents
-     *
-     * @param  Builder<Document>  $query
-     * @return Builder<Document>
-     */
-    public function scopePublic(Builder $query): Builder
-    {
-        return $query->where('is_public', true);
-    }
-
-    /**
-     * Scope for documents in a specific category
-     *
-     * @param  Builder<Document>  $query
-     * @return Builder<Document>
-     */
-    public function scopeCategory(Builder $query, string $category): Builder
-    {
-        return $query->where('category', $category);
-    }
 }

@@ -227,9 +227,10 @@ class CareerHistoryController extends Controller
             // Arbitri nazionali: tornei della propria zona + tornei nazionali/internazionali
             $query->where(function ($q) use ($user) {
                 if ($user->zone_id) {
-                    $q->whereHas('club', function ($clubQuery) use ($user) {
-                        $clubQuery->where('zone_id', $user->zone_id);
-                    });
+                    // Zona del torneo: dal circolo o, se T.B.A., dalla colonna (D10)
+                    $q->where(fn ($z) => $z
+                        ->whereHas('club', fn ($clubQuery) => $clubQuery->where('zone_id', $user->zone_id))
+                        ->orWhere('zone_id', $user->zone_id));
                 } else {
                     $q->whereRaw('1 = 0');
                 }
@@ -241,9 +242,9 @@ class CareerHistoryController extends Controller
         } else {
             // Arbitri zonali: solo tornei della loro zona
             if ($user->zone_id) {
-                $query->whereHas('club', function ($clubQuery) use ($user) {
-                    $clubQuery->where('zone_id', $user->zone_id);
-                });
+                $query->where(fn ($z) => $z
+                    ->whereHas('club', fn ($clubQuery) => $clubQuery->where('zone_id', $user->zone_id))
+                    ->orWhere('zone_id', $user->zone_id));
             } else {
                 $query->whereRaw('1 = 0');
             }
@@ -541,9 +542,10 @@ class CareerHistoryController extends Controller
             // Arbitri nazionali: tornei della propria zona + tornei nazionali/internazionali
             $query->where(function ($q) use ($user) {
                 if ($user->zone_id) {
-                    $q->whereHas('club', function ($clubQuery) use ($user) {
-                        $clubQuery->where('zone_id', $user->zone_id);
-                    });
+                    // Zona del torneo: dal circolo o, se T.B.A., dalla colonna (D10)
+                    $q->where(fn ($z) => $z
+                        ->whereHas('club', fn ($clubQuery) => $clubQuery->where('zone_id', $user->zone_id))
+                        ->orWhere('zone_id', $user->zone_id));
                 } else {
                     $q->whereRaw('1 = 0');
                 }
@@ -555,9 +557,9 @@ class CareerHistoryController extends Controller
         } else {
             // Arbitri zonali: solo tornei della loro zona
             if ($user->zone_id) {
-                $query->whereHas('club', function ($clubQuery) use ($user) {
-                    $clubQuery->where('zone_id', $user->zone_id);
-                });
+                $query->where(fn ($z) => $z
+                    ->whereHas('club', fn ($clubQuery) => $clubQuery->where('zone_id', $user->zone_id))
+                    ->orWhere('zone_id', $user->zone_id));
             } else {
                 $query->whereRaw('1 = 0');
             }
@@ -637,9 +639,9 @@ class CareerHistoryController extends Controller
             $availabilitiesQuery->whereHas('user', function ($q) use ($zoneId) {
                 $q->where('zone_id', $zoneId);
             });
-            $tournamentsQuery->whereHas('club', function ($q) use ($zoneId) {
-                $q->where('zone_id', $zoneId);
-            });
+            $tournamentsQuery->where(fn ($z) => $z
+                ->whereHas('club', fn ($q) => $q->where('zone_id', $zoneId))
+                ->orWhere('zone_id', $zoneId));
         }
 
         return [

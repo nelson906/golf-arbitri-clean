@@ -26,12 +26,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read \App\Models\User|null $sentBy
  * @property-read \App\Models\Tournament $tournament
  *
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification failed()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification forZone($zoneId)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification sent()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification today()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereAttachments($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereCreatedAt($value)
@@ -104,28 +101,6 @@ class TournamentNotification extends Model
     // model legacy Notification (eliminato); relazione mai letta in app/view.
 
     /**
-     * 📊 Scope: Solo notifiche inviate con successo
-     *
-     * @param  Builder<TournamentNotification>  $query
-     * @return Builder<TournamentNotification>
-     */
-    public function scopeSent(Builder $query): Builder
-    {
-        return $query->where('status', 'sent');
-    }
-
-    /**
-     * 📊 Scope: Solo notifiche fallite
-     *
-     * @param  Builder<TournamentNotification>  $query
-     * @return Builder<TournamentNotification>
-     */
-    public function scopeFailed(Builder $query): Builder
-    {
-        return $query->where('status', 'failed');
-    }
-
-    /**
      * 📊 Scope: Notifiche di oggi
      *
      * @param  Builder<TournamentNotification>  $query
@@ -134,19 +109,6 @@ class TournamentNotification extends Model
     public function scopeToday(Builder $query): Builder
     {
         return $query->whereDate('sent_at', today());
-    }
-
-    /**
-     * 📊 Scope: Notifiche per zona
-     *
-     * @param  Builder<TournamentNotification>  $query
-     * @return Builder<TournamentNotification>
-     */
-    public function scopeForZone(Builder $query, int $zoneId): Builder
-    {
-        return $query->whereHas('tournament.club', function ($q) use ($zoneId) {
-            $q->where('zone_id', $zoneId);
-        });
     }
 
     /**
