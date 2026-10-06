@@ -140,20 +140,17 @@ class UserController extends Controller
             abort(403, 'Non autorizzato a visualizzare questo utente');
         }
 
-        // Carica relazioni in modo sicuro
-        $user->load(['zone']);
+        $user->load(['zone', 'assignments.tournament', 'availabilities']);
 
-        // Carica assegnazioni se la tabella esiste
-        if (Schema::hasTable('assignments')) {
-            $user->load(['assignments.tournament']);
-        }
+        $stats = [
+            'total_assignments' => $user->assignments->count(),
+            'current_year_assignments' => $user->assignments
+                ->filter(fn ($a) => $a->tournament->start_date->year === now()->year)
+                ->count(),
+            'total_availabilities' => $user->availabilities->count(),
+        ];
 
-        // Carica disponibilità se la tabella esiste
-        if (Schema::hasTable('availabilities')) {
-            $user->load(['availabilities']);
-        }
-
-        return view('admin.users.show', compact('user', 'isNationalAdmin', 'isSuperAdmin'));
+        return view('admin.users.show', compact('user', 'isNationalAdmin', 'isSuperAdmin', 'stats'));
     }
 
     /**

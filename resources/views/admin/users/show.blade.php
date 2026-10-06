@@ -111,7 +111,7 @@
         </div>
 
         {{-- Statistiche --}}
-        {{-- <div class="space-y-6">
+        <div class="space-y-6">
             <div class="bg-white rounded-lg shadow p-6">
                 <h2 class="text-lg font-semibold text-gray-900 mb-4">Statistiche</h2>
                 <div class="space-y-3">
@@ -126,30 +126,6 @@
                     <div class="flex justify-between">
                         <span class="text-sm text-gray-600">Disponibilità</span>
                         <span class="text-sm font-semibold text-purple-600">{{ $stats['total_availabilities'] }}</span>
-                    </div>
-                </div>
-            </div>
- --}}
-
-         <div class="space-y-6">
-            <div class="bg-white rounded-lg shadow p-6">
-                <h2 class="text-lg font-semibold text-gray-900 mb-4">Statistiche</h2>
-                <div class="space-y-3">
-                    <div class="flex justify-between">
-                        <span class="text-sm text-gray-600">Assegnazioni Totali</span>
-                        <span class="text-sm font-semibold text-gray-900">{{ $user->assignments->count() }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-sm text-gray-600">Confermate</span>
-                        <span class="text-sm font-semibold text-green-600">{{ $user->assignments->count() }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-sm text-gray-600">Quest'Anno</span>
-                        <span class="text-sm font-semibold text-blue-600">{{ $user->assignments->count() }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-sm text-gray-600">Disponibilità</span>
-                        <span class="text-sm font-semibold text-purple-600">{{ $user->assignments->count() }}</span>
                     </div>
                 </div>
             </div>
