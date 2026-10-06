@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\AssignmentRole;
 use App\Enums\RefereeLevel;
+use App\Enums\UserType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AssignmentRequest;
 use App\Models\Assignment;
@@ -13,6 +14,7 @@ use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Models\User;
 use App\Services\AssignmentValidationService;
+use App\Support\TournamentVisibility;
 use App\Traits\HasZoneVisibility;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -797,21 +799,21 @@ class AssignmentController extends Controller
         $zoneId = $this->getZoneIdForUser($user);
 
         // Ottieni riepilogo di tutti i problemi
-        $summary = $this->validationService->getValidationSummary($zoneId);
+        $nationalOnly = $this->validationForCrc($user);
+        $summary = $this->validationService->getValidationSummary($zoneId, $nationalOnly);
 
-        // Ottieni statistiche aggiuntive
+        // Statistiche aggiuntive, con la stessa visibilita' delle liste
         $stats = [
-            'total_assignments' => Assignment::when($zoneId, function ($q) use ($zoneId) {
-                $q->whereHas('tournament', fn ($tq) => $tq->where('zone_id', $zoneId));
-            })->count(),
+            'total_assignments' => TournamentVisibility::applyViaRelation(Assignment::query(), $user)->count(),
 
-            'active_tournaments' => Tournament::where('end_date', '>=', now()->startOfDay())
-                ->when($zoneId, fn ($q) => $q->where('zone_id', $zoneId))
+            'active_tournaments' => TournamentVisibility::apply(Tournament::query(), $user)
+                ->where('end_date', '>=', now()->startOfDay())
                 ->count(),
 
             'active_referees' => User::where('user_type', 'referee')
                 ->where('is_active', true)
                 ->when($zoneId, fn ($q) => $q->where('zone_id', $zoneId))
+                ->when($nationalOnly, fn ($q) => $q->whereIn('level', [RefereeLevel::Nazionale->value, RefereeLevel::Internazionale->value]))
                 ->count(),
         ];
 
@@ -836,7 +838,7 @@ class AssignmentController extends Controller
         $user = auth()->user();
         $zoneId = $this->getZoneIdForUser($user);
 
-        $conflicts = $this->validationService->detectDateConflicts($zoneId);
+        $conflicts = $this->validationService->detectDateConflicts($zoneId, $this->validationForCrc($user));
 
         // Ordina per severità
         $conflicts = $conflicts->sortByDesc('severity');
@@ -867,7 +869,7 @@ class AssignmentController extends Controller
         $user = auth()->user();
         $zoneId = $this->getZoneIdForUser($user);
 
-        $tournaments = $this->validationService->findMissingRequirements($zoneId);
+        $tournaments = $this->validationService->findMissingRequirements($zoneId, $this->validationForCrc($user));
 
         // Statistiche sui problemi
         $issueTypes = $tournaments->flatMap(function ($item) {
@@ -901,7 +903,7 @@ class AssignmentController extends Controller
         // restituiscano tutti gli arbitri come "sovrassegnati"
         $threshold = max(1, $request->integer('threshold', 5));
 
-        $referees = $this->validationService->findOverassignedReferees($zoneId, $threshold);
+        $referees = $this->validationService->findOverassignedReferees($zoneId, $threshold, $this->validationForCrc($user));
 
         // Statistiche
         $stats = [
@@ -931,7 +933,7 @@ class AssignmentController extends Controller
         // restituiscano tutti gli arbitri come "sottoutilizzati"
         $threshold = max(1, $request->integer('threshold', 2));
 
-        $referees = $this->validationService->findUnderassignedReferees($zoneId, $threshold);
+        $referees = $this->validationService->findUnderassignedReferees($zoneId, $threshold, $this->validationForCrc($user));
 
         // Filtra per stato disponibilità se richiesto
         if ($request->has('only_available')) {
@@ -953,5 +955,14 @@ class AssignmentController extends Controller
             'stats',
             'threshold'
         ));
+    }
+
+    /**
+     * Validazione Assegnazioni per il CRC: solo tornei nazionali e arbitri di
+     * livello nazionale, come nel resto delle sue liste. Il super admin vede tutto.
+     */
+    private function validationForCrc(?User $user): bool
+    {
+        return $user?->user_type === UserType::NationalAdmin;
     }
 }

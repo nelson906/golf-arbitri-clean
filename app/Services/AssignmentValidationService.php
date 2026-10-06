@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\AssignmentRole;
+use App\Enums\RefereeLevel;
 use App\Helpers\RefereeLevelsHelper;
 use App\Models\Assignment;
 use App\Models\Tournament;
@@ -34,12 +35,12 @@ class AssignmentValidationService
      *     total_issues: int,
      * }
      */
-    public function getValidationSummary(?int $zoneId = null): array
+    public function getValidationSummary(?int $zoneId = null, bool $nationalOnly = false): array
     {
-        $conflicts = $this->getConflictsSummary($zoneId);
-        $missingRequirements = $this->getMissingRequirementsSummary($zoneId);
-        $overassigned = $this->getOverassignedCount($zoneId);
-        $underassigned = $this->getUnderassignedCount($zoneId);
+        $conflicts = $this->getConflictsSummary($zoneId, $nationalOnly);
+        $missingRequirements = $this->getMissingRequirementsSummary($zoneId, $nationalOnly);
+        $overassigned = $this->getOverassignedCount($zoneId, $nationalOnly);
+        $underassigned = $this->getUnderassignedCount($zoneId, $nationalOnly);
 
         return [
             'conflicts' => $conflicts,
@@ -54,10 +55,10 @@ class AssignmentValidationService
      * Rileva conflitti di date nelle assegnazioni
      * @return \Illuminate\Support\Collection<int, ConflictRow>
      */
-    public function detectDateConflicts(?int $zoneId = null): Collection
+    public function detectDateConflicts(?int $zoneId = null, bool $nationalOnly = false): Collection
     {
         $query = Assignment::with(['user', 'tournament.club', 'tournament.zone'])
-            ->whereHas('tournament', function ($q) use ($zoneId) {
+            ->whereHas('tournament', function ($q) use ($zoneId, $nationalOnly) {
                 // Solo tornei non ancora conclusi (lo stato del torneo non esiste piu')
                 $q->where('end_date', '>=', now()->startOfDay());
                 if ($zoneId) {
@@ -65,6 +66,10 @@ class AssignmentValidationService
                     $q->where(fn ($z) => $z
                         ->whereHas('club', fn ($c) => $c->where('zone_id', $zoneId))
                         ->orWhere('zone_id', $zoneId));
+                }
+                // CRC: solo tornei nazionali (stessa regola di TournamentVisibility)
+                if ($nationalOnly) {
+                    $q->whereHas('tournamentType', fn ($tt) => $tt->where('is_national', true));
                 }
             });
 
@@ -106,7 +111,7 @@ class AssignmentValidationService
      * Trova tornei con requisiti mancanti
      * @return \Illuminate\Support\Collection<int, array<string, mixed>>
      */
-    public function findMissingRequirements(?int $zoneId = null): Collection
+    public function findMissingRequirements(?int $zoneId = null, bool $nationalOnly = false): Collection
     {
         $query = Tournament::with(['tournamentType', 'assignments.user', 'club.zone'])
             ->where('end_date', '>=', now()->startOfDay());
@@ -115,6 +120,11 @@ class AssignmentValidationService
             $query->where(fn ($z) => $z
                 ->whereHas('club', fn ($q) => $q->where('zone_id', $zoneId))
                 ->orWhere('zone_id', $zoneId));
+        }
+
+        // CRC: solo tornei nazionali (stessa regola di TournamentVisibility)
+        if ($nationalOnly) {
+            $query->whereHas('tournamentType', fn ($tt) => $tt->where('is_national', true));
         }
 
         $tournaments = $query->get();
@@ -202,7 +212,7 @@ class AssignmentValidationService
      * Trova arbitri sovrassegnati
      * @return \Illuminate\Support\Collection<int, array<string, mixed>>
      */
-    public function findOverassignedReferees(?int $zoneId = null, int $threshold = 5): Collection
+    public function findOverassignedReferees(?int $zoneId = null, int $threshold = 5, bool $nationalOnly = false): Collection
     {
         $query = User::where('user_type', 'referee')
             ->where('is_active', true)
@@ -214,6 +224,11 @@ class AssignmentValidationService
 
         if ($zoneId) {
             $query->where('zone_id', $zoneId);
+        }
+
+        // CRC: solo arbitri di livello Nazionale e Internazionale
+        if ($nationalOnly) {
+            $query->whereIn('level', [RefereeLevel::Nazionale->value, RefereeLevel::Internazionale->value]);
         }
 
         // Filtering after get() for SQLite compatibility (HAVING on subquery count not supported)
@@ -250,7 +265,7 @@ class AssignmentValidationService
      * Trova arbitri sottoutilizzati
      * @return \Illuminate\Support\Collection<int, array<string, mixed>>
      */
-    public function findUnderassignedReferees(?int $zoneId = null, int $threshold = 2): Collection
+    public function findUnderassignedReferees(?int $zoneId = null, int $threshold = 2, bool $nationalOnly = false): Collection
     {
         $query = User::where('user_type', 'referee')
             ->where('is_active', true)
@@ -262,6 +277,11 @@ class AssignmentValidationService
 
         if ($zoneId) {
             $query->where('zone_id', $zoneId);
+        }
+
+        // CRC: solo arbitri di livello Nazionale e Internazionale
+        if ($nationalOnly) {
+            $query->whereIn('level', [RefereeLevel::Nazionale->value, RefereeLevel::Internazionale->value]);
         }
 
         // Filtering after get() for SQLite compatibility (HAVING on subquery count not supported)
@@ -444,23 +464,23 @@ class AssignmentValidationService
         return $hasAvailabilities ? 'available' : 'unavailable';
     }
 
-    private function getConflictsSummary(?int $zoneId): int
+    private function getConflictsSummary(?int $zoneId, bool $nationalOnly): int
     {
-        return $this->detectDateConflicts($zoneId)->count();
+        return $this->detectDateConflicts($zoneId, $nationalOnly)->count();
     }
 
-    private function getMissingRequirementsSummary(?int $zoneId): int
+    private function getMissingRequirementsSummary(?int $zoneId, bool $nationalOnly): int
     {
-        return $this->findMissingRequirements($zoneId)->count();
+        return $this->findMissingRequirements($zoneId, $nationalOnly)->count();
     }
 
-    private function getOverassignedCount(?int $zoneId, int $threshold = 5): int
+    private function getOverassignedCount(?int $zoneId, bool $nationalOnly, int $threshold = 5): int
     {
-        return $this->findOverassignedReferees($zoneId, $threshold)->count();
+        return $this->findOverassignedReferees($zoneId, $threshold, $nationalOnly)->count();
     }
 
-    private function getUnderassignedCount(?int $zoneId, int $threshold = 2): int
+    private function getUnderassignedCount(?int $zoneId, bool $nationalOnly, int $threshold = 2): int
     {
-        return $this->findUnderassignedReferees($zoneId, $threshold)->count();
+        return $this->findUnderassignedReferees($zoneId, $threshold, $nationalOnly)->count();
     }
 }

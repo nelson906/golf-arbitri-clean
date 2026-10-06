@@ -121,13 +121,13 @@ const RefereeCalendar = ({ calendarData }) => {
                             <div className="flex justify-center space-x-8 text-center">
                                 <div>
                                     <div className="font-medium text-lg text-green-600">
-                                        {calendarData.assignments?.length || 0}
+                                        {(calendarData.tournaments || []).filter(t => t.extendedProps?.is_assigned).length}
                                     </div>
                                     <div className="text-green-600 text-xs">Assegnazioni</div>
                                 </div>
                                 <div>
                                     <div className="font-medium text-lg text-blue-600">
-                                        {calendarData.availabilities?.length || 0}
+                                        {(calendarData.tournaments || []).filter(t => t.extendedProps?.is_available).length}
                                     </div>
                                     <div className="text-blue-600 text-xs">Disponibilità</div>
                                 </div>
@@ -220,9 +220,6 @@ const RefereeCalendar = ({ calendarData }) => {
                                     <div className="grid grid-cols-2 gap-4 text-sm">
                                         <div>
                                             <span className="font-medium">Club:</span> {selectedEvent.extendedProps.club}
-                                            {selectedEvent.extendedProps.club_code && (
-                                                <span className="text-gray-500 ml-1">({selectedEvent.extendedProps.club_code})</span>
-                                            )}
                                         </div>
                                         <div><span className="font-medium">Categoria:</span> {selectedEvent.extendedProps.category}</div>
                                         <div><span className="font-medium">Zona:</span> {selectedEvent.extendedProps.zone}</div>
@@ -259,7 +256,7 @@ const RefereeCalendar = ({ calendarData }) => {
                                     )}
 
                                     {/* Days until deadline */}
-                                    {selectedEvent.extendedProps.days_until_deadline !== undefined && (
+                                    {selectedEvent.extendedProps.days_until_deadline != null && (
                                         <div className="text-sm">
                                             <span className="font-medium">Tempo rimanente:</span>
                                             <span className={`ml-2 ${selectedEvent.extendedProps.days_until_deadline < 0 ? 'text-red-600' : 'text-gray-600'}`}>

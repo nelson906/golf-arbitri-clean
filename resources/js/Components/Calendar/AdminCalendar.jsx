@@ -9,9 +9,8 @@ const AdminCalendar = ({ calendarData }) => {
     const [showModal, setShowModal] = useState(false);
     const [zoneFilter, setZoneFilter] = useState('');
 
-    // Check if user is national admin
-    const isNationalAdmin = calendarData?.userType === 'national_admin' ||
-                           calendarData?.userRoles?.includes('national_admin');
+    // CRC e super admin vedono piu' zone: per loro il filtro zona
+    const isNationalAdmin = ['national_admin', 'super_admin'].includes(calendarData?.userType);
 
     // Filter events by zone for national admins
     const getFilteredEvents = () => {
@@ -70,28 +69,6 @@ const AdminCalendar = ({ calendarData }) => {
         }
     };
 
-    const getPriorityBadge = (priority) => {
-        const badges = {
-            'urgent': 'bg-red-100 text-red-800',
-            'complete': 'bg-green-100 text-green-800',
-            'in_progress': 'bg-yellow-100 text-yellow-800',
-            'open': 'bg-blue-100 text-blue-800'
-        };
-
-        const texts = {
-            'urgent': 'URGENTE',
-            'complete': 'Completo',
-            'in_progress': 'In Progress',
-            'open': 'Aperto'
-        };
-
-        return (
-            <span className={`px-2 py-1 text-xs font-medium rounded-full ${badges[priority] || badges.open}`}>
-                {texts[priority] || texts.open}
-            </span>
-        );
-    };
-
     if (!calendarData?.tournaments) {
         return (
             <div className="text-center py-8 text-gray-600">
@@ -140,7 +117,7 @@ const AdminCalendar = ({ calendarData }) => {
                         eventClick={handleEventClick}
                         eventDidMount={(info) => {
                             const props = info.event.extendedProps;
-                            info.el.title = `${info.event.title} - ${props.club} (${props.management_priority})`;
+                            info.el.title = `${info.event.title} - ${props.club} (${props.tournament_type})`;
                         }}
                         eventContent={(eventInfo) => {
                             // Show admin controls on hover
@@ -155,11 +132,11 @@ const AdminCalendar = ({ calendarData }) => {
                                         {eventInfo.event.extendedProps.club || "Club N/A"}
                                     </div>
 
-                                    {/* Display tournament category if first day */}
-                                    {isFirstDay && eventInfo.event.extendedProps.category && (
+                                    {/* Tipo torneo, solo il primo giorno */}
+                                    {isFirstDay && eventInfo.event.extendedProps.tournament_type && (
                                         <div className="fc-event-category text-xs">
                                             <span className="font-medium">
-                                                {eventInfo.event.extendedProps.category}
+                                                {eventInfo.event.extendedProps.tournament_type}
                                             </span>
                                         </div>
                                     )}
@@ -209,11 +186,7 @@ const AdminCalendar = ({ calendarData }) => {
                                     <div className="grid grid-cols-2 gap-4 text-sm">
                                         <div><span className="font-medium">Club:</span> {selectedEvent.extendedProps.club}</div>
                                         <div><span className="font-medium">Zona:</span> {selectedEvent.extendedProps.zone}</div>
-                                        <div><span className="font-medium">Categoria:</span> {selectedEvent.extendedProps.category}</div>
-                                        <div>
-                                            <span className="font-medium">Priorità:</span>
-                                            <span className="ml-2">{getPriorityBadge(selectedEvent.extendedProps.management_priority)}</span>
-                                        </div>
+                                        <div><span className="font-medium">Tipo:</span> {selectedEvent.extendedProps.tournament_type}</div>
                                     </div>
 
                                     <div className="border-t pt-4">
