@@ -677,7 +677,7 @@ class AssignmentController extends Controller
                     TournamentNotification::create([
                         'tournament_id'     => $tournament->id,
                         'notification_type' => null,
-                        'status'            => 'draft',
+                        'status'            => 'pending',
                         'sent_by'           => auth()->id(),
                         'details'           => [
                             'referees_count' => $created,
