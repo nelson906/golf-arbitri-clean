@@ -162,4 +162,36 @@ class Pulizia20261006Test extends TestCase
         $this->assertSame(5, $props['days_until_deadline']);
         $this->assertSame('#123456', $data['legend'][$type->name] ?? null);
     }
+
+    // ── D3: import guidato riservato a CRC e super admin ────────────────────
+
+    public function test_d3_zone_admin_cannot_open_guided_import(): void
+    {
+        $this->actingAs($this->createZoneAdmin(1))
+            ->get(route('admin.federgolf-import.index'))
+            ->assertForbidden();
+    }
+
+    public function test_d3_zone_admin_cannot_replace_committee_of_own_zone_national(): void
+    {
+        $tournament = $this->futureTournament(1, true);
+        $crcReferee = $this->createReferee(['zone_id' => 1, 'level' => 'Nazionale']);
+        $this->createAssignment(['tournament_id' => $tournament->id, 'user_id' => $crcReferee->id, 'role' => 'Arbitro']);
+        $other = $this->createReferee(['zone_id' => 1]);
+
+        $this->actingAs($this->createZoneAdmin(1))
+            ->postJson(route('admin.federgolf-import.execute'), [
+                'tournament_id' => $tournament->id,
+                'assegnazioni' => [['user_id' => $other->id, 'ruolo' => 'Arbitro']],
+            ])->assertForbidden();
+
+        $this->assertDatabaseHas('assignments', ['tournament_id' => $tournament->id, 'user_id' => $crcReferee->id]);
+        $this->assertDatabaseMissing('assignments', ['tournament_id' => $tournament->id, 'user_id' => $other->id]);
+    }
+
+    public function test_d3_crc_and_super_admin_can_open_guided_import(): void
+    {
+        $this->actingAs($this->createNationalAdmin())->get(route('admin.federgolf-import.index'))->assertOk();
+        $this->actingAs($this->createSuperAdmin())->get(route('admin.federgolf-import.index'))->assertOk();
+    }
 }

@@ -46,6 +46,8 @@ class FedergolfImportController extends Controller
      */
     public function index(): View
     {
+        $this->ensureCrcOrSuperAdmin();
+
         // Tornei locali visibili all'admin, tutti gli anni, raggruppati per anno.
         // Niente filtro sullo stato del torneo: e' stato eliminato (P3,
         // 2026-10-03) e ora escluderebbe tornei gia' giocati da ricaricare.
@@ -84,6 +86,8 @@ class FedergolfImportController extends Controller
      */
     public function loadFigCompetitions(Request $request): JsonResponse
     {
+        $this->ensureCrcOrSuperAdmin();
+
         $anno = $request->integer('anno', (int) date('Y'));
         // Accetta solo anni ragionevoli (corrente e precedente)
         $anno = in_array($anno, [(int) date('Y'), (int) date('Y') - 1]) ? $anno : (int) date('Y');
@@ -151,6 +155,8 @@ class FedergolfImportController extends Controller
      */
     public function fetchCommittee(Request $request): JsonResponse
     {
+        $this->ensureCrcOrSuperAdmin();
+
         $request->validate([
             'competition_id' => 'required|string|max:100',
         ]);
@@ -208,6 +214,8 @@ class FedergolfImportController extends Controller
      */
     public function executeImport(Request $request): JsonResponse
     {
+        $this->ensureCrcOrSuperAdmin();
+
         $request->validate([
             'tournament_id'  => 'required|integer|exists:tournaments,id',
             'assegnazioni'   => 'required|array|min:1',
@@ -334,5 +342,15 @@ class FedergolfImportController extends Controller
         }
 
         return $msg . '.';
+    }
+
+    /**
+     * Decisione 2026-10-06 (D3): l'import guidato e' riservato a CRC e super
+     * admin. L'admin di zona sui nazionali designa solo osservatori (P9) e il
+     * wizard sostituisce l'intero comitato: non deve poterlo aprire.
+     */
+    private function ensureCrcOrSuperAdmin(): void
+    {
+        abort_unless($this->authUser()->isNationalAdmin(), 403, 'Import riservato al CRC e al super admin');
     }
 }
