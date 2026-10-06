@@ -176,6 +176,10 @@ class CalendarDataService
             'club' => $tournament->club->name ?? 'N/A',
             'zone' => $tournament->club->zone->name ?? 'N/A',
             'category' => $tournament->tournamentType->name ?? 'N/A',
+            'deadline' => $tournament->availability_deadline ? $tournament->availability_deadline->format('d/m/Y') : 'N/A',
+            'days_until_deadline' => $tournament->availability_deadline
+                ? (int) Carbon::today()->diffInDays($tournament->availability_deadline->copy()->startOfDay(), false)
+                : null,
             'is_available' => $isAvailable,
             'is_assigned' => $isAssigned,
             'personal_status' => $this->colorService->getPersonalStatus($isAssigned, $isAvailable),

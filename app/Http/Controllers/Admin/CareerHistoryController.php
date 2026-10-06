@@ -33,7 +33,8 @@ class CareerHistoryController extends Controller
     public function index(Request $request): View
     {
         $currentUser = auth()->user();
-        $zoneRestriction = $this->getUserZoneId($currentUser);
+        // Il super admin vede tutte le zone anche se ha una zona sul profilo
+        $zoneRestriction = $this->isSuperAdmin($currentUser) ? null : $this->getUserZoneId($currentUser);
 
         $query = User::where('user_type', 'referee')
             ->with(['careerHistory', 'zone'])
@@ -98,7 +99,8 @@ class CareerHistoryController extends Controller
     {
         $currentUser = auth()->user();
         $currentYear = now()->year;
-        $zoneRestriction = $this->getUserZoneId($currentUser);
+        // Il super admin vede tutte le zone anche se ha una zona sul profilo
+        $zoneRestriction = $this->isSuperAdmin($currentUser) ? null : $this->getUserZoneId($currentUser);
 
         // Statistiche per preview (filtrate per zona se necessario)
         $stats = $this->getYearStats($currentYear, $zoneRestriction);
@@ -625,7 +627,10 @@ class CareerHistoryController extends Controller
      */
     private function getYearStats(int $year, ?int $zoneId = null): array
     {
-        $assignmentsQuery = \App\Models\Assignment::whereYear('assigned_at', $year);
+        // Anno del torneo, come l'archiviazione vera (non la data di assegnazione)
+        $assignmentsQuery = \App\Models\Assignment::whereHas('tournament', function ($q) use ($year) {
+            $q->whereYear('start_date', $year);
+        });
         $availabilitiesQuery = \App\Models\Availability::whereHas('tournament', function ($q) use ($year) {
             $q->whereYear('start_date', $year);
         });
