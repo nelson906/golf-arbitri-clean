@@ -301,4 +301,61 @@ class Pulizia20261006Test extends TestCase
 
         return $tournament->id;
     }
+
+    // ── D12: Nuovo utente con scelta del tipo ───────────────────────────────
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function newUserData(string $email, string $type): array
+    {
+        return [
+            'first_name' => 'Mario',
+            'last_name' => 'Prova',
+            'email' => $email,
+            'zone_id' => 1,
+            'level' => 'Regionale',
+            'user_type' => $type,
+            'is_active' => '1',
+        ];
+    }
+
+    public function test_d12_zone_admin_creates_zone_admin_but_not_national(): void
+    {
+        $admin = $this->createZoneAdmin(1);
+
+        $this->actingAs($admin)->get(route('admin.users.create'))
+            ->assertOk()
+            ->assertSee('name="user_type"', false)
+            ->assertDontSee('value="national_admin"', false);
+
+        $this->actingAs($admin)->post(route('admin.users.store'), $this->newUserData('nuovo.szr@test.it', 'admin'))
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('users', ['email' => 'nuovo.szr@test.it', 'user_type' => 'admin']);
+
+        $this->actingAs($admin)->post(route('admin.users.store'), $this->newUserData('nuovo.crc@test.it', 'national_admin'))
+            ->assertSessionHasErrors('user_type');
+        $this->assertDatabaseMissing('users', ['email' => 'nuovo.crc@test.it']);
+    }
+
+    public function test_d12_crc_creates_national_admin_but_not_super_admin(): void
+    {
+        $crc = $this->createNationalAdmin();
+
+        $this->actingAs($crc)->post(route('admin.users.store'), $this->newUserData('nuovo.crc@test.it', 'national_admin'))
+            ->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('users', ['email' => 'nuovo.crc@test.it', 'user_type' => 'national_admin']);
+
+        $this->actingAs($crc)->post(route('admin.users.store'), $this->newUserData('nuovo.super@test.it', 'super_admin'))
+            ->assertSessionHasErrors('user_type');
+    }
+
+    public function test_d12_default_new_user_is_referee(): void
+    {
+        $this->actingAs($this->createZoneAdmin(1))
+            ->post(route('admin.users.store'), $this->newUserData('nuovo.arbitro@test.it', 'referee'))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('users', ['email' => 'nuovo.arbitro@test.it', 'user_type' => 'referee']);
+    }
 }
