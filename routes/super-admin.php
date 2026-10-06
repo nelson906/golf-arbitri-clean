@@ -48,7 +48,4 @@ Route::prefix('super-admin')->name('super-admin.')->middleware(['auth', 'super_a
         Route::delete('clauses/{clause}', 'destroy')->name('clauses.destroy');
         Route::post('clauses/{clause}/toggle-active', 'toggleActive')->name('clauses.toggle-active');
     });
-
-    // ===== MODULAR SUPER ADMIN ROUTES =====
-    require __DIR__.'/super-admin/monitoring.php';
 });
