@@ -172,17 +172,7 @@ class UserController extends Controller
         // Circoli disponibili (tutti, anche fuori zona)
         $clubs = \App\Models\Club::orderBy('name')->get();
 
-        // Tipi utente che può creare.
-        // Decisione 2026-10-03 (P14): ogni admin puo' promuovere un arbitro ad
-        // admin di zona; solo il super admin crea super admin.
-        $userTypes = [
-            UserType::Referee->value => 'Arbitro',
-            UserType::ZoneAdmin->value => 'Admin Zona',
-        ];
-        if ($isSuperAdmin) {
-            $userTypes[UserType::NationalAdmin->value] = 'Admin Nazionale';
-            $userTypes[UserType::SuperAdmin->value]    = 'Super Admin';
-        }
+        $userTypes = $this->creatableUserTypes($isNationalAdmin, $isSuperAdmin);
 
         return view('admin.users.create', compact('zones', 'clubs', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
     }
@@ -206,6 +196,10 @@ class UserController extends Controller
             'phone' => 'nullable|string|max:20',
             'city' => 'nullable|string|max:255',
             'club_member' => 'nullable|string|max:255',
+            // D12: stesse regole della modifica (P14)
+            'user_type' => 'required|in:'.implode(',', array_keys(
+                $this->creatableUserTypes($isNationalAdmin, $this->isSuperAdmin($currentUser))
+            )),
         ];
 
         $validated = $request->validate($rules);
@@ -215,9 +209,6 @@ class UserController extends Controller
 
         // Genera automaticamente il campo 'name' concatenando first_name e last_name
         $validated['name'] = trim($validated['first_name'].' '.$validated['last_name']);
-
-        // Imposta tipo utente predefinito (referee)
-        $validated['user_type'] = 'referee';
 
         // Gestisci il campo is_active (checkbox)
         $validated['is_active'] = $request->has('is_active');
@@ -272,17 +263,7 @@ class UserController extends Controller
             ->get();
 
         // Tipi utente modificabili (stessa regola di update(), P14)
-        $userTypes = [
-            UserType::Referee->value => 'Arbitro',
-            UserType::ZoneAdmin->value => 'Admin Zona',
-        ];
-        if ($isSuperAdmin) {
-            $userTypes[UserType::NationalAdmin->value] = 'Admin Nazionale';
-            $userTypes[UserType::SuperAdmin->value]    = 'Super Admin';
-        } elseif ($isNationalAdmin && $user->user_type === UserType::NationalAdmin) {
-            // Evita che la select ricada su "Arbitro" e declassi l'utente
-            $userTypes[UserType::NationalAdmin->value] = 'Admin Nazionale';
-        }
+        $userTypes = $this->creatableUserTypes($isNationalAdmin, $isSuperAdmin);
 
         return view('admin.users.edit', compact('user', 'zones', 'clubs', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
     }
@@ -314,9 +295,9 @@ class UserController extends Controller
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             // P14: solo il super admin assegna il tipo super_admin
-            'user_type' => 'required|in:referee,admin'
-                .($isNationalAdmin ? ',national_admin' : '')
-                .($this->isSuperAdmin($currentUser) ? ',super_admin' : ''),
+            'user_type' => 'required|in:'.implode(',', array_keys(
+                $this->creatableUserTypes($isNationalAdmin, $this->isSuperAdmin($currentUser))
+            )),
             'zone_id' => 'required|exists:zones,id',
             'referee_code' => 'nullable|string|max:20|unique:users,referee_code,'.$user->id,
             'level' => 'nullable|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio',
@@ -410,5 +391,28 @@ class UserController extends Controller
         $status = $user->is_active ? 'attivato' : 'disattivato';
 
         return back()->with('success', "Utente {$status} con successo");
+    }
+
+    /**
+     * Tipi utente che chi opera puo' assegnare, in creazione e in modifica.
+     * P14: ogni admin promuove ad admin di zona; il CRC anche ad admin
+     * nazionale; solo il super admin assegna super admin.
+     *
+     * @return array<string, string>
+     */
+    private function creatableUserTypes(bool $isNationalAdmin, bool $isSuperAdmin): array
+    {
+        $types = [
+            UserType::Referee->value => 'Arbitro',
+            UserType::ZoneAdmin->value => 'Admin Zona',
+        ];
+        if ($isNationalAdmin) {
+            $types[UserType::NationalAdmin->value] = 'Admin Nazionale';
+        }
+        if ($isSuperAdmin) {
+            $types[UserType::SuperAdmin->value] = 'Super Admin';
+        }
+
+        return $types;
     }
 }

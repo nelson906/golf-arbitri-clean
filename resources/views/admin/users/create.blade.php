@@ -82,6 +82,21 @@
                         @enderror
                     </div>
 
+                    {{-- Tipo utente (D12) --}}
+                    <div>
+                        <label for="user_type" class="block text-sm font-medium text-gray-700 mb-1">Tipo utente *</label>
+                        <select name="user_type" id="user_type"
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('user_type') border-red-500 @enderror"
+                            required>
+                            @foreach ($userTypes as $value => $label)
+                                <option value="{{ $value }}" {{ old('user_type', 'referee') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        @error('user_type')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+
                     {{-- Livello --}}
                     <div>
                         <label for="level" class="block text-sm font-medium text-gray-700 mb-1">Livello *</label>
