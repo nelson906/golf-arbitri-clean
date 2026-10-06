@@ -30,8 +30,9 @@ class FigImportController extends Controller
     {
         $user = auth()->user();
 
+        // 404, non 403: per chi non e' l'account riservato la pagina non esiste
         if (! FigImportAccess::allows($user instanceof \App\Models\User ? $user : null)) {
-            abort(403);
+            abort(404);
         }
     }
 
