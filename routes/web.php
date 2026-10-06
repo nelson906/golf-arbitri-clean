@@ -86,7 +86,6 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
         require __DIR__.'/admin/users.php';
         require __DIR__.'/admin/assignments.php';
         require __DIR__.'/admin/statistics.php';           // RINOMINATO da statistic.php
-        // monitoring.php spostato in super-admin/monitoring.php
         require __DIR__.'/admin/clubs.php';
         require __DIR__.'/admin/notifications.php';
         // require __DIR__.'/admin/reports.php';
