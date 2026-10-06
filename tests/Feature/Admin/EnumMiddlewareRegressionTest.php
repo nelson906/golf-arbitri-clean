@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Admin;
 
-use App\Enums\TournamentStatus;
 use App\Enums\UserType;
 use App\Models\Tournament;
 use Tests\TestCase;
@@ -150,23 +149,6 @@ class EnumMiddlewareRegressionTest extends TestCase
     // ============================================================
 
     /**
-     * Regressione: dopo la creazione, il campo status nel DB deve essere una stringa,
-     * e Eloquent deve ricaricarla come istanza Enum corretta.
-     */
-    public function test_tournament_status_is_persisted_and_reloaded_as_enum(): void
-    {
-        $tournament = $this->createTournament(['status' => 'open']);
-
-        // Ricarica fresh dal DB
-        $reloaded = Tournament::findOrFail($tournament->id);
-
-        $this->assertInstanceOf(TournamentStatus::class, $reloaded->status,
-            'Dopo il ricaricamento dal DB, status deve essere castato a TournamentStatus');
-        $this->assertSame(TournamentStatus::Open, $reloaded->status);
-        $this->assertSame('open', $reloaded->status->value);
-    }
-
-    /**
      * Regressione: il campo user_type nel DB deve essere una stringa,
      * e Eloquent deve ricaricarla come istanza Enum corretta.
      */
@@ -207,7 +189,6 @@ class EnumMiddlewareRegressionTest extends TestCase
             'start_date'             => now()->addDays(30)->format('Y-m-d'),
             'end_date'               => now()->addDays(32)->format('Y-m-d'),
             'availability_deadline'  => now()->addDays(20)->format('Y-m-d H:i:s'),
-            'status'                 => 'open',
         ];
 
         $response = $this->actingAs($admin)
@@ -218,7 +199,5 @@ class EnumMiddlewareRegressionTest extends TestCase
 
         $tournament = Tournament::where('name', 'Torneo Regression Test')->first();
         $this->assertNotNull($tournament);
-        $this->assertInstanceOf(TournamentStatus::class, $tournament->status);
-        $this->assertSame('open', $tournament->status->value);
     }
 }

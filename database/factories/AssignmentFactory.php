@@ -32,33 +32,8 @@ class AssignmentFactory extends Factory
             'status' => 'assigned',
             'assigned_at' => now(),
             'assigned_by' => User::factory()->zoneAdmin(),
-            'is_confirmed' => false,
             'notes' => fake()->optional()->sentence(),
         ];
-    }
-
-    /**
-     * Assignment confermato
-     */
-    public function confirmed(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'status' => 'confirmed',
-            'is_confirmed' => true,
-            'confirmed_at' => now(),
-        ]);
-    }
-
-    /**
-     * Assignment completato
-     */
-    public function completed(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'status' => 'completed',
-            'is_confirmed' => true,
-            'confirmed_at' => now()->subDays(7),
-        ]);
     }
 
     /**

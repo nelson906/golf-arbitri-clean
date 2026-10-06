@@ -136,18 +136,4 @@ class CacheService
         // Es: OPTIMIZE TABLE, ANALYZE TABLE, etc.
     }
 
-    /**
-     * Ottiene statistiche cache.
-     *
-     * @return array<string, mixed>
-     */
-    public function getCacheStats(): array
-    {
-        return [
-            'driver' => Config::string('cache.default'),
-            'hit_rate' => 89.2,  // Placeholder
-            'miss_rate' => 10.8, // Placeholder
-            'evictions' => 45,   // Placeholder
-        ];
-    }
 }

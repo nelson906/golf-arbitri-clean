@@ -35,7 +35,6 @@ class TournamentFactory extends Factory
             'club_id' => Club::inRandomOrder()->first()->id ?? Club::factory(),
             'tournament_type_id' => TournamentType::inRandomOrder()->first()->id ?? TournamentType::factory(),
             'created_by' => User::factory()->zoneAdmin(),
-            'status' => Tournament::STATUS_OPEN,
             'notes' => fake()->optional()->sentence(),
         ];
     }
@@ -53,7 +52,6 @@ class TournamentFactory extends Factory
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'availability_deadline' => (clone $startDate)->subDays(rand(7, 14)),
-                'status' => Tournament::STATUS_COMPLETED,
             ];
         });
     }
@@ -71,7 +69,6 @@ class TournamentFactory extends Factory
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'availability_deadline' => (clone $startDate)->subDays(rand(7, 14)),
-                'status' => Tournament::STATUS_OPEN,
             ];
         });
     }
@@ -89,7 +86,6 @@ class TournamentFactory extends Factory
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'availability_deadline' => (clone $startDate)->subDays(rand(7, 14)),
-                'status' => Tournament::STATUS_ASSIGNED,
             ];
         });
     }

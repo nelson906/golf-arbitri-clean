@@ -194,4 +194,40 @@ class Pulizia20261006Test extends TestCase
         $this->actingAs($this->createNationalAdmin())->get(route('admin.federgolf-import.index'))->assertOk();
         $this->actingAs($this->createSuperAdmin())->get(route('admin.federgolf-import.index'))->assertOk();
     }
+
+    // ── Pulizia: rotte che davano errore 500 o non usate, concetti eliminati ─
+
+    public function test_cleanup_broken_and_orphan_routes_are_gone(): void
+    {
+        foreach ([
+            'admin.quick-stats',
+            'admin.communications.expire',
+            'super-admin.tournament-types.show',
+            'admin.tournament-notifications.edit',
+            'admin.admins.index',
+            'admin.referees.show',
+            'admin.statistics.api',
+            'super-admin.monitoring.api',
+            'verification.notice',
+        ] as $name) {
+            $this->assertFalse(\Illuminate\Support\Facades\Route::has($name), "La rotta {$name} non deve esistere");
+        }
+
+        $this->actingAs($this->createSuperAdmin())->get('/api/system/tournament-types')->assertNotFound();
+    }
+
+    public function test_cleanup_eliminated_concepts_left_no_code(): void
+    {
+        $this->assertFalse(enum_exists('App\\Enums\\TournamentStatus'), 'Lo stato del torneo e\' eliminato (P3)');
+        $this->assertFalse(defined(Tournament::class.'::STATUS_OPEN'));
+        $this->assertNotContains('is_confirmed', (new \App\Models\Assignment)->getFillable(), 'La conferma e\' eliminata (P10)');
+        $this->assertFalse(class_exists('App\\Policies\\CommunicationPolicy'));
+    }
+
+    public function test_cleanup_admin_tournament_types_index_shows_without_show_route(): void
+    {
+        $this->actingAs($this->createSuperAdmin())
+            ->get(route('super-admin.tournament-types.index'))
+            ->assertOk();
+    }
 }

@@ -467,18 +467,6 @@ class NotificationController extends Controller
     }
 
     /**
-     * Modifica una singola notifica
-     */
-    public function edit(TournamentNotification $notification): View
-    {
-        $this->checkNotificationAccess($notification);
-
-        $tournamentNotification = $notification;
-
-        return view('admin.tournament-notifications.edit', compact('tournamentNotification'));
-    }
-
-    /**
      * Elimina una notifica e i relativi documenti
      */
     public function destroy(TournamentNotification $notification): RedirectResponse

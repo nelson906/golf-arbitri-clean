@@ -81,8 +81,6 @@ class TournamentColorService
     private const DEFAULT_COLOR = '#3B82F6';
 
 
-    // Aggiunto qui per visibilità dal metodo pubblico
-    public const TYPE_COLORS_MAP = self::TYPE_COLORS;
 
     /**
      * Ottieni colore evento per vista ADMIN (basato su tipo torneo)
@@ -161,30 +159,6 @@ class TournamentColorService
         }
 
         return self::PERSONAL_BORDER_COLORS['can_apply'];
-    }
-
-    /**
-     * Ottieni colore evento generico (per viste miste admin/arbitro)
-     */
-    public function getEventColor(Tournament $tournament, bool $isAssigned = false, bool $isAvailable = false, bool $isAdmin = false): string
-    {
-        if ($isAdmin) {
-            return $tournament->tournamentType->calendar_color ?? self::DEFAULT_COLOR;
-        }
-
-        return $this->getRefereeEventColor($tournament, $isAssigned, $isAvailable);
-    }
-
-    /**
-     * Ottieni colore bordo generico (per viste miste admin/arbitro)
-     */
-    public function getBorderColor(Tournament $tournament, bool $isAssigned = false, bool $isAvailable = false, bool $isAdmin = false): string
-    {
-        if ($isAdmin) {
-            return $this->getAdminBorderColor($tournament);
-        }
-
-        return $this->getRefereeBorderColor($isAssigned, $isAvailable);
     }
 
     /**

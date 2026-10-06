@@ -458,37 +458,6 @@ class CareerHistoryController extends Controller
     }
 
     /**
-     * Aggiorna i giorni effettivi di un torneo esistente.
-     */
-    public function updateTournamentDays(Request $request, User $user): RedirectResponse
-    {
-        // Check zone access
-        $currentUser = auth()->user();
-        if (! $this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
-            abort(403, 'Non hai accesso a questo arbitro');
-        }
-
-        $request->validate([
-            'year' => 'required|integer',
-            'tournament_id' => 'required|integer',
-            'days_count' => 'required|integer|min:1',
-        ]);
-
-        $year = $request->integer('year');
-
-        $updated = $this->careerService->updateTournamentDays(
-            $user->id,
-            $year,
-            $request->integer('tournament_id'),
-            $request->integer('days_count')
-        );
-
-        return redirect()
-            ->route('admin.career-history.edit-year', [$user, $year])
-            ->with($updated ? 'success' : 'warning', $updated ? 'Giorni aggiornati' : 'Torneo non trovato');
-    }
-
-    /**
      * Aggiorna completamente un torneo esistente.
      */
     public function updateTournamentComplete(Request $request, User $user): RedirectResponse
@@ -645,20 +614,6 @@ class CareerHistoryController extends Controller
         return redirect()
             ->route('admin.career-history.show', $user)
             ->with('success', "Aggiunti {$result['added']} tornei per l'anno {$year}");
-    }
-
-    /**
-     * Preview dati anno prima di archiviare.
-     */
-    public function previewYear(Request $request): JsonResponse
-    {
-        $currentUser = auth()->user();
-        $year = $request->integer('year', now()->year);
-        $zoneRestriction = $this->getUserZoneId($currentUser);
-
-        $stats = $this->getYearStats($year, $zoneRestriction);
-
-        return response()->json($stats);
     }
 
     /**

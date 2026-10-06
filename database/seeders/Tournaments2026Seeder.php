@@ -308,7 +308,6 @@ class Tournaments2026Seeder extends Seeder
                         'zone_id' => $zoneId,
                         'availability_deadline' => $availabilityDeadline,
                         // NON aggiorniamo status se era già assigned/completed
-                        // 'status' => Tournament::STATUS_OPEN,
                     ]);
                     $updated++;
                 } else {
@@ -321,7 +320,6 @@ class Tournaments2026Seeder extends Seeder
                         'start_date' => $startDate,
                         'end_date' => $endDate,
                         'availability_deadline' => $availabilityDeadline,
-                        'status' => Tournament::STATUS_OPEN,
                         'created_by' => $createdBy,
                     ]);
                     $imported++;

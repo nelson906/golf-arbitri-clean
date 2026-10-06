@@ -22,19 +22,11 @@ Route::prefix('monitoring')->name('monitoring.')->group(function () {
 
     // Health Check
     Route::get('/health', [HealthCheckController::class, 'index'])->name('health');
-    Route::get('/health/{component}', [HealthCheckController::class, 'check'])->name('health.check');
-    Route::get('/uptime', [HealthCheckController::class, 'uptime'])->name('uptime');
 
     // System Logs
     Route::get('/logs', [SystemLogsController::class, 'index'])->name('logs');
-    Route::get('/logs/errors/count', [SystemLogsController::class, 'errorCount'])->name('logs.error-count');
 
     // Cache Management
     Route::post('/clear-cache', [CacheManagementController::class, 'clear'])->name('clear-cache');
     Route::post('/optimize', [CacheManagementController::class, 'optimize'])->name('optimize');
-    Route::post('/cache/clear-application', [CacheManagementController::class, 'clearApplication'])->name('cache.clear-application');
-    Route::post('/cache/clear-views', [CacheManagementController::class, 'clearViews'])->name('cache.clear-views');
-
-    // API endpoints per polling/AJAX
-    Route::get('/api/{type}', [MonitoringController::class, 'apiMetrics'])->name('api');
 });

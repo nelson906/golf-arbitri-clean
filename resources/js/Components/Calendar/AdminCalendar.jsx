@@ -92,28 +92,6 @@ const AdminCalendar = ({ calendarData }) => {
         );
     };
 
-    const getStatusBadge = (status) => {
-        const badges = {
-            'published': 'bg-green-100 text-green-800',
-            'draft': 'bg-yellow-100 text-yellow-800',
-            'closed': 'bg-gray-100 text-gray-800',
-            'cancelled': 'bg-red-100 text-red-800'
-        };
-
-        const texts = {
-            'published': 'Pubblicato',
-            'draft': 'Bozza',
-            'closed': 'Chiuso',
-            'cancelled': 'Annullato'
-        };
-
-        return (
-            <span className={`px-2 py-1 text-xs font-medium rounded-full ${badges[status] || badges.draft}`}>
-                {texts[status] || status}
-            </span>
-        );
-    };
-
     if (!calendarData?.tournaments) {
         return (
             <div className="text-center py-8 text-gray-600">
@@ -167,22 +145,11 @@ const AdminCalendar = ({ calendarData }) => {
                         eventContent={(eventInfo) => {
                             // Show admin controls on hover
                             const isFirstDay = eventInfo.isStart;
-                            const status = eventInfo.event.extendedProps.status;
 
                             return (
                                 <div className="fc-event-container relative group">
                                     <div className="fc-event-title font-medium flex items-center">
                                         {eventInfo.event.title}
-                                        {isFirstDay && status && (
-                                            <span className="ml-1 text-xs rounded-full px-1 py-0.5 inline-block"
-                                                style={{
-                                                    backgroundColor: eventInfo.event.extendedProps.statusBorder || '#6B7280',
-                                                    color: '#fff',
-                                                    fontSize: '0.6rem'
-                                                }}>
-                                                {status}
-                                            </span>
-                                        )}
                                     </div>
                                     <div className="fc-event-text text-xs truncate">
                                         {eventInfo.event.extendedProps.club || "Club N/A"}
@@ -243,10 +210,6 @@ const AdminCalendar = ({ calendarData }) => {
                                         <div><span className="font-medium">Club:</span> {selectedEvent.extendedProps.club}</div>
                                         <div><span className="font-medium">Zona:</span> {selectedEvent.extendedProps.zone}</div>
                                         <div><span className="font-medium">Categoria:</span> {selectedEvent.extendedProps.category}</div>
-                                        <div>
-                                            <span className="font-medium">Status:</span>
-                                            <span className="ml-2">{getStatusBadge(selectedEvent.extendedProps.status)}</span>
-                                        </div>
                                         <div>
                                             <span className="font-medium">Priorità:</span>
                                             <span className="ml-2">{getPriorityBadge(selectedEvent.extendedProps.management_priority)}</span>

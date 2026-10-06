@@ -7,7 +7,6 @@ use App\Services\CalendarDataService;
 use App\Services\TournamentColorService;
 use App\Traits\HasZoneVisibility;
 use App\Traits\TournamentControllerTrait;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -121,10 +120,6 @@ class TournamentController extends Controller
         // 📚 LOAD RELATIONS
         $tournament->load(['tournamentType', 'zone', 'club']);
 
-        if ($isAdmin) {
-            $tournament->load(['assignments.user', 'availabilities.user']);
-        }
-
         // 👤 REFEREE-SPECIFIC DATA
         $userAvailability = null;
         $userAssignment = null;
@@ -134,26 +129,6 @@ class TournamentController extends Controller
             $userAssignment = $tournament->assignments()->where('user_id', $user->id)->first();
         }
 
-        // 📊 ADMIN-SPECIFIC STATS
-        $stats = [];
-        $assignedReferees = collect();
-        $availableReferees = collect();
-
-        if ($isAdmin) {
-            $stats = [
-                'total_assignments' => $tournament->assignments()->count(),
-                'total_availabilities' => $tournament->availabilities()->count(),
-                'required_referees' => $tournament->required_referees ?? 1,
-                'max_referees' => $tournament->tournamentType->max_referees ?? 4,
-                'days_until_deadline' => $tournament->availability_deadline
-                    ? Carbon::parse($tournament->availability_deadline)->diffInDays(now(), false)
-                    : null,
-            ];
-
-            $assignedReferees = $tournament->assignments()->with('user')->get();
-            $availableReferees = $tournament->availabilities()->with('user')->get();
-        }
-
         // Get required referees from tournament type
         $required_referees = $tournament->tournamentType->min_referees ?? 1;
 
@@ -161,11 +136,7 @@ class TournamentController extends Controller
             'tournament',
             'userAvailability',
             'userAssignment',
-            'stats',
-            'assignedReferees',
-            'availableReferees',
-            'required_referees',
-            'isAdmin'
+            'required_referees'
         ));
     }
 

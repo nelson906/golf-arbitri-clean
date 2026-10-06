@@ -36,17 +36,4 @@ class SystemLogsController extends Controller
         ));
     }
 
-    /**
-     * Conta errori recenti
-     */
-    public function errorCount(Request $request): JsonResponse
-    {
-        $hours = $request->integer('hours', 24);
-        $count = $this->logsService->countRecentErrors($hours);
-
-        return response()->json([
-            'error_count' => $count,
-            'period_hours' => $hours,
-        ]);
-    }
 }

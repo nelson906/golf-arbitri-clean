@@ -175,50 +175,6 @@ class SystemOperations
     // GIT OPERATIONS
     // ================================
 
-    /**
-     * Verifica se Git è disponibile
-     */
-    public static function isGitAvailable(): bool
-    {
-        return self::commandExists('git');
-    }
-
-    /**
-     * Ottieni branch corrente
-     */
-    public static function getCurrentBranch(): ?string
-    {
-        if (! self::isGitAvailable()) {
-            return null;
-        }
-
-        $basePath = base_path();
-        $result = self::execCommand("cd {$basePath} && git rev-parse --abbrev-ref HEAD");
-
-        return $result['success'] ? trim($result['output'][0] ?? '') : null;
-    }
-
-    /**
-     * Git status
-     *
-     * @return array<string, mixed>
-     */
-    public static function gitStatus(): array
-    {
-        if (! self::isGitAvailable()) {
-            return ['success' => false, 'output' => 'Git non disponibile'];
-        }
-
-        $basePath = base_path();
-        $result = self::execCommand("cd {$basePath} && git status --short");
-
-        return [
-            'success' => $result['success'],
-            'files' => $result['output'],
-            'has_changes' => count($result['output']) > 0,
-        ];
-    }
-
     // ================================
     // DATABASE OPERATIONS
     // ================================

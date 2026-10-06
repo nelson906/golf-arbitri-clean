@@ -80,45 +80,4 @@ class CacheManagementController extends Controller
         }
     }
 
-    /**
-     * Pulisci cache applicazione
-     */
-    public function clearApplication(Request $request): JsonResponse
-    {
-        try {
-            $results = $this->cacheService->clearCache(['application']);
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Cache applicazione pulita',
-                'results' => $results,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Pulisci cache view
-     */
-    public function clearViews(Request $request): JsonResponse
-    {
-        try {
-            $results = $this->cacheService->clearCache(['view']);
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Cache view pulita',
-                'results' => $results,
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-            ], 500);
-        }
-    }
 }

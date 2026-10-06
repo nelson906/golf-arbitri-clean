@@ -4,9 +4,7 @@ use App\Http\Controllers\Admin\FedergolfImportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController;
 use App\Http\Controllers\User\FedergolfController;
-use Illuminate\Foundation\Application;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -24,12 +22,7 @@ Route::get('/', function () {
         return redirect()->route('dashboard');
     }
 
-    return view('welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return view('welcome');
 });
 
 // Dashboard principale con redirect intelligente per ruolo
@@ -83,7 +76,6 @@ Route::middleware(['auth', 'admin_or_superadmin'])->group(function () {
         Route::get('/dashboard', [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
 
         // Quick stats API (route diretta)
-        Route::get('/quick-stats', [App\Http\Controllers\Admin\DashboardController::class, 'quickStats'])->name('quick-stats');
 
         // NOTA (audit 2026-07): rimosso placeholder 'admin.settings'
         // (view placeholder, link in navigation già commentati).
@@ -136,46 +128,17 @@ Route::middleware(['auth', 'referee_or_admin'])->group(function () {
     });
 });
 
-/*
-|--------------------------------------------------------------------------
-| LEGACY COMPATIBILITY SECTION
-|--------------------------------------------------------------------------
-| Redirect per backward compatibility referee → user routes
-| Mantenuti per non rompere link esistenti
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth', 'referee_or_admin'])->group(function () {
-    Route::prefix('referee')->name('referee.')->group(function () {
-        // Redirect legacy referee dashboard a user
-        Route::get('/', fn (): RedirectResponse => redirect()->route('user.availability.index'));
-    });
-});
-
 // Referee dashboard route (outside prefix to avoid /referee/referee/dashboard)
 require __DIR__.'/referee/dashboard.php';
 
 // Redirect admin referees a users con filtro
 Route::redirect('/admin/referees', '/admin/users?user_type=referee');
 
-/*
-|--------------------------------------------------------------------------
-| API ROUTES SECTION
-|--------------------------------------------------------------------------
-| API interne per AJAX e API versionate per integrazioni esterne
-|--------------------------------------------------------------------------
-*/
-Route::prefix('api')->name('api.')->group(function () {
-    // Internal API per chiamate AJAX
-    require __DIR__.'/api/internal.php';
-
-    // NOTA (audit 2026-06): rimosso il gruppo api/v1 — file vuoti,
-    // scheletro di API versionata mai implementata.
-});
+// NOTA (pulizia 2026-10-06): rimosse le API interne /api/* — nessuna pagina
+// le chiamava e /api/system/tournament-types leggeva una colonna inesistente.
 require __DIR__.'/maintenance.php';
 
 // Development routes (solo in local/staging)
 if (app()->environment(['local', 'staging'])) {
-    require __DIR__.'/dev/view-preview.php';
-    require __DIR__.'/dev/view-test-all.php';
     require __DIR__.'/dev/view-routes.php';
 }

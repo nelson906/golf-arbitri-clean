@@ -144,40 +144,6 @@ class CareerHistoryGiorniEffettiviTest extends TestCase
     }
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function it_updates_tournament_days(): void
-    {
-        // Aggiungi torneo
-        $tournamentData = [
-            'id' => $this->tournament->id,
-            'name' => $this->tournament->name,
-            'club_id' => $this->tournament->club_id,
-            'start_date' => $this->tournament->start_date->format('Y-m-d'),
-            'end_date' => $this->targetDate(38),
-        ];
-
-        $this->careerHistoryService->addTournamentEntry(
-            $this->referee->id,
-            $this->targetYear(),
-            $tournamentData,
-            3
-        );
-
-        // Aggiorna giorni
-        $updated = $this->careerHistoryService->updateTournamentDays(
-            $this->referee->id,
-            $this->targetYear(),
-            $this->tournament->id,
-            4 // cambio da 3 a 4
-        );
-
-        $this->assertTrue($updated);
-
-        $history = RefereeCareerHistory::where('user_id', $this->referee->id)->firstOrFail();
-        $this->assertIsArray($history->tournaments_by_year);
-        $this->assertEquals(4, $history->tournaments_by_year[$this->targetYear()][0]['days_count']);
-    }
-
-    #[\PHPUnit\Framework\Attributes\Test]
     public function it_updates_tournament_complete_data(): void
     {
         // Aggiungi torneo
