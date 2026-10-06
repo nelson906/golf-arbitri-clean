@@ -1,25 +1,10 @@
-# Config di MIGRAZIONE, affiancata a phpstan.neon (che resta la config di CI).
+# Config PHPStan del progetto (in CI: --level=9, vedi .github/workflows/ci.yml).
 #
-# phpstan.neon gira a livello 6 con una lista lunga di ignoreErrors: quelle
-# soppressioni non sono "livello 6 pulito", nascondono categorie intere
-# (missingType.*, proprieta' dinamiche su Request, metodi unused). Questa
-# config misura il gap reale verso il livello 10 SENZA soppressioni.
+#   vendor/bin/phpstan analyse -c phpstan-strict.neon --level=9 --memory-limit=1G
 #
-#   vendor/bin/phpstan analyse -c phpstan-strict.neon --memory-limit=1G
-#
-# Uso: si parte alti di livello e si scende finche' il numero e' gestibile,
-# si azzera quel livello, si risale. Quando strict arriva a zero, questo
-# file sostituisce phpstan.neon.
-#
-# SCALA DI MIGRAZIONE (misura del 2026-09-05 a livello 10: 3361 errori)
-#   872  missingType.* + argument.templateType   -> livello 6   FATTO (2026-09-05, zero)
-#   382  null-safety (X|null)                    -> livello 8   FATTO (2026-09-05, zero)
-#  1745  mixed (esplicito e implicito)           -> livello 9    FATTO (2026-09-06, zero)
-#        residuo del 10 (strict comparisons)     -> livello 10   <== TAPPA CORRENTE
-#   362  resto (di cui 134 larastan.relationExistence, chiusi tipando
-#        le firme delle relazioni nei Model il 2026-09-05)
-# I mixed sono un EFFETTO dei missingType: non si sopprimono i secondi,
-# si tipano. Ogni livello si azzera prima di risalire.
+# Nessun ignoreErrors e nessuna esclusione di path: non riaggiungerne.
+# Il livello 9 e' a zero dal 2026-09-06; il livello 10 (default di questo
+# file) e' la prossima tappa. phpstan.neon resta solo in locale (.gitignore).
 
 includes:
     - vendor/larastan/larastan/extension.neon

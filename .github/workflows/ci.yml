@@ -104,6 +104,12 @@ jobs:
       - name: Run test suite
         run: php artisan test --env=testing
 
+      - name: PHPStan (livello 9, nessuna soppressione)
+        run: vendor/bin/phpstan analyse -c phpstan-strict.neon --level=9 --no-progress --memory-limit=1G
+
+      - name: ESLint, type-check, Vitest
+        run: npm run qa
+
   deploy:
     name: Deploy FTP Aruba (incrementale)
     needs: tests
