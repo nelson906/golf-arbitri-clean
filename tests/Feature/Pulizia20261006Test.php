@@ -118,4 +118,26 @@ class Pulizia20261006Test extends TestCase
                 'sort_order' => 1,
             ])->assertSessionHasErrors('short_name');
     }
+
+    // ── D6: scheda utente, contatori veri ───────────────────────────────────
+
+    public function test_d6_user_page_shows_real_counters_without_confirmed(): void
+    {
+        $admin = $this->createZoneAdmin(1);
+        $referee = $this->createReferee(['zone_id' => 1]);
+
+        $a = $this->futureTournament(1);
+        $b = $this->futureTournament(1);
+        $c = $this->futureTournament(1);
+        $this->createAssignment(['tournament_id' => $a->id, 'user_id' => $referee->id]);
+        $this->createAssignment(['tournament_id' => $b->id, 'user_id' => $referee->id]);
+        \App\Models\Availability::create(['user_id' => $referee->id, 'tournament_id' => $c->id, 'submitted_at' => now()]);
+
+        $response = $this->actingAs($admin)->get(route('admin.users.show', $referee))->assertOk();
+
+        $stats = $this->viewArray($response, 'stats');
+        $this->assertSame(2, $stats['total_assignments']);
+        $this->assertSame(1, $stats['total_availabilities']);
+        $response->assertDontSee('Confermate');
+    }
 }
