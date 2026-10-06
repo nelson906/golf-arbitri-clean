@@ -8,6 +8,7 @@ use App\Models\TournamentType;
 use App\Models\User;
 use App\Models\Zone;
 use App\Support\Untrusted;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -189,6 +190,10 @@ class CalendarDataService
             'tournament_type' => $tournament->tournamentType->name ?? 'N/A',
             'tournament_url' => route('admin.tournaments.show', $tournament),
             'deadline' => $tournament->availability_deadline ? $tournament->availability_deadline->format('d/m/Y') : 'N/A',
+            // Giorni di calendario alla scadenza: 0 = scade oggi (vale fino alle 23:59, P4)
+            'days_until_deadline' => $tournament->availability_deadline
+                ? (int) Carbon::today()->diffInDays($tournament->availability_deadline->copy()->startOfDay(), false)
+                : null,
             'type_id' => $tournament->tournament_type_id,
             'availabilities_count' => $tournament->availabilities_count ?? $tournament->availabilities->count(),
             'assignments_count' => $tournament->assignments_count ?? $tournament->assignments->count(),

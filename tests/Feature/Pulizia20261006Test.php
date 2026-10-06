@@ -140,4 +140,26 @@ class Pulizia20261006Test extends TestCase
         $this->assertSame(1, $stats['total_availabilities']);
         $response->assertDontSee('Confermate');
     }
+
+    // ── D8/D9: calendario admin, giorni alla scadenza e colore del tipo ─────
+
+    public function test_d8_d9_admin_calendar_has_deadline_days_and_type_color(): void
+    {
+        $admin = $this->createSuperAdmin();
+        $type = $this->zonalType();
+        $type->update(['calendar_color' => '#123456']);
+        $tournament = $this->futureTournament(1);
+        $tournament->update(['availability_deadline' => now()->addDays(5)->setTime(0, 0)]);
+
+        $tournament->refresh();
+        $data = app(\App\Services\CalendarDataService::class)
+            ->prepareFullCalendarData(collect([$tournament]), $admin, 'admin');
+
+        $event = $data['tournaments']->first();
+        $this->assertIsArray($event);
+        $this->assertSame('#123456', $event['color']);
+        $props = $this->arrayAt($event, 'extendedProps');
+        $this->assertSame(5, $props['days_until_deadline']);
+        $this->assertSame('#123456', $data['legend'][$type->name] ?? null);
+    }
 }
