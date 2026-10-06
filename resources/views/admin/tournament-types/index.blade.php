@@ -19,7 +19,7 @@
             <thead class="bg-gray-50">
                 <tr>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Codice</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sigla</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Colore</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nazionale</th>
                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Arbitri</th>
@@ -37,9 +37,9 @@
                             {{ $type->name }}
                         </td>
 
-                        {{-- Codice --}}
+                        {{-- Sigla --}}
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {{ $type->code }}
+                            {{ $type->short_name }}
                         </td>
 
                         {{-- Colore --}}

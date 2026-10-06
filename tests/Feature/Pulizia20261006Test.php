@@ -68,4 +68,54 @@ class Pulizia20261006Test extends TestCase
 
         $this->assertDatabaseMissing('tournament_notifications', ['tournament_id' => $tournament->id]);
     }
+
+    // ── D2: Tipi Torneo — la sigla è short_name ─────────────────────────────
+
+    public function test_d2_super_admin_creates_tournament_type_with_generated_short_name(): void
+    {
+        $this->actingAs($this->createSuperAdmin())
+            ->post(route('super-admin.tournament-types.store'), [
+                'name' => 'Gara Prova Nuova',
+                'sort_order' => 1,
+            ])->assertRedirect(route('super-admin.tournament-types.index'));
+
+        $this->assertDatabaseHas('tournament_types', ['name' => 'Gara Prova Nuova', 'short_name' => 'GARA_PROVA_NUOVA']);
+    }
+
+    public function test_d2_super_admin_creates_and_edits_short_name(): void
+    {
+        $super = $this->createSuperAdmin();
+
+        $this->actingAs($super)->post(route('super-admin.tournament-types.store'), [
+            'name' => 'Trofeo Prova',
+            'short_name' => 'TPX',
+            'sort_order' => 1,
+        ])->assertSessionHasNoErrors();
+
+        $type = TournamentType::where('short_name', 'TPX')->firstOrFail();
+
+        $this->actingAs($super)->put(route('super-admin.tournament-types.update', $type), [
+            'name' => 'Trofeo Prova',
+            'short_name' => 'TPY',
+            'sort_order' => 1,
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('TPY', $type->fresh()?->short_name);
+
+        $this->actingAs($super)->get(route('super-admin.tournament-types.index'))
+            ->assertOk()
+            ->assertSee('TPY');
+    }
+
+    public function test_d2_duplicate_short_name_is_rejected(): void
+    {
+        $existing = $this->zonalType();
+
+        $this->actingAs($this->createSuperAdmin())
+            ->post(route('super-admin.tournament-types.store'), [
+                'name' => 'Altro Nome',
+                'short_name' => $existing->short_name,
+                'sort_order' => 1,
+            ])->assertSessionHasErrors('short_name');
+    }
 }

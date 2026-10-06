@@ -28,13 +28,13 @@
                 </div>
 
                 <div>
-                    <label for="code" class="block text-sm font-medium text-gray-700">Codice</label>
+                    <label for="short_name" class="block text-sm font-medium text-gray-700">Sigla</label>
                     <input type="text" 
-                           name="code" 
-                           id="code" 
-                           value="{{ old('code', $tournamentType->code) }}"
+                           name="short_name" 
+                           id="short_name" 
+                           value="{{ old('short_name', $tournamentType->short_name) }}"
                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    @error('code')
+                    @error('short_name')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
