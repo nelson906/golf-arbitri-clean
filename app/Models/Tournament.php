@@ -16,7 +16,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 /**
  * @property int $id
@@ -99,20 +98,16 @@ class Tournament extends Model
         return $this->belongsTo(Club::class);
     }
 
-    // Relazione con zona (attraverso il club)
     /**
-     * @return HasOneThrough<Zone, Club, $this>
+     * Zona del torneo. Era "attraverso il circolo": sui tornei T.B.A. (senza
+     * circolo) risultava vuota ovunque. La colonna zone_id e' tenuta allineata
+     * al circolo da TournamentObserver, quindi vale per tutti (2026-10-07).
+     *
+     * @return BelongsTo<Zone, $this>
      */
-    public function zone(): HasOneThrough
+    public function zone(): BelongsTo
     {
-        return $this->hasOneThrough(
-            Zone::class,
-            Club::class,
-            'id',        // Foreign key on clubs table
-            'id',        // Foreign key on zones table
-            'club_id',   // Local key on tournaments table
-            'zone_id'    // Local key on clubs table
-        );
+        return $this->belongsTo(Zone::class);
     }
 
     /**

@@ -18,6 +18,5 @@ Route::prefix('statistics')->name('statistics.')->group(function () {
     Route::get('/tornei', [StatisticsDashboardController::class, 'tornei'])->name('tornei');
     Route::get('/arbitri', [StatisticsDashboardController::class, 'arbitri'])->name('arbitri');
     Route::get('/zone', [StatisticsDashboardController::class, 'zone'])->name('zone');
-    Route::get('/performance', [StatisticsDashboardController::class, 'performance'])->name('performance');
-    Route::get('/export', [StatisticsDashboardController::class, 'exportCsv'])->name('export');
+    // Tolti /performance (pagina con numeri finti) e /export (CSV sempre vuoto), 2026-10-07
 });

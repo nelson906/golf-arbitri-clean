@@ -42,7 +42,7 @@
                     <tr>
                         <td style="border: 1px solid #ddd; padding: 8px;">{{ $tournament->name }}</td>
                         <td style="border: 1px solid #ddd; padding: 8px;">{{ $tournament->start_date->format('d/m') }}-{{ $tournament->end_date->format('d/m/Y') }}</td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">{{ $tournament->club->name }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{{ $tournament->club->name ?? 'T.B.A.' }}</td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -64,7 +64,7 @@
                     <tr>
                         <td style="border: 1px solid #ddd; padding: 8px;">{{ $tournament->name }}</td>
                         <td style="border: 1px solid #ddd; padding: 8px;">{{ $tournament->start_date->format('d/m') }}-{{ $tournament->end_date->format('d/m/Y') }}</td>
-                        <td style="border: 1px solid #ddd; padding: 8px;">{{ $tournament->club->name }}</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">{{ $tournament->club->name ?? 'T.B.A.' }}</td>
                     </tr>
                     @endforeach
                 </tbody>

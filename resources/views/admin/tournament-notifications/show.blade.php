@@ -119,8 +119,6 @@
             </div>
             @php
                 $t = $tournamentNotification->tournament;
-                $zoneId = $t->club->zone_id ?? $t->zone_id;
-                $zoneFolder = ($t->tournamentType && $t->tournamentType->is_national) ? 'CRC' : ('SZR' . ($zoneId ?? ''));
                 $docs = is_array($tournamentNotification->documents) ? $tournamentNotification->documents : (json_decode($tournamentNotification->documents ?? '[]', true) ?? []);
             @endphp
             <div class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -131,9 +129,9 @@
                         <span class="ml-2">Circolo</span>
                     </h6>
                     <div class="space-y-2">
-                        <p class="text-sm">{{ $t->club->email }}</p>
+                        <p class="text-sm">{{ $t->club->email ?? 'T.B.A.' }}</p>
                         @if(!empty($docs['club_letter']))
-                            <a href="{{ Storage::url('convocazioni/' . $zoneFolder . '/generated/' . $docs['club_letter']) }}" 
+                            <a href="{{ route('admin.tournament-notifications.download-document', [$tournamentNotification, 'club_letter']) }}" 
                                class="text-sm text-blue-600 hover:text-blue-800 flex items-center">
                                 <i class="fas fa-file-word mr-1"></i>
                                 Lettera Circolo
@@ -158,7 +156,7 @@
                             </div>
                         @endforeach
                         @if(!empty($docs['convocation']))
-                            <a href="{{ Storage::url('convocazioni/' . $zoneFolder . '/generated/' . $docs['convocation']) }}" 
+                            <a href="{{ route('admin.tournament-notifications.download-document', [$tournamentNotification, 'convocation']) }}" 
                                class="text-sm text-green-600 hover:text-green-800 flex items-center">
                                 <i class="fas fa-file-word mr-1"></i>
                                 Convocazione

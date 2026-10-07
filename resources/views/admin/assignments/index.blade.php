@@ -38,7 +38,7 @@
                 @foreach ($tournaments as $tournament)
                     <option value="{{ $tournament->id }}"
                         {{ request('tournament_id') == $tournament->id ? 'selected' : '' }}>
-                        {{ $tournament->name }} - {{ $tournament->club->name }}
+                        {{ $tournament->name }} - {{ $tournament->club->name ?? 'T.B.A.' }}
                     </option>
                 @endforeach
             </select>

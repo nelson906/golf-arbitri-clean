@@ -9,7 +9,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-3xl font-bold text-gray-900">Modifica Torneo</h1>
-                    <p class="mt-2 text-gray-600">{{ $tournament->name }} - {{ $tournament->club->name }}</p>
+                    <p class="mt-2 text-gray-600">{{ $tournament->name }} - {{ $tournament->club->name ?? 'T.B.A.' }}</p>
                 </div>
                 <div class="flex space-x-4">
                     <a href="{{ route('admin.tournaments.show', $tournament) }}"

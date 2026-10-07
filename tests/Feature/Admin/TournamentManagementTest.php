@@ -33,7 +33,7 @@ class TournamentManagementTest extends TestCase
     {
         $admin = $this->createZoneAdmin(1);
         $club = Club::factory()->create(['zone_id' => 1]);
-        $type = TournamentType::firstOrFail();
+        $type = TournamentType::where('is_national', false)->firstOrFail();
 
         $tournamentData = [
             'name' => 'Test Tournament 2026',
@@ -62,7 +62,7 @@ class TournamentManagementTest extends TestCase
     {
         $admin = $this->createZoneAdmin(1);
         $clubZone2 = Club::factory()->create(['zone_id' => 2]);
-        $type = TournamentType::firstOrFail();
+        $type = TournamentType::where('is_national', false)->firstOrFail();
 
         $tournamentData = [
             'name' => 'Test Tournament',
@@ -293,7 +293,7 @@ class TournamentManagementTest extends TestCase
     public function test_admin_can_create_tournament_without_club(): void
     {
         $admin = $this->createZoneAdmin(1);
-        $type = TournamentType::firstOrFail();
+        $type = TournamentType::where('is_national', false)->firstOrFail();
 
         $response = $this->actingAs($admin)
             ->post(route('admin.tournaments.store'), [
@@ -325,7 +325,7 @@ class TournamentManagementTest extends TestCase
     public function test_tba_tournament_is_visible_to_its_zone_admin(): void
     {
         $admin = $this->createZoneAdmin(1);
-        $type = TournamentType::firstOrFail();
+        $type = TournamentType::where('is_national', false)->firstOrFail();
 
         $tournament = Tournament::create([
             'name' => 'Gara T.B.A. visibile',
@@ -354,7 +354,7 @@ class TournamentManagementTest extends TestCase
     {
         $admin = $this->createZoneAdmin(1);
         $club = Club::factory()->create(['zone_id' => 1]);
-        $type = TournamentType::firstOrFail();
+        $type = TournamentType::where('is_national', false)->firstOrFail();
 
         $response = $this->actingAs($admin)
             ->post(route('admin.tournaments.store'), [

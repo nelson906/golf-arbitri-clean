@@ -649,7 +649,7 @@ class AssignmentController extends Controller
             'referee_ids' => 'required|array',
             'referee_ids.*' => 'exists:users,id',
             'roles' => 'array',
-            'roles.*' => 'nullable|string|max:100',
+            'roles.*' => ['nullable', Rule::enum(AssignmentRole::class)],
         ]);
 
         $created = 0;

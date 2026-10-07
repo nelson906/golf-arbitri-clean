@@ -99,6 +99,14 @@ class UserController extends Controller
         // Ordinamento e paginazione
         $users = $query->orderBy('name')->paginate(20);
 
+        // Contatori in fondo alla pagina: solo gli utenti che chi guarda vede
+        // (prima erano i totali di tutta Italia, 2026-10-07)
+        $visibleUsers = fn () => $this->applyUserVisibility(User::query(), $user);
+        $counters = [
+            'referees' => $visibleUsers()->where('user_type', UserType::Referee->value)->count(),
+            'admins' => $visibleUsers()->whereIn('user_type', [UserType::ZoneAdmin->value, UserType::NationalAdmin->value, UserType::SuperAdmin->value])->count(),
+        ];
+
         // Recupera tutte le zone per il filtro
         $zones = Zone::orderBy('name')->get();
 
@@ -114,6 +122,7 @@ class UserController extends Controller
         $levels = RefereeLevel::selectOptions(true);
 
         return view('admin.users.index', compact(
+            'counters',
             'users',
             'zones',
             'isNationalAdmin',
@@ -136,8 +145,9 @@ class UserController extends Controller
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
         $isSuperAdmin = $this->isSuperAdmin($currentUser);
 
-        // Verifica permessi visualizzazione tramite trait
-        if (! $isNationalAdmin && $this->getUserZoneId($currentUser) != $user->zone_id) {
+        // Stessa regola dell'elenco utenti (SZR: la sua zona; CRC: arbitri di
+        // livello nazionale e admin nazionali; super admin: tutti)
+        if (! $this->applyUserVisibility(User::query()->whereKey($user->id), $currentUser)->exists()) {
             abort(403, 'Non autorizzato a visualizzare questo utente');
         }
 

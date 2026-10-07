@@ -71,6 +71,16 @@ class TournamentRequest extends FormRequest
                     if ($user->isZoneAdmin() && ! $category->isAvailableForZone($user->zone_id)) {
                         $fail('Questa categoria non è disponibile per la tua zona.');
                     }
+
+                    // L'admin di zona gestisce i tornei zonali, il CRC i nazionali
+                    // (decisioni 2026-10-03 e 2026-10-07): nessuno dei due crea o
+                    // trasforma un torneo dell'altro tipo
+                    if ($user->isZoneAdmin() && $category->is_national) {
+                        $fail('I tornei nazionali li gestisce il CRC: scegli un tipo zonale.');
+                    }
+                    if ($user->user_type === UserType::NationalAdmin && ! $category->is_national) {
+                        $fail('Il CRC gestisce solo tornei nazionali: scegli un tipo nazionale.');
+                    }
                 },
             ],
             'club_id' => [

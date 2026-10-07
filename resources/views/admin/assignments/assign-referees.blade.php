@@ -13,7 +13,7 @@
                 <p class="text-gray-600 mt-1">
                     Torneo: <strong>{{ $tournament->name }}</strong>
                     @if($tournament->club)
-                        - {{ $tournament->club->name }}
+                        - {{ $tournament->club->name ?? 'T.B.A.' }}
                     @endif
                 </p>
             </div>
@@ -40,8 +40,8 @@
             <div>
                 <span class="text-sm text-gray-500">Zona:</span>
                 <p class="font-medium">
-                    @if($tournament->club && $tournament->club->zone)
-                        {{ $tournament->club->zone->name }}
+                    @if($tournament->club && $tournament->club?->zone)
+                        {{ $tournament->club?->zone?->name }}
                     @else
                         N/A
                     @endif

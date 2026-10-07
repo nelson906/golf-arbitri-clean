@@ -65,9 +65,11 @@ class TournamentController extends Controller
         $isAdmin = $forceUserMode ? false : $this->isAdmin($user);
 
         $query = Tournament::with([
-            'tournamentType:id,name,short_name,calendar_color',
+            // is_national serve a decidere chi puo' modificare (SZR no sui nazionali)
+            'tournamentType:id,name,short_name,calendar_color,is_national',
             'club:id,name,zone_id',
             'club.zone:id,name',
+            'zone:id,name',
         ]);
 
         if ($isAdmin) {

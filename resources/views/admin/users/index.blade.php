@@ -352,7 +352,7 @@
                     <div>
                         <p class="text-sm text-gray-500">Arbitri</p>
                         <p class="text-xl font-semibold text-gray-900">
-                            {{ \App\Models\User::where('user_type', 'referee')->count() }}
+                            {{ $counters['referees'] }}
                         </p>
                     </div>
                 </div>
@@ -364,7 +364,7 @@
                     <div>
                         <p class="text-sm text-gray-500">Amministratori</p>
                         <p class="text-xl font-semibold text-gray-900">
-                            {{ \App\Models\User::whereIn('user_type', ['admin', 'national_admin', 'super_admin'])->count() }}
+                            {{ $counters['admins'] }}
                         </p>
                     </div>
                 </div>

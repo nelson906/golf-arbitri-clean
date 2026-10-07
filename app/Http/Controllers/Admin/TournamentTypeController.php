@@ -95,7 +95,9 @@ class TournamentTypeController extends Controller
         ]);
 
         // I checkbox non inviati dal browser valgono false — forziamo il valore
+        // (anche "Attivo": prima togliere la spunta non disattivava il tipo)
         $validated['is_national'] = $request->boolean('is_national');
+        $validated['is_active'] = $request->boolean('is_active');
 
         $tournamentType->update($validated);
 

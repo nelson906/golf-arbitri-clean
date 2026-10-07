@@ -83,9 +83,12 @@ class AssignmentValidationService
 
         foreach ($byReferee as $userId => $refereeAssignments) {
             // Ordina per data
+            // values(): sortBy conserva le chiavi, e slice($index + 1) le usa
+            // come posizioni (un'assegnazione fuori ordine veniva confrontata
+            // con se stessa e il conflitto vero si perdeva)
             $sorted = $refereeAssignments->sortBy(function ($a) {
                 return $a->tournament->start_date;
-            });
+            })->values();
 
             // Cerca sovrapposizioni
             foreach ($sorted as $index => $assignment) {

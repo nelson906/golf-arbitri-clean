@@ -17,7 +17,6 @@ use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StatisticsDashboardController extends Controller
 {
@@ -51,7 +50,6 @@ class StatisticsDashboardController extends Controller
         ];
         $tournamentStats = $this->tournamentStats->getGeneralStats($user);
         $chartData = $this->getChartData();
-        $performanceMetrics = $this->getPerformanceMetrics();
 
         return view('admin.statistics.dashboard', compact(
             'generalStats',
@@ -60,7 +58,6 @@ class StatisticsDashboardController extends Controller
             'refereeStats',
             'tournamentStats',
             'chartData',
-            'performanceMetrics',
             'isNationalAdmin',
             'period'
         ));
@@ -241,63 +238,6 @@ class StatisticsDashboardController extends Controller
         ));
     }
 
-    /**
-     * Metriche performance
-     */
-    public function performance(Request $request): View
-    {
-        $user = auth()->user();
-        $isNationalAdmin = $this->isNationalAdmin($user);
-
-        $period = $request->integer('period', 30);
-
-        $metrics = [
-            'response_time' => [],
-            'assignment_efficiency' => [],
-            'availability_trends' => [],
-            'system_health' => [],
-            'user_engagement' => [],
-        ];
-
-        return view('admin.statistics.performance', compact(
-            'metrics',
-            'isNationalAdmin',
-            'period'
-        ));
-    }
-
-    /**
-     * Export statistiche CSV
-     */
-    public function exportCsv(Request $request): StreamedResponse
-    {
-        $type = $request->string('type', 'general')->toString();
-        $user = auth()->user();
-
-        $filename = "statistiche_{$type}_".Carbon::now()->format('Y-m-d').'.csv';
-
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ];
-
-        return response()->stream(function () use ($type, $user) {
-            $handle = fopen('php://output', 'w');
-            if ($handle === false) {
-                return;
-            }
-
-            match ($type) {
-                'tornei' => $this->exportTournamentsCSV($handle, $user),
-                'arbitri' => $this->exportRefereesCSV($handle, $user),
-                'assegnazioni' => $this->exportAssignmentsCSV($handle, $user),
-                default => $this->exportGeneralCSV($handle, $user),
-            };
-
-            fclose($handle);
-        }, 200, $headers);
-    }
-
     // Private helper methods
     /**
      * @param  \App\Models\User|null  $user
@@ -355,19 +295,6 @@ class StatisticsDashboardController extends Controller
     }
 
     /**
-     * @return array<string, mixed>
-     */
-    private function getPerformanceMetrics(): array
-    {
-        return [
-            'assignment_rate' => 85.5,
-            'response_time' => 2.3,
-            'user_satisfaction' => 92.1,
-            'system_uptime' => 99.8,
-        ];
-    }
-
-    /**
      * @template TModel of \Illuminate\Database\Eloquent\Model
      *
      * @param  \Illuminate\Database\Eloquent\Builder<TModel>  $query
@@ -387,28 +314,4 @@ class StatisticsDashboardController extends Controller
         }
     }
 
-    // Export methods (placeholder implementations)
-    /**
-     * @param  resource  $handle
-     * @param  \App\Models\User|null  $user
-     */
-    private function exportTournamentsCSV($handle, $user): void {}
-
-    /**
-     * @param  resource  $handle
-     * @param  \App\Models\User|null  $user
-     */
-    private function exportRefereesCSV($handle, $user): void {}
-
-    /**
-     * @param  resource  $handle
-     * @param  \App\Models\User|null  $user
-     */
-    private function exportAssignmentsCSV($handle, $user): void {}
-
-    /**
-     * @param  resource  $handle
-     * @param  \App\Models\User|null  $user
-     */
-    private function exportGeneralCSV($handle, $user): void {}
 }

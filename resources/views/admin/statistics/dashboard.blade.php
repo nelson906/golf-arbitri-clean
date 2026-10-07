@@ -15,10 +15,6 @@
                 <option value="90" {{ $period == 90 ? 'selected' : '' }}>Ultimi 90 giorni</option>
                 <option value="365" {{ $period == 365 ? 'selected' : '' }}>Ultimo anno</option>
             </select>
-            <a href="{{ route('admin.statistics.export', ['type' => 'general']) }}"
-               class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                📥 Esporta CSV
-            </a>
         </div>
     </div>
 @endsection
@@ -92,28 +88,6 @@
             </div>
         </div>
 
-        <div class="bg-white overflow-hidden shadow-sm rounded-lg">
-            <div class="p-6">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <div class="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
-                            <span class="text-white text-lg">📊</span>
-                        </div>
-                    </div>
-                    <div class="ml-5 w-0 flex-1">
-                        <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Performance</dt>
-                            <dd class="text-lg font-medium text-gray-900">{{ number_format($performanceMetrics['assignment_rate'], 1) }}%</dd>
-                        </dl>
-                    </div>
-                </div>
-                <div class="mt-2">
-                    <div class="text-sm text-gray-600">
-                        Tasso Assegnazione
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     {{-- Collegamenti Rapidi --}}
@@ -264,34 +238,8 @@
     </div>
     @endif
 
-    {{-- Performance Metrics --}}
-    @if($performanceMetrics)
-    <div class="bg-white shadow-sm rounded-lg">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-medium text-gray-900">⚡ Metriche Performance</h3>
-        </div>
-        <div class="p-6">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div class="text-center">
-                    <div class="text-2xl font-bold text-green-600">{{ $performanceMetrics['assignment_rate'] }}%</div>
-                    <div class="text-sm text-gray-500">Tasso Assegnazione</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-2xl font-bold text-blue-600">{{ $performanceMetrics['response_time'] }}s</div>
-                    <div class="text-sm text-gray-500">Tempo Risposta</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-2xl font-bold text-purple-600">{{ $performanceMetrics['user_satisfaction'] }}%</div>
-                    <div class="text-sm text-gray-500">Soddisfazione</div>
-                </div>
-                <div class="text-center">
-                    <div class="text-2xl font-bold text-yellow-600">{{ $performanceMetrics['system_uptime'] }}%</div>
-                    <div class="text-sm text-gray-500">Uptime Sistema</div>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endif
+    {{-- Tolte le "Metriche Performance" e il riquadro Performance: erano numeri
+         scritti nel codice (85,5%, uptime 99,8%...), non misure (2026-10-07) --}}
 
 </div>
 @endsection

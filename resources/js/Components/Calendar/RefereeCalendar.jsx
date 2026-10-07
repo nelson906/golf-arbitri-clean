@@ -292,6 +292,14 @@ const RefereeCalendar = ({ calendarData }) => {
                                         >
                                             Data Passata
                                         </button>
+                                    ) : (selectedEvent.extendedProps.days_until_deadline ?? 0) < 0 ? (
+                                        // Dopo la scadenza (vale fino alle 23:59) non si aggiunge e non si toglie
+                                        <button
+                                            disabled
+                                            className="px-4 py-2 text-sm font-medium text-white bg-gray-400 rounded-md cursor-not-allowed"
+                                        >
+                                            Scadenza passata
+                                        </button>
                                     ) : (
                                         <button
                                             onClick={() => {

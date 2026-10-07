@@ -279,7 +279,7 @@
                             {{ \Carbon\Carbon::parse($availability->tournament->start_date)->format('d/m/Y') }}
                         </td>
                         <td class="px-6 py-4">
-                            <div class="text-sm text-gray-900">{{ $availability->tournament->club->name }}</div>
+                            <div class="text-sm text-gray-900">{{ $availability->tournament->club->name ?? 'T.B.A.' }}</div>
                         </td>
                         @if($isNationalAdmin)
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
