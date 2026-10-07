@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Club;
 use App\Models\Zone;
+use App\Support\TournamentVisibility;
 use App\Traits\HasZoneVisibility;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -71,24 +72,33 @@ class ClubController extends Controller
      */
     public function show(Club $club): View
     {
+        $user = $this->authUser();
+
+        // La SZR vede solo i circoli della sua zona (stessa regola dell'elenco)
+        if (! $this->applyClubVisibility(Club::query()->whereKey($club->id), $user)->exists()) {
+            abort(403, 'Non autorizzato a vedere questo circolo');
+        }
+
         // Carica relazioni base
         $club->load(['zone']);
 
-        // Carica tornei senza filtro active (campo non esiste più)
-        $tournaments = $club->tournaments()
+        // Solo i tornei che chi guarda puo' vedere (il CRC: i nazionali)
+        $visibleTournaments = fn () => TournamentVisibility::apply($club->tournaments()->getQuery(), $user);
+
+        $tournaments = $visibleTournaments()
             ->with(['assignments.referee'])
             ->orderBy('id', 'desc')
             ->paginate(10);
 
         // Statistiche
         $stats = [
-            'total_tournaments' => $club->tournaments()->count(),
+            'total_tournaments' => $visibleTournaments()->count(),
             'total_assignments' => DB::table('assignments')
-                ->whereIn('tournament_id', $club->tournaments()->pluck('id'))
+                ->whereIn('tournament_id', $visibleTournaments()->pluck('tournaments.id'))
                 ->count(),
-            'upcoming_tournaments' => $club->tournaments()->upcoming()->count(),
-            'completed_tournaments' => $club->tournaments()->where('end_date', '<', now()->startOfDay())->count(),
-            'active_tournaments' => $club->tournaments()->where('end_date', '>=', now()->startOfDay())->count(),
+            'upcoming_tournaments' => $visibleTournaments()->upcoming()->count(),
+            'completed_tournaments' => $visibleTournaments()->where('end_date', '<', now()->startOfDay())->count(),
+            'active_tournaments' => $visibleTournaments()->where('end_date', '>=', now()->startOfDay())->count(),
         ];
 
         $isNationalAdmin = $this->isNationalAdmin();

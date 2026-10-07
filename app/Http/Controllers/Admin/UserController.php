@@ -9,6 +9,7 @@ use App\Enums\UserType;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\FigImportAccess;
+use App\Support\UserManagement;
 use App\Models\Zone;
 use App\Traits\HasZoneVisibility;
 use Illuminate\Contracts\View\View;
@@ -162,17 +163,13 @@ class UserController extends Controller
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
         $isSuperAdmin = $this->isSuperAdmin($currentUser);
 
-        // Zone disponibili (filtrate per ruolo)
-        $zones = Zone::orderBy('name');
-        if (! $isNationalAdmin && $currentUser->zone_id) {
-            $zones = $zones->where('id', $currentUser->zone_id);
-        }
-        $zones = $zones->get();
+        // L'admin di zona crea account solo nella sua zona
+        $zones = $this->zonesForNewUser($currentUser);
 
         // Circoli disponibili (tutti, anche fuori zona)
         $clubs = \App\Models\Club::orderBy('name')->get();
 
-        $userTypes = $this->creatableUserTypes($isNationalAdmin, $isSuperAdmin);
+        $userTypes = UserManagement::assignableTypes($currentUser);
 
         return view('admin.users.create', compact('zones', 'clubs', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
     }
@@ -183,23 +180,20 @@ class UserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $currentUser = $this->authUser();
-        $isNationalAdmin = $this->isNationalAdmin($currentUser);
 
         // Validazione base
         $rules = [
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'zone_id' => 'required|exists:zones,id',
+            'zone_id' => 'required|in:'.$this->zonesForNewUser($currentUser)->pluck('id')->implode(','),
             'referee_code' => 'nullable|string|max:20|unique:users',
             'level' => 'required|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio',
             'phone' => 'nullable|string|max:20',
             'city' => 'nullable|string|max:255',
             'club_member' => 'nullable|string|max:255',
-            // D12: stesse regole della modifica (P14)
-            'user_type' => 'required|in:'.implode(',', array_keys(
-                $this->creatableUserTypes($isNationalAdmin, $this->isSuperAdmin($currentUser))
-            )),
+            // Stesse regole della modifica (UserManagement)
+            'user_type' => 'required|in:'.implode(',', array_keys(UserManagement::assignableTypes($currentUser))),
         ];
 
         $validated = $request->validate($rules);
@@ -238,34 +232,26 @@ class UserController extends Controller
             abort(404);
         }
 
-        // P14: un account super admin lo gestisce solo un super admin
-        if ($user->isSuperAdmin() && ! $this->isSuperAdmin($currentUser)) {
-            abort(403, 'Solo un super admin può modificare un super admin');
-        }
+        $this->ensureCanManage($currentUser, $user);
         $isNationalAdmin = $this->isNationalAdmin($currentUser);
         $isSuperAdmin = $this->isSuperAdmin($currentUser);
 
-        // Verifica permessi tramite trait
-        if (! $isNationalAdmin && $this->getUserZoneId($currentUser) != $user->zone_id) {
-            abort(403, 'Non autorizzato a modificare questo utente');
-        }
-
-        // Zone disponibili (filtrate per ruolo)
-        $zones = Zone::orderBy('name');
-        if (! $isNationalAdmin && $currentUser->zone_id) {
-            $zones = $zones->where('id', $currentUser->zone_id);
-        }
-        $zones = $zones->get();
+        // Solo il super admin sposta un utente in un'altra zona
+        $canChangeZone = UserManagement::canChangeZone($currentUser);
+        $zones = $canChangeZone
+            ? Zone::orderBy('name')->get()
+            : Zone::whereKey($user->zone_id)->get();
 
         // Circoli disponibili (tutti, anche fuori zona)
         $clubs = \App\Models\Club::where('is_active', true)
             ->orderBy('name')
             ->get();
 
-        // Tipi utente modificabili (stessa regola di update(), P14)
-        $userTypes = $this->creatableUserTypes($isNationalAdmin, $isSuperAdmin);
+        // Tipi utente modificabili (stessa regola di update())
+        $userTypes = UserManagement::assignableTypes($currentUser);
+        $canDeactivate = UserManagement::canToggleActive($currentUser, $user);
 
-        return view('admin.users.edit', compact('user', 'zones', 'clubs', 'userTypes', 'isNationalAdmin', 'isSuperAdmin'));
+        return view('admin.users.edit', compact('user', 'zones', 'clubs', 'userTypes', 'isNationalAdmin', 'isSuperAdmin', 'canChangeZone', 'canDeactivate'));
     }
 
     /**
@@ -278,16 +264,8 @@ class UserController extends Controller
             abort(404);
         }
 
-        // P14: un account super admin lo gestisce solo un super admin
-        if ($user->isSuperAdmin() && ! $this->isSuperAdmin($currentUser)) {
-            abort(403, 'Solo un super admin può modificare un super admin');
-        }
-        $isNationalAdmin = $this->isNationalAdmin($currentUser);
-
-        // Verifica permessi tramite trait
-        if (! $isNationalAdmin && $this->getUserZoneId($currentUser) != $user->zone_id) {
-            abort(403, 'Non autorizzato a modificare questo utente');
-        }
+        $this->ensureCanManage($currentUser, $user);
+        $canChangeZone = UserManagement::canChangeZone($currentUser);
 
         // Validazione
         $rules = [
@@ -295,10 +273,9 @@ class UserController extends Controller
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
             // P14: solo il super admin assegna il tipo super_admin
-            'user_type' => 'required|in:'.implode(',', array_keys(
-                $this->creatableUserTypes($isNationalAdmin, $this->isSuperAdmin($currentUser))
-            )),
-            'zone_id' => 'required|exists:zones,id',
+            'user_type' => 'required|in:'.implode(',', array_keys(UserManagement::assignableTypes($currentUser))),
+            // Solo il super admin sposta un utente in un'altra zona
+            'zone_id' => $canChangeZone ? 'required|exists:zones,id' : 'nullable',
             'referee_code' => 'nullable|string|max:20|unique:users,referee_code,'.$user->id,
             'level' => 'nullable|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio',
             'phone' => 'nullable|string|max:20',
@@ -321,8 +298,14 @@ class UserController extends Controller
         // Genera automaticamente il campo 'name' concatenando first_name e last_name
         $validated['name'] = trim($validated['first_name'].' '.$validated['last_name']);
 
-        // Gestisci il campo is_active (checkbox)
-        $validated['is_active'] = $request->has('is_active');
+        if (! $canChangeZone) {
+            $validated['zone_id'] = $user->zone_id;
+        }
+
+        // Gestisci il campo is_active (checkbox); un super admin resta attivo
+        $validated['is_active'] = UserManagement::canToggleActive($currentUser, $user)
+            ? $request->has('is_active')
+            : $user->is_active || $user->isSuperAdmin();
 
         // Aggiorna utente
         $user->update($validated);
@@ -342,16 +325,7 @@ class UserController extends Controller
             abort(404);
         }
 
-        // P14: un account super admin lo gestisce solo un super admin
-        if ($user->isSuperAdmin() && ! $this->isSuperAdmin($currentUser)) {
-            abort(403, 'Solo un super admin può eliminare un super admin');
-        }
-        $isNationalAdmin = $this->isNationalAdmin($currentUser);
-
-        // Verifica permessi: admin nazionale può eliminare tutti, admin zonale solo utenti della propria zona
-        if (! $isNationalAdmin && $this->getUserZoneId($currentUser) != $user->zone_id) {
-            abort(403, 'Non autorizzato a eliminare questo utente');
-        }
+        $this->ensureCanManage($currentUser, $user);
 
         // Non permettere auto-eliminazione
         if ($user->id === $currentUser->id) {
@@ -379,9 +353,11 @@ class UserController extends Controller
         if (FigImportAccess::hiddenFrom($user, $currentUser)) {
             abort(404);
         }
-        // Verifica permessi tramite trait
-        if (! $this->isNationalAdmin($currentUser) && $this->getUserZoneId($currentUser) != $user->zone_id) {
-            abort(403, 'Non autorizzato');
+        $this->ensureCanManage($currentUser, $user);
+        if (! UserManagement::canToggleActive($currentUser, $user)) {
+            return back()->with('error', $user->isSuperAdmin()
+                ? 'Un super admin non può essere disattivato'
+                : 'Non puoi disattivare il tuo account');
         }
 
         // Toggle is_active
@@ -394,25 +370,25 @@ class UserController extends Controller
     }
 
     /**
-     * Tipi utente che chi opera puo' assegnare, in creazione e in modifica.
-     * P14: ogni admin promuove ad admin di zona; il CRC anche ad admin
-     * nazionale; solo il super admin assegna super admin.
-     *
-     * @return array<string, string>
+     * Blocca chi non puo' gestire l'account (vedi UserManagement).
      */
-    private function creatableUserTypes(bool $isNationalAdmin, bool $isSuperAdmin): array
+    private function ensureCanManage(User $currentUser, User $user): void
     {
-        $types = [
-            UserType::Referee->value => 'Arbitro',
-            UserType::ZoneAdmin->value => 'Admin Zona',
-        ];
-        if ($isNationalAdmin) {
-            $types[UserType::NationalAdmin->value] = 'Admin Nazionale';
+        if (! UserManagement::canManage($currentUser, $user)) {
+            abort(403, 'Non autorizzato a gestire questo utente');
         }
-        if ($isSuperAdmin) {
-            $types[UserType::SuperAdmin->value] = 'Super Admin';
-        }
+    }
 
-        return $types;
+    /**
+     * Zone in cui chi opera puo' creare un account: tutte per super admin
+     * e CRC, solo la propria per l'admin di zona.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, Zone>
+     */
+    private function zonesForNewUser(User $currentUser): \Illuminate\Database\Eloquent\Collection
+    {
+        return $currentUser->isZoneAdmin()
+            ? Zone::whereKey($currentUser->zone_id)->get()
+            : Zone::orderBy('name')->get();
     }
 }

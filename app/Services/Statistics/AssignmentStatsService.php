@@ -64,7 +64,8 @@ class AssignmentStatsService
             return Collection::make([]);
         }
 
-        return Assignment::query()
+        // Il CRC conta solo le designazioni sui tornei nazionali
+        return $this->baseQuery($user)
             ->join('tournaments', 'assignments.tournament_id', '=', 'tournaments.id')
             ->join('zones', 'tournaments.zone_id', '=', 'zones.id')
             ->selectRaw('zones.name, COUNT(*) as totale')

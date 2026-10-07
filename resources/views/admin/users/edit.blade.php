@@ -146,7 +146,7 @@
                         <label for="zone_id" class="block text-sm font-medium text-gray-700 mb-1">Zona *</label>
                         <select name="zone_id" id="zone_id"
                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('zone_id') border-red-500 @enderror"
-                            required>
+                            @if ($canChangeZone) required @else disabled @endif>
                             <option value="">Seleziona zona</option>
                             @foreach ($zones as $zone)
                                 {{-- ✅ FIX: usa $user->zone_id invece di $user->zone_id --}}
@@ -156,6 +156,9 @@
                                 </option>
                             @endforeach
                         </select>
+                        @unless ($canChangeZone)
+                            <p class="mt-1 text-xs text-gray-500">Il cambio di zona lo fa il super admin.</p>
+                        @endunless
                         @error('zone_id')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -220,13 +223,15 @@
                     @enderror
                 </div>
 
-                {{-- Stato (dall'User) --}}
+                {{-- Stato (dall'User): un super admin non si disattiva --}}
+                @if ($canDeactivate)
                 <div class="flex items-center">
                     <input type="checkbox" name="is_active" id="is_active" value="1"
                         {{ old('is_active', $user->is_active) ? 'checked' : '' }}
                         class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                     <label for="is_active" class="ml-2 block text-sm text-gray-900">Arbitro attivo</label>
                 </div>
+                @endif
 
                 {{-- Actions --}}
                 {{-- Submit Buttons del form UPDATE --}}

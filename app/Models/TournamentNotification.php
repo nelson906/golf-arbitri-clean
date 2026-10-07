@@ -29,7 +29,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification today()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereAttachments($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereDetails($value)
@@ -99,17 +98,6 @@ class TournamentNotification extends Model
 
     // NOTA (audit 2026-06): rimossa individualNotifications() — puntava al
     // model legacy Notification (eliminato); relazione mai letta in app/view.
-
-    /**
-     * 📊 Scope: Notifiche di oggi
-     *
-     * @param  Builder<TournamentNotification>  $query
-     * @return Builder<TournamentNotification>
-     */
-    public function scopeToday(Builder $query): Builder
-    {
-        return $query->whereDate('sent_at', today());
-    }
 
     /**
      * ✅ Accessor: Stato formattato

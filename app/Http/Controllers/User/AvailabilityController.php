@@ -184,6 +184,13 @@ class AvailabilityController extends Controller
 
         // Return JSON for AJAX requests
         if ($request->wantsJson() || $request->ajax()) {
+            // La pagina si ricarica dopo la risposta: messaggio e avviso giallo
+            // (riepilogo non partito) restano in sessione per comparire li'
+            session()->flash('success', $message);
+            if ($mailWarning !== null) {
+                session()->flash('warning', $mailWarning);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => $message,

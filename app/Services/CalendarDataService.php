@@ -7,6 +7,7 @@ use App\Models\Tournament;
 use App\Models\TournamentType;
 use App\Models\User;
 use App\Models\Zone;
+use App\Support\TournamentVisibility;
 use App\Support\Untrusted;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -35,10 +36,10 @@ class CalendarDataService
      * @param  \Illuminate\Support\Collection<int, \App\Models\Tournament>  $tournaments
      * @return \Illuminate\Support\Collection<int, array<string, mixed>>
      */
-    public function prepareAdminCalendarData(Collection $tournaments): Collection
+    public function prepareAdminCalendarData(Collection $tournaments, ?User $user = null): Collection
     {
         /** @var \Illuminate\Support\Collection<int, array<string, mixed>> $rows */
-        $rows = $tournaments->map(function ($tournament) {
+        $rows = $tournaments->map(function ($tournament) use ($user) {
             $color = $this->colorService->getAdminEventColor($tournament);
 
             return [
@@ -49,7 +50,7 @@ class CalendarDataService
                 'color' => $color,
                 'textColor' => $this->colorService->textColorFor($color),
                 'borderColor' => $this->colorService->getAdminBorderColor($tournament),
-                'extendedProps' => $this->getAdminExtendedProps($tournament),
+                'extendedProps' => $this->getAdminExtendedProps($tournament, $user),
             ];
         });
 
@@ -122,7 +123,7 @@ class CalendarDataService
 
         // Prepara tornei in base al tipo di vista
         $calendarTournaments = match ($viewType) {
-            'admin' => $this->prepareAdminCalendarData($tournaments),
+            'admin' => $this->prepareAdminCalendarData($tournaments, $user),
             default => $this->prepareRefereeCalendarData($tournaments, $user, $availableTournamentIds, $assignedTournamentIds),
         };
 
@@ -149,7 +150,7 @@ class CalendarDataService
      *
      * @return array<string, mixed>
      */
-    protected function getAdminExtendedProps(Tournament $tournament): array
+    protected function getAdminExtendedProps(Tournament $tournament, ?User $user = null): array
     {
         return [
             'club' => $tournament->club->name ?? 'N/A',
@@ -167,6 +168,8 @@ class CalendarDataService
             'assignments_count' => $tournament->assignments_count ?? $tournament->assignments->count(),
             'required_referees' => $tournament->required_referees ?? 1,
             'max_referees' => $tournament->tournamentType->max_referees ?? 4,
+            // Modifica/elimina: la SZR non tocca i nazionali (2026-10-07)
+            'can_edit' => TournamentVisibility::canEdit($tournament, $user),
         ];
     }
 

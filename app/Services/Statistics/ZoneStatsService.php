@@ -30,8 +30,8 @@ class ZoneStatsService
 
         $zones = Zone::with(['users', 'clubs', 'tournaments'])->get();
 
-        return $zones->map(function ($zone) use ($dateFrom, $dateTo) {
-            return $this->getZoneStats($zone, $dateFrom, $dateTo);
+        return $zones->map(function ($zone) use ($dateFrom, $dateTo, $user) {
+            return $this->getZoneStats($zone, $dateFrom, $dateTo, $user);
         })->toArray();
     }
 
@@ -40,9 +40,10 @@ class ZoneStatsService
      *
      * @return array<string, mixed>
      */
-    public function getZoneStats(Zone $zone, ?string $dateFrom = null, ?string $dateTo = null): array
+    public function getZoneStats(Zone $zone, ?string $dateFrom = null, ?string $dateTo = null, ?User $user = null): array
     {
-        $tournamentsQuery = $zone->tournaments();
+        // Il CRC conta solo tornei e designazioni dei nazionali (2026-10-07)
+        $tournamentsQuery = $this->applyTournamentVisibility($zone->tournaments()->getQuery(), $user);
         if ($dateFrom) {
             $tournamentsQuery->where('start_date', '>=', $dateFrom);
         }
@@ -50,9 +51,12 @@ class ZoneStatsService
             $tournamentsQuery->where('start_date', '<=', $dateTo);
         }
 
-        $assignmentsQuery = Assignment::whereHas('tournament', function ($q) use ($zone) {
-            $q->where('zone_id', $zone->id);
-        });
+        $assignmentsQuery = $this->applyTournamentRelationVisibility(
+            Assignment::whereHas('tournament', function ($q) use ($zone) {
+                $q->where('zone_id', $zone->id);
+            }),
+            $user
+        );
         if ($dateFrom) {
             $assignmentsQuery->whereHas('tournament', function ($q) use ($dateFrom) {
                 $q->where('start_date', '>=', $dateFrom);
@@ -141,12 +145,13 @@ class ZoneStatsService
             return [];
         }
 
-        return Zone::with(['tournaments', 'users'])
+        return Zone::with(['users'])
             ->get()
-            ->map(function ($zone) {
+            ->map(function ($zone) use ($user) {
                 return [
                     'name' => $zone->name,
-                    'tournaments' => $zone->tournaments->count(),
+                    // Il CRC conta solo i tornei nazionali
+                    'tournaments' => $this->applyTournamentVisibility($zone->tournaments()->getQuery(), $user)->count(),
                     'referees' => $zone->users()->where('user_type', '=', 'referee')->count(),
                     'active_referees' => $zone->users()
                         ->where('user_type', '=', 'referee')

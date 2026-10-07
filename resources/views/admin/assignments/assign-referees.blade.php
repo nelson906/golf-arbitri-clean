@@ -98,6 +98,9 @@
                             @endif
                         </div>
                     </div>
+                    @if (in_array($assignment->id, $lockedAssignmentIds ?? [], true))
+                    <span class="text-xs text-gray-500">Designato dal CRC</span>
+                    @else
                     <form action="{{ route('admin.assignments.removeFromTournament', [$tournament->id, $assignment->user_id]) }}"
                           method="POST"
                           class="inline"
@@ -108,6 +111,7 @@
                             ✕ Rimuovi
                         </button>
                     </form>
+                    @endif
                 </div>
                 @endforeach
             </div>

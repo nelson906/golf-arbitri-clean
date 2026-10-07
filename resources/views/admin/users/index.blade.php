@@ -260,16 +260,20 @@
                                         👁️
                                     </a>
 
+                                    @php
+                                        $canManageRow = \App\Support\UserManagement::canManage(auth()->user(), $user);
+                                        $canToggleRow = \App\Support\UserManagement::canToggleActive(auth()->user(), $user);
+                                    @endphp
                                     {{-- Modifica --}}
-                                    @if ((isset($isNationalAdmin) && $isNationalAdmin) || auth()->user()->zone_id == $user->zone_id)
+                                    @if ($canManageRow)
                                         <a href="{{ route('admin.users.edit', $user) }}"
                                             class="text-yellow-600 hover:text-yellow-900" title="Modifica">
                                             ✏️
                                         </a>
                                     @endif
 
-                                    {{-- Toggle Attivo (solo admin nazionali) --}}
-                                    @if (isset($isNationalAdmin) && $isNationalAdmin)
+                                    {{-- Attiva/disattiva: chi gestisce l'account; mai un super admin --}}
+                                    @if ($canToggleRow)
                                         <form action="{{ route('admin.users.toggle-active', $user) }}" method="POST"
                                             class="inline">
                                             @csrf

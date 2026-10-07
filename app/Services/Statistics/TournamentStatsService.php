@@ -63,7 +63,8 @@ class TournamentStatsService
             return Collection::make([]);
         }
 
-        return Tournament::query()
+        // Il CRC conta solo i tornei nazionali
+        return $this->baseQuery($user)
             ->join('zones', 'tournaments.zone_id', '=', 'zones.id')
             ->selectRaw('zones.name, COUNT(*) as totale')
             ->orderBy('zones.name', 'asc')
@@ -133,7 +134,8 @@ class TournamentStatsService
         // FIX (audit 2026-06): contava sulla tabella legacy `notifications`
         // (mai scritta dal flusso attuale → sempre 0). Ora conta i tornei
         // con notifiche reali in `tournament_notifications`.
-        return TournamentNotification::query()->distinct()->count('tournament_id');
+        return $this->applyTournamentRelationVisibility(TournamentNotification::query(), $user ?? auth()->user())
+            ->distinct()->count('tournament_id');
     }
 
     /**
