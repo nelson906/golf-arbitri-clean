@@ -222,7 +222,7 @@ class NotificationController extends Controller
         // Nazionale (P12/P13, 2026-10-03): solo la notifica di chi apre il form,
         // non salvata, e nessun documento Word.
         $notification = $isNational
-            ? $this->preparationService->prepareNationalNotification($tournament, $this->authUser())
+            ? $this->preparationService->prepareNationalNotification($tournament, $this->authUser(), request()->string('comunicazione')->toString() ?: null)
             : $this->preparationService->prepareNotification($tournament);
 
         // Gli allegati NON si creano all'apertura: si creano una volta sola con
@@ -238,6 +238,9 @@ class NotificationController extends Controller
         $formData = $this->preparationService->loadFormData($tournament, $notification);
 
         return view('admin.notifications.prepare_notification', array_merge([
+            'nationalFormType' => $isNational
+                ? NotificationPreparationService::nationalFormType($this->authUser(), request()->string('comunicazione')->toString() ?: null)
+                : null,
             'tournament' => $tournament,
             'notification' => $notification,
             'documentStatus' => $documentStatus,
@@ -384,10 +387,11 @@ class NotificationController extends Controller
                 'type' => $type,
             ]);
 
-            $filename = $type === 'convocation' ? 'Convocazione.docx' : 'Lettera_Circolo.docx';
+            $extension = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION)) === 'doc' ? 'doc' : 'docx';
+            $filename = ($type === 'convocation' ? 'Convocazione.' : 'Lettera_Circolo.').$extension;
 
             return response()->file($fullPath, [
-                'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'Content-Type' => $extension === 'doc' ? 'application/msword' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
                 'Content-Disposition' => 'attachment; filename="'.$filename.'"',
             ]);
         } catch (\Exception $e) {
@@ -465,6 +469,12 @@ class NotificationController extends Controller
     {
         $this->checkNotificationAccess($notification);
 
+        if (! $this->canDeleteNotification($notification)) {
+            return redirect()->back()->with('error',
+                'Questa comunicazione appartiene all\'altra parte (CRC o zona): non puoi eliminarla.'
+            );
+        }
+
         try {
             $this->transactionService->deleteWithCleanup($notification);
 
@@ -484,7 +494,10 @@ class NotificationController extends Controller
         $this->checkTournamentAccess($tournament);
 
         try {
-            $notifications = TournamentNotification::where('tournament_id', $tournament->id)->get();
+            // Solo le comunicazioni che chi opera puo' eliminare: la SZR non
+            // tocca quella del CRC e viceversa (2026-10-07)
+            $notifications = TournamentNotification::where('tournament_id', $tournament->id)->get()
+                ->filter(fn (TournamentNotification $n): bool => $this->canDeleteNotification($n));
 
             foreach ($notifications as $notification) {
                 $this->transactionService->deleteWithCleanup($notification);
@@ -599,6 +612,11 @@ class NotificationController extends Controller
                 'attach_convocation' => $request->boolean('attach_convocation', true),
                 'recipients' => [
                     'referees' => $request->array('recipients'),
+                    // Designati tolti a mano: il form li ripropone tolti
+                    'excluded_referees' => array_values(array_diff(
+                        \App\Support\Untrusted::intList($tournament->assignments()->pluck('user_id')->all()),
+                        \App\Support\Untrusted::intList($request->array('recipients'))
+                    )),
                     // Il circolo e' sempre il destinatario principale (2026-10-07)
                     'club' => true,
                     'institutional' => $request->array('fixed_addresses'),
@@ -799,12 +817,18 @@ class NotificationController extends Controller
             $toRecipients = $recipients['to'];
             $ccArray      = $recipients['cc'];
 
-            // Verifica che ci siano destinatari
-            if ($recipients['isEmpty']) {
-                return redirect()->back()->with('error', 'Nessun destinatario selezionato.');
+            // Il Comitato Campionati e' il destinatario principale: senza il suo
+            // indirizzo non si invia (mai promuovere un indirizzo in copia)
+            if ($toRecipients === []) {
+                return redirect()->back()->with('error',
+                    'Manca un indirizzo valido del Comitato Campionati (GOLF_EMAIL_CAMPIONATI nel .env): la comunicazione non parte.'
+                );
             }
 
             // Invia email
+            // Mittente: CRC per gli arbitri, la zona per gli osservatori
+            $sender = $isCrcNotification ? [null, null] : $this->zoneSender($tournament);
+
             $successCount = 0;
             $errorCount = 0;
             $lastError = null;
@@ -817,7 +841,7 @@ class NotificationController extends Controller
                     if (! empty($ccArray)) {
                         $mailer->cc($ccArray);
                     }
-                    $mailer->send(new NationalNotificationMail($validated['subject'], $validated['message']));
+                    $mailer->send(new NationalNotificationMail($validated['subject'], $validated['message'], ...$sender));
                     $successCount++;
                     $reached += 1 + count($ccArray);
                 } catch (\Exception $e) {
@@ -830,28 +854,12 @@ class NotificationController extends Controller
                 }
             }
 
-            // Se non ci sono TO ma solo CC, usa il primo CC come TO
-            // Formato $ccArray: array<{email, name}>
-            if (empty($toRecipients) && ! empty($ccArray)) {
-                $first       = $ccArray[0];
-                $remainingCc = array_slice($ccArray, 1);
-                try {
-                    $mailer = Mail::to($first['email']);
-                    if (! empty($remainingCc)) {
-                        $mailer->cc($remainingCc);
-                    }
-                    $mailer->send(new NationalNotificationMail($validated['subject'], $validated['message']));
-                    $successCount++;
-                    $reached += 1 + count($remainingCc);
-                } catch (\Exception $e) {
-                    Log::error('Errore invio email (solo CC)', ['error' => $e->getMessage()]);
-                    $errorCount++;
-                    $lastError = 'il server di posta ha rifiutato l\'invio: '.$e->getMessage();
-                }
-            }
-
-            // Lista nomi e totale destinatari calcolati dal builder
-            $refereeList     = implode(', ', $recipients['allNames']);
+            // Designati di questa comunicazione (CRC: arbitri e Direttore; SZR:
+            // osservatori) e totale destinatari calcolato dal builder
+            $refereeList     = TournamentNotification::refereeListFor(
+                $tournament->assignments()->with('user')->get(),
+                $notificationType
+            );
             $totalRecipients = $recipients['total'];
 
             // Transazione: elimina bozza zonale + crea/aggiorna record nazionale
@@ -895,6 +903,24 @@ class NotificationController extends Controller
                     $values['sent_at'] = now();
                 }
 
+                // Tentativo fallito dopo un invio riuscito: restano i dati di
+                // quell'invio, si registra solo l'esito del tentativo
+                $existing = TournamentNotification::where('tournament_id', $tournament->id)
+                    ->where('notification_type', $notificationType)
+                    ->first();
+                if ($status === 'failed' && $existing !== null && $existing->sent_at !== null) {
+                    $previous = is_array($existing->metadata) ? $existing->metadata : [];
+                    $existing->update([
+                        'status' => 'failed',
+                        'metadata' => array_merge($previous, [
+                            'last_error' => $lastError,
+                            'last_attempt_at' => now()->toDateTimeString(),
+                        ]),
+                    ]);
+
+                    return;
+                }
+
                 TournamentNotification::updateOrCreate(
                     [
                         'tournament_id' => $tournament->id,
@@ -928,5 +954,43 @@ class NotificationController extends Controller
 
             return redirect()->back()->with('error', 'Errore nell\'invio della notifica: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Sui nazionali la comunicazione degli arbitri e' del CRC e quella degli
+     * osservatori della zona: ciascuno elimina solo la propria (il super
+     * admin tutto).
+     */
+    private function canDeleteNotification(TournamentNotification $notification): bool
+    {
+        $type = $this->authUser()->user_type;
+
+        return match ($notification->notification_type) {
+            'crc_referees' => $type !== \App\Enums\UserType::ZoneAdmin,
+            'zone_observers' => $type !== \App\Enums\UserType::NationalAdmin,
+            default => true,
+        };
+    }
+
+    /**
+     * Nome e indirizzo di risposta della zona in cui si gioca il torneo (per
+     * la comunicazione degli osservatori), con la stessa regola delle mail
+     * zonali: email della zona se valida, altrimenti szrN@federgolf.it.
+     *
+     * @return array{0: string, 1: string|null}
+     */
+    private function zoneSender(Tournament $tournament): array
+    {
+        $zone = $tournament->club->zone ?? $tournament->zone;
+        $zoneId = $tournament->club->zone_id ?? $tournament->zone_id;
+        $code = \App\Helpers\ZoneHelper::getFolderCode($zoneId);
+        $name = $zone && $zone->name ? "{$code} - {$zone->name}" : "{$code} - Sezione Zonale Regole";
+
+        $email = $zone?->email;
+        if (! is_string($email) || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            $email = $zoneId ? \App\Helpers\ZoneHelper::getEmailPattern($zoneId) : null;
+        }
+
+        return [$name, $email];
     }
 }

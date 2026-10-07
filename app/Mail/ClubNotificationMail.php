@@ -156,10 +156,32 @@ class ClubNotificationMail extends Mailable implements ShouldQueue
                 'referees' => $referees,
                 'zone_email' => ZoneHelper::getEmailPattern($this->tournament->zone_id ?? 0),
                 'club_email' => $this->tournament->club->email ?? '',
-                'attachments_info' => count($this->attachmentPaths) > 0 ?
-                    ['Facsimile convocazione in formato Word'] : null,
+                // Elenco degli allegati veri (prima diceva sempre "convocazione"
+                // anche quando partiva la sola lettera al circolo)
+                'attachments_info' => $this->attachmentLabels() ?: null,
             ]
         );
+    }
+
+    /**
+     * Descrizione degli allegati per il testo della mail.
+     *
+     * @return list<string>
+     */
+    private function attachmentLabels(): array
+    {
+        $labels = [];
+        foreach ($this->attachmentPaths as $attachment) {
+            if (! is_array($attachment)) {
+                continue;
+            }
+            $name = strtolower((string) ($attachment['name'] ?? ''));
+            $labels[] = str_contains($name, 'lettera')
+                ? 'Lettera al circolo (fac-simile) in formato Word'
+                : 'Convocazione in formato Word';
+        }
+
+        return $labels;
     }
 
     /**

@@ -211,6 +211,27 @@ class TournamentNotification extends Model
     }
 
     /**
+     * Nomi dei designati che riguardano la notifica: zonale tutti; CRC arbitri
+     * e Direttore (non gli osservatori); SZR solo gli osservatori.
+     *
+     * @param  iterable<int, \App\Models\Assignment>  $assignments
+     */
+    public static function refereeListFor(iterable $assignments, ?string $notificationType): string
+    {
+        $observer = \App\Enums\AssignmentRole::Observer->value;
+
+        return collect($assignments)
+            ->filter(fn ($a) => match ($notificationType) {
+                'crc_referees' => $a->role !== $observer,
+                'zone_observers' => $a->role === $observer,
+                default => true,
+            })
+            ->map(fn ($a) => $a->user->name ?? null)
+            ->filter()
+            ->implode(', ');
+    }
+
+    /**
      * L'ultimo tentativo di invio non e' partito (nessuna mail spedita).
      * Decisione 2026-10-07: una notifica non inviata deve essere ben visibile.
      */

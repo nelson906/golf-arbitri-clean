@@ -80,7 +80,7 @@
                         <div class="text-sm text-purple-800">
                             <p class="font-medium">Notifica Gara Nazionale</p>
                             <ul class="list-disc ml-5 mt-1 space-y-1">
-                                @if(auth()->user()->isNationalAdmin())
+                                @if(($nationalFormType ?? null) === 'crc_referees')
                                     <li>Comunica i nominativi degli <strong>arbitri designati</strong> al Comitato Campionati.</li>
                                     <li>La zona di competenza e gli arbitri riceveranno copia della notifica.</li>
                                 @else
@@ -281,13 +281,21 @@
                 <div class="lg:col-span-2">
                     @php
                         $isNationalTournament = $tournament->tournamentType?->is_national ?? false;
-                        $isNationalAdmin = auth()->user()->isNationalAdmin();
                     @endphp
 
                     {{-- Switch tra form nazionale e zonale --}}
                     @if($isNationalTournament)
+                        {{-- Il super admin sceglie quale comunicazione preparare (2026-10-07) --}}
+                        @if(auth()->user()->isSuperAdmin())
+                            <div class="mb-4 flex gap-2 text-sm">
+                                <a href="{{ route('admin.tournaments.show-assignment-form', $tournament) }}"
+                                   class="px-3 py-1.5 rounded {{ $nationalFormType === 'crc_referees' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700' }}">Designazione arbitri (CRC)</a>
+                                <a href="{{ route('admin.tournaments.show-assignment-form', [$tournament, 'comunicazione' => 'zone_observers']) }}"
+                                   class="px-3 py-1.5 rounded {{ $nationalFormType === 'zone_observers' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700' }}">Designazione osservatori (zona)</a>
+                            </div>
+                        @endif
                         {{-- GARA NAZIONALE: form semplificato senza allegati --}}
-                        @if($isNationalAdmin)
+                        @if($nationalFormType === 'crc_referees')
                             {{-- CRC_ADMIN: notifica arbitri designati --}}
                             @include('admin.notifications._national_crc_form')
                         @else
@@ -303,6 +311,20 @@
                                 action="{{ route('admin.tournaments.send-assignment-with-convocation', $tournament) }}"
                                 class="space-y-6">
                                 @csrf
+                                @php
+                                    // Scelte salvate nella bozza o nell'invio precedente: il form le
+                                    // ripropone (prima tornava sempre ai valori di partenza, 2026-10-07)
+                                    $savedMeta = is_array($notification->metadata) ? $notification->metadata : [];
+                                    $savedRecipients = is_array($savedMeta['recipients'] ?? null) ? $savedMeta['recipients'] : null;
+                                    // Arbitri tolti a mano nell'ultimo salvataggio: restano tolti;
+                                    // un designato aggiunto dopo parte spuntato
+                                    $excludedRefereeIds = $savedRecipients !== null && is_array($savedRecipients['excluded_referees'] ?? null)
+                                        ? array_map('intval', $savedRecipients['excluded_referees']) : [];
+                                    $savedSection = $savedRecipients !== null && array_key_exists('zone', $savedRecipients)
+                                        ? (bool) $savedRecipients['zone'] : true;
+                                    $savedAdditional = $savedRecipients !== null && is_array($savedRecipients['additional'] ?? null)
+                                        ? array_values(array_filter($savedRecipients['additional'], 'is_array')) : [];
+                                @endphp
 
                                 {{-- Subject --}}
                                 <div>
@@ -310,7 +332,7 @@
                                         📧 Oggetto Email <span class="text-red-500">*</span>
                                     </label>
                                     <input type="text" name="subject" id="subject"
-                                        value="{{ old('subject', 'Assegnazione Arbitri - ' . $tournament->name) }}"
+                                        value="{{ old('subject', is_string($savedMeta['subject'] ?? null) ? $savedMeta['subject'] : 'Assegnazione Arbitri - ' . $tournament->name) }}"
                                         required
                                         class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200">
                                 </div>
@@ -323,6 +345,7 @@
                                     <textarea name="message" id="message" rows="8" required
                                         class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200">{{ old(
                                             'message',
+                                            is_string($savedMeta['message'] ?? null) ? $savedMeta['message'] :
                                             'Si comunica l\'assegnazione degli arbitri per il torneo ' .
                                                 $tournament->name .
                                                 ' che si terrà ' .
@@ -572,7 +595,7 @@
                                                     <div class="flex items-center">
                                                         <input type="checkbox" name="recipients[]"
                                                             value="{{ $referee->id }}" id="referee_{{ $referee->id }}"
-                                                            checked
+                                                            {{ in_array((int) $referee->id, $excludedRefereeIds, true) ? '' : 'checked' }}
                                                             class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
                                                         <label for="referee_{{ $referee->id }}"
                                                             class="ml-3 text-sm flex-1">
@@ -713,7 +736,7 @@
                                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
                                         <div class="flex items-center">
                                             <input type="checkbox" name="send_to_section" id="send_to_section"
-                                                value="1" {{ old('send_to_section', true) ? 'checked' : '' }}
+                                                value="1" {{ old('send_to_section', $savedSection) ? 'checked' : '' }}
                                                 class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
                                             <label for="send_to_section" class="ml-2 text-sm text-gray-700">
                                                 <span class="font-medium">Invia copia alla sezione</span>
@@ -742,6 +765,15 @@
                                         ➕ Email Aggiuntive
                                     </label>
                                     <div id="additional-emails-container" class="space-y-3">
+                                        @foreach ($savedAdditional as $extra)
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <input type="email" name="additional_emails[]" value="{{ $extra['email'] ?? '' }}"
+                                                    class="rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200">
+                                                <input type="text" name="additional_names[]" value="{{ $extra['name'] ?? '' }}"
+                                                    placeholder="Nome (opzionale)"
+                                                    class="rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200">
+                                            </div>
+                                        @endforeach
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                             <input type="email" name="additional_emails[]"
                                                 placeholder="email@esempio.com"
@@ -1086,7 +1118,6 @@ async function saveClauses() {
                 button.disabled = false;
                 button.innerHTML = originalText;
             }
-        }
         }
 @endunless
 

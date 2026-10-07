@@ -234,6 +234,7 @@ class NotificationRecipientBuilder
 
     private function addTo(string $email, string $name): void
     {
+        $email = trim($email); // spazi accidentali nei dati: stessa regola del controllo circolo
         if (! $this->isValidEmail($email, $name)) {
             return;
         }
@@ -251,6 +252,7 @@ class NotificationRecipientBuilder
 
     private function addCc(string $email, string $name): void
     {
+        $email = trim($email);
         if (! $this->isValidEmail($email, $name)) {
             return;
         }

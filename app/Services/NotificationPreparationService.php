@@ -34,14 +34,28 @@ class NotificationPreparationService
      * sendNationalNotification(). Decisione 2026-10-03 (P13): aprire il form
      * non crea record, e la SZR non crea mai la notifica del CRC.
      */
-    public function prepareNationalNotification(Tournament $tournament, \App\Models\User $user): TournamentNotification
+    public function prepareNationalNotification(Tournament $tournament, \App\Models\User $user, ?string $requested = null): TournamentNotification
     {
-        $type = $user->isNationalAdmin() ? 'crc_referees' : 'zone_observers';
+        $type = self::nationalFormType($user, $requested);
 
         return TournamentNotification::firstOrNew([
             'tournament_id' => $tournament->id,
             'notification_type' => $type,
         ]);
+    }
+
+    /**
+     * Quale comunicazione nazionale prepara chi apre il form: il CRC quella
+     * degli arbitri, la zona quella degli osservatori; il super admin puo'
+     * scegliere (decisione 2026-10-07: puo' tutto se serve).
+     */
+    public static function nationalFormType(\App\Models\User $user, ?string $requested = null): string
+    {
+        if ($user->user_type === \App\Enums\UserType::SuperAdmin) {
+            return $requested === 'zone_observers' ? 'zone_observers' : 'crc_referees';
+        }
+
+        return $user->user_type === \App\Enums\UserType::NationalAdmin ? 'crc_referees' : 'zone_observers';
     }
 
     public function prepareNotification(Tournament $tournament): TournamentNotification

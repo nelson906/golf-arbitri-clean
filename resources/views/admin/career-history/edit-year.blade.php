@@ -1,4 +1,5 @@
 @extends('layouts.admin')
+@section('flash-warning-inline', '1')
 
 @section('title', 'Modifica ' . $year . ' - ' . $user->name)
 

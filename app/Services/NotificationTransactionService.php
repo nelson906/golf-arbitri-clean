@@ -114,8 +114,11 @@ class NotificationTransactionService
         DB::beginTransaction();
 
         try {
-            // Aggiorna metadati
-            $notification->update(['metadata' => $metadata]);
+            // Aggiorna metadati: i campi del form sostituiscono i precedenti,
+            // l'esito dell'ultimo invio (success_count, last_error,
+            // last_attempt_at) resta (2026-10-07)
+            $previous = is_array($notification->metadata) ? $notification->metadata : [];
+            $notification->update(['metadata' => array_merge($previous, $metadata)]);
 
             // Salva clausole se presenti
             if (! empty($clauses)) {
