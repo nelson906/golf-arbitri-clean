@@ -144,7 +144,7 @@ class NotificationPreparationService
                 ->toArray(),
             'assignedReferees' => $tournament->referees()->get(),
             // Array di ID InstitutionalEmail già selezionati nella notifica corrente.
-            // Usato dalla view per pre-spuntare le checkbox. Vuoto = prima volta (usa is_default).
+            // Usato dalla view per pre-spuntare le checkbox. Vuoto = prima volta (categoria convocazioni).
             'savedInstitutionalIds' => $savedInstitutionalIds,
             'preflight' => $this->buildPreflight($tournament),
         ];
