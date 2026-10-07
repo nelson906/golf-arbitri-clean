@@ -49,6 +49,10 @@ class NotificationService
 {
     public const ERR_MISSING_RECIPIENTS = 'Missing notification recipients';
 
+    public const ERR_CLUB_EMAIL = 'Il circolo non ha un\'email valida: la notifica non parte. Inserisci l\'email nella scheda del circolo.';
+
+    public const ERR_MISSING_ATTACHMENTS = 'Mancano gli allegati: crea gli allegati (o carica la versione corretta) prima di inviare.';
+
     public function send(TournamentNotification $notification): void
     {
         $metadata = is_string($notification->metadata)
@@ -80,7 +84,12 @@ class NotificationService
         $selectedRefereeIds = Untrusted::intList($recipients['referees'] ?? null);
         $finalRefereeIds = array_values(array_intersect($selectedRefereeIds, $currentRefereeIds));
 
-        $sendToClub = (bool) ($recipients['club'] ?? true);
+        // Decisione 2026-10-07: il circolo e' sempre il destinatario principale
+        // e senza la sua email la notifica non parte mai
+        $sendToClub = true;
+        if (! self::clubHasValidEmail($tournament)) {
+            throw new \Exception(self::ERR_CLUB_EMAIL);
+        }
         $sendToZone = (bool) ($recipients['zone'] ?? false);
         $institutionalIds = Untrusted::intList($recipients['institutional'] ?? null);
         $additional = Untrusted::rows($recipients['additional'] ?? null);
@@ -103,6 +112,14 @@ class NotificationService
         $content = $metadata['message'] ?? null;
         $attachConvocation = (bool) ($metadata['attach_convocation'] ?? true);
 
+        // Allegati: sempre la versione salvata (creata una volta o ricaricata
+        // corretta). Lettera al circolo sempre; convocazione se richiesta.
+        // Se ne manca uno la notifica non parte (decisione 2026-10-07).
+        $builtAttachments = $this->buildAttachments($notification, $attachConvocation);
+        if ($builtAttachments['missing'] !== []) {
+            throw new \Exception(self::ERR_MISSING_ATTACHMENTS.' ('.implode(', ', $builtAttachments['missing']).')');
+        }
+
         $successCount = 0;
         $errorCount = 0;
         $errors = [];
@@ -114,9 +131,7 @@ class NotificationService
             // ═══════════════════════════════════════════════════════════
             $builder = new NotificationRecipientBuilder;
 
-            if ($sendToClub) {
-                $builder->addClub($tournament); // TO (skippato se senza email)
-            }
+            $builder->addClub($tournament); // TO: sempre il circolo
 
             $builder->addRefereesByIds($finalRefereeIds)
                 ->addInstitutionalsByIds($institutionalIds);
@@ -135,31 +150,9 @@ class NotificationService
 
             $built = $builder->build();
 
-            // Circolo richiesto ma irraggiungibile (senza email) → errore tracciato
-            if ($sendToClub && empty($built['to'])) {
-                Log::error('Error sending to club', [
-                    'notification_id' => $notification->id,
-                    'error' => 'Club email not found',
-                ]);
-                $errors[] = 'circolo: Club email not found';
-                $errorCount++;
-            }
-
             if (! $built['isEmpty']) {
-                // FIX M3: allegati registrati ma assenti dal disco = errore
-                // tracciato (prima: skip silenzioso, mail senza convocazione)
-                $builtAttachments = $this->buildAttachments($notification, $attachConvocation);
-                foreach ($builtAttachments['missing'] as $missingDoc) {
-                    Log::error('Attachment registered but missing from disk', [
-                        'notification_id' => $notification->id,
-                        'document' => $missingDoc,
-                    ]);
-                    $errors[] = "allegato mancante: {$missingDoc}";
-                    $errorCount++;
-                }
-
                 try {
-                    // TO = circolo; in sua assenza il primo CC è promosso a TO
+                    // TO = circolo (verificato sopra), CC tutti gli altri
                     $all = array_merge($built['to'], $built['cc']);
                     $first = $all[0];
                     $rest = array_slice($all, 1);
@@ -255,9 +248,6 @@ class NotificationService
     private function buildAttachments(TournamentNotification $notification, bool $attachConvocation = true): array
     {
         $documents = $notification->documents ?? [];
-        if (empty($documents)) {
-            return ['attachments' => [], 'missing' => []];
-        }
 
         $zone = ZoneHelper::getFolderCodeForTournament($notification->tournament);
         $docsRoot = Config::string('golf.documents.storage_path', 'convocazioni');
@@ -277,7 +267,10 @@ class NotificationService
                 continue;
             }
 
-            if (empty($documents[$key])) {
+            // Mai creato o caricato: manca (prima veniva saltato in silenzio)
+            if (empty($documents[$key]) || ! is_string($documents[$key])) {
+                $missing[] = $displayName;
+
                 continue;
             }
 
@@ -293,5 +286,16 @@ class NotificationService
         }
 
         return ['attachments' => $attachments, 'missing' => $missing];
+    }
+
+    /**
+     * Il circolo del torneo ha un'email valida? (Senza, la notifica zonale
+     * non si prepara e non parte: decisione 2026-10-07.)
+     */
+    public static function clubHasValidEmail(\App\Models\Tournament $tournament): bool
+    {
+        $email = trim((string) ($tournament->club->email ?? ''));
+
+        return $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
     }
 }

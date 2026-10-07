@@ -112,7 +112,7 @@ function buildContent(data) {
                 <div class="space-y-3">
                     <div class="text-sm text-gray-600">
                         <p><strong>File:</strong> ${data.convocation.filename}</p>
-                        <p><strong>Generato:</strong> ${data.convocation.generated_at}</p>
+                        <p><strong>Salvato:</strong> ${data.convocation.generated_at}</p>
                         <p><strong>Dimensione:</strong> ${data.convocation.size}</p>
                     </div>
 
@@ -122,18 +122,13 @@ function buildContent(data) {
                             <i class="fas fa-download mr-1"></i> Scarica
                         </a>
 
-                        <button onclick="generateDocument(${data.notification_id}, 'convocation')"
-                                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                            <i class="fas fa-redo mr-1"></i> Rigenera
-                        </button>
-
                         <button onclick="deleteDocument(${data.notification_id}, 'convocation')"
                                 class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
                             <i class="fas fa-trash mr-1"></i> Elimina
                         </button>
 
                         <label class="bg-purple-600 text-white px-4 py-2 rounded text-center hover:bg-purple-700 cursor-pointer">
-                            <i class="fas fa-upload mr-1"></i> Carica
+                            <i class="fas fa-upload mr-1"></i> Correggi allegato (carica la versione corretta)
                             <input type="file" class="hidden" onchange="uploadDocument(${data.notification_id}, 'convocation', this.files[0])" accept=".doc,.docx">
                         </label>
                     </div>
@@ -145,7 +140,7 @@ function buildContent(data) {
                     <div class="space-y-2">
                         <button onclick="generateDocument(${data.notification_id}, 'convocation')"
                                 class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full">
-                            <i class="fas fa-plus mr-1"></i> Genera Convocazione
+                            <i class="fas fa-plus mr-1"></i> Crea allegato
                         </button>
                         
                         <label class="bg-purple-600 text-white px-4 py-2 rounded text-center hover:bg-purple-700 cursor-pointer block">
@@ -167,7 +162,7 @@ function buildContent(data) {
                 <div class="space-y-3">
                     <div class="text-sm text-gray-600">
                         <p><strong>File:</strong> ${data.club_letter.filename}</p>
-                        <p><strong>Generato:</strong> ${data.club_letter.generated_at}</p>
+                        <p><strong>Salvato:</strong> ${data.club_letter.generated_at}</p>
                         <p><strong>Dimensione:</strong> ${data.club_letter.size}</p>
                     </div>
 
@@ -177,18 +172,13 @@ function buildContent(data) {
                             <i class="fas fa-download mr-1"></i> Scarica
                         </a>
 
-                        <button onclick="generateDocument(${data.notification_id}, 'club_letter')"
-                                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                            <i class="fas fa-redo mr-1"></i> Rigenera
-                        </button>
-
                         <button onclick="deleteDocument(${data.notification_id}, 'club_letter')"
                                 class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
                             <i class="fas fa-trash mr-1"></i> Elimina
                         </button>
 
                         <label class="bg-purple-600 text-white px-4 py-2 rounded text-center hover:bg-purple-700 cursor-pointer">
-                            <i class="fas fa-upload mr-1"></i> Carica
+                            <i class="fas fa-upload mr-1"></i> Correggi allegato (carica la versione corretta)
                             <input type="file" class="hidden" onchange="uploadDocument(${data.notification_id}, 'club_letter', this.files[0])" accept=".doc,.docx">
                         </label>
                     </div>
@@ -200,7 +190,7 @@ function buildContent(data) {
                     <div class="space-y-2">
                         <button onclick="generateDocument(${data.notification_id}, 'club_letter')"
                                 class="bg-green-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full">
-                            <i class="fas fa-plus mr-1"></i> Genera Lettera
+                            <i class="fas fa-plus mr-1"></i> Crea allegato
                         </button>
                         
                         <label class="bg-purple-600 text-white px-4 py-2 rounded text-center hover:bg-purple-700 cursor-pointer block">
@@ -223,7 +213,7 @@ function closeModal(modalId) {
 }
 
 function generateDocument(notificationId, type) {
-    if (!confirm('Generare il documento?')) return;
+    if (!confirm('Creare l\'allegato con le clausole salvate? Dopo si corregge solo scaricandolo e ricaricandolo.')) return;
 
     const content = document.getElementById('documentManagerContent');
     content.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-4xl text-blue-500"></i><p class="mt-4">Generazione in corso...</p></div>';

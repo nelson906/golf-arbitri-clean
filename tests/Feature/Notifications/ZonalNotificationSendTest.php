@@ -21,8 +21,8 @@ use Tests\TestCase;
  * FIX D1: i destinatari arrivano SOLO da metadata['recipients'] (l'intento
  * del form), mai dalla colonna `recipients` persistita.
  *
- * NOTA: i documenti sono lasciati vuoti di proposito (documents = [])
- * così gli allegati ritornano [] e non c'è dipendenza dal filesystem.
+ * NOTA: dal 2026-10-07 senza allegati la notifica non parte: i test creano
+ * due Word finti con attachDocumentsTo() (cancellati a fine test).
  */
 class ZonalNotificationSendTest extends TestCase
 {
@@ -39,11 +39,11 @@ class ZonalNotificationSendTest extends TestCase
      */
     private function makeNotification(int $tournamentId, bool $club, array $refereeIds): TournamentNotification
     {
-        return TournamentNotification::create([
+        $notification = TournamentNotification::create([
             'tournament_id'     => $tournamentId,
             'notification_type' => null, // null = zonale
             'status'            => 'pending',
-            'documents'         => [], // nessun allegato → nessun accesso al filesystem
+            'documents'         => [],
             'metadata'          => [
                 'subject'    => 'Convocazione torneo',
                 'message'    => 'Si trasmette la convocazione per il torneo.',
@@ -54,6 +54,11 @@ class ZonalNotificationSendTest extends TestCase
                 ],
             ],
         ]);
+
+        // Dal 2026-10-07 senza allegati la notifica non parte
+        $this->attachDocumentsTo($notification);
+
+        return $notification;
     }
 
     /**
@@ -117,11 +122,12 @@ class ZonalNotificationSendTest extends TestCase
 
         app(NotificationService::class)->send($notification);
 
-        Mail::assertQueued(ClubNotificationMail::class, fn ($mail) => $mail->hasTo('assegnato@example.test'));
+        Mail::assertQueued(ClubNotificationMail::class, fn ($mail) => $mail->hasCc('assegnato@example.test'));
         Mail::assertNotQueued(ClubNotificationMail::class, function ($mail) {
             return $mail->hasTo('fantasma@example.test') || $mail->hasCc('fantasma@example.test');
         });
-        // Una sola mail (club = false → primo CC promosso a TO)
+        // Una sola mail, sempre al circolo (2026-10-07: non si toglie)
+        Mail::assertQueued(ClubNotificationMail::class, fn ($mail) => $mail->hasTo('circolo@example.test'));
         Mail::assertQueued(ClubNotificationMail::class, 1);
     }
 
@@ -189,19 +195,18 @@ class ZonalNotificationSendTest extends TestCase
     }
 
     /**
-     * Un circolo senza email NON deve bloccare la copia conoscenza agli
-     * arbitri: invio parziale (status 'partial'), arbitro raggiunto.
+     * Decisione 2026-10-07: senza email del circolo la notifica non parte
+     * mai (prima partiva agli arbitri come "parziale").
      *
      * NOTA: la colonna clubs.email è NOT NULL a livello DB, quindi lo stato
-     * "senza email" si presenta come stringa vuota (dato sporco realistico).
+     * "senza email" si presenta come stringa vuota.
      */
-    public function test_missing_club_email_does_not_block_referees(): void
+    public function test_missing_club_email_blocks_the_send(): void
     {
         $club = $this->createClub(['zone_id' => 1, 'email' => '']);
         $tournament = $this->createTournament([
             'club_id'            => $club->id,
             'tournament_type_id' => $this->zonalType()->id,
-            'status'             => 'open',
         ]);
 
         $ref = $this->createReferee(['zone_id' => 1, 'email' => 'arbitro@example.test']);
@@ -209,46 +214,62 @@ class ZonalNotificationSendTest extends TestCase
 
         $notification = $this->makeNotification($tournament->id, true, [$ref->id]);
 
-        // Non deve lanciare: l'errore circolo è assorbito per-destinatario.
-        app(NotificationService::class)->send($notification);
+        try {
+            app(NotificationService::class)->send($notification);
+            $this->fail('Senza email del circolo la notifica non deve partire.');
+        } catch (\Exception $e) {
+            $this->assertSame(NotificationService::ERR_CLUB_EMAIL, $e->getMessage());
+        }
 
-        // L'arbitro riceve comunque (promosso a TO in assenza del circolo).
-        Mail::assertQueued(ClubNotificationMail::class, fn ($mail) => $mail->hasTo('arbitro@example.test'));
-        Mail::assertQueued(ClubNotificationMail::class, 1);
-
-        // Invio parziale: un errore (circolo) + un successo (copia conoscenza).
+        Mail::assertNothingOutgoing();
         $notification->refresh();
-        $this->assertEquals('partial', $notification->status);
-        $this->assertSame(1, $notification->metadata['error_count'] ?? null);
-        $this->assertSame(1, $notification->metadata['success_count'] ?? null);
+        $this->assertSame('pending', $notification->status);
+        $this->assertNull($notification->sent_at);
     }
 
     /**
-     * FIX M5 (audit 2026-07): nessun destinatario valido → NESSUNA mail e
-     * status 'failed'. Prima terminava 'sent' con success_count 0: lo storico
-     * mentiva ("inviato a nessuno").
+     * Decisione 2026-10-07: il circolo è sempre il destinatario principale;
+     * un vecchio "club = false" nei metadata non lo toglie.
      */
-    public function test_no_valid_recipients_ends_failed_not_sent(): void
+    public function test_club_cannot_be_removed_from_recipients(): void
     {
         $club = $this->createClub(['zone_id' => 1, 'email' => 'circolo@example.test']);
         $tournament = $this->createTournament([
             'club_id'            => $club->id,
             'tournament_type_id' => $this->zonalType()->id,
-            'status'             => 'open',
         ]);
 
-        // club deselezionato, nessun arbitro selezionato → builder vuoto
         $notification = $this->makeNotification($tournament->id, false, []);
 
         app(NotificationService::class)->send($notification);
 
-        Mail::assertNothingQueued();
-
+        Mail::assertQueued(ClubNotificationMail::class, fn ($mail) => $mail->hasTo('circolo@example.test'));
         $notification->refresh();
-        $this->assertEquals('failed', $notification->status,
-            'REGRESSIONE M5: invio a zero destinatari non deve risultare "sent".');
-        $this->assertSame(0, $notification->metadata['success_count'] ?? null);
-        $this->assertStringContainsString('nessun destinatario',
-            $notification->metadata['last_error'] ?? '');
+        $this->assertSame('sent', $notification->status);
+    }
+
+    /**
+     * Decisione 2026-10-07: senza allegati (lettera sempre, convocazione se
+     * richiesta) la notifica non parte.
+     */
+    public function test_send_without_attachments_is_refused(): void
+    {
+        $club = $this->createClub(['zone_id' => 1, 'email' => 'circolo@example.test']);
+        $tournament = $this->createTournament([
+            'club_id'            => $club->id,
+            'tournament_type_id' => $this->zonalType()->id,
+        ]);
+
+        $notification = $this->makeNotification($tournament->id, true, []);
+        $notification->update(['documents' => []]);
+
+        try {
+            app(NotificationService::class)->send($notification->refresh());
+            $this->fail('Senza allegati la notifica non deve partire.');
+        } catch (\Exception $e) {
+            $this->assertStringStartsWith(NotificationService::ERR_MISSING_ATTACHMENTS, $e->getMessage());
+        }
+
+        Mail::assertNothingOutgoing();
     }
 }

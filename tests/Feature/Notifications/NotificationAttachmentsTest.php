@@ -154,13 +154,11 @@ class NotificationAttachmentsTest extends TestCase
     }
 
     /**
-     * FIX M3 (audit 2026-07): documento registrato in `documents` ma assente
-     * dal disco → errore tracciato (status 'partial', last_error esplicito).
-     * Prima: skip silenzioso, la mail partiva senza convocazione con status
-     * 'sent' e l'admin non lo sapeva. La mail parte comunque (con i soli
-     * allegati esistenti) ma l'esito non è più un falso "sent".
+     * Documento registrato in `documents` ma assente dal disco: dal
+     * 2026-10-07 la notifica non parte (prima partiva "parziale" senza
+     * convocazione).
      */
-    public function test_missing_attachment_file_marks_partial_with_error(): void
+    public function test_missing_attachment_file_blocks_the_send(): void
     {
         [$tournament] = $this->setupWithRealDocuments();
 
@@ -168,16 +166,17 @@ class NotificationAttachmentsTest extends TestCase
         $this->docsDisk()->delete("{$this->dir}/Convocazione_real.docx");
 
         $notification = TournamentNotification::where('tournament_id', $tournament->id)->firstOrFail();
-        app(NotificationService::class)->send($notification);
 
-        // La mail parte comunque (una sola), con la sola lettera circolo
-        Mail::assertQueued(ClubNotificationMail::class, 1);
+        try {
+            app(NotificationService::class)->send($notification);
+            $this->fail('Con un allegato mancante la notifica non deve partire.');
+        } catch (\Exception $e) {
+            $this->assertStringContainsString('Convocazione.docx', $e->getMessage());
+        }
 
+        Mail::assertNothingOutgoing();
         $final = $notification->fresh();
         $this->assertNotNull($final);
-        $this->assertEquals('partial', $final->status,
-            'REGRESSIONE M3: allegato mancante deve produrre status partial, non sent.');
-        $this->assertStringContainsString('allegato mancante',
-            $final->metadata['last_error'] ?? '');
+        $this->assertSame('pending', $final->status);
     }
 }

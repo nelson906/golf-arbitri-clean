@@ -295,37 +295,32 @@ class ZonalDeliveryRegressionTest extends TestCase
     }
 
     // ════════════════════════════════════════════════════════════════════
-    // D3 — Fallimento parziale (circolo senza email) NON deve essere
-    // presentato come pieno successo.
-    // FIX D3 implementato: redirectAfterSend() flasha warning su partial.
+    // Decisione 2026-10-07: circolo senza email → la notifica non parte e
+    // l'admin lo vede (prima partiva agli arbitri come "parziale").
     // ════════════════════════════════════════════════════════════════════
 
-    public function test_partial_failure_is_not_reported_as_full_success(): void
+    public function test_missing_club_email_blocks_send_and_tells_the_admin(): void
     {
         Mail::fake();
         [$tournament, $refA, $refB, $institutional] = $this->setupFullZonalScenario();
 
-        // Circolo SENZA email → sendToClub fallirà silenziosamente
         $tournament->club?->update(['email' => '']); // colonna NOT NULL: '' = senza email
 
         $this->actingAsSuperAdmin();
 
-        $response = $this->postSend($tournament, [
+        $this->postSend($tournament, [
             'fixed_addresses' => [$institutional->id],
-        ]);
+        ])->assertSessionHas('error');
 
-        // Gli arbitri devono comunque ricevere la copia conoscenza
-        Mail::assertQueued(ClubNotificationMail::class, function ($m) {
-            return $m->hasTo('arbitro.a@example.test') || $m->hasCc('arbitro.a@example.test');
-        });
+        Mail::assertNothingOutgoing();
 
-        // Ma lo stato deve riflettere il problema e l'admin deve vederlo
         $notification = TournamentNotification::where('tournament_id', $tournament->id)->firstOrFail();
-        $this->assertEquals('partial', $notification->status,
-            'Lo status deve essere partial quando il circolo non riceve.');
-        $this->assertFalse(
-            session()->has('success') && ! session()->has('warning') && ! session()->has('error'),
-            'REGRESSIONE D3: invio parziale presentato come pieno successo senza alcun warning.'
-        );
+        $this->assertSame('pending', $notification->status);
+        $this->assertNull($notification->sent_at);
+
+        // E il form non si apre nemmeno
+        $this->get(route('admin.tournaments.show-assignment-form', $tournament))
+            ->assertRedirect()
+            ->assertSessionHas('error');
     }
 }

@@ -42,12 +42,14 @@ class SendAssignmentWithConvocationHttpTest extends TestCase
         $this->createAssignment(['tournament_id' => $tournament->id, 'user_id' => $ref->id]);
 
         // Il controller fa firstOrFail() sulla notifica del torneo.
-        TournamentNotification::create([
+        $draft = TournamentNotification::create([
             'tournament_id'     => $tournament->id,
             'notification_type' => null,
             'status'            => 'pending',
             'documents'         => [],
         ]);
+        // Dal 2026-10-07 senza allegati la notifica non parte
+        $this->attachDocumentsTo($draft);
 
         return [$tournament, $ref];
     }

@@ -20,47 +20,6 @@ class NotificationDocumentService
     ) {}
 
     /**
-     * Genera i documenti iniziali per una notifica
-     *
-     * @return array<string, string>
-     */
-    public function generateInitialDocuments(
-        Tournament $tournament,
-        TournamentNotification $notification
-    ): array {
-        try {
-            $documents = [];
-            $zone = ZoneHelper::getFolderCodeForTournament($tournament);
-
-            // Genera convocazione DOCX
-            $convocationData = $this->documentService->generateConvocationForTournament($tournament);
-            $convFileName = basename($convocationData['path']);
-            $convDestPath = $this->docsRoot()."/{$zone}/generated/{$convFileName}";
-
-            $this->ensureDirectoryExists($convDestPath);
-            $this->copyDocument($convocationData['path'], $convDestPath);
-            $documents['convocation'] = $convFileName;
-
-            // Genera lettera circolo DOCX
-            $clubDocData = $this->documentService->generateClubDocument($tournament);
-            $clubFileName = basename($clubDocData['path']);
-            $clubDestPath = $this->docsRoot()."/{$zone}/generated/{$clubFileName}";
-
-            $this->copyDocument($clubDocData['path'], $clubDestPath);
-            $documents['club_letter'] = $clubFileName;
-
-            return $documents;
-        } catch (\Exception $e) {
-            Log::error('Error generating initial documents', [
-                'tournament_id' => $tournament->id,
-                'notification_id' => $notification->id,
-                'error' => $e->getMessage(),
-            ]);
-            throw $e;
-        }
-    }
-
-    /**
      * Genera o rigenera un singolo documento
      */
     public function generateDocument(
@@ -99,45 +58,6 @@ class NotificationDocumentService
         }
 
         throw new \InvalidArgumentException("Invalid document type: {$type}");
-    }
-
-    /**
-     * Rigenera tutti i documenti con le clausole aggiornate
-     *
-     * @return array<string, string>
-     */
-    public function regenerateAllDocuments(TournamentNotification $notification): array
-    {
-        $tournament = $notification->tournament;
-        $zone = ZoneHelper::getFolderCodeForTournament($tournament);
-        $documents = [];
-
-        try {
-            // Convocazione
-            $convocationData = $this->documentService->generateConvocationForTournament($tournament, $notification);
-            $convFileName = basename($convocationData['path']);
-            $convDest = $this->docsRoot()."/{$zone}/generated/{$convFileName}";
-
-            $this->ensureDirectoryExists($convDest);
-            $this->copyDocument($convocationData['path'], $convDest);
-            $documents['convocation'] = $convFileName;
-
-            // Lettera circolo
-            $clubDocData = $this->documentService->generateClubDocument($tournament, $notification);
-            $clubFileName = basename($clubDocData['path']);
-            $clubDest = $this->docsRoot()."/{$zone}/generated/{$clubFileName}";
-
-            $this->copyDocument($clubDocData['path'], $clubDest);
-            $documents['club_letter'] = $clubFileName;
-
-            return $documents;
-        } catch (\Exception $e) {
-            Log::warning('Could not regenerate documents', [
-                'notification_id' => $notification->id,
-                'error' => $e->getMessage(),
-            ]);
-            throw $e;
-        }
     }
 
     /**
@@ -214,7 +134,12 @@ class NotificationDocumentService
         $tournament = $notification->tournament;
         $zone = ZoneHelper::getFolderCodeForTournament($tournament);
 
-        $filename = str_replace(' ', '_', $file->getClientOriginalName());
+        // Nome legato al torneo (decisione 2026-10-07): prima si teneva il nome
+        // originale, e due tornei della stessa zona che ricaricavano
+        // "Convocazione.docx" si sovrascrivevano a vicenda
+        $prefix = $type === 'club_letter' ? 'lettera_circolo' : 'convocazione';
+        $extension = strtolower($file->getClientOriginalExtension()) === 'doc' ? 'doc' : 'docx';
+        $filename = "{$prefix}_{$tournament->id}_corretta.{$extension}";
         // FIX M2: disk privato (era hardcoded 'public')
         $file->storeAs($this->docsRoot()."/{$zone}/generated", $filename, Config::string('golf.documents.disk', 'docs'));
 

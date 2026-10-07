@@ -28,7 +28,7 @@ class MailDispatchRegressionTest extends TestCase
      */
     private function makeNotification(int $tournamentId, bool $club, array $refereeIds): TournamentNotification
     {
-        return TournamentNotification::create([
+        $notification = TournamentNotification::create([
             'tournament_id' => $tournamentId,
             'status'        => 'pending',
             'metadata'      => [
@@ -40,6 +40,11 @@ class MailDispatchRegressionTest extends TestCase
                 ],
             ],
         ]);
+
+        // Dal 2026-10-07 senza allegati la notifica non parte
+        $this->attachDocumentsTo($notification);
+
+        return $notification;
     }
 
     // ====================================================================
@@ -121,9 +126,10 @@ class MailDispatchRegressionTest extends TestCase
     }
 
     /**
-     * Mail unica senza documenti generati: nessun allegato fantasma.
+     * Dal 2026-10-07 una mail senza allegati non parte affatto (prima partiva
+     * senza allegati).
      */
-    public function test_mail_without_documents_has_no_attachments(): void
+    public function test_mail_without_documents_is_not_sent(): void
     {
         $tournament = $this->createTournament();
         $referee    = $this->createReferee(['email' => 'arbitro@test.com']);
@@ -134,13 +140,16 @@ class MailDispatchRegressionTest extends TestCase
         ]);
 
         $notification = $this->makeNotification($tournament->id, false, [$referee->id]);
+        $notification->update(['documents' => []]);
 
-        app(NotificationService::class)->send($notification);
+        try {
+            app(NotificationService::class)->send($notification->refresh());
+            $this->fail('Senza allegati la notifica non deve partire.');
+        } catch (\Exception $e) {
+            $this->assertStringStartsWith(NotificationService::ERR_MISSING_ATTACHMENTS, $e->getMessage());
+        }
 
-        Mail::assertQueued(ClubNotificationMail::class, function ($mail) use ($referee) {
-            return ($mail->hasTo($referee->email) || $mail->hasCc($referee->email))
-                && empty($mail->attachmentPaths);
-        });
+        Mail::assertNothingOutgoing();
     }
 
     // ====================================================================

@@ -9,6 +9,7 @@ use App\Models\TournamentNotification;
 use App\Models\TournamentType;
 use App\Services\NotificationDocumentService;
 use App\Services\NotificationPreparationService;
+use App\Services\NotificationService;
 use App\Services\NotificationTransactionService;
 use App\Support\Untrusted;
 use App\Traits\HasZoneVisibility;
@@ -202,6 +203,14 @@ class NotificationController extends Controller
 
         $isNational = $tournament->tournamentType->is_national ?? false;
 
+        // Zonale (decisione 2026-10-07): senza circolo o senza la sua email il
+        // form non si apre, perche' la notifica non potrebbe mai partire
+        if (! $isNational && ! NotificationService::clubHasValidEmail($tournament)) {
+            return redirect()->back()->with('error', $tournament->club === null
+                ? 'Il torneo non ha ancora un circolo: la notifica si prepara quando il circolo è scelto.'
+                : 'Il circolo '.$tournament->club->name.' non ha un\'email valida: inseriscila nella scheda del circolo prima di preparare la notifica.');
+        }
+
         // Prepara o recupera la notifica.
         // Nazionale (P12/P13, 2026-10-03): solo la notifica di chi apre il form,
         // non salvata, e nessun documento Word.
@@ -209,20 +218,8 @@ class NotificationController extends Controller
             ? $this->preparationService->prepareNationalNotification($tournament, $this->authUser())
             : $this->preparationService->prepareNotification($tournament);
 
-        // Genera documenti se non esistono (solo tornei zonali)
-        if (! $isNational && empty($notification->documents)) {
-            try {
-                $documents = $this->documentService->generateInitialDocuments($tournament, $notification);
-                $notification->update(['documents' => $documents]);
-            } catch (\Exception $e) {
-                Log::error('Error generating documents in assignment form', [
-                    'tournament_id' => $tournament->id,
-                    'notification_id' => $notification->id,
-                    'error' => $e->getMessage(),
-                ]);
-                session()->flash('warning', 'Si è verificato un errore nella generazione dei documenti. È possibile rigenerarli manualmente.');
-            }
-        }
+        // Gli allegati NON si creano all'apertura: si creano una volta sola con
+        // "Crea allegati", dopo aver scelto le clausole (decisione 2026-10-07)
 
         // Controlla stato documenti (sui nazionali non esistono)
         $documentStatus = $isNational
@@ -274,6 +271,21 @@ class NotificationController extends Controller
         // Validazione whitelist per evitare path traversal e input arbitrari
         if (! in_array($type, ['convocation', 'club_letter'], true)) {
             return response()->json(['success' => false, 'message' => 'Tipo documento non valido.'], 422);
+        }
+
+        // Sui nazionali non esistono documenti Word
+        if ($notification->tournament->tournamentType->is_national ?? false) {
+            return response()->json(['success' => false, 'message' => 'Sui tornei nazionali non ci sono allegati.'], 422);
+        }
+
+        // Si crea una volta sola: dopo si corregge scaricando e ricaricando
+        // (decisione 2026-10-07), mai rigenerando sopra la versione salvata
+        $documents = is_array($notification->documents) ? $notification->documents : [];
+        if (! empty($documents[$type])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Allegato già creato: per correggerlo scaricalo, modificalo e ricaricalo.',
+            ], 422);
         }
 
         try {
@@ -571,6 +583,11 @@ class NotificationController extends Controller
                 ->with('error', 'Torneo nazionale: usa la comunicazione CRC (arbitri) o SZR (osservatori).');
         }
 
+        // Senza email del circolo la notifica zonale non esiste (2026-10-07)
+        if (! NotificationService::clubHasValidEmail($tournament)) {
+            return redirect()->back()->with('error', NotificationService::ERR_CLUB_EMAIL);
+        }
+
         try {
             // Recupera la notifica zonale (tipo vuoto), mai una delle nazionali
             $notification = TournamentNotification::where('tournament_id', $tournament->id)
@@ -602,7 +619,8 @@ class NotificationController extends Controller
                 'attach_convocation' => $request->boolean('attach_convocation', true),
                 'recipients' => [
                     'referees' => $request->array('recipients'),
-                    'club' => $request->boolean('send_to_club', true),
+                    // Il circolo e' sempre il destinatario principale (2026-10-07)
+                    'club' => true,
                     'institutional' => $request->array('fixed_addresses'),
                     // FIX: "Invia copia alla sezione" — prima il backend lo ignorava
                     'zone' => $request->boolean('send_to_section', false),
@@ -681,6 +699,10 @@ class NotificationController extends Controller
         // Validazione whitelist per evitare path traversal e input arbitrari
         if (! in_array($type, ['convocation', 'club_letter'], true)) {
             return response()->json(['success' => false, 'message' => 'Tipo documento non valido.'], 422);
+        }
+
+        if ($notification->tournament->tournamentType->is_national ?? false) {
+            return response()->json(['success' => false, 'message' => 'Sui tornei nazionali non ci sono allegati.'], 422);
         }
 
         try {

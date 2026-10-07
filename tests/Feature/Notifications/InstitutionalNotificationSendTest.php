@@ -41,7 +41,7 @@ class InstitutionalNotificationSendTest extends TestCase
      */
     private function makeNotification(int $tournamentId, bool $club, array $refereeIds, array $institutionalIds): TournamentNotification
     {
-        return TournamentNotification::create([
+        $notification = TournamentNotification::create([
             'tournament_id'     => $tournamentId,
             'notification_type' => null,
             'status'            => 'pending',
@@ -55,6 +55,11 @@ class InstitutionalNotificationSendTest extends TestCase
                 ],
             ],
         ]);
+
+        // Dal 2026-10-07 senza allegati la notifica non parte
+        $this->attachDocumentsTo($notification);
+
+        return $notification;
     }
 
     /**
@@ -76,8 +81,8 @@ class InstitutionalNotificationSendTest extends TestCase
 
         app(NotificationService::class)->send($notification);
 
-        // Unico destinatario → promosso a TO
-        Mail::assertQueued(ClubNotificationMail::class, fn ($mail) => $mail->hasTo('ufficio@example.test'));
+        // TO sempre il circolo (2026-10-07), istituzionale in copia
+        Mail::assertQueued(ClubNotificationMail::class, fn ($mail) => $mail->hasTo('circolo@example.test') && $mail->hasCc('ufficio@example.test'));
         Mail::assertQueued(ClubNotificationMail::class, 1);
 
         $notification->refresh();

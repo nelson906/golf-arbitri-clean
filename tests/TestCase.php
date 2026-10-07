@@ -20,6 +20,44 @@ abstract class TestCase extends BaseTestCase
     use CreatesApplication;
     use RefreshDatabase;
 
+    /** @var list<string> file allegato creati dai test, da cancellare */
+    private array $fakeAttachmentFiles = [];
+
+    /**
+     * Crea su disco i due allegati di una notifica zonale (lettera al circolo
+     * e convocazione) e li registra nella notifica. Dal 2026-10-07 senza
+     * allegati la notifica non parte.
+     */
+    protected function attachDocumentsTo(\App\Models\TournamentNotification $notification): void
+    {
+        $disk = \Illuminate\Support\Facades\Storage::disk(Config::string('golf.documents.disk', 'docs'));
+        $zone = \App\Helpers\ZoneHelper::getFolderCodeForTournament($notification->tournament);
+        $dir = Config::string('golf.documents.storage_path', 'convocazioni')."/{$zone}/generated";
+
+        $documents = [];
+        foreach (['convocation' => 'convocazione', 'club_letter' => 'lettera_circolo'] as $type => $prefix) {
+            $file = "{$prefix}_test_{$notification->id}.docx";
+            $disk->put("{$dir}/{$file}", 'FAKE-DOCX');
+            $this->fakeAttachmentFiles[] = "{$dir}/{$file}";
+            $documents[$type] = $file;
+        }
+
+        $notification->update(['documents' => $documents]);
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->fakeAttachmentFiles !== []) {
+            $disk = \Illuminate\Support\Facades\Storage::disk(Config::string('golf.documents.disk', 'docs'));
+            foreach ($this->fakeAttachmentFiles as $path) {
+                $disk->delete($path);
+            }
+            $this->fakeAttachmentFiles = [];
+        }
+
+        parent::tearDown();
+    }
+
     /**
      * `$this->artisan()` e' tipizzato PendingCommand|int (int quando l'output
      * della console non e' mockato). Nei test lo e' sempre, ma il tipo va

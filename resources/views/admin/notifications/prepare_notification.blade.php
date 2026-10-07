@@ -169,7 +169,7 @@
                                         </p>
                                         <p
                                             class="text-xs {{ $documentStatus['hasConvocation'] ? 'text-green-600' : 'text-gray-500' }}">
-                                            {{ $documentStatus['hasConvocation'] ? 'Disponibile per arbitri' : 'Non ancora generata' }}
+                                            {{ $documentStatus['hasConvocation'] ? 'Disponibile per arbitri' : 'Non ancora creata' }}
                                         </p>
                                     </div>
                                 </div>
@@ -192,7 +192,7 @@
                                         </p>
                                         <p
                                             class="text-xs {{ $documentStatus['hasClubLetter'] ? 'text-blue-600' : 'text-gray-500' }}">
-                                            {{ $documentStatus['hasClubLetter'] ? 'Disponibile per circolo' : 'Non ancora generata' }}
+                                            {{ $documentStatus['hasClubLetter'] ? 'Disponibile per circolo' : 'Non ancora creata' }}
                                         </p>
                                     </div>
                                 </div>
@@ -346,6 +346,19 @@
 
                                     <div id="clausole-content" class="p-6" style="display: none;">
                                         @php
+                                            // Decisione 2026-10-07: le clausole si scelgono una volta sola,
+                                            // quando si creano gli allegati; dopo vale la versione salvata
+                                            $attachmentsCreated = $documentStatus['hasConvocation'] && $documentStatus['hasClubLetter'];
+                                        @endphp
+                                        @if ($attachmentsCreated)
+                                            <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+                                                Gli allegati sono già creati: le clausole sono quelle salvate.
+                                                Per cambiarle usa <strong>Gestisci Documenti → Correggi allegato</strong>
+                                                (scarica il Word, correggilo e ricaricalo).
+                                            </div>
+                                        @endif
+                                        <fieldset @disabled($attachmentsCreated)>
+                                        @php
                                             $clubClauses = collect();
                                             if (isset($availableClauses['club'])) {
                                                 $clubClauses = $clubClauses->merge(collect($availableClauses['club']));
@@ -467,22 +480,21 @@
                                             </div>
                                         @endif
 
-                                        @if ($refereeClauses->isNotEmpty() || $clubClauses->isNotEmpty())
-                                            {{-- Bottone Rigenera Documenti --}}
+                                        </fieldset>
+
+                                        @unless ($attachmentsCreated)
+                                            {{-- Crea allegati: una volta sola, con le clausole scelte --}}
                                             <div class="mt-6 pt-6 border-t border-gray-200">
-                                                <button type="button" onclick="regenerateDocuments()"
+                                                <button type="button" onclick="createAttachments()"
                                                     class="inline-flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                                    id="regenerateButton">
-                                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor"
-                                                        viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                                    </svg>
-                                                    <span>Rigenera documenti con clausole selezionate</span>
+                                                    id="createAttachmentsButton">
+                                                    <span>📎 Crea allegati con le clausole selezionate</span>
                                                 </button>
+                                                <p class="mt-2 text-xs text-gray-500">
+                                                    Si crea una volta sola. Dopo, per correggere, scarica il Word e ricaricalo.
+                                                </p>
                                             </div>
-                                        @endif
+                                        @endunless
                                     </div>
                                 </div>
 
@@ -693,16 +705,8 @@
                                     </label>
                                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
                                         <div class="flex items-center">
-                                            {{-- FIX C3 (audit 2026-07): senza hidden, checkbox deselezionata =
-                                                 chiave assente = $request->boolean('send_to_club', true) → true:
-                                                 il circolo riceveva la mail comunque. --}}
-                                            <input type="hidden" name="send_to_club" value="0">
-                                            <input type="checkbox" name="send_to_club" id="send_to_club" value="1"
-                                                checked
-                                                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                                            <label for="send_to_club" class="ml-2 text-sm text-gray-700">
-                                                <span class="font-medium">Invia notifica al circolo</span>
-                                            </label>
+                                            {{-- Il circolo e' sempre il destinatario principale (2026-10-07) --}}
+                                            <span class="text-sm text-gray-700 font-medium">Destinatario principale: il circolo</span>
                                         </div>
                                         <div class="mt-2 ml-6 text-sm text-gray-600">
                                             <p>Circolo: <strong>{{ $tournament->club->name }}</strong></p>
@@ -721,7 +725,7 @@
 
                                 {{-- Allegato convocazione (decisione 2026-10-04): spuntata di default;
                                      tolta, la mail parte con la sola lettera al circolo.
-                                     Hidden value=0 per lo stesso motivo di send_to_club (FIX C3). --}}
+                                     Hidden value=0: senza, la casella tolta non arriverebbe al server (FIX C3). --}}
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-3">
                                         📎 Allegati
@@ -900,8 +904,16 @@
         }
         // Conferma invio
         function confirmSend() {
+            // Senza allegati la notifica non parte (lettera sempre, convocazione se spuntata)
+            const hasClubLetter = @json((bool) $documentStatus['hasClubLetter']);
+            const hasConvocation = @json((bool) $documentStatus['hasConvocation']);
+            const wantsConvocation = document.getElementById('attach_convocation')?.checked;
+            if (!hasClubLetter || (wantsConvocation && !hasConvocation)) {
+                alert('Prima crea gli allegati (Clausole Aggiuntive → Crea allegati) o caricali da Gestisci Documenti.');
+                return false;
+            }
             const recipientCount = document.querySelectorAll('input[name="recipients[]"]:checked').length;
-            const sendToClub = document.getElementById('send_to_club')?.checked;
+            const sendToClub = true; // il circolo riceve sempre la notifica
             const totalRecipients = recipientCount + (sendToClub ? 1 : 0);
 
             if (totalRecipients === 0) {
@@ -932,7 +944,7 @@
                 }
             });
 
-            const sendToClub = document.getElementById('send_to_club')?.checked;
+            const sendToClub = true; // il circolo riceve sempre la notifica
             const clubName = '{{ $tournament->club->name ?? 'N/A' }}';
             const clubEmail = '{{ $tournament->club->email ?? 'N/A' }}';
 
@@ -1071,33 +1083,23 @@ async function saveClauses() {
     return await response.json();
 }
 
-        // Gestione rigenerazione documenti
-        async function regenerateDocuments() {
-            const button = document.getElementById('regenerateButton');
+        // Crea allegati (una volta sola): salva le clausole e crea i Word mancanti
+        async function createAttachments() {
+            const button = document.getElementById('createAttachmentsButton');
             const originalText = button.innerHTML;
+            const missing = @json(array_keys(array_filter([
+                'convocation' => ! $documentStatus['hasConvocation'],
+                'club_letter' => ! $documentStatus['hasClubLetter'],
+            ])));
             try {
-                // Disabilita il bottone e mostra loading
                 button.disabled = true;
-                button.innerHTML = `
-            <svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Rigenerazione in corso...
-        `;
+                button.innerHTML = 'Creazione in corso...';
 
-        // 1. Salva le clausole selezionate prima di generare i documenti
-                try {
-                    await saveClauses();
-                } catch (error) {
-                    console.error('Errore nel salvataggio delle clausole:', error);
-                    showToast('Errore nel salvataggio delle clausole', true);
-                    throw error;
-                }
+                await saveClauses();
 
-        // 2. Genera convocazione (con clausole per arbitri)
-                        await fetch(
-                    `{{ route('admin.tournament-notifications.generate-document', ['notification' => $notification->id, 'type' => 'convocation']) }}`, {
+                for (const type of missing) {
+                    const url = `{{ route('admin.tournament-notifications.generate-document', ['notification' => $notification->id, 'type' => '__TYPE__']) }}`.replace('__TYPE__', type);
+                    const response = await fetch(url, {
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}',
@@ -1105,33 +1107,22 @@ async function saveClauses() {
                             'Accept': 'application/json'
                         }
                     });
-
-        // 3. Genera lettera circolo (con clausole per circolo)
-                        await fetch(
-                    `{{ route('admin.tournament-notifications.generate-document', ['notification' => $notification->id, 'type' => 'club_letter']) }}`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json'
-                        }
-                    });
-
-                // 5. Aggiorna stato documenti nel modal
-                if (typeof openDocumentManager === 'function') {
-                    openDocumentManager({{ $notification->id }});
+                    const data = await response.json();
+                    if (!data.success) {
+                        throw new Error(data.message || 'Errore nella creazione');
+                    }
                 }
 
-                showToast('Documenti rigenerati con clausole selezionate');
-
+                showToast('Allegati creati');
+                // Ricarica: le clausole diventano quelle salvate
+                window.location.reload();
             } catch (error) {
-                console.error('Errore durante la rigenerazione:', error);
-                showToast('Errore durante la rigenerazione dei documenti', true);
-            } finally {
-                // Ripristina il bottone
+                console.error('Errore nella creazione degli allegati:', error);
+                showToast(error.message || 'Errore nella creazione degli allegati', true);
                 button.disabled = false;
                 button.innerHTML = originalText;
             }
+        }
         }
 @endunless
 
