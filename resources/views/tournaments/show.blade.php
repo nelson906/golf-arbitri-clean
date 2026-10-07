@@ -10,7 +10,7 @@
                 <div>
                     <h1 class="text-3xl font-bold text-gray-900">{{ $tournament->name }}</h1>
                     <p class="mt-1 text-gray-600">
-                        {{ $tournament->club->name }} - {{ $tournament->start_date->format('d/m/Y') }} -
+                        {{ $tournament->club->name ?? 'T.B.A.' }} - {{ $tournament->start_date->format('d/m/Y') }} -
                         {{ $tournament->end_date->format('d/m/Y') }}
                     </p>
                 </div>
@@ -58,8 +58,8 @@
                         <div class="sm:col-span-2">
                             <dt class="text-sm font-medium text-gray-500">Circolo</dt>
                             <dd class="mt-1 text-sm text-gray-900">
-                                {{ $tournament->club->name }}
-                                <div class="text-xs text-gray-500">{{ $tournament->club->full_address }}</div>
+                                {{ $tournament->club->name ?? 'T.B.A.' }}
+                                <div class="text-xs text-gray-500">{{ $tournament->club?->full_address }}</div>
                             </dd>
                         </div>
                     </dl>

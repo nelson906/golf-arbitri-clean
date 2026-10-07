@@ -130,9 +130,11 @@ class ClubController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $user = $this->authUser();
         $rules = [
             'name' => 'required|string|max:255',
-            'zone_id' => 'required|exists:zones,id',
+            // L'admin di zona crea circoli solo nella sua zona (2026-10-07)
+            'zone_id' => $user->isZoneAdmin() ? 'required|in:'.(int) $user->zone_id : 'required|exists:zones,id',
             'city' => 'nullable|string|max:255',
             'province' => 'nullable|string|max:2',
             'address' => 'nullable|string|max:500',
@@ -195,7 +197,8 @@ class ClubController extends Controller
 
         $rules = [
             'name' => 'required|string|max:255',
-            'zone_id' => 'required|exists:zones,id',
+            // L'admin di zona non sposta un circolo in un'altra zona
+            'zone_id' => $user && $user->isZoneAdmin() ? 'required|in:'.(int) $user->zone_id : 'required|exists:zones,id',
             'city' => 'nullable|string|max:255',
             'province' => 'nullable|string|max:2',
             'address' => 'nullable|string|max:500',
@@ -208,7 +211,14 @@ class ClubController extends Controller
 
         $validated = $request->validate($rules);
 
+        $previousZone = $club->zone_id;
         $club->update($validated);
+
+        // Circolo spostato di zona: i suoi tornei seguono (la zona del torneo
+        // e' sempre quella del circolo)
+        if ((int) $club->zone_id !== (int) $previousZone) {
+            \App\Models\Tournament::where('club_id', $club->id)->update(['zone_id' => $club->zone_id]);
+        }
 
         return redirect()
             ->route('admin.clubs.show', $club)

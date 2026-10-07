@@ -89,7 +89,7 @@
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Club</dt>
-                        <dd class="mt-1 text-sm text-gray-900">{{ $assignment->tournament->club->name }}</dd>
+                        <dd class="mt-1 text-sm text-gray-900">{{ $assignment->tournament->club->name ?? 'T.B.A.' }}</dd>
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Date</dt>

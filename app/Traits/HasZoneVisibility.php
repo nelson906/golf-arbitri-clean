@@ -139,7 +139,11 @@ trait HasZoneVisibility
                 array_filter(RefereeLevel::cases(), fn (RefereeLevel $l) => $l->isNational())
             );
 
-            return $query->whereIn('level', $nationalLevels);
+            // Il CRC vede gli arbitri di livello nazionale e gli account degli
+            // admin nazionali, che gestisce (2026-10-07)
+            return $query->where(fn (Builder $q) => $q
+                ->whereIn('level', $nationalLevels)
+                ->orWhere('user_type', UserType::NationalAdmin->value));
         }
 
         if ($type === UserType::ZoneAdmin && $user->zone_id) {

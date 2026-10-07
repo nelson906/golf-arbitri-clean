@@ -86,7 +86,7 @@
                     <div class="p-3 bg-gray-50 rounded-md border">
                         <div class="text-sm font-medium text-gray-900">{{ $tournament->name }}</div>
                         <div class="text-sm text-gray-500">
-                            {{ $tournament->club->name }} - {{ $tournament->date_range }}
+                            {{ $tournament->club->name ?? 'T.B.A.' }} - {{ $tournament->date_range }}
                         </div>
                         <div class="text-xs text-gray-500 mt-1">
                             Arbitri: {{ $tournament->assignments()->count() }} / {{ $tournament->required_referees }}

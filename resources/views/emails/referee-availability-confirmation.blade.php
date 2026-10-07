@@ -21,7 +21,7 @@
                 <li>
                     <strong>{{ $tournament->name }}</strong><br>
                     Date: {{ $tournament->start_date->format('d/m/Y') }} - {{ $tournament->end_date->format('d/m/Y') }}<br>
-                    Circolo: {{ $tournament->club->name }}
+                    Circolo: {{ $tournament->club->name ?? 'T.B.A.' }}
                 </li>
             @endforeach
             </ul>

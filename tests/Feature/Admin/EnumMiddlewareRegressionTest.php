@@ -177,7 +177,7 @@ class EnumMiddlewareRegressionTest extends TestCase
     {
         $admin = $this->createZoneAdmin(1);
         $club  = $this->createClub(['zone_id' => 1]);
-        $type  = \App\Models\TournamentType::firstOrFail();
+        $type  = \App\Models\TournamentType::where('is_national', false)->firstOrFail();
 
         $data = [
             'name'                   => 'Torneo Regression Test',

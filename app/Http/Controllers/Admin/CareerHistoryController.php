@@ -33,17 +33,14 @@ class CareerHistoryController extends Controller
     public function index(Request $request): View
     {
         $currentUser = auth()->user();
-        // Il super admin vede tutte le zone anche se ha una zona sul profilo
-        $zoneRestriction = $this->isSuperAdmin($currentUser) ? null : $this->getUserZoneId($currentUser);
-
         $query = User::where('user_type', 'referee')
             ->with(['careerHistory', 'zone'])
             ->withCount(['assignments', 'availabilities']);
 
-        // Zone filter for non-super_admin
-        if ($zoneRestriction !== null) {
-            $query->where('zone_id', $zoneRestriction);
-        }
+        // Stessa regola dell'elenco utenti: SZR la sua zona, CRC gli arbitri
+        // di livello nazionale, super admin tutti (prima il CRC vedeva tutti e
+        // le schede davano 403)
+        $this->applyUserVisibility($query, $currentUser);
 
         // Additional zone filter from request (for super_admin)
         if ($request->filled('zone_id') && $this->isSuperAdmin()) {
@@ -83,7 +80,7 @@ class CareerHistoryController extends Controller
     {
         // Check zone access
         $currentUser = auth()->user();
-        if (! $this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
+        if (! $this->applyUserVisibility(User::query()->whereKey($user->id), $currentUser)->exists()) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 
@@ -204,7 +201,7 @@ class CareerHistoryController extends Controller
     {
         // Check zone access
         $currentUser = auth()->user();
-        if (! $this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
+        if (! $this->applyUserVisibility(User::query()->whereKey($user->id), $currentUser)->exists()) {
             abort(403, 'Non hai accesso a questo arbitro');
         }
 

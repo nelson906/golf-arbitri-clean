@@ -81,8 +81,11 @@ class TournamentController extends Controller
     {
         $user = $this->authUser();
 
+        // Conteggi in una sola query (prima: disponibilita' caricate torneo
+        // per torneo per contarle)
         $tournaments = Tournament::visible($user)
             ->with(['tournamentType', 'zone', 'club', 'assignments.user'])
+            ->withCount(['availabilities', 'assignments'])
             ->get();
 
         $zones = $this->isNationalAdmin($user)
@@ -132,7 +135,7 @@ class TournamentController extends Controller
         $isNationalAdmin = $user->isNationalAdmin();
 
         // Tutti gli admin vedono tutti i tipi di torneo attivi
-        $tournamentTypes = TournamentType::active()->ordered()->get();
+        $tournamentTypes = $this->tournamentTypesForForm();
 
         // Get zones con visibilità
         $zones = $this->isNationalAdmin($user)
@@ -158,7 +161,7 @@ class TournamentController extends Controller
         $user = $this->authUser();
 
         // Tutti gli admin vedono tutti i tipi di torneo attivi
-        $tournamentTypes = TournamentType::active()->ordered()->get();
+        $tournamentTypes = $this->tournamentTypesForForm();
 
         // Get zones con visibilità
         $zones = $this->isNationalAdmin($user)
@@ -360,6 +363,22 @@ class TournamentController extends Controller
      * Modifica ed eliminazione: l'admin di zona gestisce i tornei zonali;
      * sui nazionali della sua zona designa solo gli osservatori.
      */
+    /**
+     * Tipi di torneo che chi opera puo' scegliere nel form: l'admin di zona i
+     * zonali, il CRC i nazionali, il super admin tutti.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<int, TournamentType>
+     */
+    private function tournamentTypesForForm(): \Illuminate\Database\Eloquent\Collection
+    {
+        $user = $this->authUser();
+
+        return TournamentType::active()->ordered()
+            ->when($user->isZoneAdmin(), fn ($q) => $q->where('is_national', false))
+            ->when($user->user_type === \App\Enums\UserType::NationalAdmin, fn ($q) => $q->where('is_national', true))
+            ->get();
+    }
+
     private function checkTournamentEditable(Tournament $tournament): void
     {
         $this->checkTournamentAccess($tournament);

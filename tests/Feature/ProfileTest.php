@@ -61,39 +61,18 @@ class ProfileTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
-    public function test_user_can_delete_their_account(): void
+    /**
+     * Un utente non cancella il proprio account (2026-10-07): lo gestiscono
+     * gli amministratori.
+     */
+    public function test_user_cannot_delete_their_own_account(): void
     {
         $user = User::factory()->create();
 
-        $response = $this
-            ->actingAs($user)
-            ->delete('/profile', [
-                'password' => 'password',
-            ]);
-
-        $response
-            ->assertSessionHasNoErrors()
-            ->assertRedirect('/');
-
-        $this->assertGuest();
-        $this->assertNull($user->fresh());
-    }
-
-    public function test_correct_password_must_be_provided_to_delete_account(): void
-    {
-        $user = User::factory()->create();
-
-        $response = $this
-            ->actingAs($user)
-            ->from('/profile')
-            ->delete('/profile', [
-                'password' => 'wrong-password',
-            ]);
-
-        $response
-            ->assertSessionHasErrorsIn('userDeletion', 'password')
-            ->assertRedirect('/profile');
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('profile.destroy'));
+        $this->actingAs($user)->delete('/profile', ['password' => 'password']);
 
         $this->assertNotNull($user->fresh());
+        $this->actingAs($user)->get('/profile')->assertOk()->assertDontSee('Delete Account');
     }
 }

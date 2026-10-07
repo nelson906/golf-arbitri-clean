@@ -58,9 +58,9 @@
                             <label class="text-sm font-medium text-gray-500">Circolo</label>
                             <p class="text-gray-900">
                                 @if ($tournament->club)
-                                    {{ $tournament->club->name }}
-                                    @if ($tournament->club->city)
-                                        <span class="text-gray-500 text-sm">({{ $tournament->club->city }})</span>
+                                    {{ $tournament->club->name ?? 'T.B.A.' }}
+                                    @if ($tournament->club?->city)
+                                        <span class="text-gray-500 text-sm">({{ $tournament->club?->city }})</span>
                                     @endif
                                 @else
                                     <span class="text-gray-400">N/A</span>
@@ -71,8 +71,8 @@
                         <div>
                             <label class="text-sm font-medium text-gray-500">Zona</label>
                             <p class="text-gray-900">
-                                @if ($tournament->club && $tournament->club->zone)
-                                    {{ $tournament->club->zone->name }}
+                                @if ($tournament->club && $tournament->club?->zone)
+                                    {{ $tournament->club?->zone?->name }}
                                 @else
                                     <span class="text-gray-400">N/A</span>
                                 @endif

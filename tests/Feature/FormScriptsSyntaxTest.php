@@ -97,6 +97,16 @@ class FormScriptsSyntaxTest extends TestCase
         $referee = $this->createReferee(['zone_id' => 1, 'level' => 'Nazionale']);
         $this->createAssignment(['tournament_id' => $tournament->id, 'user_id' => $referee->id]);
 
+        // Un torneo T.B.A. (circolo non ancora scelto) in tutte le liste: prima
+        // mandava in errore molte pagine
+        $tba = $this->createTournament([
+            'start_date' => now()->addDays(20), 'end_date' => now()->addDays(21),
+            'availability_deadline' => now()->addDays(10),
+        ]);
+        $tba->forceFill(['club_id' => null, 'zone_id' => 1])->save();
+        $this->createAssignment(['tournament_id' => $tba->id, 'user_id' => $referee->id]);
+        \App\Models\Availability::create(['user_id' => $referee->id, 'tournament_id' => $tba->id, 'submitted_at' => now()]);
+
         $adminPages = [
             'admin.dashboard', 'admin.tournaments.index', 'admin.tournaments.calendar', 'admin.tournaments.create',
             'admin.assignments.index', 'admin.assignments.create', 'admin.assignment-validation.index',
@@ -105,7 +115,7 @@ class FormScriptsSyntaxTest extends TestCase
             'admin.clubs.index', 'admin.clubs.create', 'admin.users.index', 'admin.users.create',
             'admin.referees.curricula', 'admin.career-history.index', 'admin.career-history.archive-form',
             'admin.statistics.dashboard', 'admin.statistics.arbitri', 'admin.statistics.assegnazioni',
-            'admin.statistics.disponibilita', 'admin.statistics.performance', 'admin.statistics.tornei',
+            'admin.statistics.disponibilita', 'admin.statistics.tornei',
             'admin.statistics.zone', 'admin.tournament-notifications.index', 'admin.communications.index',
             'admin.documents.index', 'super-admin.clauses.index', 'super-admin.institutional-emails.index',
             'super-admin.tournament-types.index', 'super-admin.zones.index',
@@ -121,6 +131,12 @@ class FormScriptsSyntaxTest extends TestCase
             $pages[] = [$referee, route($name), $name];
         }
         $pages[] = [$referee, route('tournaments.show', $tournament), 'tournaments.show'];
+        $pages[] = [$referee, route('tournaments.show', $tba), 'tournaments.show (T.B.A.)'];
+        $pages[] = [$this->createSuperAdmin(), route('admin.tournaments.show', $tba), 'admin.tournaments.show (T.B.A.)'];
+        $pages[] = [$this->createSuperAdmin(), route('admin.tournaments.edit', $tba), 'admin.tournaments.edit (T.B.A.)'];
+        $pages[] = [$this->createSuperAdmin(), route('admin.assignments.assign-referees', $tba), 'admin.assignments.assign-referees (T.B.A.)'];
+        $tbaNotification = \App\Models\TournamentNotification::create(['tournament_id' => $tba->id, 'status' => 'pending']);
+        $pages[] = [$this->createSuperAdmin(), route('admin.tournament-notifications.show', $tbaNotification), 'admin.tournament-notifications.show (T.B.A.)'];
         // Le stesse pagine principali viste dall'admin di zona e dal CRC
         foreach (['SZR' => $this->createZoneAdmin(1), 'CRC' => $this->createNationalAdmin()] as $who => $admin) {
             foreach (['admin.dashboard', 'admin.tournaments.index', 'admin.tournaments.calendar', 'admin.users.index', 'admin.assignment-validation.index', 'admin.tournament-notifications.index', 'admin.statistics.dashboard'] as $name) {
