@@ -482,7 +482,7 @@
                                                                 {{ \App\Models\NotificationClause::CATEGORIES[$category] ?? ucfirst($category) }}
                                                             </label>
                                                             @foreach ($categoryClauses as $clause)
-                                                                <div <div
+                                                                <div
                                                                     class="flex items-start mb-3 p-3 bg-green-50 rounded-lg border border-green-100">
                                                                     <input type="radio"
                                                                         name="clauses[CLAUSOLA_ARBITRO_{{ strtoupper($category) }}]"

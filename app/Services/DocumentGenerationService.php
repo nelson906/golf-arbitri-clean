@@ -249,18 +249,40 @@ class DocumentGenerationService
                 'spacing' => 120,
             ]);
 
-            // Spese - Testo identico
-            $spese = 'Si ricorda che questo Circolo Organizzatore, rimborserà le eventuali spese di viaggio, vitto e alloggio, così come '.
-                'previsto dalla Normativa Tecnica in vigore. Il rimborso sarà effettuato sulla base della nota spese emessa dal '.
-                'singolo soggetto. Tutte le spese sono rimborsate nei limiti previsti dalla FIG e indicati nelle "Linee guida '.
-                'trasferte e rimborsi spese" annualmente pubblicate.';
-
-            $section->addText($spese, null, [
+            // Clausole scelte per il Circolo nella notifica (2026-10-07): la
+            // clausola Spese, se scelta, prende il posto del paragrafo spese
+            // fisso; Logistica e Responsabilita' seguono
+            $clubClauses = $this->clubClauseTexts($notification);
+            $clauseStyle = [
                 'align' => 'both',
                 'spaceBefore' => 120,
                 'lineHeight' => 1.5,
                 'spacing' => 120,
-            ]);
+            ];
+
+            // Spese - Testo identico
+            $spese = $clubClauses['CLAUSOLA_CLUB_SPESE'] ?? 'Si ricorda che questo Circolo Organizzatore, rimborserà le eventuali spese di viaggio, vitto e alloggio, così come '.
+                'previsto dalla Normativa Tecnica in vigore. Il rimborso sarà effettuato sulla base della nota spese emessa dal '.
+                'singolo soggetto. Tutte le spese sono rimborsate nei limiti previsti dalla FIG e indicati nelle "Linee guida '.
+                'trasferte e rimborsi spese" annualmente pubblicate.';
+
+            // Una clausola su piu' righe diventa piu' paragrafi (un "a capo"
+            // dentro addText non compare in Word)
+            $addParagraphs = function (string $text) use ($section, $clauseStyle): void {
+                foreach (preg_split('/\R+/', $text) ?: [] as $line) {
+                    if (trim($line) !== '') {
+                        $section->addText(trim($line), null, $clauseStyle);
+                    }
+                }
+            };
+
+            $addParagraphs($spese);
+
+            foreach (['CLAUSOLA_CLUB_LOGISTICA', 'CLAUSOLA_CLUB_RESPONSABILITA'] as $code) {
+                if (isset($clubClauses[$code])) {
+                    $addParagraphs($clubClauses[$code]);
+                }
+            }
 
             // Conferma - Controllo null safety per zone e club
             $zoneId = $tournament->zone ? ($tournament->zone->id ?? 'X') : 'X';
@@ -491,6 +513,34 @@ class DocumentGenerationService
 
         // Mesi diversi
         return $startDate->format('d/m/Y').' - '.$endDate->format('d/m/Y');
+    }
+
+    /**
+     * Testo delle clausole Circolo scelte nella notifica, per codice
+     * (solo quelle con contenuto). PhpWord tratta il testo come testo
+     * semplice: i caratteri speciali vanno protetti come nel resto della lettera.
+     *
+     * @return array<string, string>
+     */
+    private function clubClauseTexts(?TournamentNotification $notification): array
+    {
+        if (! $notification) {
+            return [];
+        }
+
+        $notification->loadMissing('clauseSelections.clause');
+        $texts = [];
+        foreach ($notification->clauseSelections as $selection) {
+            $code = (string) $selection->placeholder_code;
+            // La clausola puo' essere stata cancellata dopo la scelta
+            $clause = $selection->getRelationValue('clause');
+            $content = $clause instanceof \App\Models\NotificationClause ? trim((string) $clause->content) : '';
+            if (str_starts_with($code, 'CLAUSOLA_CLUB_') && $content !== '') {
+                $texts[$code] = htmlspecialchars($content);
+            }
+        }
+
+        return $texts;
     }
 
     /**
