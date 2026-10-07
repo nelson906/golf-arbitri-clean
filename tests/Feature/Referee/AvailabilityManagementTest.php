@@ -30,7 +30,39 @@ class AvailabilityManagementTest extends TestCase
      */
     public function test_referee_sees_only_own_zone_tournaments(): void
     {
-        $this->markTestSkipped('Richiede scope visible() funzionante in test environment');
+        $zonal = \App\Models\TournamentType::where('is_national', false)->firstOrFail();
+        $national = \App\Models\TournamentType::where('is_national', true)->firstOrFail();
+        $make = fn (int $zone, \App\Models\TournamentType $type) => $this->createTournament([
+            'club_id' => $this->createClub(['zone_id' => $zone])->id,
+            'tournament_type_id' => $type->id,
+            'start_date' => now()->addDays(30),
+            'end_date' => now()->addDays(31),
+            'availability_deadline' => now()->addDays(20),
+        ]);
+        $zonalMine = $make(1, $zonal);
+        $zonalOther = $make(2, $zonal);
+        $nationalMine = $make(1, $national);
+        $nationalOther = $make(2, $national);
+
+        $ids = function (\App\Models\User $referee): array {
+            $response = $this->actingAs($referee)->get(route('user.availability.tournaments'))->assertOk();
+            /** @var \Illuminate\Pagination\LengthAwarePaginator<int, Tournament> $page */
+            $page = $this->viewObject($response, 'tournaments', \Illuminate\Pagination\LengthAwarePaginator::class);
+
+            return collect($page->items())->pluck('id')->all();
+        };
+
+        // Arbitro zonale: tutti i tornei della sua zona, zonali e nazionali
+        $zonalIds = $ids($this->createReferee(['zone_id' => 1, 'level' => 'Regionale']));
+        $this->assertContains($zonalMine->id, $zonalIds);
+        $this->assertContains($nationalMine->id, $zonalIds);
+        $this->assertNotContains($zonalOther->id, $zonalIds);
+        $this->assertNotContains($nationalOther->id, $zonalIds);
+
+        // Arbitro nazionale: in piu' i nazionali di tutta Italia
+        $nationalIds = $ids($this->createReferee(['zone_id' => 1, 'level' => 'Nazionale']));
+        $this->assertContains($nationalOther->id, $nationalIds);
+        $this->assertNotContains($zonalOther->id, $nationalIds);
     }
 
     // ==========================================

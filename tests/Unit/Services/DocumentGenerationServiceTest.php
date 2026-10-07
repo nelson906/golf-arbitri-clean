@@ -31,16 +31,22 @@ class DocumentGenerationServiceTest extends TestCase
     // ==========================================
 
     /**
-     * Test: getZoneTemplatePath ritorna path corretto
-     *
-     * Nota: Questo metodo è protected, quindi testiamo indirettamente
-     * attraverso generateConvocationForTournament se possibile,
-     * oppure lo skippiamo se troppo complesso
+     * Ogni zona usa la sua carta intestata; zona sconosciuta o assente: default.
      */
     public function test_zone_template_path_logic(): void
     {
-        // Per ora skip - richiede file system completo
-        $this->markTestSkipped('Requires filesystem setup with actual templates');
+        $method = (new \ReflectionClass($this->service))->getMethod('getZoneTemplatePath');
+        $method->setAccessible(true);
+
+        foreach (range(1, 7) as $zone) {
+            $path = $method->invoke($this->service, $zone);
+            $this->assertIsString($path);
+            $this->assertStringEndsWith("lettera_intestata_szr{$zone}.docx", $path);
+            $this->assertFileExists($path);
+        }
+        $fallback = $method->invoke($this->service, 42);
+        $this->assertIsString($fallback);
+        $this->assertStringEndsWith('lettera_intestata_default.docx', $fallback);
     }
 
     // ==========================================
@@ -48,15 +54,24 @@ class DocumentGenerationServiceTest extends TestCase
     // ==========================================
 
     /**
-     * Test: formatTournamentDates formatta date correttamente
-     *
-     * Nota: Metodo protected, ma possiamo testare attraverso
-     * generateConvocationForTournament se genera output
+     * Torneo di un giorno, di piu' giorni nello stesso mese, a cavallo di due mesi.
      */
     public function test_tournament_dates_formatting(): void
     {
-        // Per ora skip - richiede template files
-        $this->markTestSkipped('Requires template files and complex setup');
+        $method = (new \ReflectionClass($this->service))->getMethod('formatTournamentDates');
+        $method->setAccessible(true);
+        $base = now()->addYear()->startOfMonth();
+
+        $one = new Tournament(['start_date' => $base->copy()->addDays(9), 'end_date' => $base->copy()->addDays(9)]);
+        $this->assertSame($base->copy()->addDays(9)->format('d/m/Y'), $method->invoke($this->service, $one));
+
+        $same = new Tournament(['start_date' => $base->copy()->addDays(9), 'end_date' => $base->copy()->addDays(11)]);
+        $this->assertSame($base->copy()->addDays(9)->format('d').'-'.$base->copy()->addDays(11)->format('d/m/Y'), $method->invoke($this->service, $same));
+
+        $start = $base->copy()->endOfMonth()->startOfDay();
+        $end = $base->copy()->addMonth()->addDay();
+        $cross = new Tournament(['start_date' => $start, 'end_date' => $end]);
+        $this->assertSame($start->format('d/m/Y').' - '.$end->format('d/m/Y'), $method->invoke($this->service, $cross));
     }
 
     // ==========================================
