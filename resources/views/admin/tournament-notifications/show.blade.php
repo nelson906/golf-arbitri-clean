@@ -64,9 +64,10 @@
                                 <span class="text-gray-600">Stato:</span>
                                 <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
                                     {{ $tournamentNotification->status === 'sent' ? 'bg-green-100 text-green-800' : '' }}
-                                    {{ $tournamentNotification->status === 'pending' ? 'bg-yellow-100 text-yellow-800' : '' }}
+                                    {{ $tournamentNotification->status === 'partial' ? 'bg-yellow-100 text-yellow-800' : '' }}
+                                    {{ $tournamentNotification->status === 'pending' ? 'bg-gray-100 text-gray-700' : '' }}
                                     {{ $tournamentNotification->status === 'failed' ? 'bg-red-100 text-red-800' : '' }}">
-                                    {{ $tournamentNotification->status_formatted }}
+                                    {{ $tournamentNotification->stateLabel() }}
                                 </span>
                             </div>
 
@@ -78,12 +79,27 @@
                                 </span>
                             </div>
 
+                            <!-- Indirizzi accettati dal server di posta nell'ultimo invio riuscito -->
+                            @if(in_array($tournamentNotification->status, ['sent', 'partial'], true))
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-600">Inviata a:</span>
+                                    <span class="text-sm font-semibold">{{ $tournamentNotification->recipientsReached() }} destinatari</span>
+                                </div>
+                            @endif
+
+                            @if($tournamentNotification->lastAttemptAt())
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-600">Ultimo tentativo:</span>
+                                    <span class="text-sm">{{ $tournamentNotification->lastAttemptAt()->format('d/m/Y H:i') }}</span>
+                                </div>
+                            @endif
+
                             <!-- Errori se presenti -->
-                            @if($tournamentNotification->status === 'failed' && !empty($tournamentNotification->metadata['last_error']))
+                            @if(in_array($tournamentNotification->status, ['failed', 'partial'], true) && $tournamentNotification->lastError())
                                 <div class="mt-4 p-3 bg-red-50 rounded-lg">
                                     <p class="text-sm text-red-600">
                                         <i class="fas fa-exclamation-triangle mr-1"></i>
-                                        {{ $tournamentNotification->metadata['last_error'] }}
+                                        {{ $tournamentNotification->lastError() }}
                                     </p>
                                 </div>
                             @endif
@@ -93,69 +109,8 @@
             </div>
         </div>
 
-        <!-- 📊 Breakdown per Tipo Destinatario -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div>
-                <div class="bg-white rounded-lg shadow-md">
-                    <div class="px-6 py-3 bg-gray-50 rounded-t-lg">
-                        <h6 class="text-sm font-semibold mb-0">🏌️ Circolo</h6>
-                    </div>
-                    <div class="p-6 text-center">
-                        @php $clubStats = $tournamentNotification->stats @endphp
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <h4 class="text-xl font-bold text-green-600">{{ $clubStats['club_sent'] }}</h4>
-                                <p class="text-sm text-gray-600">Inviati</p>
-                            </div>
-                            <div>
-                                <h4 class="text-xl font-bold text-red-600">{{ $clubStats['club_failed'] }}</h4>
-                                <p class="text-sm text-gray-600">Falliti</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div>
-                <div class="bg-white rounded-lg shadow-md">
-                    <div class="px-6 py-3 bg-gray-50 rounded-t-lg">
-                        <h6 class="text-sm font-semibold mb-0">⚖️ Arbitri</h6>
-                    </div>
-                    <div class="p-6 text-center">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <h4 class="text-xl font-bold text-green-600">{{ $clubStats['referees_sent'] }}</h4>
-                                <p class="text-sm text-gray-600">Inviati</p>
-                            </div>
-                            <div>
-                                <h4 class="text-xl font-bold text-red-600">{{ $clubStats['referees_failed'] }}</h4>
-                                <p class="text-sm text-gray-600">Falliti</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div>
-                <div class="bg-white rounded-lg shadow-md">
-                    <div class="px-6 py-3 bg-gray-50 rounded-t-lg">
-                        <h6 class="text-sm font-semibold mb-0">🏛️ Istituzionali</h6>
-                    </div>
-                    <div class="p-6 text-center">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <h4 class="text-xl font-bold text-green-600">{{ $clubStats['institutional_sent'] }}</h4>
-                                <p class="text-sm text-gray-600">Inviati</p>
-                            </div>
-                            <div>
-                                <h4 class="text-xl font-bold text-red-600">{{ $clubStats['institutional_failed'] }}</h4>
-                                <p class="text-sm text-gray-600">Falliti</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        {{-- Tolto il riepilogo per tipo di destinatario (circolo/arbitri/istituzionali):
+             leggeva dati che nessuno scrive e mostrava sempre 0 (2026-10-07) --}}
 
         <!-- 📋 Destinatari e Documenti -->
         <div class="bg-white rounded-lg shadow-md mb-6">

@@ -871,9 +871,14 @@
                 alert('Prima crea gli allegati (Clausole Aggiuntive → Crea allegati) o caricali da Gestisci Documenti.');
                 return false;
             }
+            // Conteggio indicativo: il circolo + tutte le copie scelte
+            // (un indirizzo ripetuto riceve comunque una sola copia)
             const recipientCount = document.querySelectorAll('input[name="recipients[]"]:checked').length;
-            const sendToClub = true; // il circolo riceve sempre la notifica
-            const totalRecipients = recipientCount + (sendToClub ? 1 : 0);
+            const institutionalCount = document.querySelectorAll('input[name="fixed_addresses[]"]:checked').length;
+            const sectionCount = document.getElementById('send_to_section')?.checked ? 1 : 0;
+            const additionalCount = Array.from(document.querySelectorAll('input[name="additional_emails[]"]'))
+                .filter(input => input.value.trim() !== '').length;
+            const totalRecipients = 1 + recipientCount + institutionalCount + sectionCount + additionalCount;
 
             if (totalRecipients === 0) {
                 alert('Seleziona almeno un destinatario.');
@@ -1141,7 +1146,7 @@ async function saveClauses() {
             let ccCount = 0;
             document.querySelectorAll('input[name^="cc_"]:checked').forEach(() => ccCount++);
 
-            const sendToCampionati = document.getElementById('send_to_campionati')?.checked;
+            const sendToCampionati = true; // sempre il destinatario principale
             const totalRecipients = (sendToCampionati ? 1 : 0) + ccCount;
 
             if (totalRecipients === 0) {
@@ -1161,7 +1166,7 @@ async function saveClauses() {
             const typeLabel = type === 'crc' ? 'Designazione Arbitri (CRC)' : 'Designazione Osservatori (Zona)';
 
             // Raccogli destinatari TO
-            const sendToCampionati = document.getElementById('send_to_campionati')?.checked;
+            const sendToCampionati = true; // sempre il destinatario principale
 
             // Raccogli destinatari CC
             const ccRecipients = [];

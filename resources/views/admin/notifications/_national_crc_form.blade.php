@@ -103,12 +103,11 @@ Cordiali saluti";
                     Destinatario Principale (TO)
                 </h4>
                 <div class="flex items-center">
-                    <input type="checkbox" name="send_to_campionati" id="send_to_campionati" value="1" checked
-                        class="h-4 w-4 text-green-600 border-gray-300 rounded">
-                    <label for="send_to_campionati" class="ml-2 text-sm text-gray-700">
+                    {{-- Sempre il destinatario principale: non si toglie (2026-10-07) --}}
+                    <span class="text-sm text-gray-700">
                         <span class="font-medium">Comitato Campionati</span>
                         <span class="text-gray-500">({{ config('golf.emails.ufficio_campionati', 'campionati@federgolf.it') }})</span>
-                    </label>
+                    </span>
                 </div>
             </div>
 

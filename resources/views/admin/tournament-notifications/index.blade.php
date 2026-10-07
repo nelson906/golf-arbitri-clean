@@ -182,7 +182,8 @@
                                                           $primaryNotification->is_prepared ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'],
                                         };
                                     @endphp
-                                    <span class="px-2 py-0.5 text-xs font-semibold rounded-full {{ $badge[1] }}">
+                                    <span class="px-2 py-0.5 text-xs font-semibold rounded-full {{ $badge[1] }}"
+                                          @if(in_array($s, ['sent', 'partial'], true)) title="Inviata a {{ $primaryNotification->recipientsReached() }} destinatari" @endif>
                                         {{ $badge[0] }}
                                     </span>
                                 @endif

@@ -157,7 +157,7 @@ class AvailabilityController extends Controller
 
         if ($available) {
             // Aggiungi o aggiorna disponibilità
-            Availability::updateOrCreate(
+            $availability = Availability::updateOrCreate(
                 [
                     'user_id' => $user->id,
                     'tournament_id' => $tournament->id,
@@ -169,17 +169,22 @@ class AvailabilityController extends Controller
             );
             $message = 'Disponibilità dichiarata con successo.';
 
-            // Invia notifiche per disponibilità aggiunta
-            $mailWarning = $this->handleSingleNotification($user, $tournament, 'added');
+            // Email solo se la disponibilita' e' davvero nuova: una seconda
+            // dichiarazione (doppio clic, richiesta ripetuta) non manda niente
+            $mailWarning = $availability->wasRecentlyCreated
+                ? $this->handleSingleNotification($user, $tournament, 'added')
+                : null;
         } else {
             // Rimuovi disponibilità
-            Availability::where('user_id', $user->id)
+            $removed = Availability::where('user_id', $user->id)
                 ->where('tournament_id', $tournament->id)
                 ->delete();
             $message = 'Disponibilità rimossa con successo.';
 
-            // Invia notifiche per disponibilità rimossa
-            $mailWarning = $this->handleSingleNotification($user, $tournament, 'removed');
+            // Email solo se c'era davvero una disponibilita' da togliere
+            $mailWarning = $removed > 0
+                ? $this->handleSingleNotification($user, $tournament, 'removed')
+                : null;
         }
 
         // Return JSON for AJAX requests

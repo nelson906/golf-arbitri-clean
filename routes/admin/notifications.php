@@ -35,7 +35,8 @@ Route::prefix('tournament-notifications')->name('tournament-notifications.')->gr
         ->name('destroy-tournament');
 
     // Core notification operations
-    Route::post('/{notification}/send', [NotificationController::class, 'send'])->name('send');
+    // Tolto l'invio diretto POST /{notification}/send (2026-10-07): nessuna
+    // pagina lo usava e spediva senza far rivedere destinatari e testo.
     Route::post('/{notification}/resend', [NotificationController::class, 'resend'])->name('resend');
     Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
     Route::get('/{notification}', [NotificationController::class, 'show'])->name('show');

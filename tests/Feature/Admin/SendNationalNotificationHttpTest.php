@@ -61,13 +61,17 @@ class SendNationalNotificationHttpTest extends TestCase
         ]);
     }
 
-    public function test_no_recipients_returns_error(): void
+    /**
+     * Decisione 2026-10-07: il Comitato Campionati e' sempre il destinatario
+     * principale, anche se il form non lo manda (prima senza la casella la
+     * comunicazione restava senza destinatari).
+     */
+    public function test_comitato_campionati_is_always_main_recipient(): void
     {
         Mail::fake();
 
-        $nationalType = $this->nationalType();
         $tournament = $this->createTournament([
-            'tournament_type_id' => $nationalType->id,
+            'tournament_type_id' => $this->nationalType()->id,
         ]);
         $this->createAssignment([
             'tournament_id' => $tournament->id,
@@ -76,18 +80,41 @@ class SendNationalNotificationHttpTest extends TestCase
 
         $this->actingAsSuperAdmin();
 
-        // Nessun send_to_campionati, nessuna zona, nessun CC → builder vuoto.
-        $response = $this->post(
+        $this->post(
             route('admin.tournaments.send-national-notification', $tournament),
             [
                 'notification_type' => 'crc_referees',
-                'subject'           => 'Senza destinatari',
-                'message'           => 'Nessuno selezionato.',
+                'subject'           => 'Senza casella Campionati',
+                'message'           => 'Parte comunque al Comitato.',
             ]
-        );
+        )->assertSessionHas('success');
 
-        $response->assertSessionHas('error');
-        Mail::assertNotQueued(NationalNotificationMail::class);
+        $campionati = \Illuminate\Support\Facades\Config::string('golf.emails.ufficio_campionati', 'campionati@federgolf.it');
+        Mail::assertQueued(NationalNotificationMail::class, fn ($mail) => $mail->hasTo($campionati));
+    }
+
+    public function test_crc_cannot_send_the_observers_communication(): void
+    {
+        Mail::fake();
+
+        $tournament = $this->createTournament([
+            'tournament_type_id' => $this->nationalType()->id,
+        ]);
+
+        $this->actingAs($this->createNationalAdmin())->post(
+            route('admin.tournaments.send-national-notification', $tournament),
+            [
+                'notification_type' => 'zone_observers',
+                'subject'           => 'Osservatori',
+                'message'           => 'Tocca alla zona.',
+            ]
+        )->assertSessionHas('error');
+
+        Mail::assertNothingOutgoing();
+        $this->assertDatabaseMissing('tournament_notifications', [
+            'tournament_id' => $tournament->id,
+            'notification_type' => 'zone_observers',
+        ]);
     }
 
     public function test_success_creates_national_record_and_deletes_zonal_draft(): void
