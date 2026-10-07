@@ -2,397 +2,290 @@
 
 namespace Tests\Feature;
 
-use App\Models\Club;
+use App\Helpers\ZoneHelper;
 use App\Models\NotificationClause;
 use App\Models\NotificationClauseSelection;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
-use App\Models\User;
-use App\Models\Zone;
+use App\Models\TournamentType;
 use App\Services\DocumentGenerationService;
 use App\Services\NotificationPreparationService;
-use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * Test non invasivo per il ciclo completo di notifica
+ * Ciclo della notifica zonale con i Word VERI (template in
+ * storage/lettere_intestate): convocazione con clausole, lettera al circolo,
+ * creazione degli allegati dal form ("Crea allegati").
  *
- * Questo test verifica:
- * 1. Generazione documenti (convocazione e lettera circolo)
- * 2. Gestione clausole
- * 3. Invio notifiche (mock)
- * 4. Integrità del flusso completo
- *
- * IMPORTANTE: Usa DatabaseTransactions per non modificare il database di produzione
- *
- * Per eseguire i test con il database MySQL:
- *   php artisan test --filter=NotificationCycleTest --env=local
- *
- * Oppure creare .env.testing con le stesse credenziali del database di produzione
+ * Prima questi test cercavano un torneo gia' presente nel database e, nel
+ * database dei test vuoto, si saltavano tutti: la creazione dei Word non era
+ * mai verificata. Ora ogni test crea i propri dati (7 ottobre 2026).
  */
 class NotificationCycleTest extends TestCase
 {
-    use RefreshDatabase;
+    private DocumentGenerationService $documentService;
 
-    protected DocumentGenerationService $documentService;
+    private NotificationPreparationService $preparationService;
 
+    /** @var list<string> file assoluti da cancellare */
+    private array $generatedFiles = [];
 
-    protected NotificationPreparationService $preparationService;
-
-    protected ?Tournament $testTournament = null;
-
-    protected ?User $testAdmin = null;
-
-    /**
-     * @var list<string>
-     */
-    protected array $generatedFiles = [];
-
-    protected bool $databaseAvailable = false;
+    /** @var list<string> file relativi al disk documenti da cancellare */
+    private array $docsFiles = [];
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        // Verifica connessione database
-        try {
-            DB::connection()->getPdo();
-            $this->databaseAvailable = true;
-        } catch (\Exception $e) {
-            $this->databaseAvailable = false;
-        }
-
-        // Inizializza i servizi
         $this->documentService = app(DocumentGenerationService::class);
         $this->preparationService = app(NotificationPreparationService::class);
 
-        // Fake mail per non inviare email reali
         Mail::fake();
-    }
-
-    /**
-     * Helper per verificare se il database è disponibile
-     */
-    protected function requireDatabase(): void
-    {
-        if (! $this->databaseAvailable) {
-            $this->markTestSkipped('Database non disponibile. Eseguire con: php artisan test --env=local');
-        }
     }
 
     protected function tearDown(): void
     {
-        // Pulisci i file temporanei generati durante i test
         foreach ($this->generatedFiles as $file) {
             if (file_exists($file)) {
                 @unlink($file);
             }
+        }
+        $disk = Storage::disk(Config::string('golf.documents.disk', 'docs'));
+        foreach ($this->docsFiles as $path) {
+            $disk->delete($path);
         }
 
         parent::tearDown();
     }
 
     /**
-     * Test 3: Verifica esistenza template per tutte le zone
+     * Torneo zonale della zona 1 con Direttore, Arbitro e Osservatore.
+     *
+     * @return array{0: Tournament, 1: array<string, string>}
      */
+    private function tournamentWithReferees(): array
+    {
+        $club = $this->createClub(['zone_id' => 1, 'name' => 'Circolo Prova Verde', 'email' => 'circolo@example.test']);
+        $tournament = $this->createTournament([
+            'name' => 'Trofeo Della Prova',
+            'club_id' => $club->id,
+            'tournament_type_id' => TournamentType::where('is_national', false)->firstOrFail()->id,
+            'start_date' => now()->addDays(40)->startOfDay(),
+            'end_date' => now()->addDays(41)->startOfDay(),
+            'availability_deadline' => now()->addDays(20)->startOfDay(),
+        ]);
+
+        $names = [];
+        foreach (['Direttore di Torneo' => 'Dario Direttore', 'Arbitro' => 'Arturo Arbitro', 'Osservatore' => 'Osvaldo Osservatore'] as $role => $name) {
+            [$first, $last] = explode(' ', $name);
+            $referee = $this->createReferee(['zone_id' => 1, 'name' => $name, 'first_name' => $first, 'last_name' => $last]);
+            $this->createAssignment(['tournament_id' => $tournament->id, 'user_id' => $referee->id, 'role' => $role]);
+            $names[$role] = $name;
+        }
+
+        return [$tournament->refresh(), $names];
+    }
+
+    private function clause(string $code, string $category, string $appliesTo, string $content): NotificationClause
+    {
+        return NotificationClause::create([
+            'code' => $code,
+            'category' => $category,
+            'title' => 'Clausola '.$code,
+            'content' => $content,
+            'applies_to' => $appliesTo,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+    }
+
+    /** Testo del documento Word (word/document.xml senza i tag). */
+    private function docxText(string $path): string
+    {
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open($path) === true, 'Il file non è un DOCX (zip) valido: '.$path);
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+        $this->assertIsString($xml, 'Il DOCX non contiene word/document.xml');
+
+        return html_entity_decode(strip_tags($xml));
+    }
+
     public function test_zone_templates_exist(): void
     {
-        $zones = ['szr1', 'szr2', 'szr3', 'szr4', 'szr5', 'szr6', 'szr7', 'default'];
         $templateDir = storage_path('lettere_intestate');
 
         $this->assertDirectoryExists($templateDir, 'Directory template non trovata');
-
-        $missingTemplates = [];
-        foreach ($zones as $zone) {
-            $templatePath = "{$templateDir}/lettera_intestata_{$zone}.docx";
-            if (! file_exists($templatePath)) {
-                $missingTemplates[] = $zone;
-            }
-        }
-
-        // Almeno il template default deve esistere
-        $this->assertFileExists(
-            "{$templateDir}/lettera_intestata_default.docx",
-            'Template default non trovato'
-        );
-    }
-
-    /**
-     * Test 5: Verifica generazione convocazione per torneo con assegnazioni
-     */
-    public function test_generate_convocation_for_tournament_with_assignments(): void
-    {
-        $this->requireDatabase();
-
-        // Trova un torneo con assegnazioni
-        $tournament = Tournament::whereHas('assignments')
-            ->with(['club', 'zone', 'tournamentType', 'assignments.user'])
-            ->first();
-
-        if (! $tournament) {
-            $this->markTestSkipped('Nessun torneo con assegnazioni nel database');
-        }
-
-        try {
-            $result = $this->documentService->generateConvocationForTournament($tournament);
-
-            $this->assertArrayHasKey('path', $result);
-            $this->assertArrayHasKey('filename', $result);
-            $this->assertArrayHasKey('type', $result);
-            $this->assertEquals('convocation', $result['type']);
-            $this->assertFileExists($result['path']);
-
-            // Traccia il file per cleanup
-            $this->generatedFiles[] = $result['path'];
-
-            // Verifica che sia un file DOCX valido (ZIP)
-            $this->assertStringEndsWith('.docx', $result['filename']);
-        } catch (\Exception $e) {
-            $this->fail('Errore generazione convocazione: '.$e->getMessage());
+        foreach (['szr1', 'szr2', 'szr3', 'szr4', 'szr5', 'szr6', 'szr7', 'crc', 'default'] as $zone) {
+            $this->assertFileExists("{$templateDir}/lettera_intestata_{$zone}.docx", "Template {$zone} mancante");
         }
     }
 
-    /**
-     * Test 6: Verifica generazione documento circolo
-     */
-    public function test_generate_club_document(): void
+    public function test_convocation_contains_tournament_club_and_all_referees(): void
     {
-        $this->requireDatabase();
+        [$tournament, $names] = $this->tournamentWithReferees();
 
-        // Trova un torneo con assegnazioni
-        $tournament = Tournament::whereHas('assignments')
-            ->with(['club', 'zone', 'tournamentType', 'assignments.user'])
-            ->first();
+        $result = $this->documentService->generateConvocationForTournament($tournament);
+        $this->generatedFiles[] = $result['path'];
 
-        if (! $tournament) {
-            $this->markTestSkipped('Nessun torneo con assegnazioni nel database');
+        $this->assertSame('convocation', $result['type']);
+        $this->assertStringEndsWith('.docx', $result['filename']);
+        $this->assertStringContainsString((string) $tournament->id, $result['filename']);
+
+        $text = $this->docxText($result['path']);
+        $this->assertStringContainsString('Trofeo Della Prova', $text);
+        $this->assertStringContainsString('Circolo Prova Verde', $text);
+        foreach ($names as $role => $name) {
+            $this->assertStringContainsString($name, $text, "Manca {$role} nella convocazione");
         }
-
-        try {
-            $result = $this->documentService->generateClubDocument($tournament);
-
-            $this->assertArrayHasKey('path', $result);
-            $this->assertArrayHasKey('filename', $result);
-            $this->assertArrayHasKey('type', $result);
-            $this->assertEquals('club_letter', $result['type']);
-            $this->assertFileExists($result['path']);
-
-            // Traccia il file per cleanup
-            $this->generatedFiles[] = $result['path'];
-
-            // Verifica che sia un file DOCX valido
-            $this->assertStringEndsWith('.docx', $result['filename']);
-        } catch (\Exception $e) {
-            $this->fail('Errore generazione documento circolo: '.$e->getMessage());
-        }
+        // Nessun segnaposto rimasto nel documento
+        $this->assertStringNotContainsString('${', $text);
     }
 
-    /**
-     * Test 7: Verifica generazione con clausole
-     */
-    public function test_generate_convocation_with_clauses(): void
+    public function test_convocation_includes_selected_clauses_and_drops_the_others(): void
     {
-        $this->requireDatabase();
-
-        // Trova un torneo con assegnazioni
-        $tournament = Tournament::whereHas('assignments')
-            ->with(['club', 'zone', 'tournamentType', 'assignments.user'])
-            ->first();
-
-        if (! $tournament) {
-            $this->markTestSkipped('Nessun torneo con assegnazioni nel database');
-        }
-
-        // Crea una notifica di test con clausole
+        [$tournament] = $this->tournamentWithReferees();
         $notification = TournamentNotification::create([
             'tournament_id' => $tournament->id,
             'status' => 'pending',
-            'sent_by' => User::first()->id ?? 1,
         ]);
 
-        // Verifica se esistono clausole
-        $clause = NotificationClause::where('is_active', true)->firstOrFail();
-
-        if ($clause) {
-            NotificationClauseSelection::create([
-                'tournament_notification_id' => $notification->id,
-                'clause_id' => $clause->id,
-                'placeholder_code' => 'CLAUSOLA_ARBITRO_RESPONSABILITA',
-            ]);
-        }
-
-        try {
-            $result = $this->documentService->generateConvocationForTournament($tournament, $notification);
-
-            $this->assertFileExists($result['path']);
-
-            // Traccia il file per cleanup
-            $this->generatedFiles[] = $result['path'];
-        } catch (\Exception $e) {
-            $this->fail('Errore generazione convocazione con clausole: '.$e->getMessage());
-        }
-    }
-
-    /**
-     * Test 8: Verifica preparazione notifica completa
-     */
-    public function test_prepare_notification(): void
-    {
-        $this->requireDatabase();
-
-        // Trova un torneo con assegnazioni
-        $tournament = Tournament::whereHas('assignments')
-            ->with(['club', 'zone', 'tournamentType', 'assignments.user'])
-            ->first();
-
-        if (! $tournament) {
-            $this->markTestSkipped('Nessun torneo con assegnazioni nel database');
-        }
-
-        try {
-            $notification = $this->preparationService->prepareNotification($tournament);
-
-            $this->assertEquals($tournament->id, $notification->tournament_id);
-            $this->assertEquals('pending', $notification->status);
-        } catch (\Exception $e) {
-            $this->fail('Errore preparazione notifica: '.$e->getMessage());
-        }
-    }
-
-    /**
-     * Test 9: Verifica che le email NON vengano inviate (fake)
-     */
-    public function test_notification_send_is_mocked(): void
-    {
-        // Verifica che Mail::fake() sia attivo
-        Mail::assertNothingOutgoing();
-    }
-
-    /**
-     * Test 10: Test completo del ciclo di notifica (senza invio reale)
-     */
-    public function test_complete_notification_cycle(): void
-    {
-        $this->requireDatabase();
-
-        // Trova un torneo con assegnazioni e circolo
-        $tournament = Tournament::whereHas('assignments')
-            ->whereHas('club')
-            ->with(['club', 'zone', 'tournamentType', 'assignments.user'])
-            ->first();
-
-        if (! $tournament) {
-            $this->markTestSkipped('Nessun torneo completo nel database');
-        }
-
-        // Step 1: Prepara notifica
-        $notification = TournamentNotification::create([
-            'tournament_id' => $tournament->id,
-            'status' => 'pending',
-            'sent_by' => User::first()->id ?? 1,
-            'metadata' => [
-                'subject' => 'Test Convocazione',
-                'message' => 'Messaggio di test',
-                'recipients' => [
-                    'club' => true,
-                    'referees' => $tournament->assignments->pluck('user_id')->toArray(),
-                ],
-                'attach_convocation' => true,
-            ],
+        $referee = $this->clause('ARB_RESP', 'responsabilita', 'referee', 'Testo clausola arbitri: assicurazione obbligatoria.');
+        $club = $this->clause('CLUB_SPESE', 'spese', 'club', 'Testo clausola circolo: spese a carico del circolo.');
+        NotificationClauseSelection::create([
+            'tournament_notification_id' => $notification->id,
+            'clause_id' => $referee->id,
+            'placeholder_code' => 'CLAUSOLA_ARBITRO_RESPONSABILITA',
+        ]);
+        NotificationClauseSelection::create([
+            'tournament_notification_id' => $notification->id,
+            'clause_id' => $club->id,
+            'placeholder_code' => 'CLAUSOLA_CLUB_SPESE',
         ]);
 
-        $this->assertNotNull($notification->id);
+        $result = $this->documentService->generateConvocationForTournament($tournament, $notification);
+        $this->generatedFiles[] = $result['path'];
 
-        // Step 2: Genera documenti
-        try {
-            $convocation = $this->documentService->generateConvocationForTournament($tournament, $notification);
-            $clubDoc = $this->documentService->generateClubDocument($tournament, $notification);
-
-            $this->generatedFiles[] = $convocation['path'];
-            $this->generatedFiles[] = $clubDoc['path'];
-
-            // Step 3: Aggiorna notifica con documenti
-            $notification->update([
-                'documents' => [
-                    'convocation' => $convocation['filename'],
-                    'club_letter' => $clubDoc['filename'],
-                ],
-            ]);
-
-            $this->assertNotEmpty($notification->documents);
-        } catch (\Exception $e) {
-            $this->fail('Errore nel ciclo di notifica: '.$e->getMessage());
-        }
-
-        // Step 4: Verifica che le email non siano state inviate (sono fake)
-        Mail::assertNothingOutgoing();
+        $text = $this->docxText($result['path']);
+        $this->assertStringContainsString('assicurazione obbligatoria', $text);
+        $this->assertStringContainsString('spese a carico del circolo', $text);
+        // Blocchi delle clausole non scelte tolti, segnaposto compresi
+        $this->assertStringNotContainsString('BLOCCO_CLAUSOLA', $text);
+        $this->assertStringNotContainsString('CLAUSOLA_ARBITRO_COMUNICAZIONI', $text);
+        $this->assertStringNotContainsString('${', $text);
     }
 
-    /**
-     * Test 11: Verifica formattazione date tornei
-     */
+    public function test_club_letter_contains_tournament_and_referees(): void
+    {
+        [$tournament, $names] = $this->tournamentWithReferees();
+
+        $result = $this->documentService->generateClubDocument($tournament);
+        $this->generatedFiles[] = $result['path'];
+
+        $this->assertSame('club_letter', $result['type']);
+        $text = $this->docxText($result['path']);
+        // Fac-simile da stampare sulla carta intestata del circolo: il nome del
+        // circolo non c'e', c'e' la sua email per le conferme
+        $this->assertStringContainsString('FAC SIMILE', $text);
+        $this->assertStringContainsString('Trofeo Della Prova', $text);
+        $this->assertStringContainsString('circolo@example.test', $text);
+        foreach ($names as $name) {
+            $this->assertStringContainsString($name, $text);
+        }
+    }
+
+    public function test_club_letter_works_without_assignments(): void
+    {
+        $club = $this->createClub(['zone_id' => 2, 'email' => 'c2@example.test']);
+        $tournament = $this->createTournament([
+            'club_id' => $club->id,
+            'tournament_type_id' => TournamentType::where('is_national', false)->firstOrFail()->id,
+        ]);
+
+        $result = $this->documentService->generateClubDocument($tournament);
+        $this->generatedFiles[] = $result['path'];
+
+        $this->docxText($result['path']);
+    }
+
+    public function test_create_attachments_from_the_form_saves_both_word_files(): void
+    {
+        [$tournament] = $this->tournamentWithReferees();
+        $clause = $this->clause('ARB_COM', 'comunicazioni', 'referee', 'Comunicare il rapporto entro 48 ore.');
+        $this->actingAsSuperAdmin();
+
+        // Apertura del form: nessun allegato
+        $this->get(route('admin.tournaments.show-assignment-form', $tournament))->assertOk();
+        $notification = TournamentNotification::where('tournament_id', $tournament->id)->firstOrFail();
+        $this->assertEmpty($notification->documents);
+
+        // "Crea allegati": salva le clausole, poi crea convocazione e lettera
+        $this->postJson(route('admin.tournament-notifications.save-clauses', $notification), [
+            'clauses' => ['CLAUSOLA_ARBITRO_COMUNICAZIONI' => $clause->id],
+        ])->assertOk();
+        foreach (['convocation', 'club_letter'] as $type) {
+            $this->postJson(route('admin.tournament-notifications.generate-document', [$notification, $type]))
+                ->assertOk()
+                ->assertJson(['success' => true]);
+        }
+
+        $documents = $notification->fresh()?->documents;
+        $this->assertIsArray($documents);
+        $disk = Storage::disk(Config::string('golf.documents.disk', 'docs'));
+        $dir = Config::string('golf.documents.storage_path', 'convocazioni').'/'.ZoneHelper::getFolderCodeForTournament($tournament).'/generated';
+        foreach (['convocation', 'club_letter'] as $type) {
+            $this->assertIsString($documents[$type] ?? null);
+            $this->docsFiles[] = "{$dir}/{$documents[$type]}";
+            $this->generatedFiles[] = storage_path(Config::string('golf.documents.temp_path', 'app/temp').'/'.$documents[$type]);
+            $this->assertTrue($disk->exists("{$dir}/{$documents[$type]}"), "{$type} non salvato");
+        }
+        $this->assertStringContainsString('rapporto entro 48 ore', $this->docxText($disk->path("{$dir}/{$documents['convocation']}")));
+
+        // Una seconda volta non si rigenera
+        $this->postJson(route('admin.tournament-notifications.generate-document', [$notification, 'convocation']))
+            ->assertStatus(422);
+    }
+
+    public function test_prepare_notification_creates_pending_draft(): void
+    {
+        [$tournament, $names] = $this->tournamentWithReferees();
+
+        $notification = $this->preparationService->prepareNotification($tournament);
+
+        $this->assertSame($tournament->id, $notification->tournament_id);
+        $this->assertSame('pending', $notification->status);
+        foreach ($names as $name) {
+            $this->assertStringContainsString($name, (string) $notification->referee_list);
+        }
+    }
+
     public function test_tournament_date_formatting(): void
     {
+        // Le tre casistiche di formatTournamentDates(): stesso giorno, stesso
+        // mese, mesi diversi (date relative, non fisse).
+        $base = now()->addMonths(6)->startOfMonth();
+        $single = $base->copy()->addDays(14);
+        $sameStart = $base->copy()->addDays(14);
+        $sameEnd = $base->copy()->addDays(16);
+        $diffStart = $base->copy()->endOfMonth()->subDays(2)->startOfDay();
+        $diffEnd = $base->copy()->addMonth()->startOfMonth()->addDays(1);
 
-        // Date relative: le tre casistiche di formatTournamentDates() sono
-        // "stesso giorno", "stesso mese" e "mesi diversi", quindi il salto di
-        // mese va costruito esplicitamente e non con date fisse che invecchiano.
-        $base       = now()->addMonths(6)->startOfMonth();
-        $single     = $base->copy()->addDays(14);
-        $sameStart  = $base->copy()->addDays(14);
-        $sameEnd    = $base->copy()->addDays(16);
-        $diffStart  = $base->copy()->endOfMonth()->subDays(2)->startOfDay();
-        $diffEnd    = $base->copy()->addMonth()->startOfMonth()->addDays(1);
-
-        // Torneo stesso giorno
-        $singleDayTournament = new Tournament([
-            'name' => 'Test Single Day',
-            'start_date' => $single->format('Y-m-d'),
-            'end_date' => $single->format('Y-m-d'),
-        ]);
-
-        // Torneo stesso mese
-        $sameMonthTournament = new Tournament([
-            'name' => 'Test Same Month',
-            'start_date' => $sameStart->format('Y-m-d'),
-            'end_date' => $sameEnd->format('Y-m-d'),
-        ]);
-
-        // Torneo mesi diversi
-        $diffMonthTournament = new Tournament([
-            'name' => 'Test Diff Month',
-            'start_date' => $diffStart->format('Y-m-d'),
-            'end_date' => $diffEnd->format('Y-m-d'),
-        ]);
-
-        // Test tramite reflection per accedere al metodo protected
-        $reflection = new \ReflectionClass($this->documentService);
-        $method = $reflection->getMethod('formatTournamentDates');
+        $method = (new \ReflectionClass($this->documentService))->getMethod('formatTournamentDates');
         $method->setAccessible(true);
 
-        // Verifica formattazione stesso giorno
-        $result1 = $method->invoke($this->documentService, $singleDayTournament);
-        $this->assertEquals($single->format('d/m/Y'), $result1);
+        $make = fn ($start, $end) => new Tournament(['name' => 'T', 'start_date' => $start->format('Y-m-d'), 'end_date' => $end->format('Y-m-d')]);
 
-        // Verifica formattazione stesso mese
-        $result2 = $method->invoke($this->documentService, $sameMonthTournament);
-        $this->assertEquals($sameStart->format('d').'-'.$sameEnd->format('d/m/Y'), $result2);
-
-        // Verifica formattazione mesi diversi
-        $result3 = $method->invoke($this->documentService, $diffMonthTournament);
-        $this->assertEquals($diffStart->format('d/m/Y').' - '.$diffEnd->format('d/m/Y'), $result3);
+        $this->assertEquals($single->format('d/m/Y'), $method->invoke($this->documentService, $make($single, $single)));
+        $this->assertEquals($sameStart->format('d').'-'.$sameEnd->format('d/m/Y'), $method->invoke($this->documentService, $make($sameStart, $sameEnd)));
+        $this->assertEquals($diffStart->format('d/m/Y').' - '.$diffEnd->format('d/m/Y'), $method->invoke($this->documentService, $make($diffStart, $diffEnd)));
     }
 
-    /**
-     * Test 12: Verifica traduzione ruoli
-     */
     public function test_role_translation(): void
     {
-        $reflection = new \ReflectionClass($this->documentService);
-        $method = $reflection->getMethod('translateRole');
+        $method = (new \ReflectionClass($this->documentService))->getMethod('translateRole');
         $method->setAccessible(true);
 
         $testCases = [
@@ -402,114 +295,28 @@ class NotificationCycleTest extends TestCase
             'Osservatore' => 'Osservatore',
             'Referee' => 'Arbitro',
             'Arbitro' => 'Arbitro',
-            // Il nuovo normalize() defaulta ad Arbitro invece di passare la stringa originale
             'Unknown Role' => 'Arbitro',
         ];
 
         foreach ($testCases as $input => $expected) {
-            $result = $method->invoke($this->documentService, $input);
-            $this->assertEquals($expected, $result, "Traduzione fallita per: {$input}");
+            $this->assertEquals($expected, $method->invoke($this->documentService, $input), "Traduzione fallita per: {$input}");
         }
     }
 
-    /**
-     * Test 13: Verifica gestione errori template mancante
-     */
-    public function test_handles_missing_template_gracefully(): void
+    public function test_zone_template_path_uses_zone_and_falls_back_to_default(): void
     {
-        $reflection = new \ReflectionClass($this->documentService);
-        $method = $reflection->getMethod('getZoneTemplatePath');
+        $method = (new \ReflectionClass($this->documentService))->getMethod('getZoneTemplatePath');
         $method->setAccessible(true);
 
-        // Zona inesistente dovrebbe usare default
-        try {
-            $path = $method->invoke($this->documentService, 999);
-            $this->assertIsString($path);
-            // Se arriviamo qui, il default è stato usato
-            $this->assertStringContainsString('default', $path);
-        } catch (\Exception $e) {
-            // Se il default non esiste, verifica che l'errore sia appropriato
-            $this->assertStringContainsString('Template non trovato', $e->getMessage());
-        }
-    }
+        $path = function ($zone) use ($method): string {
+            $result = $method->invoke($this->documentService, $zone);
+            $this->assertIsString($result);
 
-    /**
-     * Test 14: Verifica integrità DOCX generato
-     */
-    public function test_generated_docx_is_valid_zip(): void
-    {
-        $this->requireDatabase();
+            return $result;
+        };
 
-        $tournament = Tournament::whereHas('assignments')
-            ->with(['club', 'zone', 'tournamentType', 'assignments.user'])
-            ->first();
-
-        if (! $tournament) {
-            $this->markTestSkipped('Nessun torneo con assegnazioni');
-        }
-
-        try {
-            $result = $this->documentService->generateConvocationForTournament($tournament);
-            $this->generatedFiles[] = $result['path'];
-
-            // DOCX è un file ZIP - verifica che sia apribile come ZIP
-            $zip = new \ZipArchive;
-            $opened = $zip->open($result['path']);
-
-            $this->assertTrue($opened === true, 'Il file DOCX non è un ZIP valido');
-
-            // Verifica contenuto minimo di un DOCX
-            $hasDocumentXml = $zip->locateName('word/document.xml') !== false;
-            $this->assertTrue($hasDocumentXml, 'Il DOCX non contiene word/document.xml');
-
-            $zip->close();
-        } catch (\Exception $e) {
-            $this->fail('Errore verifica DOCX: '.$e->getMessage());
-        }
-    }
-
-    /**
-     * Test 15: Verifica che il servizio gestisca tornei senza assegnazioni
-     */
-    public function test_handles_tournament_without_assignments(): void
-    {
-        $this->requireDatabase();
-
-        // Trova o crea un torneo senza assegnazioni
-        $tournament = Tournament::doesntHave('assignments')
-            ->with(['club', 'zone', 'tournamentType'])
-            ->first();
-
-        if (! $tournament) {
-            // Crea un torneo temporaneo senza assegnazioni
-            $zone = Zone::firstOrFail();
-            $club = Club::first();
-            $tournamentType = \App\Models\TournamentType::firstOrFail();
-
-            if (! $zone || ! $club || ! $tournamentType) {
-                $this->markTestSkipped('Zone, Club o TournamentType non disponibili');
-            }
-
-            $tournament = Tournament::create([
-                'name' => 'Test No Assignments',
-                'start_date' => Carbon::now()->addDays(30),
-                'end_date' => Carbon::now()->addDays(31),
-                'availability_deadline' => Carbon::now()->addDays(15),
-                'zone_id' => $zone->id,
-                'club_id' => $club->id,
-                'tournament_type_id' => $tournamentType->id,
-            ]);
-        }
-
-        try {
-            // Dovrebbe funzionare anche senza assegnazioni
-            $result = $this->documentService->generateClubDocument($tournament);
-            $this->generatedFiles[] = $result['path'];
-
-            $this->assertFileExists($result['path']);
-        } catch (\Exception $e) {
-            // Se fallisce, l'errore dovrebbe essere gestito appropriatamente
-            $this->assertStringNotContainsString('undefined', strtolower($e->getMessage()));
-        }
+        $this->assertStringEndsWith('lettera_intestata_szr3.docx', $path(3));
+        $this->assertStringEndsWith('lettera_intestata_default.docx', $path(999));
+        $this->assertStringEndsWith('lettera_intestata_default.docx', $path(null));
     }
 }
