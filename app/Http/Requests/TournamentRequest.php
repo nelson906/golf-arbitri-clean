@@ -56,7 +56,22 @@ class TournamentRequest extends FormRequest
             'tournament_type_id' => [
                 'required',
                 'exists:tournament_types,id',
-                function ($attribute, $value, $fail) {
+                function ($attribute, $value, $fail) use ($tournament) {
+                    // Il tipo non cambia dopo la creazione; solo il super admin
+                    // puo' correggerlo (decisione 2026-10-07). Tipo invariato:
+                    // nessun altro controllo, cosi' si possono modificare i
+                    // tornei con un tipo poi disattivato
+                    if ($tournament instanceof Tournament) {
+                        if ((int) $value === (int) $tournament->tournament_type_id) {
+                            return;
+                        }
+                        if (! $this->authUser()->isSuperAdmin()) {
+                            $fail('Il tipo di torneo non si cambia dopo la creazione: solo il super admin può correggerlo.');
+
+                            return;
+                        }
+                    }
+
                     /** @var TournamentType|null $category */
                     $category = TournamentType::find($value);
                     if (! $category instanceof TournamentType) {

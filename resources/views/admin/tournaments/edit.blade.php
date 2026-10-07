@@ -71,6 +71,7 @@
                         <label for="tournament_type_id" class="block text-sm font-medium text-gray-700 mb-2">
                             Categoria *
                         </label>
+                        @if (auth()->user()?->isSuperAdmin())
                         <select name="tournament_type_id" id="tournament_type_id" required
                             class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                             <option value="">Seleziona una categoria</option>
@@ -81,6 +82,15 @@
                                 </option>
                             @endforeach
                         </select>
+                        @else
+                        {{-- Il tipo non cambia dopo la creazione (decisione 2026-10-07) --}}
+                        <input type="hidden" name="tournament_type_id" value="{{ $tournament->tournament_type_id }}">
+                        <div id="tournament_type_id"
+                            class="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700">
+                            {{ $tournament->tournamentType->name ?? '—' }}
+                        </div>
+                        <p class="mt-1 text-xs text-gray-500">Il tipo non si cambia dopo la creazione: solo il super admin può correggerlo.</p>
+                        @endif
                         @error('tournament_type_id')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
