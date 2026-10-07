@@ -258,6 +258,22 @@
                     </div>
                 @endif
 
+                {{-- Avvisi e informazioni: prima il layout admin non li mostrava, e
+                     messaggi come "invio parziale" o "rivedi prima del reinvio" si
+                     perdevano. Le pagine che li mostrano da sole dichiarano
+                     @section('flash-warning-inline') (2026-10-07). --}}
+                @if (session('warning') && ! $__env->hasSection('flash-warning-inline'))
+                    <div class="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded mb-4">
+                        ⚠️ {{ session('warning') }}
+                    </div>
+                @endif
+
+                @if (session('info'))
+                    <div class="bg-blue-100 border border-blue-300 text-blue-800 px-4 py-3 rounded mb-4">
+                        {{ session('info') }}
+                    </div>
+                @endif
+
                 @yield('content')
             </div>
         </main>

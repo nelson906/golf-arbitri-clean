@@ -62,25 +62,27 @@ class AssignmentObserver
                 ->where('tournament_id', $tournamentId)
                 ->get();
 
-            $refereeNames = $assignments
-                ->map(fn ($a) => $a->user->name)
-                ->filter()
-                ->implode(', ');
-
-            $total = $assignments->count() + 1; // arbitri + circolo
-
             foreach ($notifications as $notification) {
-                $currentDetails = $notification->details ?? [];
-                $needsUpdate = $notification->referee_list !== $refereeNames
-                    || ($currentDetails['total_recipients'] ?? 0) !== $total;
+                // Zonale: tutti i designati; CRC: arbitri e Direttore; SZR: osservatori
+                $refereeNames = TournamentNotification::refereeListFor($assignments, $notification->notification_type);
+                $currentDetails = is_array($notification->details) ? $notification->details : [];
+                $changes = [];
 
-                if ($needsUpdate) {
-                    $notification->updateQuietly([
-                        'referee_list' => $refereeNames,
-                        'details' => array_merge($currentDetails, [
-                            'total_recipients' => $total,
-                        ]),
-                    ]);
+                if ($notification->referee_list !== $refereeNames) {
+                    $changes['referee_list'] = $refereeNames;
+                }
+
+                // Destinatari previsti solo sulla zonale (designati + circolo):
+                // sui nazionali li calcola l'invio
+                if ($notification->notification_type === null) {
+                    $total = $assignments->count() + 1;
+                    if (($currentDetails['total_recipients'] ?? 0) !== $total) {
+                        $changes['details'] = array_merge($currentDetails, ['total_recipients' => $total]);
+                    }
+                }
+
+                if ($changes !== []) {
+                    $notification->updateQuietly($changes);
                 }
             }
         } catch (\Throwable $e) {

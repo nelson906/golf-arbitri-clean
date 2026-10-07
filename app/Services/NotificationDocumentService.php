@@ -143,6 +143,12 @@ class NotificationDocumentService
         // FIX M2: disk privato (era hardcoded 'public')
         $file->storeAs($this->docsRoot()."/{$zone}/generated", $filename, Config::string('golf.documents.disk', 'docs'));
 
+        // La versione precedente (creata o caricata prima) non serve piu'
+        $previous = $this->parseDocuments($notification->documents)[$type] ?? null;
+        if (is_string($previous) && $previous !== '' && $previous !== $filename) {
+            $this->disk()->delete($this->docsRoot()."/{$zone}/generated/{$previous}");
+        }
+
         Log::info('Document uploaded', [
             'notification_id' => $notification->id,
             'type' => $type,

@@ -150,6 +150,12 @@ class NotificationService
 
             $built = $builder->build();
 
+            // Il circolo deve essere il destinatario principale: mai promuovere
+            // un indirizzo in copia al suo posto (2026-10-07)
+            if ($built['to'] === []) {
+                throw new \Exception(self::ERR_CLUB_EMAIL);
+            }
+
             if (! $built['isEmpty']) {
                 try {
                     // TO = circolo (verificato sopra), CC tutti gli altri
@@ -283,9 +289,11 @@ class NotificationService
 
             $fullPath = $basePath.$documents[$key];
             if (file_exists($fullPath)) {
+                // Estensione vera del file salvato (.doc o .docx)
+                $extension = strtolower(pathinfo($documents[$key], PATHINFO_EXTENSION)) === 'doc' ? 'doc' : 'docx';
                 $attachments[] = [
                     'path' => $fullPath,
-                    'name' => $displayName,
+                    'name' => preg_replace('/\.docx$/', '.'.$extension, $displayName) ?? $displayName,
                 ];
             } else {
                 $missing[] = $displayName;

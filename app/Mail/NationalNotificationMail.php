@@ -23,9 +23,15 @@ class NationalNotificationMail extends Mailable implements ShouldQueue
     use SerializesModels;
 
 
+    /**
+     * @param  string|null  $senderName  nome del mittente; null = CRC
+     * @param  string|null  $replyToAddress  indirizzo per le risposte; null = CRC
+     */
     public function __construct(
         public string $subjectLine,
-        public string $body
+        public string $body,
+        public ?string $senderName = null,
+        public ?string $replyToAddress = null
     ) {
         // FIX A4: dispatch solo dopo il commit della transazione DB attiva
         // (evita invii orfani in caso di rollback). NB: $afterCommit è
@@ -40,8 +46,10 @@ class NationalNotificationMail extends Mailable implements ShouldQueue
      */
     public function envelope(): Envelope
     {
-        $crcEmail = Config::string('golf.emails.crc');
-        $senderName = 'CRC - Comitato Regole e Campionati';
+        // La comunicazione degli osservatori parte dalla zona: nome e risposte
+        // della SZR (2026-10-07); quella degli arbitri dal CRC
+        $crcEmail = $this->replyToAddress ?? Config::string('golf.emails.crc');
+        $senderName = $this->senderName ?? 'CRC - Comitato Regole e Campionati';
 
         return new Envelope(
             from: new \Illuminate\Mail\Mailables\Address(
