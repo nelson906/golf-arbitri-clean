@@ -402,33 +402,6 @@ class NotificationController extends Controller
     }
 
     /**
-     * Invia notifica (con metadati salvati)
-     */
-    public function send(TournamentNotification $notification): RedirectResponse
-    {
-        $this->checkNotificationAccess($notification);
-
-        // FIX D2: serve l'intento esplicito del form (metadata.recipients).
-        // I record con metadata "estraneo" (es. import FIG: {source, command})
-        // prima passavano il vecchio check empty(metadata) e "inviavano" a
-        // NESSUNO flashando successo. Ora si reindirizza sempre al form.
-        $metadata = $notification->metadata ?? [];
-        if (empty($metadata['recipients']) || ! is_array($metadata['recipients'])) {
-            return redirect()->route('admin.tournaments.show-assignment-form', $notification->tournament)
-                ->with('info', 'Configura i destinatari e il messaggio per l\'invio');
-        }
-
-        try {
-            $this->transactionService->sendWithTransaction($notification);
-
-            return $this->redirectAfterSend($notification);
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Errore nell\'invio delle notifiche: '.$e->getMessage());
-        }
-    }
-
-    /**
      * FIX D3: il redirect post-invio riflette lo stato reale — un invio
      * parziale (es. circolo senza email) non deve apparire come pieno successo.
      */
@@ -782,6 +755,14 @@ class NotificationController extends Controller
             );
         }
 
+        // La comunicazione degli osservatori la manda la zona in cui si gioca
+        // (il super admin solo se serve); il CRC no, anche se puo' designarli
+        if (! $isCrcNotification && $this->authUser()->user_type === \App\Enums\UserType::NationalAdmin) {
+            return redirect()->back()->with('error',
+                'La comunicazione degli osservatori la invia la zona in cui si gioca.'
+            );
+        }
+
         // GUARD: solo tornei nazionali possono avere notifiche CRC/SZR
         $isNational = $tournament->tournamentType->is_national ?? false;
         if (! $isNational) {
@@ -795,9 +776,9 @@ class NotificationController extends Controller
             // Prepara destinatari tramite NotificationRecipientBuilder
             $builder = new \App\Services\NotificationRecipientBuilder();
 
-            if ($request->has('send_to_campionati')) {
-                $builder->addCampionati();
-            }
+            // Il Comitato Campionati e' sempre il destinatario principale e non
+            // si puo' togliere (decisione 2026-10-07)
+            $builder->addCampionati();
 
             if ($isCrcNotification) {
                 if ($request->has('send_to_zone')) {
@@ -827,6 +808,7 @@ class NotificationController extends Controller
             $successCount = 0;
             $errorCount = 0;
             $lastError = null;
+            $reached = 0; // indirizzi accettati dal server di posta
 
             // Invia email con CC
             foreach ($toRecipients as $recipient) {
@@ -837,6 +819,7 @@ class NotificationController extends Controller
                     }
                     $mailer->send(new NationalNotificationMail($validated['subject'], $validated['message']));
                     $successCount++;
+                    $reached += 1 + count($ccArray);
                 } catch (\Exception $e) {
                     Log::error('Errore invio email', [
                         'recipient' => $recipient['email'],
@@ -859,6 +842,7 @@ class NotificationController extends Controller
                     }
                     $mailer->send(new NationalNotificationMail($validated['subject'], $validated['message']));
                     $successCount++;
+                    $reached += 1 + count($remainingCc);
                 } catch (\Exception $e) {
                     Log::error('Errore invio email (solo CC)', ['error' => $e->getMessage()]);
                     $errorCount++;
@@ -876,7 +860,7 @@ class NotificationController extends Controller
             // invio riuscito, se c'era
             $status = $errorCount === 0 ? 'sent' : ($successCount > 0 ? 'partial' : 'failed');
 
-            DB::transaction(function () use ($tournament, $notificationType, $errorCount, $successCount, $refereeList, $totalRecipients, $validated, $status, $lastError) {
+            DB::transaction(function () use ($tournament, $notificationType, $errorCount, $successCount, $refereeList, $totalRecipients, $validated, $status, $lastError, $reached) {
                 // Elimina la notifica "bozza" (notification_type = null) per evitare duplicati
                 // Questo record viene creato automaticamente da prepareNotification() ma non serve per gare nazionali
                 TournamentNotification::where('tournament_id', $tournament->id)
@@ -892,7 +876,7 @@ class NotificationController extends Controller
                     'sent_by' => auth()->id(),
                     'referee_list' => $refereeList,
                     'details' => [
-                        'sent' => $successCount,
+                        'sent' => $reached,
                         'errors' => $errorCount,
                         'total_recipients' => $totalRecipients,
                     ],
@@ -901,7 +885,7 @@ class NotificationController extends Controller
                         'type' => $notificationType,
                         'subject' => $validated['subject'],
                         'message' => $validated['message'],
-                        'success_count' => $successCount,
+                        'success_count' => $reached,
                         'error_count' => $errorCount,
                         'last_error' => $lastError,
                         'last_attempt_at' => now()->toDateTimeString(),
@@ -921,7 +905,7 @@ class NotificationController extends Controller
             });
 
             $typeLabel = $isCrcNotification ? 'arbitri designati' : 'osservatori';
-            $totalSent = $successCount + count($ccArray);
+            $totalSent = $reached;
 
             if ($status === 'failed') {
                 return redirect()->route('admin.tournament-notifications.index')

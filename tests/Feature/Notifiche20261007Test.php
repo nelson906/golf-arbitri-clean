@@ -262,4 +262,50 @@ class Notifiche20261007Test extends TestCase
             ->assertSee('Arbitri (CRC): NON inviata')
             ->assertDontSee('Arbitri (CRC): Inviata');
     }
+
+    // ── Contatore e disponibilita' ──────────────────────────────────────────
+
+    public function test_detail_page_shows_how_many_recipients_were_reached(): void
+    {
+        $tournament = $this->zonalTournament();
+        $notification = TournamentNotification::create([
+            'tournament_id' => $tournament->id,
+            'notification_type' => null,
+            'status' => 'pending',
+            'metadata' => ['subject' => 's', 'message' => 'm', 'recipients' => ['club' => true, 'referees' => $tournament->assignments()->pluck('user_id')->all()]],
+        ]);
+        $this->attachDocumentsTo($notification);
+        \Illuminate\Support\Facades\Mail::fake();
+
+        app(\App\Services\NotificationService::class)->send($notification->refresh());
+
+        // Circolo + 1 arbitro designato
+        $this->assertSame(2, $notification->refresh()->recipientsReached());
+        $this->actingAsSuperAdmin()
+            ->get(route('admin.tournament-notifications.show', $notification))
+            ->assertOk()
+            ->assertSee('2 destinatari');
+    }
+
+    public function test_repeated_declaration_sends_no_second_email(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        $referee = $this->createReferee(['zone_id' => 1]);
+        $tournament = $this->zonalTournament();
+        $tournament->update([
+            'start_date' => now()->addDays(30),
+            'end_date' => now()->addDays(31),
+            'availability_deadline' => now()->addDays(10),
+        ]);
+
+        foreach ([1, 2] as $ignored) {
+            $this->actingAs($referee)->postJson(route('user.availability.store'), [
+                'tournament_id' => $tournament->id,
+                'available' => true,
+            ])->assertOk();
+        }
+
+        // Una sola conferma all'arbitro: la seconda dichiarazione non cambia niente
+        \Illuminate\Support\Facades\Mail::assertQueued(\App\Mail\BatchAvailabilityNotification::class, 1);
+    }
 }

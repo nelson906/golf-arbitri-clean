@@ -239,6 +239,18 @@ class TournamentNotification extends Model
         return is_string($value) && $value !== '' ? \Illuminate\Support\Carbon::parse($value) : null;
     }
 
+    /**
+     * Indirizzi accettati dal server di posta nell'ultimo invio (circolo o
+     * Comitato Campionati piu' le copie). 0 se nessuna mail e' partita.
+     */
+    public function recipientsReached(): int
+    {
+        $metadata = is_array($this->metadata) ? $this->metadata : [];
+        $value = $metadata['success_count'] ?? 0;
+
+        return is_numeric($value) ? (int) $value : 0;
+    }
+
     /** Motivo dell'ultimo invio non riuscito, se c'e'. */
     public function lastError(): ?string
     {

@@ -284,9 +284,11 @@ class ZonalDeliveryRegressionTest extends TestCase
 
         $this->actingAsSuperAdmin();
 
-        $response = $this->post(route('admin.tournament-notifications.send', $notification));
+        // L'invio diretto non esiste piu' (2026-10-07): si passa sempre dal form
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('admin.tournament-notifications.send'));
+        $response = $this->post(route('admin.tournament-notifications.resend', $notification));
 
-        // Comportamento atteso: come metadata vuoto → redirect al form
+        // Comportamento atteso: redirect al form
         $response->assertRedirect(route('admin.tournaments.show-assignment-form', $tournament));
 
         Mail::assertNothingOutgoing();
