@@ -42,7 +42,6 @@ use Illuminate\Database\Eloquent\Relations\HasOneThrough;
  * @property-read Collection<int, Availability> $availabilities
  * @property-read Collection<int, User> $referees
  * @property-read string|null $date_range
- * @property-read string|null $status_color
  * @property-read int $required_referees
  * @property-read Collection<int, User> $assignedReferees
  *

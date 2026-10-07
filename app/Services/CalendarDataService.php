@@ -39,12 +39,15 @@ class CalendarDataService
     {
         /** @var \Illuminate\Support\Collection<int, array<string, mixed>> $rows */
         $rows = $tournaments->map(function ($tournament) {
+            $color = $this->colorService->getAdminEventColor($tournament);
+
             return [
                 'id' => $tournament->id,
                 'title' => $tournament->name,
                 'start' => $tournament->start_date->format('Y-m-d'),
                 'end' => ($tournament->end_date ?? $tournament->start_date)->copy()->addDay()->format('Y-m-d'),
-                'color' => $this->colorService->getAdminEventColor($tournament),
+                'color' => $color,
+                'textColor' => $this->colorService->textColorFor($color),
                 'borderColor' => $this->colorService->getAdminBorderColor($tournament),
                 'extendedProps' => $this->getAdminExtendedProps($tournament),
             ];
@@ -72,13 +75,15 @@ class CalendarDataService
         $rows = $tournaments->map(function ($tournament) use ($availableTournamentIds, $assignedTournamentIds) {
             $isAvailable = in_array($tournament->id, $availableTournamentIds);
             $isAssigned = in_array($tournament->id, $assignedTournamentIds);
+            $color = $this->colorService->getRefereeEventColor($tournament, $isAssigned, $isAvailable);
 
             return [
                 'id' => $tournament->id,
                 'title' => $tournament->name ?? 'Torneo #'.$tournament->id,
                 'start' => $tournament->start_date ? $tournament->start_date->format('Y-m-d') : now()->format('Y-m-d'),
                 'end' => $tournament->end_date ? $tournament->end_date->addDay()->format('Y-m-d') : now()->addDay()->format('Y-m-d'),
-                'color' => $this->colorService->getRefereeEventColor($tournament, $isAssigned, $isAvailable),
+                'color' => $color,
+                'textColor' => $this->colorService->textColorFor($color),
                 'borderColor' => $this->colorService->getRefereeBorderColor($isAssigned, $isAvailable),
                 'extendedProps' => $this->getRefereeExtendedProps($tournament, $isAvailable, $isAssigned),
             ];
