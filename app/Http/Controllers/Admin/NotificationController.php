@@ -185,7 +185,14 @@ class NotificationController extends Controller
             ->orderBy('sort_order')
             ->get();
 
-        return view('admin.tournament-notifications.index', compact('tournamentNotifications', 'tournamentTypes'));
+        // Notifiche NON inviate (ultimo tentativo fallito), ben in vista in
+        // cima alla pagina (decisione 2026-10-07)
+        $notSent = $this->applyTournamentRelationVisibility(
+            TournamentNotification::with('tournament')->where('status', 'failed'),
+            $user
+        )->orderByDesc('updated_at')->get();
+
+        return view('admin.tournament-notifications.index', compact('tournamentNotifications', 'tournamentTypes', 'notSent'));
     }
 
     /**
@@ -819,6 +826,7 @@ class NotificationController extends Controller
             // Invia email
             $successCount = 0;
             $errorCount = 0;
+            $lastError = null;
 
             // Invia email con CC
             foreach ($toRecipients as $recipient) {
@@ -835,6 +843,7 @@ class NotificationController extends Controller
                         'error' => $e->getMessage(),
                     ]);
                     $errorCount++;
+                    $lastError = 'il server di posta ha rifiutato l\'invio: '.$e->getMessage();
                 }
             }
 
@@ -853,6 +862,7 @@ class NotificationController extends Controller
                 } catch (\Exception $e) {
                     Log::error('Errore invio email (solo CC)', ['error' => $e->getMessage()]);
                     $errorCount++;
+                    $lastError = 'il server di posta ha rifiutato l\'invio: '.$e->getMessage();
                 }
             }
 
@@ -861,7 +871,12 @@ class NotificationController extends Controller
             $totalRecipients = $recipients['total'];
 
             // Transazione: elimina bozza zonale + crea/aggiorna record nazionale
-            DB::transaction(function () use ($tournament, $notificationType, $errorCount, $successCount, $refereeList, $totalRecipients, $validated) {
+            // Esito reale (decisione 2026-10-07): nessuna mail partita = "non
+            // inviata", senza data d'invio; la data resta quella dell'ultimo
+            // invio riuscito, se c'era
+            $status = $errorCount === 0 ? 'sent' : ($successCount > 0 ? 'partial' : 'failed');
+
+            DB::transaction(function () use ($tournament, $notificationType, $errorCount, $successCount, $refereeList, $totalRecipients, $validated, $status, $lastError) {
                 // Elimina la notifica "bozza" (notification_type = null) per evitare duplicati
                 // Questo record viene creato automaticamente da prepareNotification() ma non serve per gare nazionali
                 TournamentNotification::where('tournament_id', $tournament->id)
@@ -872,43 +887,54 @@ class NotificationController extends Controller
                 // Salva il record della notifica nazionale inviata
                 // NOTA: il campo 'metadata' deve contenere 'is_national' => true e 'type' => $notificationType
                 // per permettere a resend() di riconoscere questa come notifica nazionale e usare il percorso corretto.
+                $values = [
+                    'status' => $status,
+                    'sent_by' => auth()->id(),
+                    'referee_list' => $refereeList,
+                    'details' => [
+                        'sent' => $successCount,
+                        'errors' => $errorCount,
+                        'total_recipients' => $totalRecipients,
+                    ],
+                    'metadata' => [
+                        'is_national' => true,
+                        'type' => $notificationType,
+                        'subject' => $validated['subject'],
+                        'message' => $validated['message'],
+                        'success_count' => $successCount,
+                        'error_count' => $errorCount,
+                        'last_error' => $lastError,
+                        'last_attempt_at' => now()->toDateTimeString(),
+                    ],
+                ];
+                if ($successCount > 0) {
+                    $values['sent_at'] = now();
+                }
+
                 TournamentNotification::updateOrCreate(
                     [
                         'tournament_id' => $tournament->id,
                         'notification_type' => $notificationType,
                     ],
-                    [
-                        'status' => $errorCount === 0 ? 'sent' : 'partial',
-                        'sent_at' => now(),
-                        'sent_by' => auth()->id(),
-                        'referee_list' => $refereeList,
-                        'details' => [
-                            'sent' => $successCount,
-                            'errors' => $errorCount,
-                            'total_recipients' => $totalRecipients,
-                        ],
-                        'metadata' => [
-                            'is_national' => true,
-                            'type' => $notificationType,
-                            'subject' => $validated['subject'],
-                            'message' => $validated['message'],
-                            'success_count' => $successCount,
-                            'error_count' => $errorCount,
-                        ],
-                    ]
+                    $values
                 );
             });
 
             $typeLabel = $isCrcNotification ? 'arbitri designati' : 'osservatori';
             $totalSent = $successCount + count($ccArray);
 
-            if ($errorCount === 0) {
+            if ($status === 'failed') {
                 return redirect()->route('admin.tournament-notifications.index')
-                    ->with('success', "Notifica {$typeLabel} inviata con successo a {$totalSent} destinatari.");
-            } else {
-                return redirect()->route('admin.tournament-notifications.index')
-                    ->with('warning', "Notifica {$typeLabel} inviata con {$errorCount} errori su {$totalSent} destinatari.");
+                    ->with('error', "Notifica {$typeLabel} NON inviata — {$lastError}. Nessuna mail è partita: riprova dal form.");
             }
+
+            if ($status === 'partial') {
+                return redirect()->route('admin.tournament-notifications.index')
+                    ->with('warning', "Notifica {$typeLabel} inviata solo in parte ({$errorCount} invii non riusciti) — {$lastError}.");
+            }
+
+            return redirect()->route('admin.tournament-notifications.index')
+                ->with('success', "Notifica {$typeLabel} inviata con successo a {$totalSent} destinatari.");
         } catch (\Exception $e) {
             Log::error('Errore invio notifica nazionale', [
                 'tournament_id' => $tournament->id,

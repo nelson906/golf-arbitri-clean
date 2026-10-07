@@ -37,6 +37,18 @@
                 </div>
             @endif
 
+            {{-- Ultimo invio NON riuscito: ben visibile (decisione 2026-10-07) --}}
+            @if($notification->isNotSent())
+                <div class="mb-4 p-4 bg-red-50 border-l-4 border-red-500 rounded text-sm text-red-800">
+                    <span class="font-semibold">Notifica NON inviata.</span>
+                    Il tentativo del {{ $notification->lastAttemptAt()?->format('d/m/Y \a\l\l\e H:i') ?? '—' }} non è riuscito: nessuna mail è partita.
+                    @if($notification->lastError())
+                        <br>Motivo: {{ $notification->lastError() }}
+                    @endif
+                    <br>Controlla i destinatari e invia di nuovo.
+                </div>
+            @endif
+
             {{-- Banner "notifica già inviata" — appare in modalità modifica --}}
             @if($notification->sent_at)
                 <div class="mb-4 p-4 bg-amber-50 border-l-4 border-amber-400 rounded flex items-start gap-3">

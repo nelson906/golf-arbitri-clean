@@ -15,6 +15,14 @@
         </p>
     </div>
 
+    {{-- Notifiche non inviate (2026-10-07) --}}
+    @if(($stats['not_sent_notifications'] ?? 0) > 0)
+        <div class="bg-red-50 border-l-4 border-red-500 text-red-800 px-4 py-3 rounded mb-4">
+            <span class="font-semibold">⚠️ {{ $stats['not_sent_notifications'] === 1 ? '1 notifica NON inviata' : $stats['not_sent_notifications'].' notifiche NON inviate' }}.</span>
+            <a href="{{ route('admin.tournament-notifications.index') }}" class="underline font-medium ml-1">Vedi le notifiche</a>
+        </div>
+    @endif
+
     {{-- Alert Messaggi --}}
     @if(session('success'))
         <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">

@@ -15,6 +15,32 @@
             @endif
         </div>
 
+        {{-- Notifiche NON inviate: in vista finché non vengono reinviate (2026-10-07) --}}
+        @if(isset($notSent) && $notSent->isNotEmpty())
+            <div class="mb-4 p-4 bg-red-50 border-l-4 border-red-500 rounded">
+                <p class="font-semibold text-red-800 mb-2">
+                    ⚠️ {{ $notSent->count() === 1 ? '1 notifica NON inviata' : $notSent->count().' notifiche NON inviate' }}
+                </p>
+                <ul class="space-y-1 text-sm text-red-800">
+                    @foreach($notSent as $failed)
+                        <li>
+                            <a href="{{ route('admin.tournaments.show-assignment-form', $failed->tournament_id) }}"
+                               class="underline font-medium hover:text-red-900">{{ $failed->tournament->name ?? 'Torneo #'.$failed->tournament_id }}</a>
+                            @if($failed->notification_type === 'crc_referees')
+                                — Designazione arbitri (CRC)
+                            @elseif($failed->notification_type === 'zone_observers')
+                                — Designazione osservatori (zona)
+                            @endif
+                            — tentativo del {{ $failed->lastAttemptAt()?->format('d/m/Y H:i') ?? '—' }}
+                            @if($failed->lastError())
+                                <span class="text-red-700">({{ \Illuminate\Support\Str::limit($failed->lastError(), 120) }})</span>
+                            @endif
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         {{-- Filtri --}}
         <form method="GET" action="{{ route('admin.tournament-notifications.index') }}"
               class="flex flex-wrap gap-3 mb-4 items-end">
@@ -120,8 +146,10 @@
                                             <span class="px-1.5 py-0.5 text-xs rounded bg-purple-100 text-purple-800">CRC</span>
                                             @if($group->crc?->status === 'sent')
                                                 <span class="text-xs text-green-700 font-semibold">✓</span>
+                                            @elseif($group->crc?->status === 'partial')
+                                                <span class="text-xs text-yellow-700 font-semibold">inviata in parte</span>
                                             @elseif($group->crc?->status === 'failed')
-                                                <span class="text-xs text-red-700 font-semibold">✗</span>
+                                                <span class="text-xs text-red-700 font-semibold">✗ non inviata</span>
                                             @elseif($group->crc)
                                                 <span class="text-xs text-blue-600">bozza</span>
                                             @else
@@ -132,8 +160,10 @@
                                             <span class="px-1.5 py-0.5 text-xs rounded bg-indigo-100 text-indigo-800">Zona</span>
                                             @if($group->zone?->status === 'sent')
                                                 <span class="text-xs text-green-700 font-semibold">✓</span>
+                                            @elseif($group->zone?->status === 'partial')
+                                                <span class="text-xs text-yellow-700 font-semibold">inviata in parte</span>
                                             @elseif($group->zone?->status === 'failed')
-                                                <span class="text-xs text-red-700 font-semibold">✗</span>
+                                                <span class="text-xs text-red-700 font-semibold">✗ non inviata</span>
                                             @elseif($group->zone)
                                                 <span class="text-xs text-blue-600">bozza</span>
                                             @else
@@ -146,8 +176,8 @@
                                         $s = $primaryNotification->status;
                                         $badge = match($s) {
                                             'sent'    => ['Inviata',  'bg-green-100 text-green-800'],
-                                            'partial' => ['Parziale', 'bg-yellow-100 text-yellow-800'],
-                                            'failed'  => ['Fallita',  'bg-red-100 text-red-800'],
+                                            'partial' => ['Inviata in parte', 'bg-yellow-100 text-yellow-800'],
+                                            'failed'  => ['Non inviata',  'bg-red-100 text-red-800'],
                                             default   => [$primaryNotification->is_prepared ? 'Pronta' : 'Bozza',
                                                           $primaryNotification->is_prepared ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'],
                                         };

@@ -43,6 +43,11 @@ class DashboardController extends Controller
                 ->latest()
                 ->limit(5)
                 ->get(),
+            // Notifiche non inviate: avviso in cima alla dashboard (2026-10-07)
+            'not_sent_notifications' => TournamentVisibility::applyViaRelation(
+                \App\Models\TournamentNotification::query()->where('status', 'failed'),
+                $user
+            )->count(),
         ];
 
         return view('admin.dashboard', compact('stats'));

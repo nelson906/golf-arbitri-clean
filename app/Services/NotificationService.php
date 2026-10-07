@@ -174,7 +174,7 @@ class NotificationService
                         'notification_id' => $notification->id,
                         'error' => $e->getMessage(),
                     ]);
-                    $errors[] = 'invio: '.$e->getMessage();
+                    $errors[] = 'il server di posta ha rifiutato l\'invio: '.$e->getMessage();
                     $errorCount++;
                 }
             } else {
@@ -195,15 +195,21 @@ class NotificationService
                 ? ($successCount > 0 ? 'partial' : 'failed')
                 : 'sent';
 
-            $notification->update([
+            // sent_at = ultimo invio RIUSCITO: un tentativo fallito non lo
+            // tocca, cosi' la notifica non risulta "gia' inviata" (2026-10-07)
+            $update = [
                 'status' => $status,
-                'sent_at' => now(),
                 'metadata' => array_merge($metadata, [
                     'success_count' => $successCount,
                     'error_count' => $errorCount,
                     'last_error' => empty($errors) ? null : implode(' | ', $errors),
+                    'last_attempt_at' => now()->toDateTimeString(),
                 ]),
-            ]);
+            ];
+            if ($successCount > 0) {
+                $update['sent_at'] = now();
+            }
+            $notification->update($update);
 
             Log::info('Notification sent', [
                 'notification_id' => $notification->id,
@@ -222,6 +228,7 @@ class NotificationService
                     'last_error' => $e->getMessage(),
                     'success_count' => $successCount,
                     'error_count' => $errorCount,
+                    'last_attempt_at' => now()->toDateTimeString(),
                 ]),
             ]);
 
