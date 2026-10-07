@@ -141,8 +141,8 @@ const AdminCalendar = ({ calendarData }) => {
                                         </div>
                                     )}
 
-                                    {/* Admin controls - show on hover */}
-                                    {isFirstDay && (
+                                    {/* Admin controls - show on hover (non sui nazionali per la SZR) */}
+                                    {isFirstDay && eventInfo.event.extendedProps.can_edit !== false && (
                                         <div className="event-controls opacity-0 group-hover:opacity-100 absolute top-0 right-0 bg-white bg-opacity-90 rounded-bl-md p-1 shadow transition-opacity duration-200 z-10">
                                             <button
                                                 onClick={(e) => handleEditTournament(eventInfo.event.id, e)}
@@ -224,12 +224,14 @@ const AdminCalendar = ({ calendarData }) => {
                                     >
                                         Chiudi
                                     </button>
-                                    <button
-                                        onClick={(e) => handleEditTournament(selectedEvent.id, e)}
-                                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                                    >
-                                        Modifica Torneo
-                                    </button>
+                                    {selectedEvent.extendedProps.can_edit !== false && (
+                                        <button
+                                            onClick={(e) => handleEditTournament(selectedEvent.id, e)}
+                                            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                                        >
+                                            Modifica Torneo
+                                        </button>
+                                    )}
                                     <a
                                         href={selectedEvent.extendedProps.tournament_url}
                                         className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"

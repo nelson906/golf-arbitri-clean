@@ -18,10 +18,13 @@
             </span>
         </div>
         <div class="flex space-x-3">
+            @if (\App\Support\UserManagement::canManage(auth()->user(), $user))
             <a href="{{ route('admin.users.edit', $user) }}"
                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
                 Modifica
             </a>
+            @endif
+            @if (\App\Support\UserManagement::canToggleActive(auth()->user(), $user))
             <form method="POST" action="{{ route('admin.users.toggle-active', $user) }}" class="inline">
                 @csrf
                 @method('PATCH')
@@ -31,6 +34,7 @@
                     {{ $user->is_active ? 'Disattiva' : 'Attiva' }}
                 </button>
             </form>
+            @endif
         </div>
     </div>
 

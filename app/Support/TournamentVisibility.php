@@ -242,4 +242,23 @@ final class TournamentVisibility
 
         return $tournamentZoneId === $user->zone_id;
     }
+
+    /**
+     * Puo' modificare o eliminare il torneo? Come canAccess(), ma l'admin di
+     * zona non tocca i nazionali: li gestisce il CRC, la zona designa solo
+     * gli osservatori (decisioni 2026-10-03 e 2026-10-07).
+     *
+     * @param  \App\Models\Tournament  $tournament
+     */
+    public static function canEdit($tournament, ?User $user = null): bool
+    {
+        $user = $user ?? auth()->user();
+
+        if (! $user || ! self::canAccess($tournament, $user)) {
+            return false;
+        }
+
+        return ! ($user->user_type === UserType::ZoneAdmin
+            && ($tournament->tournamentType->is_national ?? false));
+    }
 }

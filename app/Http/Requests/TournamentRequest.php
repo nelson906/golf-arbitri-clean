@@ -112,8 +112,10 @@ class TournamentRequest extends FormRequest
             'notes' => 'nullable|string|max:1000',
         ];
 
-        // Zone ID is required for national admins (not super_admin, who can set it via club)
-        if ($this->authUser()->user_type === UserType::NationalAdmin) {
+        // Zona richiesta a CRC e super admin, che la scelgono nel form (l'admin
+        // di zona usa la propria). Con un circolo scelto vale la zona del
+        // circolo: la imposta il controller.
+        if ($this->authUser()->user_type->isNational()) {
             $rules['zone_id'] = [
                 'required',
                 'exists:zones,id',

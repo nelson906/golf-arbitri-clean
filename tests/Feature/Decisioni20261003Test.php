@@ -302,7 +302,7 @@ class Decisioni20261003Test extends TestCase
             'email' => $user->email,
             'user_type' => 'super_admin',
             'zone_id' => 1,
-        ])->assertSessionHasErrors('user_type');
+        ])->assertForbidden(); // 2026-10-07: il CRC non modifica le schede degli arbitri
 
         $this->assertNotSame('super_admin', $user->fresh()?->user_type->value);
     }

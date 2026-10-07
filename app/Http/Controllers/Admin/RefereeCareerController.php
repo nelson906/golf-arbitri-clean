@@ -91,6 +91,10 @@ class RefereeCareerController extends Controller
             $query->where('zone_id', $zone);
         }
 
+        // La SZR vede solo gli arbitri della sua zona, anche scegliendo
+        // "Tutte le zone" (stessa regola dell'elenco utenti)
+        $this->applyUserVisibility($query, $user);
+
         if ($level) {
             if ($level === 'Nazionale') {
                 $query->whereIn('level', ['Nazionale', 'Internazionale']);
@@ -101,6 +105,10 @@ class RefereeCareerController extends Controller
             }
         }
 
+        if (! in_array($sort, ['last_name', 'first_name', 'referee_code', 'level'], true)) {
+            $sort = 'last_name';
+        }
+        $direction = $direction === 'desc' ? 'desc' : 'asc';
         $query->orderBy($sort, $direction);
         $referees = $query->get();
 
@@ -143,6 +151,11 @@ class RefereeCareerController extends Controller
      */
     public function curriculum(User $referee): View
     {
+        // Stessa regola dell'elenco: la SZR solo arbitri della sua zona
+        if (! $this->applyUserVisibility(User::query()->whereKey($referee->id))->exists()) {
+            abort(403, 'Non autorizzato a vedere questo curriculum');
+        }
+
         $careerData = $this->careerService->getCareerData($referee);
 
         return view('admin.referees.curriculum', [

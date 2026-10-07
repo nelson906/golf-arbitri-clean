@@ -93,7 +93,11 @@ class TournamentManagementTest extends TestCase
     {
         $admin = $this->createZoneAdmin(1);
         $club = Club::factory()->create(['zone_id' => 1]);
-        $tournament = Tournament::factory()->create(['club_id' => $club->id]);
+        // Torneo zonale: i nazionali li gestisce il CRC (2026-10-07)
+        $tournament = Tournament::factory()->create([
+            'club_id' => $club->id,
+            'tournament_type_id' => TournamentType::where('is_national', false)->firstOrFail()->id,
+        ]);
 
         $response = $this->actingAs($admin)
             ->put(route('admin.tournaments.update', $tournament), [
@@ -123,7 +127,11 @@ class TournamentManagementTest extends TestCase
     {
         $admin = $this->createZoneAdmin(1);
         $club = Club::factory()->create(['zone_id' => 1]);
-        $tournament = Tournament::factory()->create(['club_id' => $club->id]);
+        // Torneo zonale: i nazionali li gestisce il CRC (2026-10-07)
+        $tournament = Tournament::factory()->create([
+            'club_id' => $club->id,
+            'tournament_type_id' => TournamentType::where('is_national', false)->firstOrFail()->id,
+        ]);
 
         $response = $this->actingAs($admin)
             ->delete(route('admin.tournaments.destroy', $tournament));

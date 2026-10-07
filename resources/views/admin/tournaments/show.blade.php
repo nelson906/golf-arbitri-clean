@@ -17,10 +17,12 @@
                         class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors">
                         ← Torna alla Lista
                     </a>
+                    @if ($canEdit)
                     <a href="{{ route('admin.tournaments.edit', $tournament) }}"
                         class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition-colors">
                         ✏️ Modifica
                     </a>
+                    @endif
                 </div>
             </div>
         </div>
@@ -158,6 +160,7 @@
                     </a>
 
                     {{-- Modifica Torneo --}}
+                    @if ($canEdit)
                     <a href="{{ route('admin.tournaments.edit', $tournament) }}"
                         class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors inline-flex items-center">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,6 +170,7 @@
                         </svg>
                         Modifica Torneo
                     </a>
+                    @endif
 
                     {{-- Invia Notifiche (se ci sono arbitri assegnati) --}}
                     @if ($tournament->assignments->count() > 0)
@@ -289,6 +293,7 @@
         </div>
 
         {{-- Pulsante Elimina (con conferma) --}}
+        @if ($canEdit)
         <div class="mt-8 pt-6 border-t border-gray-200">
             <form action="{{ route('admin.tournaments.destroy', $tournament) }}" method="POST"
                 onsubmit="return confirm('Sei sicuro di voler eliminare questo torneo? Questa azione non può essere annullata.');"
@@ -301,5 +306,6 @@
                 </button>
             </form>
         </div>
+        @endif
     </div>
 @endsection

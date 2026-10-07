@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\User;
 
-use App\Enums\RefereeLevel;
 use App\Http\Controllers\Controller;
 use App\Models\Tournament;
+use App\Support\TournamentVisibility;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
@@ -19,8 +19,6 @@ class DashboardController extends Controller
         $user = $this->authUser();
 
         $user->load('zone'); // Eager load zone relationship
-
-        $isNationalReferee = in_array($user->level, [RefereeLevel::Nazionale->value, RefereeLevel::Internazionale->value]);
 
         // Build statistics
         $stats = (object) [
@@ -56,18 +54,8 @@ class DashboardController extends Controller
             ->where('availability_deadline', '>=', Carbon::today())
             ->where('start_date', '>=', Carbon::today());
 
-        // Filter by zone for non-national referees
-        if (! $isNationalReferee) {
-            $openTournamentsQuery->where('zone_id', $user->zone_id);
-        } else {
-            // National referees see national tournaments from all zones
-            $openTournamentsQuery->where(function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id)
-                    ->orWhereHas('tournamentType', function ($q2) {
-                        $q2->where('is_national', true);
-                    });
-            });
-        }
+        // Stessa regola di visibilita' di tutte le altre pagine
+        TournamentVisibility::apply($openTournamentsQuery, $user);
 
         $openTournaments = $openTournamentsQuery
             ->orderBy('availability_deadline')

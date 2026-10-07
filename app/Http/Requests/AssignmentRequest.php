@@ -82,12 +82,8 @@ class AssignmentRequest extends FormRequest
                         $fail('Questo arbitro è già stato assegnato a questo torneo.');
                     }
 
-                    // Per tornei zonali: stesso zona
-                    if ($tournament && ! ($tournament->tournamentType->is_national ?? false)) {
-                        if ($user->zone_id !== $tournament->zone_id) {
-                            $fail("L'arbitro appartiene a una zona diversa dal torneo.");
-                        }
-                    }
+                    // Nessun blocco sulla zona dell'arbitro: il sistema non blocca
+                    // mai una designazione (decisioni 2026-10-03, 2026-10-07).
                 },
             ],
             // Usa Rule::enum() di Laravel 10+ invece di Rule::in() con stringhe

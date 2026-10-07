@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Zone;
 use App\Services\CalendarDataService;
 use App\Services\TournamentColorService;
+use App\Support\TournamentVisibility;
 use App\Traits\HasZoneVisibility;
 use App\Traits\TournamentControllerTrait;
 use Illuminate\Contracts\View\View;
@@ -152,7 +153,7 @@ class TournamentController extends Controller
     public function edit(Tournament $tournament): View
     {
         // Check access usando il trait
-        $this->checkTournamentAccess($tournament);
+        $this->checkTournamentEditable($tournament);
 
         $user = $this->authUser();
 
@@ -190,6 +191,9 @@ class TournamentController extends Controller
             $data['zone_id'] = $clubId > 0
                 ? Club::findOrFail($clubId)->zone_id
                 : $this->authUser()->zone_id;
+        } elseif ($request->integer('club_id') > 0) {
+            // CRC e super admin: con un circolo scelto vale la sua zona
+            $data['zone_id'] = Club::findOrFail($request->integer('club_id'))->zone_id;
         }
         $data['created_by'] = auth()->id();
 
@@ -242,7 +246,10 @@ class TournamentController extends Controller
                 : null,
         ];
 
+        $canEdit = TournamentVisibility::canEdit($tournament, $user);
+
         return view('admin.tournaments.show', compact(
+            'canEdit',
             'tournament',
             'assignedReferees',
             'availableReferees',
@@ -256,14 +263,14 @@ class TournamentController extends Controller
     public function update(TournamentRequest $request, Tournament $tournament): RedirectResponse
     {
         // Check access
-        $this->checkTournamentAccess($tournament);
+        $this->checkTournamentEditable($tournament);
 
         $data = $request->validated();
 
-        // Update zone_id from club if changed
-        if (isset($data['club_id']) && $data['club_id'] != $tournament->club_id) {
-            $club = Club::findOrFail($request->integer('club_id'));
-            $data['zone_id'] = $club->zone_id;
+        // Con un circolo la zona e' sempre la sua (anche se il form ne manda
+        // un'altra): un torneo ha una sola zona
+        if ($request->integer('club_id') > 0) {
+            $data['zone_id'] = Club::findOrFail($request->integer('club_id'))->zone_id;
         }
 
         $tournament->update($data);
@@ -279,7 +286,7 @@ class TournamentController extends Controller
     public function destroy(Request $request, Tournament $tournament): RedirectResponse
     {
         // Check access
-        $this->checkTournamentAccess($tournament);
+        $this->checkTournamentEditable($tournament);
 
         // Check if has assignments and needs confirmation
         if ($tournament->assignments()->exists() && ! $request->has('confirm')) {
@@ -319,8 +326,10 @@ class TournamentController extends Controller
         $eligibleReferees = \App\Models\User::where('user_type', '=', 'referee')
             ->where('is_active', '=', true)
 
-            // ✅ FIXED: Use tournamentType relationship (null-safe: tournamentType può essere null)
-            ->when($tournament->tournamentType->is_national ?? false, function ($q) {
+            // Nazionale: il CRC (e il super admin) vede gli arbitri Nazionali e
+            // Internazionali; la SZR gli arbitri della sua zona, di ogni livello,
+            // che le servono per gli osservatori (decisione 2026-10-07).
+            ->when(($tournament->tournamentType->is_national ?? false) && ! $this->isZoneAdmin(), function ($q) {
                 // Usa i valori dell'enum RefereeLevel per evitare inconsistenze di case
                 $q->whereIn('level', [\App\Enums\RefereeLevel::Nazionale->value, \App\Enums\RefereeLevel::Internazionale->value]);
             }, function ($q) use ($tournament) {
@@ -344,6 +353,19 @@ class TournamentController extends Controller
     {
         if (! $this->canAccessTournament($tournament)) {
             abort(403, 'Non sei autorizzato ad accedere a questo torneo.');
+        }
+    }
+
+    /**
+     * Modifica ed eliminazione: l'admin di zona gestisce i tornei zonali;
+     * sui nazionali della sua zona designa solo gli osservatori.
+     */
+    private function checkTournamentEditable(Tournament $tournament): void
+    {
+        $this->checkTournamentAccess($tournament);
+
+        if (! TournamentVisibility::canEdit($tournament, $this->authUser())) {
+            abort(403, 'I tornei nazionali li gestisce il CRC: la zona designa solo gli osservatori.');
         }
     }
 }

@@ -106,7 +106,9 @@ class AssignmentController extends Controller
         $availableReferees = collect();
         $otherReferees = collect();
         $user = auth()->user();
-        $isNationalAdmin = $this->isNationalAdmin();
+        // Solo il CRC vede le liste ridotte ai livelli nazionali: il super
+        // admin vede tutti gli arbitri (decisione 2026-10-07)
+        $isNationalAdmin = $this->isCrc();
 
         if ($request->has('tournament_id')) {
             /** @var Tournament|null $tournament */
@@ -283,7 +285,7 @@ class AssignmentController extends Controller
         ]);
 
         // P9: sui nazionali l'admin di zona modifica solo osservatori, e solo come osservatori
-        if (! $this->observerRoleAllowed($assignment->tournament, $assignment->role)
+        if (! $this->zoneAdminMayChange($assignment)
             || ! $this->observerRoleAllowed($assignment->tournament, $request->string('role')->toString())) {
             return back()->withInput()->with('error', 'Sui tornei nazionali l\'admin di zona gestisce solo gli osservatori.');
         }
@@ -376,6 +378,11 @@ class AssignmentController extends Controller
         // P9 (2026-10-03): sui tornei nazionali l'admin di zona designa solo osservatori
         $observerOnly = $this->isObserverOnly($tournament);
 
+        // Designazioni che chi opera non puo' togliere (SZR sui nazionali)
+        $lockedAssignmentIds = $assignedReferees
+            ->reject(fn (Assignment $a): bool => $this->zoneAdminMayChange($a))
+            ->pluck('id')->values()->all();
+
         return view('admin.assignments.assign-referees', compact(
             'tournament',
             'availableReferees',
@@ -383,7 +390,8 @@ class AssignmentController extends Controller
             'nationalReferees',
             'assignedReferees',
             'refereeLoad',
-            'observerOnly'
+            'observerOnly',
+            'lockedAssignmentIds'
         ))->with('isNationalAdmin', $this->isNationalAdmin());
     }
 
@@ -402,6 +410,34 @@ class AssignmentController extends Controller
     private function observerRoleAllowed(Tournament $tournament, ?string $role): bool
     {
         return ! $this->isObserverOnly($tournament) || $role === AssignmentRole::Observer->value;
+    }
+
+    /**
+     * Il CRC (non il super admin) vede solo arbitri di livello nazionale.
+     */
+    private function isCrc(): bool
+    {
+        return auth()->user()?->user_type === UserType::NationalAdmin;
+    }
+
+    /**
+     * Su un nazionale l'admin di zona modifica o toglie solo gli osservatori
+     * designati dalla zona: le designazioni del CRC (osservatori compresi,
+     * decisione 2026-10-07) e del super admin restano.
+     */
+    private function zoneAdminMayChange(Assignment $assignment): bool
+    {
+        if (! $this->isObserverOnly($assignment->tournament)) {
+            return true;
+        }
+
+        if ($assignment->role !== AssignmentRole::Observer->value) {
+            return false;
+        }
+
+        $assigner = $assignment->assignedBy;
+
+        return ! ($assigner !== null && $assigner->user_type->isNational());
     }
 
     /**
@@ -469,7 +505,7 @@ class AssignmentController extends Controller
     private function getAssignedReferees($tournament): Collection
     {
         $assignedReferees = $tournament->assignments()
-            ->with('user')
+            ->with(['user', 'assignedBy'])
             ->get()
             ->map(function ($assignment) {
                 // Aggiungi dati user all'assignment per la vista
@@ -512,7 +548,7 @@ class AssignmentController extends Controller
         $query->where('is_active', true);
 
         // CRC admin: mostra solo arbitri nazionali/internazionali
-        if ($this->isNationalAdmin()) {
+        if ($this->isCrc()) {
             $query->whereIn('level', [RefereeLevel::Nazionale->value, RefereeLevel::Internazionale->value]);
         }
 
@@ -534,16 +570,17 @@ class AssignmentController extends Controller
     private function getPossibleReferees($tournament, $excludeIds = []): Collection
     {
         // CRC admin: non mostra arbitri "possibili" zonali, solo nazionali nella sezione dedicata
-        if ($this->isNationalAdmin()) {
+        if ($this->isCrc()) {
             return collect();
         }
 
         $query = User::with('zone')
             ->where('user_type', 'referee');
 
-        // Filtra per zona se disponibile
-        if (isset($tournament->zone_id)) {
-            $query->where('zone_id', $tournament->zone_id);
+        // Arbitri della zona in cui si gioca (circolo, o zona del torneo T.B.A.)
+        $zoneId = $tournament->club->zone_id ?? $tournament->zone_id;
+        if ($zoneId !== null) {
+            $query->where('zone_id', $zoneId);
         }
 
         // Escludi quelli che hanno già dichiarato disponibilità
@@ -574,7 +611,7 @@ class AssignmentController extends Controller
     {
         // CRC admin: mostra sempre arbitri nazionali (che non hanno dato disponibilità)
         // Per admin zonali: mostra solo se il torneo è nazionale
-        if (! $this->isNationalAdmin() && (! isset($tournament->tournamentType) || ! $tournament->tournamentType->is_national)) {
+        if (! $this->isCrc() && (! isset($tournament->tournamentType) || ! $tournament->tournamentType->is_national)) {
             return collect();
         }
 
@@ -730,8 +767,8 @@ class AssignmentController extends Controller
             ->where('user_id', $referee->id)
             ->first();
 
-        if ($assignment && ! $this->observerRoleAllowed($tournament, $assignment->role)) {
-            return back()->with('error', 'Sui tornei nazionali l\'admin di zona può rimuovere solo gli osservatori.');
+        if ($assignment && ! $this->zoneAdminMayChange($assignment)) {
+            return back()->with('error', 'Sui tornei nazionali l\'admin di zona può rimuovere solo gli osservatori designati dalla zona.');
         }
 
         if ($assignment) {
@@ -769,8 +806,8 @@ class AssignmentController extends Controller
             if ($assignment->tournament && ! $this->canAccessTournament($assignment->tournament)) {
                 return back()->with('error', 'Non hai i permessi per rimuovere questa assegnazione');
             }
-            if ($assignment->tournament && ! $this->observerRoleAllowed($assignment->tournament, $assignment->role)) {
-                return back()->with('error', 'Sui tornei nazionali l\'admin di zona può rimuovere solo gli osservatori.');
+            if ($assignment->tournament && ! $this->zoneAdminMayChange($assignment)) {
+                return back()->with('error', 'Sui tornei nazionali l\'admin di zona può rimuovere solo gli osservatori designati dalla zona.');
             }
             // Salva info per il messaggio e il redirect
             $refereeName = $assignment->user->name ?? 'Arbitro';

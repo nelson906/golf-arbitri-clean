@@ -25,8 +25,9 @@ class AvailabilityStatsService
 
         return [
             'total' => $query->count(),
-            'referees_with_availability' => Availability::query()->distinct()->count('user_id'),
-            'tournaments_with_availability' => Availability::query()->distinct()->count('tournament_id'),
+            // Solo sui tornei che chi guarda puo' vedere (2026-10-07)
+            'referees_with_availability' => $query->clone()->distinct()->count('availabilities.user_id'),
+            'tournaments_with_availability' => $query->clone()->distinct()->count('availabilities.tournament_id'),
         ];
     }
 
@@ -51,7 +52,8 @@ class AvailabilityStatsService
             return collect([]);
         }
 
-        $query = Availability::query()
+        // Il CRC conta solo i tornei nazionali
+        $query = $this->baseQuery($user)
             ->join('tournaments', 'availabilities.tournament_id', '=', 'tournaments.id')
             ->join('zones', 'tournaments.zone_id', '=', 'zones.id');
 
@@ -91,8 +93,9 @@ class AvailabilityStatsService
      */
     public function getByMonth(?User $user = null): Collection
     {
-        return Availability::selectRaw('MONTH(created_at) as mese, COUNT(*) as totale')
-            ->whereYear('created_at', date('Y'))
+        return $this->baseQuery($user ?? auth()->user())
+            ->selectRaw('MONTH(availabilities.created_at) as mese, COUNT(*) as totale')
+            ->whereYear('availabilities.created_at', date('Y'))
             ->groupBy('mese')
             ->pluck('totale', 'mese');
     }
@@ -187,7 +190,7 @@ class AvailabilityStatsService
             'by_zone' => $this->getByZone($month, $user),
             'by_level' => $this->getByLevel($month, $user),
             'conversion_rate' => $this->getConversionRate($month, $user),
-            'totale_disponibilita' => Availability::count(),
+            'totale_disponibilita' => $generalStats['total'],
             'arbitri_con_disponibilita' => $generalStats['referees_with_availability'],
             'tornei_con_disponibilita' => $generalStats['tournaments_with_availability'],
             'disponibilita_per_mese' => $this->getByMonth($user),
