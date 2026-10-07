@@ -298,23 +298,6 @@ class StatisticsDashboardController extends Controller
         }, 200, $headers);
     }
 
-    /**
-     * API endpoint per statistiche
-     *
-     * @param  string  $type
-     */
-    public function apiStats($type): JsonResponse
-    {
-        $user = auth()->user();
-
-        return match ($type) {
-            'dashboard' => response()->json($this->getGeneralStats($user)),
-            'charts' => response()->json($this->getChartData()),
-            'zones' => response()->json($this->zoneStats->getZonesSummary($user)),
-            default => response()->json(['error' => 'Tipo non valido'], 400),
-        };
-    }
-
     // Private helper methods
     /**
      * @param  \App\Models\User|null  $user

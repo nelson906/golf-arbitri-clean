@@ -55,9 +55,11 @@ trait TournamentControllerTrait
         }
 
         if ($request->filled('zone_id')) {
-            $query->whereHas('club', function ($q) use ($request) {
-                $q->where('zone_id', $request->integer('zone_id'));
-            });
+            // Zona dal circolo o, per i tornei T.B.A., dalla colonna (D10)
+            $zoneFilter = $request->integer('zone_id');
+            $query->where(fn ($z) => $z
+                ->whereHas('club', fn ($q) => $q->where('zone_id', $zoneFilter))
+                ->orWhere('zone_id', $zoneFilter));
         }
 
         if ($request->filled('tournament_type_id')) {

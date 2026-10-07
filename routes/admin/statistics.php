@@ -20,5 +20,4 @@ Route::prefix('statistics')->name('statistics.')->group(function () {
     Route::get('/zone', [StatisticsDashboardController::class, 'zone'])->name('zone');
     Route::get('/performance', [StatisticsDashboardController::class, 'performance'])->name('performance');
     Route::get('/export', [StatisticsDashboardController::class, 'exportCsv'])->name('export');
-    Route::get('/api/{type}', [StatisticsDashboardController::class, 'apiStats'])->name('api');
 });

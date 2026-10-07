@@ -80,18 +80,66 @@ class TournamentColorService
 
     private const DEFAULT_COLOR = '#3B82F6';
 
+    private const TEXT_DARK = '#111827';
 
-    // Aggiunto qui per visibilità dal metodo pubblico
-    public const TYPE_COLORS_MAP = self::TYPE_COLORS;
+    private const TEXT_LIGHT = '#FFFFFF';
+
+
+
+    /**
+     * Colore del testo leggibile sopra uno sfondo: scuro sui colori chiari
+     * (giallo, azzurro...), bianco sugli scuri. Un colore #RRGGBBAA viene
+     * considerato sopra il bianco del calendario.
+     */
+    public function textColorFor(string $background): string
+    {
+        $hex = ltrim(trim($background), '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+        if (! preg_match('/^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/', $hex)) {
+            return self::TEXT_LIGHT;
+        }
+
+        $alpha = strlen($hex) === 8 ? hexdec(substr($hex, 6, 2)) / 255 : 1.0;
+        $luminance = 0.0;
+        foreach ([0 => 0.2126, 2 => 0.7152, 4 => 0.0722] as $offset => $weight) {
+            $channel = hexdec(substr($hex, $offset, 2)) / 255;
+            $channel = $channel * $alpha + (1 - $alpha); // sopra il bianco
+            $linear = $channel <= 0.03928 ? $channel / 12.92 : (($channel + 0.055) / 1.055) ** 2.4;
+            $luminance += $weight * $linear;
+        }
+
+        // Luminanza relativa (WCAG): sopra 0,4 il bianco non si legge piu'.
+        // Soglia piu' alta del punto di parita' (0,18) per lasciare il bianco
+        // sui colori medi (blu, verde) come prima.
+        return $luminance > 0.4 ? self::TEXT_DARK : self::TEXT_LIGHT;
+    }
 
     /**
      * Ottieni colore evento per vista ADMIN (basato su tipo torneo)
      */
     public function getAdminEventColor(Tournament $tournament): string
     {
-        $shortName = $tournament->tournamentType->short_name ?? 'default';
+        return $this->typeColor($tournament->tournamentType);
+    }
 
-        return self::TYPE_COLORS[$shortName] ?? self::DEFAULT_COLOR;
+    /**
+     * Colore del tipo torneo: quello impostato in Tipi Torneo; in mancanza la
+     * mappa storica per sigla, poi il colore predefinito.
+     */
+    private function typeColor(?TournamentType $type): string
+    {
+        if ($type === null) {
+            return self::DEFAULT_COLOR;
+        }
+
+        $color = trim((string) $type->calendar_color);
+        if ($color !== '') {
+            return $color;
+        }
+
+        return self::TYPE_COLORS[$type->short_name] ?? self::DEFAULT_COLOR;
     }
 
     /**
@@ -148,30 +196,6 @@ class TournamentColorService
     }
 
     /**
-     * Ottieni colore evento generico (per viste miste admin/arbitro)
-     */
-    public function getEventColor(Tournament $tournament, bool $isAssigned = false, bool $isAvailable = false, bool $isAdmin = false): string
-    {
-        if ($isAdmin) {
-            return $tournament->tournamentType->calendar_color ?? self::DEFAULT_COLOR;
-        }
-
-        return $this->getRefereeEventColor($tournament, $isAssigned, $isAvailable);
-    }
-
-    /**
-     * Ottieni colore bordo generico (per viste miste admin/arbitro)
-     */
-    public function getBorderColor(Tournament $tournament, bool $isAssigned = false, bool $isAvailable = false, bool $isAdmin = false): string
-    {
-        if ($isAdmin) {
-            return $this->getAdminBorderColor($tournament);
-        }
-
-        return $this->getRefereeBorderColor($isAssigned, $isAvailable);
-    }
-
-    /**
      * Ottieni lo stato personale dell'arbitro
      */
     public function getPersonalStatus(bool $isAssigned, bool $isAvailable): string
@@ -200,10 +224,7 @@ class TournamentColorService
 
         $legend = [];
         foreach ($types as $type) {
-            $shortName = $type->short_name ?? $type->name;
-            // Usa short_name come chiave per il mapping colore, ma nome completo come label
-            $color = self::TYPE_COLORS[$shortName] ?? self::DEFAULT_COLOR;
-            $legend[$type->name] = $color;
+            $legend[$type->name] = $this->typeColor($type);
         }
 
         return $legend;

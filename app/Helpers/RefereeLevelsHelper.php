@@ -140,41 +140,6 @@ class RefereeLevelsHelper
         return RefereeLevel::canAccessNational(self::normalize($level));
     }
 
-    /**
-     * Debug helper
-     *
-     * @return array<string, mixed>
-     */
-    public static function debugLevel(string $level): array
-    {
-        $normalized = self::normalize($level);
-        $levelLower = strtolower(trim($level));
-
-        return [
-            'original' => $level,
-            'lowercase' => $levelLower,
-            'normalized' => $normalized,
-            'label' => self::getLabel($level),
-            'is_valid' => self::isValid($level),
-            'can_access_national' => self::canAccessNationalTournaments($level),
-            'found_in_enum' => array_key_exists($level, self::DB_ENUM_VALUES),
-            'found_in_variants' => array_key_exists($levelLower, self::VARIANTS_MAP),
-            'database_enum_values' => array_keys(self::DB_ENUM_VALUES),
-        ];
-    }
-
-    /**
-     * Ottieni tutte le varianti per debug
-     *
-     * @return list<string>
-     */
-    public static function getAllVariants(): array
-    {
-        return array_merge(
-            array_keys(self::DB_ENUM_VALUES),
-            array_keys(self::VARIANTS_MAP)
-        );
-    }
 }
 
 // Le funzioni globali referee_levels(), normalize_referee_level() e referee_level_label()

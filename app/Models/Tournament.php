@@ -6,7 +6,6 @@
 
 namespace App\Models;
 
-use App\Enums\TournamentStatus;
 use App\Support\TournamentVisibility;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -30,7 +29,6 @@ use Illuminate\Database\Eloquent\Relations\HasOneThrough;
  *   tests/Unit/Services/AssignmentDateConflictNullEndDateTest lo mette a null
  *   in memoria per coprire il fallback di datesOverlap(): resta nullable
  * @property Carbon $availability_deadline
- * @property TournamentStatus $status
  * @property string|null $notes
  * @property int|null $created_by
  * @property Carbon|null $created_at
@@ -44,7 +42,6 @@ use Illuminate\Database\Eloquent\Relations\HasOneThrough;
  * @property-read Collection<int, Availability> $availabilities
  * @property-read Collection<int, User> $referees
  * @property-read string|null $date_range
- * @property-read string|null $status_color
  * @property-read int $required_referees
  * @property-read Collection<int, User> $assignedReferees
  *
@@ -69,7 +66,6 @@ class Tournament extends Model
         'start_date',
         'end_date',
         'availability_deadline',
-        'status',
         'notes',
         'created_by',
     ];
@@ -78,7 +74,6 @@ class Tournament extends Model
         'start_date'            => 'datetime',
         'end_date'              => 'datetime',
         'availability_deadline' => 'datetime',
-        'status'                => TournamentStatus::class,
     ];
 
     /**
@@ -88,41 +83,8 @@ class Tournament extends Model
         'zone_id',
     ];
 
-    /**
-     * Default attribute values.
-
-     * I nuovi tornei sono visibili (open) di default.
-
-     * Solo se specificato esplicitamente saranno in bozza (draft).
-     */
-    protected $attributes = [
-        'status' => 'open', // TournamentStatus::Open — il cast converte automaticamente
-    ];
-
-    /**
-     * Tournament statuses
-     *
-     * @deprecated Usare \App\Enums\TournamentStatus al posto di queste costanti.
-     *             Queste rimangono solo per retrocompatibilità con codice legacy.
-     */
-    /** @deprecated Use TournamentStatus::Draft->value */
-    public const STATUS_DRAFT = 'draft';
-
-    /** @deprecated Use TournamentStatus::Open->value */
-    public const STATUS_OPEN = 'open';
-
-    /** @deprecated Use TournamentStatus::Closed->value */
-    public const STATUS_CLOSED = 'closed';
-
-    /** @deprecated Use TournamentStatus::Assigned->value */
-    public const STATUS_ASSIGNED = 'assigned';
-
-    /** @deprecated Use TournamentStatus::Completed->value */
-    public const STATUS_COMPLETED = 'completed';
-
-    /** @deprecated Use TournamentStatus::Cancelled->value */
-    public const STATUS_CANCELLED = 'cancelled';
-
+    // Stato del torneo eliminato (decisione 2026-10-03, P3): la colonna
+    // `status` resta nel database ma l'applicazione non la legge ne' la scrive.
 
     /**
      * RELAZIONI
@@ -251,37 +213,6 @@ class Tournament extends Model
         return $this->hasOne(TournamentNotification::class)->latestOfMany();
     }
 
-    // Notifica CRC per gare nazionali (arbitri designati)
-    /**
-     * @return HasOne<TournamentNotification, $this>
-     */
-    public function crcNotification(): HasOne
-    {
-        return $this->hasOne(TournamentNotification::class)
-            ->where('notification_type', 'crc_referees')
-            ->latestOfMany();
-    }
-
-    // Notifica ZONA per gare nazionali (osservatori)
-    /**
-     * @return HasOne<TournamentNotification, $this>
-     */
-    public function zoneNotification(): HasOne
-    {
-        return $this->hasOne(TournamentNotification::class)
-            ->where('notification_type', 'zone_observers')
-            ->latestOfMany();
-    }
-
-    // Verifica se ha notifiche nazionali inviate
-    public function hasNationalNotifications(): bool
-    {
-        return $this->notifications()
-            ->whereIn('notification_type', ['crc_referees', 'zone_observers'])
-            ->where('status', 'sent')
-            ->exists();
-    }
-
     // ── SCOPES ──────────────────────────────────────────────────────
 
     /**
@@ -348,29 +279,6 @@ class Tournament extends Model
         return $this->tournamentType->min_referees ?? 1;
     }
 
-    /**
-     * Check if tournament needs referees.
-     * Se la relazione è già eager-loaded usa la collection in memoria (zero query extra).
-     */
-    public function needsReferees(): bool
-    {
-        $assignedCount = $this->relationLoaded('assignments')
-            ? $this->assignments->count()
-            : ($this->assignments_count ?? $this->assignments()->count());
-
-        return $assignedCount < $this->required_referees;
-    }
-
     // ── Notifica nazionale ────────────────────────────────────────────────────
 
-    /**
-     * Verifica se il torneo ha notifiche nazionali inviate (usa i tipi tipizzati).
-     */
-    public function hasNationalNotificationsSent(): bool
-    {
-        return $this->notifications()
-            ->whereIn('notification_type', ['crc_referees', 'zone_observers'])
-            ->where('status', 'sent')
-            ->exists();
-    }
 }

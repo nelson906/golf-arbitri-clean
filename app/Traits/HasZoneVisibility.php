@@ -189,24 +189,4 @@ trait HasZoneVisibility
         return TournamentVisibility::canAccess($tournament, $user);
     }
 
-    /**
-     * Restituisce informazioni di contesto per le viste.
-     *
-     * @return array<string, mixed>
-     */
-    protected function getVisibilityContext(?User $user = null): array
-    {
-        $user = $user ?? auth()->user();
-
-        return [
-            'isSuperAdmin'     => $this->isSuperAdmin($user),
-            'isNationalAdmin'  => $this->isNationalAdmin($user),
-            'isAdmin'          => $this->isAdmin($user),
-            'isZoneAdmin'      => $this->isZoneAdmin($user),
-            'isNationalReferee' => $this->isNationalReferee($user),
-            'userZoneId'       => $user?->zone_id,
-            'userType'         => $user?->user_type?->value,
-            'userLevel'        => $user->level ?? null,
-        ];
-    }
 }

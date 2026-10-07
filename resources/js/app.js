@@ -6,7 +6,6 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import AdminCalendar from './Components/Calendar/AdminCalendar.jsx';
 import RefereeCalendar from './Components/Calendar/RefereeCalendar.jsx';
-import PublicCalendar from './Components/Calendar/PublicCalendar.jsx';
 
 // Initialize Alpine
 Alpine.start()
@@ -102,5 +101,4 @@ function mountCalendar(containerId, Component, calendarDataKey, type, label) {
 document.addEventListener('DOMContentLoaded', () => {
     mountCalendar('admin-calendar-root',   AdminCalendar,   'adminCalendarData',   'admin',   'Calendario Admin');
     mountCalendar('referee-calendar-root', RefereeCalendar, 'refereeCalendarData', 'referee', 'Calendario Arbitro');
-    mountCalendar('public-calendar-root',  PublicCalendar,  'publicCalendarData',  'public',  'Calendario Pubblico');
 });

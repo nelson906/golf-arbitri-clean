@@ -121,29 +121,6 @@ class NotificationCycleTest extends TestCase
     }
 
     /**
-     * Test 4: Verifica getZoneFolder per tornei nazionali e zonali
-     */
-    public function test_get_zone_folder_returns_correct_folder(): void
-    {
-        $this->requireDatabase();
-
-        // Trova un torneo esistente per testare
-        // first() e non firstOrFail(): l'assenza di dati qui e' uno SKIP voluto,
-        // non un fallimento (il test gira su un DB che puo' essere vuoto).
-        $tournament = Tournament::with(['club', 'zone', 'tournamentType'])->first();
-
-        if (! $tournament) {
-            $this->markTestSkipped('Nessun torneo nel database per il test');
-        }
-
-        $zoneFolder = $this->documentService->getZoneFolder($tournament);
-
-        // Verifica che il folder sia uno dei valori attesi
-        $validFolders = ['CRC', 'SZR1', 'SZR2', 'SZR3', 'SZR4', 'SZR5', 'SZR6', 'SZR7'];
-        $this->assertContains($zoneFolder, $validFolders, "Zone folder non valido: {$zoneFolder}");
-    }
-
-    /**
      * Test 5: Verifica generazione convocazione per torneo con assegnazioni
      */
     public function test_generate_convocation_for_tournament_with_assignments(): void

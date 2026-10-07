@@ -35,11 +35,6 @@
         <x-nav-link :href="route('super-admin.institutional-emails.index')" :active="request()->routeIs('super-admin.institutional-emails.*')">
             📧 Email Istituzionali
         </x-nav-link>
-
-        {{-- System Monitoring --}}
-        <x-nav-link :href="route('super-admin.monitoring.dashboard')" :active="request()->routeIs('super-admin.monitoring.*')">
-            🖥️ Monitoraggio Sistema
-        </x-nav-link>
 @endif
 
 {{-- Admin Menu Items --}}
@@ -65,7 +60,7 @@
         </x-nav-link>
 
         {{-- Referee Curricula --}}
-        <x-nav-link :href="route('admin.referees.curricula')" :active="request()->routeIs('referees.*')">
+        <x-nav-link :href="route('admin.referees.curricula')" :active="request()->routeIs('admin.referees.*')">
             📋 Curriculum Arbitri
         </x-nav-link>
 
@@ -85,7 +80,7 @@
         </x-nav-link>
 
         {{-- Notifications --}}
-        <x-nav-link :href="route('admin.tournament-notifications.index')" :active="request()->routeIs('admin.notifications.*')">
+        <x-nav-link :href="route('admin.tournament-notifications.index')" :active="request()->routeIs('admin.tournament-notifications.*')">
             🔔 Notifiche
         </x-nav-link>
 
@@ -94,22 +89,10 @@
             📊 Statistiche
         </x-nav-link>
 
-        {{-- Reports --}}
-        {{-- <x-nav-link :href="route('reports.dashboard')" :active="request()->routeIs('reports.*')">
-            📈 Report
-        </x-nav-link> --}}
-
-        {{-- Monitoring spostato in Super Admin --}}
-
         {{-- Documents --}}
         <x-nav-link :href="route('admin.documents.index')" :active="request()->routeIs('admin.documents.*')">
             📁 Documenti
         </x-nav-link>
-
-        {{-- Settings --}}
-        {{-- <x-nav-link :href="route('admin.settings')" :active="request()->routeIs('admin.settings')">
-            ⚙️ Impostazioni
-        </x-nav-link> --}}
 @endif
 
 {{-- Menu Amministratore per Super Admin --}}
@@ -302,9 +285,6 @@
                 <x-responsive-nav-link :href="route('super-admin.institutional-emails.index')" :active="request()->routeIs('super-admin.institutional-emails.*')">
                     📧 Email Istituzionali
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('super-admin.monitoring.logs')" :active="request()->routeIs('super-admin.monitoring.*')">
-                    📊 Monitoraggio Sistema
-                </x-responsive-nav-link>
             @endif
 
             {{-- Admin Mobile Links --}}
@@ -321,7 +301,7 @@
                 <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
                     👨‍💼 Gestione Arbitri
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.referees.curricula')" :active="request()->routeIs('referees.*')">
+                <x-responsive-nav-link :href="route('admin.referees.curricula')" :active="request()->routeIs('admin.referees.*')">
                     📋 Curriculum Arbitri
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.assignments.index')" :active="request()->routeIs('admin.assignments.*')">
@@ -334,7 +314,7 @@
                     📢 Comunicazioni
                 </x-responsive-nav-link>
 
-                <x-responsive-nav-link :href="route('admin.tournament-notifications.index')" :active="request()->routeIs('admin.notifications.*')">
+                <x-responsive-nav-link :href="route('admin.tournament-notifications.index')" :active="request()->routeIs('admin.tournament-notifications.*')">
                     🔔 Notifiche
                 </x-responsive-nav-link>
 
@@ -343,18 +323,9 @@
                     📊 Statistiche
                 </x-responsive-nav-link>
 
-                {{-- <x-responsive-nav-link :href="route('reports.dashboard')" :active="request()->routeIs('reports.*')">
-                    📈 Report
-                </x-responsive-nav-link> --}}
-
-                {{-- Monitoring spostato in Super Admin --}}
-
                 <x-responsive-nav-link :href="route('admin.documents.index')" :active="request()->routeIs('admin.documents.*')">
                     📁 Documenti
                 </x-responsive-nav-link>
-                {{-- <x-responsive-nav-link :href="route('admin.settings')" :active="request()->routeIs('admin.settings')">
-                    ⚙️ Impostazioni
-                </x-responsive-nav-link> --}}
             @endif
 
             {{-- User (Referee) Mobile Links --}}

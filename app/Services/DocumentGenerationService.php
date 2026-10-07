@@ -17,14 +17,6 @@ use PhpOffice\PhpWord\TemplateProcessor;
 class DocumentGenerationService
 {
     /**
-     * Gets the correct zone folder for tournament file storage
-     */
-    public function getZoneFolder(Tournament $tournament): string
-    {
-        return ZoneHelper::getFolderCodeForTournament($tournament);
-    }
-
-    /**
      * Generate convocation for entire tournament
      *
      * @return array{path: string, filename: string, type: 'convocation'}

@@ -57,42 +57,6 @@ class ZoneHelper
     }
 
     /**
-     * Ottiene tutti i codici cartella disponibili
-     *
-     * @return list<string>
-     */
-    public static function getAllFolderCodes(): array
-    {
-        $mapping = Config::array('golf.zones.folder_mapping', []);
-        $nationalCode = Config::string('golf.zones.national_folder_code', 'CRC');
-
-        $codes = [];
-        foreach ($mapping as $code) {
-            if (is_string($code)) {
-                $codes[] = $code;
-            }
-        }
-        $codes[] = $nationalCode;
-
-        return $codes;
-    }
-
-    /**
-     * Ottiene il nome della zona dato l'ID
-     */
-    public static function getZoneName(?int $zoneId): string
-    {
-        if (! $zoneId) {
-            return 'Zona Non Specificata';
-        }
-
-        // Carica dal database se necessario
-        $zone = \App\Models\Zone::find($zoneId);
-
-        return $zone ? $zone->name : "Zona {$zoneId}";
-    }
-
-    /**
      * Ottiene l'email pattern per una zona
      */
     public static function getEmailPattern(int $zoneId): string
@@ -102,19 +66,4 @@ class ZoneHelper
         return str_replace('{zone_id}', (string) $zoneId, $pattern);
     }
 
-    /**
-     * Verifica se un utente ha accesso a una zona specifica
-     *
-     * @param  \App\Models\User  $user
-     */
-    public static function userHasAccessToZone($user, int $zoneId): bool
-    {
-        // Super admin e national admin hanno accesso a tutto
-        if ($user->isNationalAdmin()) {
-            return true;
-        }
-
-        // Admin zonale e referee hanno accesso alla propria zona
-        return $user->zone_id === $zoneId;
-    }
 }

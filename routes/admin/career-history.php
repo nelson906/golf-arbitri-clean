@@ -17,7 +17,6 @@ Route::prefix('career-history')->name('career-history.')->group(function () {
     // Archiviazione anno
     Route::get('/archive', [CareerHistoryController::class, 'archiveForm'])->name('archive-form');
     Route::post('/archive', [CareerHistoryController::class, 'processArchive'])->name('process-archive');
-    Route::get('/preview-year', [CareerHistoryController::class, 'previewYear'])->name('preview-year');
 
     // Storico singolo arbitro
     Route::get('/{user}', [CareerHistoryController::class, 'show'])->name('show');
@@ -27,7 +26,6 @@ Route::prefix('career-history')->name('career-history.')->group(function () {
     Route::post('/{user}/add-tournament', [CareerHistoryController::class, 'addTournament'])->name('add-tournament');
     Route::post('/{user}/add-multiple-tournaments', [CareerHistoryController::class, 'addMultipleTournaments'])->name('add-multiple-tournaments');
     Route::post('/{user}/remove-tournament', [CareerHistoryController::class, 'removeTournament'])->name('remove-tournament');
-    Route::post('/{user}/update-days', [CareerHistoryController::class, 'updateTournamentDays'])->name('update-days');
     Route::post('/{user}/update-tournament', [CareerHistoryController::class, 'updateTournamentComplete'])->name('update-tournament');
 
     // Batch entry per inserimento multiplo veloce
