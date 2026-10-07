@@ -38,7 +38,7 @@ class TournamentTypeController extends Controller
     {
         $validated = $request->validate([
             'name'           => 'required|string|max:255|unique:tournament_types',
-            'code'           => 'nullable|string|max:50|unique:tournament_types',
+            'short_name'     => 'nullable|string|max:20|unique:tournament_types,short_name',
             'description'    => 'nullable|string',
             'calendar_color' => 'nullable|string|max:7',
             'sort_order'     => 'integer|min:0',
@@ -49,9 +49,9 @@ class TournamentTypeController extends Controller
             'required_level' => 'nullable|string|in:Aspirante,1_livello,Regionale,Nazionale,Internazionale',
         ]);
 
-        // Generate code if not provided
-        if (empty($validated['code'])) {
-            $validated['code'] = Str::upper(Str::slug($validated['name'], '_'));
+        // Sigla generata dal nome se non indicata
+        if (empty($validated['short_name'])) {
+            $validated['short_name'] = Str::limit(Str::upper(Str::slug($validated['name'], '_')), 20, '');
         }
 
         // Set default values
@@ -83,7 +83,7 @@ class TournamentTypeController extends Controller
     {
         $validated = $request->validate([
             'name'           => 'required|string|max:255|unique:tournament_types,name,'.$tournamentType->id,
-            'code'           => 'nullable|string|max:50|unique:tournament_types,code,'.$tournamentType->id,
+            'short_name'     => 'required|string|max:20|unique:tournament_types,short_name,'.$tournamentType->id,
             'description'    => 'nullable|string',
             'calendar_color' => 'nullable|string|max:7',
             'sort_order'     => 'integer|min:0',

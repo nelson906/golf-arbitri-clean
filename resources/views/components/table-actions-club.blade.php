@@ -64,7 +64,7 @@
         $testo = 'Sei sicuro di voler eliminare questo club? Questa azione non può essere annullata.';
     @endphp
 @php
-    $tournamentsExist = $club->tournaments()->whereIn('status', ['open', 'closed', 'assigned'])->exists();
+    $tournamentsExist = $club->tournaments()->exists();
     if ($tournamentsExist) {
         $testo = 'Questo Circolo ha tornei associati. Prima occore eliminare i tornei';
     } else {

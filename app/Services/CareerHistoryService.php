@@ -301,42 +301,6 @@ class CareerHistoryService
     }
 
     /**
-     * Aggiorna i giorni effettivi di un torneo esistente.
-     */
-    public function updateTournamentDays(int $userId, int $year, int $tournamentId, int $daysCount): bool
-    {
-        $history = RefereeCareerHistory::where('user_id', $userId)->first();
-
-        if (! $history) {
-            return false;
-        }
-
-        $tournaments = $history->tournaments_by_year ?? [];
-
-        if (! isset($tournaments[$year])) {
-            return false;
-        }
-
-        // Trova e aggiorna il torneo
-        $updated = false;
-        foreach ($tournaments[$year] as $key => $tournament) {
-            if ($tournament['id'] == $tournamentId) {
-                $tournaments[$year][$key]['days_count'] = $daysCount;
-                $updated = true;
-                break;
-            }
-        }
-
-        if ($updated) {
-            $history->tournaments_by_year = $tournaments;
-            $history->career_stats = $history->generateStatsSummary();
-            $history->save();
-        }
-
-        return $updated;
-    }
-
-    /**
      * Aggiunge più tornei in modalità batch.
      *
      * @param  list<array<array-key, mixed>>  $tournamentsData

@@ -74,22 +74,6 @@ class DocumentController extends Controller
     }
 
     /**
-     * Show the form for creating a new document
-     */
-    public function create(): View
-    {
-        return view('documents.create');
-    }
-
-    /**
-     * Store a newly created document
-     */
-    public function store(Request $request): JsonResponse|RedirectResponse
-    {
-        return $this->upload($request);
-    }
-
-    /**
      * Upload a new document
      */
     public function upload(Request $request): JsonResponse|RedirectResponse

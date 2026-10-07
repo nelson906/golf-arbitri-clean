@@ -29,27 +29,6 @@ Route::prefix('users')->name('users.')->group(function () {
         ->name('toggle-active');
 });
 
-// Alias per retrocompatibilità
-Route::prefix('referees')->name('referees.')->group(function () {
-    Route::get('/', [App\Http\Controllers\Admin\UserController::class, 'index'])
-        ->name('index');
-    Route::get('/{user}', [App\Http\Controllers\Admin\UserController::class, 'show'])
-        ->name('show');
-});
-
-Route::prefix('admins')->name('admins.')->group(function () {
-    Route::get('/', function () {
-        return redirect()->route('admin.users.index', ['user_type' => 'admin,national_admin,super_admin']);
-    })->name('index');
-
-    Route::get('/zone-admins', function () {
-        return redirect()->route('admin.users.index', ['user_type' => 'admin']);
-    })->name('zone');
-
-    Route::get('/national-admins', function () {
-        return redirect()->route('admin.users.index', ['user_type' => 'national_admin']);
-    })->name('national');
-});
 
 // NOTA (audit 2026-07): rimossi i gruppi vuoti 'validation' e 'mass-communication'
 // (closure senza route — scheletro mai implementato).

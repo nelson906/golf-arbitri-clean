@@ -33,7 +33,8 @@ class CareerHistoryController extends Controller
     public function index(Request $request): View
     {
         $currentUser = auth()->user();
-        $zoneRestriction = $this->getUserZoneId($currentUser);
+        // Il super admin vede tutte le zone anche se ha una zona sul profilo
+        $zoneRestriction = $this->isSuperAdmin($currentUser) ? null : $this->getUserZoneId($currentUser);
 
         $query = User::where('user_type', 'referee')
             ->with(['careerHistory', 'zone'])
@@ -98,7 +99,8 @@ class CareerHistoryController extends Controller
     {
         $currentUser = auth()->user();
         $currentYear = now()->year;
-        $zoneRestriction = $this->getUserZoneId($currentUser);
+        // Il super admin vede tutte le zone anche se ha una zona sul profilo
+        $zoneRestriction = $this->isSuperAdmin($currentUser) ? null : $this->getUserZoneId($currentUser);
 
         // Statistiche per preview (filtrate per zona se necessario)
         $stats = $this->getYearStats($currentYear, $zoneRestriction);
@@ -227,9 +229,10 @@ class CareerHistoryController extends Controller
             // Arbitri nazionali: tornei della propria zona + tornei nazionali/internazionali
             $query->where(function ($q) use ($user) {
                 if ($user->zone_id) {
-                    $q->whereHas('club', function ($clubQuery) use ($user) {
-                        $clubQuery->where('zone_id', $user->zone_id);
-                    });
+                    // Zona del torneo: dal circolo o, se T.B.A., dalla colonna (D10)
+                    $q->where(fn ($z) => $z
+                        ->whereHas('club', fn ($clubQuery) => $clubQuery->where('zone_id', $user->zone_id))
+                        ->orWhere('zone_id', $user->zone_id));
                 } else {
                     $q->whereRaw('1 = 0');
                 }
@@ -241,9 +244,9 @@ class CareerHistoryController extends Controller
         } else {
             // Arbitri zonali: solo tornei della loro zona
             if ($user->zone_id) {
-                $query->whereHas('club', function ($clubQuery) use ($user) {
-                    $clubQuery->where('zone_id', $user->zone_id);
-                });
+                $query->where(fn ($z) => $z
+                    ->whereHas('club', fn ($clubQuery) => $clubQuery->where('zone_id', $user->zone_id))
+                    ->orWhere('zone_id', $user->zone_id));
             } else {
                 $query->whereRaw('1 = 0');
             }
@@ -458,37 +461,6 @@ class CareerHistoryController extends Controller
     }
 
     /**
-     * Aggiorna i giorni effettivi di un torneo esistente.
-     */
-    public function updateTournamentDays(Request $request, User $user): RedirectResponse
-    {
-        // Check zone access
-        $currentUser = auth()->user();
-        if (! $this->isSuperAdmin($currentUser) && $user->zone_id !== $this->getUserZoneId($currentUser)) {
-            abort(403, 'Non hai accesso a questo arbitro');
-        }
-
-        $request->validate([
-            'year' => 'required|integer',
-            'tournament_id' => 'required|integer',
-            'days_count' => 'required|integer|min:1',
-        ]);
-
-        $year = $request->integer('year');
-
-        $updated = $this->careerService->updateTournamentDays(
-            $user->id,
-            $year,
-            $request->integer('tournament_id'),
-            $request->integer('days_count')
-        );
-
-        return redirect()
-            ->route('admin.career-history.edit-year', [$user, $year])
-            ->with($updated ? 'success' : 'warning', $updated ? 'Giorni aggiornati' : 'Torneo non trovato');
-    }
-
-    /**
      * Aggiorna completamente un torneo esistente.
      */
     public function updateTournamentComplete(Request $request, User $user): RedirectResponse
@@ -572,9 +544,10 @@ class CareerHistoryController extends Controller
             // Arbitri nazionali: tornei della propria zona + tornei nazionali/internazionali
             $query->where(function ($q) use ($user) {
                 if ($user->zone_id) {
-                    $q->whereHas('club', function ($clubQuery) use ($user) {
-                        $clubQuery->where('zone_id', $user->zone_id);
-                    });
+                    // Zona del torneo: dal circolo o, se T.B.A., dalla colonna (D10)
+                    $q->where(fn ($z) => $z
+                        ->whereHas('club', fn ($clubQuery) => $clubQuery->where('zone_id', $user->zone_id))
+                        ->orWhere('zone_id', $user->zone_id));
                 } else {
                     $q->whereRaw('1 = 0');
                 }
@@ -586,9 +559,9 @@ class CareerHistoryController extends Controller
         } else {
             // Arbitri zonali: solo tornei della loro zona
             if ($user->zone_id) {
-                $query->whereHas('club', function ($clubQuery) use ($user) {
-                    $clubQuery->where('zone_id', $user->zone_id);
-                });
+                $query->where(fn ($z) => $z
+                    ->whereHas('club', fn ($clubQuery) => $clubQuery->where('zone_id', $user->zone_id))
+                    ->orWhere('zone_id', $user->zone_id));
             } else {
                 $query->whereRaw('1 = 0');
             }
@@ -648,27 +621,16 @@ class CareerHistoryController extends Controller
     }
 
     /**
-     * Preview dati anno prima di archiviare.
-     */
-    public function previewYear(Request $request): JsonResponse
-    {
-        $currentUser = auth()->user();
-        $year = $request->integer('year', now()->year);
-        $zoneRestriction = $this->getUserZoneId($currentUser);
-
-        $stats = $this->getYearStats($year, $zoneRestriction);
-
-        return response()->json($stats);
-    }
-
-    /**
      * Calcola statistiche per un anno.
      *
      * @return array<string, mixed>
      */
     private function getYearStats(int $year, ?int $zoneId = null): array
     {
-        $assignmentsQuery = \App\Models\Assignment::whereYear('assigned_at', $year);
+        // Anno del torneo, come l'archiviazione vera (non la data di assegnazione)
+        $assignmentsQuery = \App\Models\Assignment::whereHas('tournament', function ($q) use ($year) {
+            $q->whereYear('start_date', $year);
+        });
         $availabilitiesQuery = \App\Models\Availability::whereHas('tournament', function ($q) use ($year) {
             $q->whereYear('start_date', $year);
         });
@@ -682,9 +644,9 @@ class CareerHistoryController extends Controller
             $availabilitiesQuery->whereHas('user', function ($q) use ($zoneId) {
                 $q->where('zone_id', $zoneId);
             });
-            $tournamentsQuery->whereHas('club', function ($q) use ($zoneId) {
-                $q->where('zone_id', $zoneId);
-            });
+            $tournamentsQuery->where(fn ($z) => $z
+                ->whereHas('club', fn ($q) => $q->where('zone_id', $zoneId))
+                ->orWhere('zone_id', $zoneId));
         }
 
         return [

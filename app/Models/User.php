@@ -9,8 +9,6 @@ namespace App\Models;
 use App\Enums\RefereeLevel;
 use App\Enums\UserType;
 use Carbon\Carbon;
-use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -53,12 +51,11 @@ use Laravel\Sanctum\HasApiTokens;
  * @method static Builder|User referees()
  * @method static Builder|User active()
  */
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable
 {
     use HasApiTokens;
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory;
-    use MustVerifyEmailTrait;
     use Notifiable;
 
     protected $fillable = [
@@ -271,36 +268,4 @@ class User extends Authenticatable implements MustVerifyEmail
         return $level?->isNational() ?? false;
     }
 
-    /**
-     * Verifica compatibilità con codice legacy che usa stringhe di ruolo.
-     *
-     * @deprecated Preferire i metodi tipizzati isAdmin(), isReferee(), ecc.
-     */
-    public function hasRole(string $role): bool
-    {
-        return match ($role) {
-            'super_admin'   => $this->isSuperAdmin(),
-            'national_admin' => $this->isNationalAdmin(),
-            'zone_admin'                            => $this->isZoneAdmin(),
-            'admin', 'administrator'                => $this->isAdmin(),
-            'referee'       => $this->isReferee(),
-            default         => $this->user_type->value === $role,
-        };
-    }
-
-    /**
-     * @deprecated Preferire i metodi tipizzati isAdmin(), isReferee(), ecc.
-     *
-     * @param  string|string[]  $roles
-     */
-    public function hasAnyRole(string|array $roles): bool
-    {
-        foreach ((array) $roles as $role) {
-            if ($this->hasRole($role)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }

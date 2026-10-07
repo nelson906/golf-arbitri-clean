@@ -1,79 +1,54 @@
-# ArbitriGolf
+# golf-arbitri-clean
 
-Golf referee management system - Sistema di gestione per arbitri di golf.
+Gestione delle designazioni degli arbitri di golf per le Sezioni Zonali Regole (SZR) e il Comitato Regole e Campionati (CRC) della Federazione Italiana Golf.
 
-## Overview / Panoramica
+L'applicazione regge un ciclo: l'arbitro dichiara le disponibilità, l'amministratore designa il comitato di gara, l'amministratore comunica la designazione al circolo (tornei zonali) o al Comitato Campionati (tornei nazionali).
 
-ArbitriGolf is a comprehensive management system for golf referees, designed to streamline tournament assignments, referee scheduling, and administrative tasks. This project represents an incremental migration from a legacy system to a more structured and maintainable Laravel-based solution.
+## Ruoli
 
-ArbitriGolf è un sistema completo di gestione per arbitri di golf, progettato per semplificare le assegnazioni ai tornei, la pianificazione degli arbitri e le attività amministrative. Questo progetto rappresenta una migrazione incrementale da un sistema legacy verso una soluzione basata su Laravel più strutturata e manutenibile.
+| Ruolo | Cosa fa |
+| --- | --- |
+| Arbitro | Dichiara le disponibilità, vede le proprie designazioni e il curriculum |
+| Admin di zona (SZR) | Tornei zonali dall'inizio alla lettera al circolo; osservatori dei nazionali della zona |
+| Admin nazionale (CRC) | Arbitri e Direttore di Torneo dei tornei nazionali |
+| Super admin | Configurazione (zone, tipi torneo, email istituzionali, clausole), archiviazione annuale |
 
-## Key Features / Funzionalità Principali
+Che un torneo sia nazionale lo decide solo il tipo torneo (`is_national`).
 
-- 📅 Tournament management / Gestione tornei
-- 👥 Referee database and profiles / Database arbitri e profili
-- 📋 Assignment system / Sistema di assegnazioni
-- 🏌️ Golf club management / Gestione circoli golf
-- 📊 Reporting and statistics / Report e statistiche
-- 🔐 Secure authentication / Autenticazione sicura
+## Requisiti
 
+- PHP 8.5 (`composer.lock` risolto su 8.5), Composer 2
+- MySQL 8 (il nome del database di test deve contenere `test`)
+- Node 20 per la compilazione degli asset (Vite)
 
-## Installation / Installazione
+## Installazione locale
 
 ```bash
-# Clone the repository / Clonare il repository
-git clone https://github.com/nelson906/arbitrigolf.git
-cd arbitrigolf
-
-# Install dependencies / Installare le dipendenze
+git clone https://github.com/nelson906/golf-arbitri-clean.git
+cd golf-arbitri-clean
 composer install
-npm install
-
-# Configure .env file / Configurare il file .env
+npm ci && npm run build
 cp .env.example .env
 php artisan key:generate
-
-# Run migrations / Eseguire le migrazioni
 php artisan migrate
-
-# Build assets / Compilare gli asset
-npm run build
 ```
 
-## Project Structure / Struttura del Progetto
+## Controlli di qualità
 
-The project follows the standard Laravel structure with some customizations:
-Il progetto segue la struttura standard di Laravel con alcune personalizzazioni:
-
-```
-├── app/
-│   ├── Models/          # Eloquent models / Modelli Eloquent
-│   ├── Http/
-│   │   └── Controllers/ # Application logic / Logica applicativa
-├── resources/
-│   └── views/           # Blade views / Viste Blade
-├── routes/              # Route definitions / Definizione delle route
-├── database/
-│   └── migrations/      # Database migrations / Migrazioni database
+```bash
+php artisan test                                                        # PHPUnit
+vendor/bin/phpstan analyse -c phpstan-strict.neon --level=9 --memory-limit=1G
+npm run qa                                                              # ESLint, type-check, Vitest
 ```
 
-## Important Notes / Note Importanti
+La CI (`.github/workflows/ci.yml`) esegue gli stessi controlli a ogni push su `main` e su ogni pull request.
 
-- Cannot run `php artisan tinker` in this environment / Non è possibile eseguire `php artisan tinker` in questo ambiente
-- For document generation, use the gestione-arbitri system / Per la generazione di documenti, utilizzare il sistema gestione-arbitri
-- Report issues or unclear situations with suggestions on how to address them / Segnalare problemi o situazioni poco chiare con suggerimenti su come affrontarli
+## Documentazione
 
-## Contributing / Contribuire
+- `docs/guides/archiviazione-anno.md` — chiusura della stagione
+- `docs/deploy/aruba-deploy-checklist.md` — caricamento su Aruba (hosting condiviso, senza SSH)
+- `docs/STORICO.md` — storia del progetto
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-I contributi sono benvenuti! Sentiti libero di inviare una Pull Request.
+## Licenza
 
-## License / Licenza
-
-This project is open-sourced software licensed under the [MIT license](LICENSE).
-Questo progetto è un software open source rilasciato sotto [licenza MIT](LICENSE).
-
-## Contact / Contatti
-
-For questions or support, please open an issue in the GitHub repository.
-Per domande o supporto, apri una issue nel repository GitHub.
+[MIT](LICENSE)

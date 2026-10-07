@@ -4,16 +4,14 @@ namespace App\Observers;
 
 use App\Models\Assignment;
 use App\Models\TournamentNotification;
-use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Observer per il modello Assignment.
  *
- * Mantiene sincronizzati:
- *  1. referee_list e details.total_recipients in TournamentNotification
- *  2. total_tournaments e tournaments_current_year in User
+ * Mantiene sincronizzati referee_list e details.total_recipients in
+ * TournamentNotification. (I contatori users.total_tournaments e
+ * tournaments_current_year non sono piu' aggiornati: nessuno li leggeva.)
  *
  * Registrazione in AppServiceProvider::boot():
  *   Assignment::observe(AssignmentObserver::class);
@@ -21,17 +19,15 @@ use Illuminate\Support\Facades\Log;
 class AssignmentObserver
 {
     /**
-     * Aggiorna referee_list e contatori dopo la creazione di una nuova assegnazione.
+     * Aggiorna referee_list dopo la creazione di una nuova assegnazione.
      */
     public function created(Assignment $assignment): void
     {
         $this->syncNotificationRecipientInfo($assignment->tournament_id);
-        $this->syncUserCounters($assignment->user_id);
     }
 
     /**
      * Aggiorna referee_list dopo la modifica di un'assegnazione (es. cambio ruolo).
-     * I contatori non cambiano per un semplice update (la quantità rimane uguale).
      */
     public function updated(Assignment $assignment): void
     {
@@ -39,44 +35,11 @@ class AssignmentObserver
     }
 
     /**
-     * Aggiorna referee_list e contatori dopo l'eliminazione di un'assegnazione.
+     * Aggiorna referee_list dopo l'eliminazione di un'assegnazione.
      */
     public function deleted(Assignment $assignment): void
     {
         $this->syncNotificationRecipientInfo($assignment->tournament_id);
-        $this->syncUserCounters($assignment->user_id);
-    }
-
-    /**
-     * Ricalcola total_tournaments e tournaments_current_year per un arbitro.
-     *
-     * Usa updateQuietly() per evitare eventi ricorsivi e loop infiniti.
-     */
-    private function syncUserCounters(int $userId): void
-    {
-        try {
-            $user = User::find($userId);
-            if (! $user || $user->user_type !== 'referee') {
-                return;
-            }
-
-            $total = Assignment::where('user_id', $userId)->count();
-
-            $currentYear = Assignment::where('assignments.user_id', $userId)
-                ->join('tournaments', 'assignments.tournament_id', '=', 'tournaments.id')
-                ->whereYear('tournaments.start_date', now()->year)
-                ->count();
-
-            $user->updateQuietly([
-                'total_tournaments'        => $total,
-                'tournaments_current_year' => $currentYear,
-            ]);
-        } catch (\Throwable $e) {
-            Log::warning('AssignmentObserver: impossibile aggiornare contatori user', [
-                'user_id' => $userId,
-                'error'   => $e->getMessage(),
-            ]);
-        }
     }
 
     /**

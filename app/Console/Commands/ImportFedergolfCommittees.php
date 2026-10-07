@@ -161,8 +161,8 @@ class ImportFedergolfCommittees extends Command
         }
 
         // ── 2. Carica tornei locali ─────────────────────────────────────────
+        // Tutti i tornei dell'anno: lo stato del torneo non esiste piu' (P3)
         $torneiLocali = Tournament::with(['club', 'assignments'])
-            ->whereIn('status', ['draft', 'open', 'assigned', 'completed'])
             ->whereYear('start_date', $anno)
             ->get();
 
@@ -397,7 +397,6 @@ class ImportFedergolfCommittees extends Command
                     'assigned_by'   => $assegnedBy,
                     'assigned_at'   => now(),
                     'status'        => 'assigned',
-                    'is_confirmed'  => false,
                     'notes'         => 'Import batch FIG ' . ($this->option('anno') ?? date('Y')),
                 ]);
             }

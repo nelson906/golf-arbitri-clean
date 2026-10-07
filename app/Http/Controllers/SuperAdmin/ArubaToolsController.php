@@ -401,14 +401,6 @@ class ArubaToolsController extends Controller
     // ================================
 
     /**
-     * Visualizza pagina gestione storage link (redirect a permissions)
-     */
-    public function storageLinkIndex(): RedirectResponse
-    {
-        return redirect()->route('aruba.admin.permissions');
-    }
-
-    /**
      * Test se Artisan è disponibile
      */
     private function isArtisanAvailable(): bool

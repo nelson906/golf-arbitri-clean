@@ -18,16 +18,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property array<array-key, mixed>|null $notification_types
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read mixed $category_badge_color
- * @property-read mixed $category_display
  * @property-read \App\Models\Zone|null $zone
  *
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail active()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail forNotificationType($type)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail forZone($zoneId = null)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail ofCategory($category)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail query()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail whereCategory($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|InstitutionalEmail whereCreatedAt($value)
@@ -91,64 +87,4 @@ class InstitutionalEmail extends Model
         return $query->where('is_active', true);
     }
 
-    /**
-     * Scope for specific zone
-     *
-     * @param  Builder<InstitutionalEmail>  $query
-     * @return Builder<InstitutionalEmail>
-     */
-    public function scopeForZone(Builder $query, ?int $zoneId = null): Builder
-    {
-        if ($zoneId) {
-            return $query->where(function ($q) use ($zoneId) {
-                $q->where('zone_id', $zoneId)
-                    ->orWhereNull('zone_id');
-            });
-        }
-
-        return $query->whereNull('zone_id');
-    }
-
-    /**
-     * Scope for specific category
-     *
-     * @param  Builder<InstitutionalEmail>  $query
-     * @return Builder<InstitutionalEmail>
-     */
-    public function scopeOfCategory(Builder $query, string $category): Builder
-    {
-        return $query->where('category', $category);
-    }
-
-    /**
-     * Get category badge color
-     */
-    public function getCategoryBadgeColorAttribute(): string
-    {
-        return match ($this->category) {
-            'federazione' => 'bg-red-100 text-red-800',
-            'comitati' => 'bg-blue-100 text-blue-800',
-            'zone' => 'bg-green-100 text-green-800',
-            'altro' => 'bg-gray-100 text-gray-800',
-            default => 'bg-gray-100 text-gray-800',
-        };
-    }
-
-    /**
-     * Get category display name
-     */
-    public function getCategoryDisplayAttribute(): string
-    {
-        return self::CATEGORIES[$this->category] ?? ucfirst($this->category);
-    }
-
-    /**
-     * Get all available categories
-     *
-     * @return array<string, string>
-     */
-    public static function getCategories(): array
-    {
-        return self::CATEGORIES;
-    }
 }

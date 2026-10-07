@@ -6,12 +6,9 @@ use App\Enums\AssignmentRole;
 use App\Enums\UserType;
 use App\Helpers\RefereeLevelsHelper;
 use App\Models\Assignment;
-use App\Models\Communication;
-use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Models\User;
 use App\Observers\AssignmentObserver;
-use App\Policies\CommunicationPolicy;
 use App\Services\NotificationRecipientBuilder;
 use App\Services\NotificationTransactionService;
 use ReflectionClass;
@@ -26,12 +23,11 @@ use Tests\TestCase;
  *
  * Struttura:
  *   BUG-01  metadata is_national salvato in sendNationalNotification()
- *   BUG-02  CommunicationPolicy usa isAdmin() invece di hasRole('super-admin')
+ *   BUG-02  isAdmin() copre tutti i tipi admin (la CommunicationPolicy e' stata rimossa)
  *   BUG-03  AssignmentObserver sincronizza referee_list
  *   BUG-04  prepareAndSend() ha rimosso il parametro $data inutilizzato
  *   DUP-02  Funzioni helper globali definite in helpers.php (namespace radice)
  *   DUP-03  NotificationRecipientBuilder usato in entrambi i metodi national
- *   DUP-05  Tournament::STATUS_* contrassegnati @deprecated
  *   INC-01  Query UserType::NationalAdmin->value invece di stringa hardcoded
  */
 class AuditV3RegressionTest extends TestCase
@@ -117,101 +113,12 @@ class AuditV3RegressionTest extends TestCase
     }
 
     // ====================================================================
-    // BUG-02 — CommunicationPolicy usa isAdmin() invece di hasRole('super-admin')
+    // BUG-02 — isAdmin() copre tutti i tipi admin
     // ====================================================================
 
     /**
-     * SuperAdmin deve poter creare comunicazioni.
-     * Bug originale: hasRole('super-admin') con trattino non riconosceva SuperAdmin.
-     */
-    public function test_bug02_super_admin_can_create_communications(): void
-    {
-        $policy    = new CommunicationPolicy;
-        $superAdmin = $this->createSuperAdmin();
-
-        $this->assertTrue($policy->create($superAdmin),
-            'BUG-02: SuperAdmin deve poter creare comunicazioni.');
-    }
-
-    /**
-     * SuperAdmin deve poter modificare comunicazioni.
-     */
-    public function test_bug02_super_admin_can_update_communications(): void
-    {
-        $policy    = new CommunicationPolicy;
-        $superAdmin = $this->createSuperAdmin();
-        $comm       = $this->makeCommunication($superAdmin);
-
-        $this->assertTrue($policy->update($superAdmin, $comm),
-            'BUG-02: SuperAdmin deve poter modificare comunicazioni.');
-    }
-
-    /**
-     * SuperAdmin deve poter eliminare comunicazioni.
-     */
-    public function test_bug02_super_admin_can_delete_communications(): void
-    {
-        $policy    = new CommunicationPolicy;
-        $superAdmin = $this->createSuperAdmin();
-        $comm       = $this->makeCommunication($superAdmin);
-
-        $this->assertTrue($policy->delete($superAdmin, $comm),
-            'BUG-02: SuperAdmin deve poter eliminare comunicazioni.');
-    }
-
-    /**
-     * NationalAdmin deve poter gestire comunicazioni.
-     */
-    public function test_bug02_national_admin_can_manage_communications(): void
-    {
-        $policy        = new CommunicationPolicy;
-        $nationalAdmin = $this->createNationalAdmin();
-        $comm          = $this->makeCommunication($nationalAdmin);
-
-        $this->assertTrue($policy->create($nationalAdmin),
-            'BUG-02: NationalAdmin deve poter creare comunicazioni.');
-        $this->assertTrue($policy->update($nationalAdmin, $comm),
-            'BUG-02: NationalAdmin deve poter modificare comunicazioni.');
-        $this->assertTrue($policy->delete($nationalAdmin, $comm),
-            'BUG-02: NationalAdmin deve poter eliminare comunicazioni.');
-    }
-
-    /**
-     * ZoneAdmin deve poter gestire comunicazioni.
-     */
-    public function test_bug02_zone_admin_can_manage_communications(): void
-    {
-        $policy    = new CommunicationPolicy;
-        $zoneAdmin = $this->createZoneAdmin();
-        $comm      = $this->makeCommunication($zoneAdmin);
-
-        $this->assertTrue($policy->create($zoneAdmin),
-            'BUG-02: ZoneAdmin deve poter creare comunicazioni.');
-        $this->assertTrue($policy->update($zoneAdmin, $comm),
-            'BUG-02: ZoneAdmin deve poter modificare comunicazioni.');
-    }
-
-    /**
-     * Un arbitro NON deve poter creare o modificare comunicazioni.
-     */
-    public function test_bug02_referee_cannot_manage_communications(): void
-    {
-        $policy  = new CommunicationPolicy;
-        $referee = $this->createReferee();
-        $admin   = $this->createZoneAdmin();
-        $comm    = $this->makeCommunication($admin);
-
-        $this->assertFalse($policy->create($referee),
-            'BUG-02: Arbitro NON deve poter creare comunicazioni.');
-        $this->assertFalse($policy->update($referee, $comm),
-            'BUG-02: Arbitro NON deve poter modificare comunicazioni.');
-        $this->assertFalse($policy->delete($referee, $comm),
-            'BUG-02: Arbitro NON deve poter eliminare comunicazioni.');
-    }
-
-    /**
      * Il metodo isAdmin() del modello User deve restituire true per tutti i
-     * tipi admin — questo è il contratto su cui si basa CommunicationPolicy.
+     * tipi admin.
      */
     public function test_bug02_is_admin_returns_true_for_all_admin_types(): void
     {
@@ -506,83 +413,6 @@ class AuditV3RegressionTest extends TestCase
         $this->assertEquals(2, $result['total']);
     }
 
-    /**
-     * addNationalAdmins() deve trovare gli admin nazionali nel DB.
-     */
-    public function test_dup03_add_national_admins_finds_db_users(): void
-    {
-        $admin1 = $this->createNationalAdmin(['email' => 'natadmin1@test.com']);
-        $admin2 = $this->createNationalAdmin(['email' => 'natadmin2@test.com']);
-
-        $result = (new NotificationRecipientBuilder)->addNationalAdmins()->build();
-
-        // Formato CC canonico Laravel (post-2026-05-10): array<{email, name}>
-        $emails = array_column($result['cc'], 'email');
-        $this->assertContains('natadmin1@test.com', $emails,
-            'DUP-03: addNationalAdmins() deve trovare il primo NationalAdmin.');
-        $this->assertContains('natadmin2@test.com', $emails,
-            'DUP-03: addNationalAdmins() deve trovare il secondo NationalAdmin.');
-    }
-
-    /**
-     * addZoneAdmins() deve trovare solo gli admin della zona del torneo.
-     */
-    public function test_dup03_add_zone_admins_filters_by_tournament_zone(): void
-    {
-        $tournament = $this->createTournament(['club_id' => $this->createClub(['zone_id' => 1])->id]);
-
-        $adminZone1 = $this->createZoneAdmin(1, ['email' => 'zone1admin@test.com']);
-        $adminZone2 = $this->createZoneAdmin(2, ['email' => 'zone2admin@test.com']);
-
-        // Eager load la relazione club.zone
-        $tournament->load('club.zone');
-
-        $result = (new NotificationRecipientBuilder)->addZoneAdmins($tournament)->build();
-
-        // Formato CC canonico Laravel (post-2026-05-10): array<{email, name}>
-        $emails = array_column($result['cc'], 'email');
-        $this->assertContains('zone1admin@test.com', $emails,
-            'DUP-03: addZoneAdmins() deve includere l\'admin della zona del torneo.');
-        $this->assertNotContains('zone2admin@test.com', $emails,
-            'DUP-03: addZoneAdmins() non deve includere admin di altre zone.');
-    }
-
-    // ====================================================================
-    // DUP-05 — Tournament::STATUS_* contrassegnati @deprecated
-    // ====================================================================
-
-    /**
-     * Le costanti STATUS_* devono ancora esistere con i valori corretti
-     * (compatibilità retroattiva — la deprecazione non le rimuove).
-     */
-    public function test_dup05_status_constants_still_exist_with_correct_values(): void
-    {
-        $this->assertEquals('draft',     Tournament::STATUS_DRAFT,     'DUP-05: STATUS_DRAFT');
-        $this->assertEquals('open',      Tournament::STATUS_OPEN,      'DUP-05: STATUS_OPEN');
-        $this->assertEquals('closed',    Tournament::STATUS_CLOSED,    'DUP-05: STATUS_CLOSED');
-        $this->assertEquals('assigned',  Tournament::STATUS_ASSIGNED,  'DUP-05: STATUS_ASSIGNED');
-        $this->assertEquals('completed', Tournament::STATUS_COMPLETED, 'DUP-05: STATUS_COMPLETED');
-        $this->assertEquals('cancelled', Tournament::STATUS_CANCELLED, 'DUP-05: STATUS_CANCELLED');
-    }
-
-    /**
-     * Le docblock delle costanti devono contenere @deprecated.
-     * Questo garantisce che i dev siano avvisati dagli IDE.
-     */
-    public function test_dup05_status_constants_have_deprecated_annotation(): void
-    {
-        $rc = new ReflectionClass(Tournament::class);
-        $docComment = $rc->getDocComment() ?: '';
-
-        // Cerca nel file sorgente (le costanti non hanno reflection doc individuale in PHP)
-        $source = (string) file_get_contents((string) $rc->getFileName());
-
-        $this->assertStringContainsString('@deprecated', $source,
-            'DUP-05: Il file Tournament.php deve contenere annotazioni @deprecated per STATUS_*.');
-        $this->assertStringContainsString('TournamentStatus', $source,
-            'DUP-05: Le annotazioni @deprecated devono riferirsi a TournamentStatus come alternativa.');
-    }
-
     // ====================================================================
     // INC-01 — Query UserType::NationalAdmin->value (no stringa hardcoded)
     // ====================================================================
@@ -662,29 +492,5 @@ class AuditV3RegressionTest extends TestCase
 
         $this->assertContains('natadmin@test.com', $emails,
             'INC-01: Il pattern pluck-email deve trovare l\'admin nazionale.');
-    }
-
-    // ====================================================================
-    // Helper privato
-    // ====================================================================
-
-    /**
-     * Crea una Communication di test senza persistenza DB (make).
-     * Serve per testare la Policy senza dipendere dalla factory Communication.
-     */
-    private function makeCommunication(User $author, ?int $zoneId = null): Communication
-    {
-        $comm = new Communication([
-            'title'     => 'Test Communication',
-            'content'   => 'Test content',
-            'type'      => 'announcement',
-            'status'    => 'published',
-            'priority'  => 'normal',
-            'author_id' => $author->id,
-            'zone_id'   => $zoneId,
-        ]);
-        $comm->save();
-
-        return $comm;
     }
 }

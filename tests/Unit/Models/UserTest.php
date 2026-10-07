@@ -235,62 +235,6 @@ class UserTest extends TestCase
     }
 
     // ==========================================
-    // METHOD TESTS
-    // ==========================================
-
-    /**
-     * Test: hasRole riconosce admin
-     */
-    public function test_has_role_recognizes_admin(): void
-    {
-        $zoneAdmin = $this->createZoneAdmin();
-        $nationalAdmin = $this->createNationalAdmin();
-        $superAdmin = $this->createSuperAdmin();
-        $referee = $this->createReferee();
-
-        $this->assertTrue($zoneAdmin->hasRole('admin'));
-        $this->assertTrue($nationalAdmin->hasRole('admin'));
-        $this->assertTrue($superAdmin->hasRole('admin'));
-        $this->assertFalse($referee->hasRole('admin'));
-    }
-
-    /**
-     * Test: hasRole riconosce zone_admin
-     */
-    public function test_has_role_recognizes_zone_admin(): void
-    {
-        $zoneAdmin = $this->createZoneAdmin();
-        $nationalAdmin = $this->createNationalAdmin();
-
-        $this->assertTrue($zoneAdmin->hasRole('zone_admin'));
-        $this->assertFalse($nationalAdmin->hasRole('zone_admin'));
-    }
-
-    /**
-     * Test: hasRole riconosce super_admin
-     */
-    public function test_has_role_recognizes_super_admin(): void
-    {
-        $superAdmin = $this->createSuperAdmin();
-        $nationalAdmin = $this->createNationalAdmin();
-
-        $this->assertTrue($superAdmin->hasRole('super_admin'));
-        $this->assertFalse($nationalAdmin->hasRole('super_admin'));
-    }
-
-    /**
-     * Test: hasRole riconosce referee
-     */
-    public function test_has_role_recognizes_referee(): void
-    {
-        $referee = $this->createReferee();
-        $admin = $this->createZoneAdmin();
-
-        $this->assertTrue($referee->hasRole('referee'));
-        $this->assertFalse($admin->hasRole('referee'));
-    }
-
-    // ==========================================
     // FACTORY TESTS
     // ==========================================
 

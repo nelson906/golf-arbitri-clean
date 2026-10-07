@@ -20,8 +20,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $assigned_by
  * @property string|null $status
  * @property string|null $notes
- * @property Carbon|null $confirmed_at
- * @property bool $is_confirmed
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Tournament $tournament  FK NOT NULL
@@ -49,14 +47,12 @@ class Assignment extends Model
         'assigned_by',
         'status',
         'notes',
-        'confirmed_at',
-        'is_confirmed',
     ];
 
+    // Conferma delle assegnazioni eliminata (decisione 2026-10-03, P10): le
+    // colonne is_confirmed e confirmed_at restano nel database, inutilizzate.
     protected $casts = [
-        'confirmed_at' => 'datetime',
         'assigned_at' => 'datetime',
-        'is_confirmed' => 'boolean',
     ];
 
     // ── RELAZIONI ───────────────────────────────────────────────────

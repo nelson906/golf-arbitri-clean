@@ -27,17 +27,13 @@ Route::prefix('super-admin')->name('super-admin.')->middleware(['auth', 'super_a
         ->name('fig-import.block');
 
     // Tournament Types
-    Route::resource('tournament-types', TournamentTypeController::class);
+    Route::resource('tournament-types', TournamentTypeController::class)->except(['show']);
     Route::patch('tournament-types/{tournamentType}/toggle-active', [TournamentTypeController::class, 'toggleActive'])
         ->name('tournament-types.toggle-active');
 
     // Institutional Emails
     Route::resource('institutional-emails', \App\Http\Controllers\SuperAdmin\InstitutionalEmailController::class)
         ->except(['show']);  // Show view non necessaria per gestione email
-    Route::patch('institutional-emails/{institutionalEmail}/toggle-active', [\App\Http\Controllers\SuperAdmin\InstitutionalEmailController::class, 'toggleActive'])
-        ->name('institutional-emails.toggle-active');
-    Route::get('institutional-emails-export', [\App\Http\Controllers\SuperAdmin\InstitutionalEmailController::class, 'export'])
-        ->name('institutional-emails.export');
 
     // NOTA (audit 2026-07): rimosso placeholder 'settings.index'
     // (view placeholder mai implementata; rimossi anche i link in navigation).
@@ -51,10 +47,5 @@ Route::prefix('super-admin')->name('super-admin.')->middleware(['auth', 'super_a
         Route::put('clauses/{clause}', 'update')->name('clauses.update');
         Route::delete('clauses/{clause}', 'destroy')->name('clauses.destroy');
         Route::post('clauses/{clause}/toggle-active', 'toggleActive')->name('clauses.toggle-active');
-        Route::post('clauses/reorder', 'reorder')->name('clauses.reorder');
-        Route::get('clauses/{clause}/preview', 'preview')->name('clauses.preview');
     });
-
-    // ===== MODULAR SUPER ADMIN ROUTES =====
-    require __DIR__.'/super-admin/monitoring.php';
 });
