@@ -47,36 +47,10 @@ Cordiali saluti";
         {{-- Stato notifiche per questa gara --}}
         <div class="mb-6 grid grid-cols-2 gap-4">
             {{-- Notifica controparte (CRC) --}}
-            <div class="p-3 rounded-lg {{ $counterpartNotification && $counterpartNotification->sent_at ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200' }}">
-                <div class="flex items-center">
-                    @if($counterpartNotification && $counterpartNotification->sent_at)
-                        <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-                        <span class="text-sm font-medium text-green-800">Arbitri (CRC): Inviata</span>
-                    @else
-                        <span class="w-3 h-3 bg-yellow-500 rounded-full mr-2"></span>
-                        <span class="text-sm font-medium text-yellow-800">Arbitri (CRC): In attesa</span>
-                    @endif
-                </div>
-                @if($counterpartNotification && $counterpartNotification->sent_at)
-                    <p class="text-xs text-green-600 mt-1">{{ $counterpartNotification->sent_at->format('d/m/Y H:i') }}</p>
-                @endif
-            </div>
+            <x-notification-state :notification="$counterpartNotification" label="Arbitri (CRC)" waiting="In attesa" waiting-tone="yellow" />
 
             {{-- Mia notifica (ZONA) --}}
-            <div class="p-3 rounded-lg {{ $myNotification && $myNotification->sent_at ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200' }}">
-                <div class="flex items-center">
-                    @if($myNotification && $myNotification->sent_at)
-                        <span class="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-                        <span class="text-sm font-medium text-green-800">Osservatori: Inviata</span>
-                    @else
-                        <span class="w-3 h-3 bg-gray-400 rounded-full mr-2"></span>
-                        <span class="text-sm font-medium text-gray-600">Osservatori: Da inviare</span>
-                    @endif
-                </div>
-                @if($myNotification && $myNotification->sent_at)
-                    <p class="text-xs text-green-600 mt-1">{{ $myNotification->sent_at->format('d/m/Y H:i') }}</p>
-                @endif
-            </div>
+            <x-notification-state :notification="$myNotification" label="Osservatori" waiting="Da inviare" waiting-tone="gray" />
         </div>
 
         {{-- Banner informativo --}}

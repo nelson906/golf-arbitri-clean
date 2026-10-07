@@ -211,6 +211,44 @@ class TournamentNotification extends Model
     }
 
     /**
+     * L'ultimo tentativo di invio non e' partito (nessuna mail spedita).
+     * Decisione 2026-10-07: una notifica non inviata deve essere ben visibile.
+     */
+    public function isNotSent(): bool
+    {
+        return $this->status === 'failed';
+    }
+
+    /** Etichetta dello stato per le pagine. */
+    public function stateLabel(): string
+    {
+        return match ($this->status) {
+            'sent' => 'Inviata',
+            'partial' => 'Inviata in parte',
+            'failed' => 'Non inviata',
+            default => 'Da inviare',
+        };
+    }
+
+    /** Quando e' stato fatto l'ultimo tentativo di invio (anche fallito). */
+    public function lastAttemptAt(): ?\Illuminate\Support\Carbon
+    {
+        $metadata = is_array($this->metadata) ? $this->metadata : [];
+        $value = $metadata['last_attempt_at'] ?? null;
+
+        return is_string($value) && $value !== '' ? \Illuminate\Support\Carbon::parse($value) : null;
+    }
+
+    /** Motivo dell'ultimo invio non riuscito, se c'e'. */
+    public function lastError(): ?string
+    {
+        $metadata = is_array($this->metadata) ? $this->metadata : [];
+        $value = $metadata['last_error'] ?? null;
+
+        return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    /**
      * ⏰ Accessor: Tempo trascorso
      */
     public function getTimeAgoAttribute(): string

@@ -162,4 +162,104 @@ class Notifiche20261007Test extends TestCase
         $count = preg_match_all('/name="fixed_addresses\[\]"\s+value="'.$email->id.'"/', $html);
         $this->assertSame(1, $count);
     }
+
+    // ── Notifiche non inviate, ben visibili ─────────────────────────────────
+
+    private function mailServerRefuses(): void
+    {
+        \Illuminate\Support\Facades\Mail::shouldReceive('to')
+            ->andThrow(new \RuntimeException('550 indirizzo rifiutato'));
+    }
+
+    public function test_zonal_send_refused_by_mail_server_is_not_sent_and_shown(): void
+    {
+        $tournament = $this->zonalTournament();
+        $notification = TournamentNotification::create([
+            'tournament_id' => $tournament->id,
+            'notification_type' => null,
+            'status' => 'pending',
+        ]);
+        $this->attachDocumentsTo($notification);
+        $this->mailServerRefuses();
+
+        $admin = $this->createSuperAdmin();
+        $this->actingAs($admin)
+            ->post(route('admin.tournaments.send-assignment-with-convocation', $tournament), [
+                'action' => 'send',
+                'subject' => 'Convocazione',
+                'message' => 'Testo',
+            ])
+            ->assertSessionHas('error');
+
+        $notification->refresh();
+        $this->assertSame('failed', $notification->status);
+        $this->assertNull($notification->sent_at);
+        $this->assertNotNull($notification->lastAttemptAt());
+        $this->assertStringContainsString('550', (string) $notification->lastError());
+
+        // In vista: elenco notifiche, form e dashboard
+        $this->actingAs($admin)->get(route('admin.tournament-notifications.index'))
+            ->assertOk()->assertSee('1 notifica NON inviata');
+        $this->actingAs($admin)->get(route('admin.tournaments.show-assignment-form', $tournament))
+            ->assertOk()->assertSee('Notifica NON inviata.')->assertDontSee('Notifica già inviata');
+        $this->actingAs($admin)->get(route('admin.dashboard'))
+            ->assertOk()->assertSee('1 notifica NON inviata');
+    }
+
+    public function test_failed_resend_keeps_date_of_last_successful_send(): void
+    {
+        $tournament = $this->zonalTournament();
+        $sentAt = now()->subDays(3)->startOfMinute();
+        $notification = TournamentNotification::create([
+            'tournament_id' => $tournament->id,
+            'notification_type' => null,
+            'status' => 'sent',
+            'sent_at' => $sentAt,
+            'metadata' => ['subject' => 'x', 'message' => 'y', 'recipients' => ['club' => true, 'referees' => []]],
+        ]);
+        $this->attachDocumentsTo($notification);
+        $this->mailServerRefuses();
+
+        try {
+            app(\App\Services\NotificationService::class)->send($notification->refresh());
+        } catch (\Throwable) {
+            // l'errore del server di posta e' gestito dentro send()
+        }
+
+        $notification->refresh();
+        $this->assertSame('failed', $notification->status);
+        $this->assertSame($sentAt->toDateTimeString(), $notification->sent_at?->toDateTimeString());
+    }
+
+    public function test_national_send_refused_by_mail_server_is_not_sent_and_shown(): void
+    {
+        $tournament = $this->createTournament([
+            'club_id' => $this->createClub(['zone_id' => 1])->id,
+            'tournament_type_id' => TournamentType::where('is_national', true)->firstOrFail()->id,
+        ]);
+        $this->createAssignment(['tournament_id' => $tournament->id, 'user_id' => $this->createReferee(['zone_id' => 1])->id]);
+        $this->mailServerRefuses();
+
+        $crc = $this->createNationalAdmin();
+        $this->actingAs($crc)
+            ->post(route('admin.tournaments.send-national-notification', $tournament), [
+                'notification_type' => 'crc_referees',
+                'subject' => 'Designazione',
+                'message' => 'Testo',
+                'send_to_campionati' => 1,
+            ])
+            ->assertSessionHas('error');
+
+        $notification = TournamentNotification::where('tournament_id', $tournament->id)
+            ->where('notification_type', 'crc_referees')->firstOrFail();
+        $this->assertSame('failed', $notification->status);
+        $this->assertNull($notification->sent_at);
+
+        // La SZR della zona vede "NON inviata", non "Inviata"
+        $this->actingAs($this->createZoneAdmin(1))
+            ->get(route('admin.tournaments.show-assignment-form', $tournament))
+            ->assertOk()
+            ->assertSee('Arbitri (CRC): NON inviata')
+            ->assertDontSee('Arbitri (CRC): Inviata');
+    }
 }
