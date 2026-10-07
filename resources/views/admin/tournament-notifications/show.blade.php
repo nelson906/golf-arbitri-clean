@@ -24,11 +24,7 @@
                                         {{ $tournamentNotification->tournament->end_date->format('d/m/Y') }}</li>
                                     <li><strong>🏌️ Circolo:</strong>
                                         {{ $tournamentNotification->tournament->club->name ?? 'N/A' }}</li>
-                                    <li><strong>🌍 Zona:</strong> {{ $tournamentNotification->tournament->zone->name }}</li>
-                                    <li><strong>📊 Stato Torneo:</strong>
-                                        <span
-                                            class="inline-flex px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">{{ $tournamentNotification->tournament->status->value }}</span>
-                                    </li>
+                                    <li><strong>🌍 Zona:</strong> {{ $tournamentNotification->tournament->zone?->name ?? 'N/A' }}</li>
                                 </ul>
                             </div>
                             <div>

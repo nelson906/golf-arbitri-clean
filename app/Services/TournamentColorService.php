@@ -80,7 +80,41 @@ class TournamentColorService
 
     private const DEFAULT_COLOR = '#3B82F6';
 
+    private const TEXT_DARK = '#111827';
 
+    private const TEXT_LIGHT = '#FFFFFF';
+
+
+
+    /**
+     * Colore del testo leggibile sopra uno sfondo: scuro sui colori chiari
+     * (giallo, azzurro...), bianco sugli scuri. Un colore #RRGGBBAA viene
+     * considerato sopra il bianco del calendario.
+     */
+    public function textColorFor(string $background): string
+    {
+        $hex = ltrim(trim($background), '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+        if (! preg_match('/^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/', $hex)) {
+            return self::TEXT_LIGHT;
+        }
+
+        $alpha = strlen($hex) === 8 ? hexdec(substr($hex, 6, 2)) / 255 : 1.0;
+        $luminance = 0.0;
+        foreach ([0 => 0.2126, 2 => 0.7152, 4 => 0.0722] as $offset => $weight) {
+            $channel = hexdec(substr($hex, $offset, 2)) / 255;
+            $channel = $channel * $alpha + (1 - $alpha); // sopra il bianco
+            $linear = $channel <= 0.03928 ? $channel / 12.92 : (($channel + 0.055) / 1.055) ** 2.4;
+            $luminance += $weight * $linear;
+        }
+
+        // Luminanza relativa (WCAG): sopra 0,4 il bianco non si legge piu'.
+        // Soglia piu' alta del punto di parita' (0,18) per lasciare il bianco
+        // sui colori medi (blu, verde) come prima.
+        return $luminance > 0.4 ? self::TEXT_DARK : self::TEXT_LIGHT;
+    }
 
     /**
      * Ottieni colore evento per vista ADMIN (basato su tipo torneo)
