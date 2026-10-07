@@ -15,11 +15,8 @@
 
 {{-- Super Admin Menu Items --}}
 @if(auth()->user()->isSuperAdmin())
-        {{-- Dashboard --}}
-        <x-nav-link :href="route('super-admin.institutional-emails.index')" :active="request()->routeIs('super-admin.*')">
-            🏠 Dashboard SuperAdmin
-        </x-nav-link>
-
+        {{-- Tolta la voce "Dashboard SuperAdmin": apriva le Email Istituzionali
+             e restava accesa su tutte le pagine di sistema (P20) --}}
 
         {{-- Zone Management --}}
         <x-nav-link :href="route('super-admin.zones.index')" :active="request()->routeIs('super-admin.zones.*')">
@@ -45,7 +42,7 @@
         </x-nav-link>
 
         {{-- Tournament Management --}}
-        <x-nav-link :href="route('admin.tournaments.index')" :active="request()->routeIs('admin.tournaments.*')">
+        <x-nav-link :href="route('admin.tournaments.index')" :active="request()->routeIs('admin.tournaments.*') && ! request()->routeIs('admin.tournaments.show-assignment-form')">
             📋 Gestione Tornei
         </x-nav-link>
 
@@ -80,7 +77,7 @@
         </x-nav-link>
 
         {{-- Notifications --}}
-        <x-nav-link :href="route('admin.tournament-notifications.index')" :active="request()->routeIs('admin.tournament-notifications.*')">
+        <x-nav-link :href="route('admin.tournament-notifications.index')" :active="request()->routeIs('admin.tournament-notifications.*', 'admin.tournaments.show-assignment-form')">
             🔔 Notifiche
         </x-nav-link>
 
@@ -295,7 +292,7 @@
                 <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">
                     🏠 Dashboard Admin
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.tournaments.index')" :active="request()->routeIs('admin.tournaments.*')">
+                <x-responsive-nav-link :href="route('admin.tournaments.index')" :active="request()->routeIs('admin.tournaments.*') && ! request()->routeIs('admin.tournaments.show-assignment-form')">
                     📋 Gestione Tornei
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">
@@ -314,7 +311,7 @@
                     📢 Comunicazioni
                 </x-responsive-nav-link>
 
-                <x-responsive-nav-link :href="route('admin.tournament-notifications.index')" :active="request()->routeIs('admin.tournament-notifications.*')">
+                <x-responsive-nav-link :href="route('admin.tournament-notifications.index')" :active="request()->routeIs('admin.tournament-notifications.*', 'admin.tournaments.show-assignment-form')">
                     🔔 Notifiche
                 </x-responsive-nav-link>
 

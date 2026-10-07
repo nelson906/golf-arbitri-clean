@@ -137,4 +137,28 @@ class FormScriptsSyntaxTest extends TestCase
             }
         }
     }
+
+    /**
+     * P20: nel form di preparazione si accende Notifiche, non Tornei; la
+     * finta "Dashboard SuperAdmin" (apriva le Email Istituzionali) non c'e' piu'.
+     */
+    public function test_menu_highlights_notifications_on_the_preparation_form(): void
+    {
+        $club = $this->createClub(['zone_id' => 1, 'email' => 'circolo@example.test']);
+        $tournament = $this->createTournament([
+            'club_id' => $club->id,
+            'tournament_type_id' => TournamentType::where('is_national', false)->firstOrFail()->id,
+        ]);
+        $this->createAssignment(['tournament_id' => $tournament->id, 'user_id' => $this->createReferee(['zone_id' => 1])->id]);
+
+        $html = (string) $this->actingAsSuperAdmin()
+            ->get(route('admin.tournaments.show-assignment-form', $tournament))
+            ->assertOk()
+            ->assertDontSee('Dashboard SuperAdmin')
+            ->getContent();
+
+        $active = 'bg-blue-900';
+        $this->assertMatchesRegularExpression('#href="'.preg_quote(route('admin.tournament-notifications.index'), '#').'"\s+class="[^"]*'.$active.'#', $html);
+        $this->assertDoesNotMatchRegularExpression('#href="'.preg_quote(route('admin.tournaments.index'), '#').'"\s+class="[^"]*'.$active.'#', $html);
+    }
 }
