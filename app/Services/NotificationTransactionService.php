@@ -122,17 +122,9 @@ class NotificationTransactionService
                 $this->saveClausesInTransaction($notification, $clauses);
             }
 
-            // Rigenera documenti con le nuove clausole
-            try {
-                $documents = $this->documentService->regenerateAllDocuments($notification);
-                $notification->update(['documents' => $documents]);
-            } catch (\Exception $e) {
-                Log::warning('Could not regenerate documents for draft', [
-                    'notification_id' => $notification->id,
-                    'error' => $e->getMessage(),
-                ]);
-                // Non bloccare il salvataggio della bozza
-            }
+            // Gli allegati NON si rigenerano: si usa sempre la versione salvata
+            // (creata una volta con "Crea allegati" o ricaricata corretta).
+            // Decisione 2026-10-07.
 
             // Marca come preparata
             $notification->update(['is_prepared' => true]);
