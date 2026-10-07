@@ -577,62 +577,9 @@
                                     </div>
                                 </div>
 
-                                {{-- ACCORDION: Indirizzi Preimpostati --}}
-                                @if (isset($groupedEmails) && $groupedEmails->count() > 0)
-                                    <div class="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
-                                        <button type="button"
-                                            class="w-full px-6 py-4 text-left flex justify-between items-center bg-purple-50 hover:bg-purple-100"
-                                            onclick="toggleSection('preimpostati')">
-                                            <div>
-                                                <h5 class="text-lg font-semibold text-gray-800">📋 Indirizzi Preimpostati
-                                                </h5>
-                                                <small class="text-gray-600">Indirizzi standard per le notifiche</small>
-                                            </div>
-                                            <svg id="preimpostati-icon" class="w-6 h-6 transition-transform duration-200"
-                                                fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M19 9l-7 7-7-7"></path>
-                                            </svg>
-                                        </button>
-
-                                        <div id="preimpostati-content" class="p-6" style="display: none;">
-                                            <div class="bg-gray-50 p-4 rounded-lg">
-                                                @foreach ($groupedEmails as $category => $emails)
-                                                    <div class="mb-4 last:mb-0">
-                                                        <h4 class="font-medium text-gray-900 mb-2">{{ $category }}
-                                                        </h4>
-                                                        <div class="space-y-2">
-                                                            @foreach ($emails as $email)
-                                                                <div class="flex items-center">
-                                                                    @php
-                                                                        // Se ci sono ID salvati dalla notifica precedente, usa quelli.
-                                                                        // Altrimenti usa il default del record.
-                                                                        $isChecked = !empty($savedInstitutionalIds)
-                                                                            ? in_array($email->id, $savedInstitutionalIds)
-                                                                            : $email->is_default;
-                                                                    @endphp
-                                                                    <input type="checkbox" id="fixed_{{ $email->id }}"
-                                                                        name="fixed_addresses[]"
-                                                                        value="{{ $email->id }}"
-                                                                        {{ $isChecked ? 'checked' : '' }}
-                                                                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                                                                    <label for="fixed_{{ $email->id }}"
-                                                                        class="ml-2 text-sm text-gray-700">
-                                                                        <span
-                                                                            class="font-medium">{{ $email->name }}</span>
-                                                                        <span
-                                                                            class="text-gray-500">({{ $email->email }})</span>
-                                                                    </label>
-                                                                </div>
-                                                            @endforeach
-                                                        </div>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endif
-
+                                {{-- Email istituzionali: un solo elenco, ogni indirizzo una volta
+                                     (prima comparivano due volte, "Preimpostati" e "Istituzionali",
+                                     con spunte iniziali diverse) --}}
                                 {{-- ACCORDION: Email Istituzionali --}}
                                 @if ($groupedEmails && $groupedEmails->count() > 0)
                                     <div class="bg-white rounded-lg shadow-md mb-6 overflow-hidden">
@@ -1152,7 +1099,7 @@ async function saveClauses() {
 
         // On page load, restore accordion states
         document.addEventListener('DOMContentLoaded', function() {
-            ['clausole', 'arbitri', 'preimpostati', 'istituzionali'].forEach(sectionId => {
+            ['clausole', 'arbitri', 'istituzionali'].forEach(sectionId => {
                 const content = document.getElementById(`${sectionId}-content`);
                 const icon = document.getElementById(`${sectionId}-icon`);
                 if (!content || !icon) return; // sezione opzionale non presente

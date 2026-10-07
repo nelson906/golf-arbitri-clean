@@ -142,4 +142,24 @@ class Notifiche20261007Test extends TestCase
 
         $this->assertNotSame($names[0], $names[1]);
     }
+
+    public function test_each_institutional_address_appears_once_in_the_form(): void
+    {
+        $tournament = $this->zonalTournament();
+        $email = \App\Models\InstitutionalEmail::create([
+            'name' => 'Ufficio Convocazioni',
+            'email' => 'convocazioni@example.test',
+            'category' => 'convocazioni',
+            'is_active' => true,
+        ]);
+
+        $html = $this->actingAsSuperAdmin()
+            ->get(route('admin.tournaments.show-assignment-form', $tournament))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertIsString($html);
+        $count = preg_match_all('/name="fixed_addresses\[\]"\s+value="'.$email->id.'"/', $html);
+        $this->assertSame(1, $count);
+    }
 }
