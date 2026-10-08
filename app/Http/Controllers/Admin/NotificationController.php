@@ -102,11 +102,27 @@ class NotificationController extends Controller
         // NB: eventuali notifiche orfane (tournament_id inesistente) non
         // compaiono più in lista — prima comparivano come righe senza torneo.
         // ═══════════════════════════════════════════════════════════════════
+        // Decisione 2026-10-08: l'elenco mostra tutti i tornei con arbitri
+        // designati, anche quelli mai notificati («Da inviare»), oltre a quelli
+        // che hanno gia' una notifica. Prima comparivano solo i secondi: i
+        // tornei caricati da FIG senza notifica restavano invisibili.
         $tournamentsQuery = Tournament::with(['club', 'zone', 'tournamentType', 'assignments.user'])
-            ->whereHas('notifications');
+            ->where(fn ($q) => $q->whereHas('notifications')->orWhereHas('assignments'));
 
         // Filtro visibilità per zona/ruolo (centralizzato nel trait)
         $this->applyTournamentVisibility($tournamentsQuery, $user);
+
+        // Mesi presenti nell'elenco, per il filtro (i tipi sono pochi e il
+        // filtro per tipo non serviva: 2026-10-08)
+        /** @var list<string> $mesi */
+        $mesi = (clone $tournamentsQuery)->setEagerLoads([])->orderBy('start_date')->get(['id', 'start_date'])
+            ->map(fn (Tournament $t): string => $t->start_date->format('Y-m'))
+            ->unique()->values()->all();
+
+        $mese = $request->string('mese')->toString();
+        if (preg_match('/^(\d{4})-(\d{2})$/', $mese, $m) === 1) {
+            $tournamentsQuery->whereYear('start_date', (int) $m[1])->whereMonth('start_date', (int) $m[2]);
+        }
 
         // Filtro ricerca nome torneo
         if ($request->filled('cerca')) {
@@ -159,6 +175,10 @@ class NotificationController extends Controller
                 'primary'               => $isNational
                     ? ($notifications->firstWhere('notification_type', 'crc_referees') ?? $first)
                     : ($notifications->whereNull('notification_type')->first() ?? $first),
+                // Arbitri designati oggi (anche per i tornei mai notificati)
+                'referees'              => \App\Enums\AssignmentRole::sortCollection($tournament->assignments)
+                    ->map(fn ($a) => $a->getRelationValue('user') instanceof \App\Models\User ? $a->user->name : null)
+                    ->filter()->implode(', '),
                 'tournament_start_date' => $tournament->start_date,
                 'created_at'            => $notifications->max('created_at'),
                 'sent_at'               => $notifications->max('sent_at'),
@@ -172,7 +192,7 @@ class NotificationController extends Controller
             $user
         )->orderByDesc('updated_at')->get();
 
-        return view('admin.tournament-notifications.index', compact('tournamentNotifications', 'notSent'));
+        return view('admin.tournament-notifications.index', compact('tournamentNotifications', 'notSent', 'mesi'));
     }
 
     /**
@@ -483,7 +503,7 @@ class NotificationController extends Controller
                 $this->transactionService->deleteWithCleanup($notification);
             }
 
-            return redirect()->route('admin.tournament-notifications.index', request()->only(['cerca']))
+            return redirect()->route('admin.tournament-notifications.index', request()->only(['cerca', 'mese']))
                 ->with('success', "Notifiche del torneo «{$tournament->name}» eliminate ({$notifications->count()}).");
         } catch (\Exception $e) {
             return redirect()->back()->with('error', "Errore durante l'eliminazione: ".$e->getMessage());
