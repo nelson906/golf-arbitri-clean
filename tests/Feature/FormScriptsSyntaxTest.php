@@ -177,4 +177,24 @@ class FormScriptsSyntaxTest extends TestCase
         $this->assertMatchesRegularExpression('#href="'.preg_quote(route('admin.tournament-notifications.index'), '#').'"\s+class="[^"]*'.$active.'#', $html);
         $this->assertDoesNotMatchRegularExpression('#href="'.preg_quote(route('admin.tournaments.index'), '#').'"\s+class="[^"]*'.$active.'#', $html);
     }
+
+    /**
+     * Notifiche (2026-10-08): niente targhetta "SZR" senza zona in alto a
+     * destra, niente filtro per tipo torneo.
+     */
+    public function test_notifications_index_has_no_szr_badge_and_no_type_filter(): void
+    {
+        $club = $this->createClub(['zone_id' => 1, 'email' => 'circolo@example.test']);
+        $tournament = $this->createTournament(['club_id' => $club->id]);
+        TournamentNotification::create(['tournament_id' => $tournament->id, 'status' => 'pending']);
+
+        foreach ([$this->createNationalAdmin(['zone_id' => 1]), $this->createZoneAdmin(1), $this->createSuperAdmin()] as $user) {
+            $this->actingAs($user)
+                ->get(route('admin.tournament-notifications.index'))
+                ->assertOk()
+                ->assertDontSee('name="tournament_type_id"', false)
+                ->assertDontSee('Tipo torneo')
+                ->assertDontSee('bg-blue-100 text-blue-800">', false);
+        }
+    }
 }

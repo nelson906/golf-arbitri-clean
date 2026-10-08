@@ -8,11 +8,6 @@
         {{-- Intestazione --}}
         <div class="flex justify-between items-center mb-4">
             <h1 class="text-2xl font-bold">📧 Notifiche Tornei</h1>
-            @if(!auth()->user()->is_admin && auth()->user()->zone)
-                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                    SZR {{ auth()->user()->zone->number }}
-                </span>
-            @endif
         </div>
 
         {{-- Notifiche NON inviate: in vista finché non vengono reinviate (2026-10-07) --}}
@@ -44,21 +39,6 @@
         {{-- Filtri --}}
         <form method="GET" action="{{ route('admin.tournament-notifications.index') }}"
               class="flex flex-wrap gap-3 mb-4 items-end">
-            {{-- Filtro tipo di torneo --}}
-            <div>
-                <label class="block text-xs text-gray-500 mb-1">Tipo torneo</label>
-                <select name="tournament_type_id"
-                        class="rounded border-gray-300 text-sm py-1.5 pr-8 focus:ring-indigo-500 focus:border-indigo-500"
-                        onchange="this.form.submit()">
-                    <option value="">Tutti i tipi</option>
-                    @foreach($tournamentTypes as $tipo)
-                        <option value="{{ $tipo->id }}"
-                                {{ (string) request('tournament_type_id') === (string) $tipo->id ? 'selected' : '' }}>
-                            {{ $tipo->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
             {{-- Ricerca nome --}}
             <div>
                 <label class="block text-xs text-gray-500 mb-1">Cerca torneo</label>
@@ -72,7 +52,7 @@
                     </button>
                 </div>
             </div>
-            @if(request('tournament_type_id') || request('cerca'))
+            @if(request('cerca'))
                 <a href="{{ route('admin.tournament-notifications.index') }}"
                    class="self-end text-sm text-gray-500 hover:text-gray-700 underline">✕ Azzera</a>
             @endif
