@@ -212,18 +212,43 @@ class AssignmentValidationService
     }
 
     /**
-     * Trova arbitri sovrassegnati
-     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     * Su quale conteggio si giudica il carico (decisione 2026-10-08):
+     * CRC sui tornei nazionali, admin di zona sugli zonali, super admin sul
+     * totale. Le due colonne si vedono comunque entrambe.
+     *
+     * @return 'national'|'zonal'|'total'
      */
-    public function findOverassignedReferees(?int $zoneId = null, int $threshold = 5, bool $nationalOnly = false): Collection
+    public function countBasis(?int $zoneId, bool $nationalOnly): string
     {
+        if ($nationalOnly) {
+            return 'national';
+        }
+
+        return $zoneId ? 'zonal' : 'total';
+    }
+
+    /**
+     * Arbitri attivi con le designazioni dell'anno contate per tipo di torneo:
+     * zonal_count (tornei zonali), national_count (tornei nazionali, osservatori
+     * compresi), national_observers (di cui osservatori).
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<User>
+     */
+    private function refereesWithCounts(?int $zoneId, bool $nationalOnly): \Illuminate\Database\Eloquent\Builder
+    {
+        $year = (int) date('Y');
+        $onType = fn (bool $national) => fn ($q) => $q->whereHas('tournament', fn ($t) => $t
+            ->whereYear('start_date', $year)
+            ->whereHas('tournamentType', fn ($tt) => $tt->where('is_national', $national)));
+
         $query = User::where('user_type', 'referee')
             ->where('is_active', true)
-            ->withCount(['assignments' => function ($q) {
-                $q->whereHas('tournament', function ($tq) {
-                    $tq->whereYear('start_date', date('Y'));
-                });
-            }]);
+            ->withCount([
+                'assignments as zonal_count' => $onType(false),
+                'assignments as national_count' => $onType(true),
+                'assignments as national_observers' => fn ($q) => $onType(true)($q)
+                    ->where('role', \App\Enums\AssignmentRole::Observer->value),
+            ]);
 
         if ($zoneId) {
             $query->where('zone_id', $zoneId);
@@ -234,32 +259,62 @@ class AssignmentValidationService
             $query->whereIn('level', [RefereeLevel::Nazionale->value, RefereeLevel::Internazionale->value]);
         }
 
-        // Filtering after get() for SQLite compatibility (HAVING on subquery count not supported)
-        $overassigned = $query
-            ->with(['zone', 'assignments' => function ($q) {
-                $q->whereHas('tournament', function ($tq) {
-                    $tq->whereYear('start_date', date('Y'));
-                })->with('tournament');
-            }])
+        return $query;
+    }
+
+    /** Il conteggio che conta per chi guarda (vedi countBasis). */
+    private function basisCount(User $referee, string $basis): int
+    {
+        $zonal = \App\Support\Untrusted::int($referee->getAttribute('zonal_count'));
+        $national = \App\Support\Untrusted::int($referee->getAttribute('national_count'));
+
+        return match ($basis) {
+            'national' => $national,
+            'zonal' => $zonal,
+            default => $zonal + $national,
+        };
+    }
+
+    /**
+     * Righe comuni alle due liste.
+     *
+     * @return array{referee: User, assignments_count: int, zonal_count: int, national_count: int, national_observers: int}
+     */
+    private function countRow(User $referee, string $basis): array
+    {
+        return [
+            'referee' => $referee,
+            'assignments_count' => $this->basisCount($referee, $basis),
+            'zonal_count' => \App\Support\Untrusted::int($referee->getAttribute('zonal_count')),
+            'national_count' => \App\Support\Untrusted::int($referee->getAttribute('national_count')),
+            'national_observers' => \App\Support\Untrusted::int($referee->getAttribute('national_observers')),
+        ];
+    }
+
+    /**
+     * Trova arbitri sovrassegnati
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    public function findOverassignedReferees(?int $zoneId = null, int $threshold = 5, bool $nationalOnly = false): Collection
+    {
+        $basis = $this->countBasis($zoneId, $nationalOnly);
+
+        // Filtro dopo get(): HAVING su un conteggio di sottoquery non e' portabile
+        $over = $this->refereesWithCounts($zoneId, $nationalOnly)
+            ->with('zone')
             ->get()
-            ->filter(fn ($referee) => $referee->assignments_count > $threshold)
+            ->map(fn (User $referee) => $this->countRow($referee, $basis))
+            ->filter(fn (array $row) => $row['assignments_count'] > $threshold)
             ->sortByDesc('assignments_count')
             ->values();
 
-        // Calcola la media una sola volta per tutti gli arbitri sovrassegnati
-        $avgAssignments = $overassigned->avg('assignments_count');
+        $avg = $over->avg('assignments_count');
 
         /** @var \Illuminate\Support\Collection<int, array<string, mixed>> $rows */
-        $rows = $overassigned->map(function ($referee) use ($threshold, $avgAssignments) {
-            return [
-                'referee' => $referee,
-                'assignments_count' => $referee->assignments_count,
-                'over_threshold' => $referee->assignments_count - $threshold,
-                'workload_percentage' => $avgAssignments > 0
-                    ? round(($referee->assignments_count / $avgAssignments) * 100, 1)
-                    : 0,
-            ];
-        });
+        $rows = $over->map(fn (array $row) => $row + [
+            'over_threshold' => $row['assignments_count'] - $threshold,
+            'workload_percentage' => $avg > 0 ? round(($row['assignments_count'] / $avg) * 100, 1) : 0,
+        ]);
 
         return $rows;
     }
@@ -270,38 +325,20 @@ class AssignmentValidationService
      */
     public function findUnderassignedReferees(?int $zoneId = null, int $threshold = 2, bool $nationalOnly = false): Collection
     {
-        $query = User::where('user_type', 'referee')
-            ->where('is_active', true)
-            ->withCount(['assignments' => function ($q) {
-                $q->whereHas('tournament', function ($tq) {
-                    $tq->whereYear('start_date', date('Y'));
-                });
-            }]);
+        $basis = $this->countBasis($zoneId, $nationalOnly);
 
-        if ($zoneId) {
-            $query->where('zone_id', $zoneId);
-        }
-
-        // CRC: solo arbitri di livello Nazionale e Internazionale
-        if ($nationalOnly) {
-            $query->whereIn('level', [RefereeLevel::Nazionale->value, RefereeLevel::Internazionale->value]);
-        }
-
-        // Filtering after get() for SQLite compatibility (HAVING on subquery count not supported)
         /** @var \Illuminate\Support\Collection<int, array<string, mixed>> $rows */
-        $rows = $query
-            ->with(['zone'])
+        $rows = $this->refereesWithCounts($zoneId, $nationalOnly)
+            ->with('zone')
             ->get()
-            ->filter(fn ($referee) => $referee->assignments_count < $threshold)
+            ->map(fn (User $referee) => $this->countRow($referee, $basis))
+            ->filter(fn (array $row) => $row['assignments_count'] < $threshold)
             ->sortBy('assignments_count')
-            ->map(function ($referee) use ($threshold) {
-                return [
-                    'referee' => $referee,
-                    'assignments_count' => $referee->assignments_count,
-                    'under_threshold' => $threshold - $referee->assignments_count,
-                    'availability_status' => $this->checkAvailabilityStatus($referee),
-                ];
-            });
+            ->map(fn (array $row) => $row + [
+                'under_threshold' => $threshold - $row['assignments_count'],
+                'availability_status' => $this->checkAvailabilityStatus($row['referee']),
+            ])
+            ->values();
 
         return $rows;
     }
