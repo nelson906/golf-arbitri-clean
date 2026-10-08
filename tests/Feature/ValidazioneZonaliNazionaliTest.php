@@ -27,7 +27,7 @@ class ValidazioneZonaliNazionaliTest extends TestCase
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $rows
+     * @param  \Illuminate\Support\Collection<int, covariant array<string, mixed>>  $rows
      * @return array<string, mixed>|null
      */
     private function rowFor(\Illuminate\Support\Collection $rows, User $referee): ?array
@@ -106,5 +106,40 @@ class ValidazioneZonaliNazionaliTest extends TestCase
             ->assertOk()
             ->assertSee(route('admin.assignment-validation.overassigned'), false)
             ->assertSee('Apri e cambia soglia');
+    }
+
+    /** Carico arbitri: tutti gli arbitri, ordinati, con soglie colorate (2026-10-08). */
+    public function test_workload_page_lists_every_referee_by_load(): void
+    {
+        $busy = $this->createReferee(['zone_id' => 1, 'level' => 'Nazionale', 'name' => 'Bruno Carico']);
+        $idle = $this->createReferee(['zone_id' => 1, 'level' => 'Nazionale', 'name' => 'Ivo Fermo']);
+        $zonal = $this->createReferee(['zone_id' => 1, 'level' => '1_livello', 'name' => 'Zeno Zonale']);
+        foreach ([10, 20, 30] as $day) {
+            $this->createAssignment(['tournament_id' => $this->tournament(true, $day)->id, 'user_id' => $busy->id]);
+        }
+        $this->createAssignment(['tournament_id' => $this->tournament(false, 40)->id, 'user_id' => $zonal->id]);
+
+        $rows = app(AssignmentValidationService::class)->refereeWorkload(null, true);
+        $this->assertSame($busy->id, $rows->first()['referee']->id ?? null, 'Il piu\' carico in cima');
+        $this->assertNotNull($this->rowFor($rows, $idle), 'Anche chi ha 0 designazioni');
+        $this->assertNull($this->rowFor($rows, $zonal), 'CRC: solo livelli nazionali');
+
+        $this->actingAs($this->createNationalAdmin())
+            ->get(route('admin.assignment-validation.workload', ['min' => 1, 'max' => 2]))
+            ->assertOk()
+            ->assertSeeInOrder(['Bruno Carico', 'Ivo Fermo'])
+            ->assertDontSee('Zeno Zonale')
+            ->assertSee('bg-red-50', false)
+            ->assertSee('bg-amber-50', false);
+
+        $this->actingAs($this->createZoneAdmin(1))
+            ->get(route('admin.assignment-validation.workload'))
+            ->assertOk()
+            ->assertSee('Zeno Zonale')
+            ->assertSeeInOrder(['Zonali', 'Nazionali', 'Totale']);
+
+        $this->actingAs($this->createNationalAdmin())
+            ->get(route('admin.assignment-validation.index'))
+            ->assertSee(route('admin.assignment-validation.workload'), false);
     }
 }

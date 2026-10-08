@@ -928,6 +928,37 @@ class AssignmentController extends Controller
     }
 
     /**
+     * Carico arbitri: tutti gli arbitri con le loro designazioni, per vedere
+     * la disparita' (2026-10-08). Soglie minima e massima colorano le righe.
+     * GET /admin/assignment-validation/carico-arbitri
+     */
+    public function refereeWorkload(Request $request): View
+    {
+        $user = auth()->user();
+        $zoneId = $this->getZoneIdForUser($user);
+        $nationalOnly = $this->validationForCrc($user);
+
+        $rows = $this->validationService->refereeWorkload($zoneId, $nationalOnly);
+        $basis = $this->validationService->countBasis($zoneId, $nationalOnly);
+
+        $min = max(0, $request->integer('min', 1));
+        $max = max($min, $request->integer('max', 5));
+
+        /** @var \Illuminate\Support\Collection<int, int> $counts */
+        $counts = $rows->map(fn (array $row): int => $row['assignments_count']);
+        $stats = [
+            'referees' => $rows->count(),
+            'designations' => $counts->sum(),
+            'avg' => round((float) $counts->avg(), 1),
+            'top' => $counts->max() ?? 0,
+            'below' => $counts->filter(fn ($c) => $c < $min)->count(),
+            'above' => $counts->filter(fn ($c) => $c > $max)->count(),
+        ];
+
+        return view('admin.assignments.validation.workload', compact('rows', 'basis', 'min', 'max', 'stats'));
+    }
+
+    /**
      * Mostra arbitri sovrassegnati
      * GET /admin/assignment-validation/overassigned-referees
      */

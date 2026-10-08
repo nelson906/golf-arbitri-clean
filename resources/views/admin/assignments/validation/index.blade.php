@@ -10,7 +10,12 @@
                 <h1 class="text-3xl font-bold text-gray-900">Controllo Qualità Assegnazioni</h1>
                 <p class="mt-2 text-sm text-gray-600">Verifica e risolvi problemi nelle assegnazioni degli arbitri</p>
             </div>
-            <div>
+            <div class="flex gap-2">
+                {{-- Vista d'insieme del carico (2026-10-08) --}}
+                <a href="{{ route('admin.assignment-validation.workload') }}"
+                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                    📊 Carico arbitri
+                </a>
                 <a href="{{ route('admin.assignments.index') }}"
                     class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
