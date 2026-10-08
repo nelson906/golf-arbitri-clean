@@ -95,4 +95,55 @@ class FigNotificationMarkerTest extends TestCase
 
         $this->assertSame('sent', TournamentNotification::where('tournament_id', $tournament->id)->sole()->status);
     }
+
+    /**
+     * Lo script SQL per Aruba (database/sql/fig-segna-notificati.sql) fa
+     * quello che fa il comando, senza artisan.
+     */
+    public function test_sql_script_marks_fig_tournaments(): void
+    {
+        $admin = $this->createSuperAdmin();
+        $fig = fn (Tournament $t, string $role = 'Arbitro', ?string $name = null) => Assignment::create([
+            'tournament_id' => $t->id,
+            'user_id' => $this->createReferee(['zone_id' => 1] + ($name ? ['name' => $name] : []))->id,
+            'role' => $role, 'assigned_by' => $admin->id, 'assigned_at' => now(), 'notes' => 'Importato da federgolf.it',
+        ]);
+
+        $nazionale = $this->tournament(true);
+        $fig($nazionale, 'Arbitro', 'Anna Arbitro');
+        $fig($nazionale, 'Osservatore', 'Oscar Osservatore');
+
+        $zonaleBozza = $this->tournament(false);
+        $fig($zonaleBozza);
+        TournamentNotification::where('tournament_id', $zonaleBozza->id)->delete();
+        $bozza = TournamentNotification::create(['tournament_id' => $zonaleBozza->id, 'status' => 'pending']);
+
+        $giaInviato = $this->tournament(true);
+        $fig($giaInviato);
+        $inviata = TournamentNotification::create(['tournament_id' => $giaInviato->id, 'notification_type' => 'crc_referees',
+            'status' => 'sent', 'metadata' => ['source' => 'form']]);
+
+        $aMano = $this->tournament(true);
+        $this->createAssignment(['tournament_id' => $aMano->id, 'user_id' => $this->createReferee(['zone_id' => 1])->id]);
+
+        $sql = (string) file_get_contents(database_path('sql/fig-segna-notificati.sql'));
+        foreach (array_filter(array_map('trim', preg_split('/;\s*$/m', $sql) ?: [])) as $statement) {
+            $statement = trim((string) preg_replace('/^--.*$/m', '', $statement));
+            if ($statement !== '') {
+                \Illuminate\Support\Facades\DB::unprepared($statement);
+            }
+        }
+
+        $n = TournamentNotification::where('tournament_id', $nazionale->id)->sole();
+        $this->assertSame(['crc_referees', 'sent', 'Anna Arbitro'], [$n->notification_type, $n->status, $n->referee_list]);
+        $this->assertTrue((bool) ($n->metadata['fig'] ?? false));
+
+        $this->assertSame('sent', TournamentNotification::findOrFail($bozza->id)->status);
+        $this->assertSame(1, TournamentNotification::where('tournament_id', $zonaleBozza->id)->count());
+
+        $this->assertSame(['source' => 'form'], TournamentNotification::findOrFail($inviata->id)->metadata);
+        $this->assertSame(1, TournamentNotification::where('tournament_id', $giaInviato->id)->count());
+
+        $this->assertSame(0, TournamentNotification::where('tournament_id', $aMano->id)->count());
+    }
 }
