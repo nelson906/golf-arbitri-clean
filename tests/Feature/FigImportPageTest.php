@@ -137,6 +137,12 @@ class FigImportPageTest extends TestCase
             ->assertJson(['success' => true, 'done' => true, 'stats' => ['gare_elaborate' => 2, 'tolte' => 1, 'create' => 1]]);
 
         $this->assertSame([$bianchi->id], Assignment::where('tournament_id', $tournament->id)->pluck('user_id')->all());
+
+        // Comitato pubblicato da FIG = convocazioni gia' fatte (2026-10-08)
+        $notifica = \App\Models\TournamentNotification::where('tournament_id', $tournament->id)->sole();
+        $this->assertSame('crc_referees', $notifica->notification_type);
+        $this->assertSame('sent', $notifica->status);
+        $this->assertSame('Luca Bianchi', $notifica->referee_list);
     }
 
     public function test_dry_run_block_writes_nothing(): void
@@ -152,6 +158,7 @@ class FigImportPageTest extends TestCase
         ])->assertOk()->assertJson(['success' => true, 'done' => true, 'stats' => ['tolte' => 1, 'create' => 1]]);
 
         $this->assertSame([$vecchio->id], Assignment::where('tournament_id', $tournament->id)->pluck('user_id')->all());
+        $this->assertSame(0, \App\Models\TournamentNotification::where('tournament_id', $tournament->id)->count());
     }
 
     public function test_reserved_account_is_hidden_from_other_admins(): void
