@@ -4,9 +4,10 @@
 
 @section('content')
 @php
-    // Su quale conteggio si giudica (2026-10-08): CRC nazionali, SZR zonali, super admin totale
-    $basisLabel = ['national' => 'nazionali', 'zonal' => 'zonali', 'total' => 'in totale'][$basis] ?? 'in totale';
-    $hl = fn (string $col) => $basis === $col || $basis === 'total' ? 'bg-blue-100 text-blue-800 font-bold' : 'bg-gray-100 text-gray-600';
+    // Conteggio (2026-10-08): il CRC vede e giudica solo i nazionali; zona e
+    // super admin vedono zonali e nazionali e giudicano sul totale
+    $onlyNational = $basis === 'national';
+    $basisLabel = $onlyNational ? 'nazionali' : 'in totale (zonali + nazionali)';
 @endphp
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="flex justify-between items-center mb-8">
@@ -73,8 +74,13 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Arbitro</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Livello</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Zona</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Zonali</th>
+                        @unless($onlyNational)
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Zonali</th>
+                        @endunless
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Nazionali</th>
+                        @unless($onlyNational)
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Totale</th>
+                        @endunless
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Eccedenza</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">% Carico</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Azioni</th>
@@ -104,15 +110,22 @@
                         <td class="px-6 py-4 text-sm text-gray-900">
                             {{ $item['referee']->zone->name ?? '-' }}
                         </td>
+                        @unless($onlyNational)
+                            <td class="px-6 py-4 text-center">
+                                <span class="px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">{{ $item['zonal_count'] }}</span>
+                            </td>
+                        @endunless
                         <td class="px-6 py-4 text-center">
-                            <span class="px-3 py-1 rounded-full text-sm {{ $hl('zonal') }}">{{ $item['zonal_count'] }}</span>
-                        </td>
-                        <td class="px-6 py-4 text-center">
-                            <span class="px-3 py-1 rounded-full text-sm {{ $hl('national') }}">{{ $item['national_count'] }}</span>
+                            <span class="px-3 py-1 rounded-full text-sm {{ $onlyNational ? 'bg-blue-100 text-blue-800 font-bold' : 'bg-gray-100 text-gray-700' }}">{{ $item['national_count'] }}</span>
                             @if($item['national_observers'] > 0)
                                 <div class="text-xs text-gray-500 mt-1">di cui {{ $item['national_observers'] }} da osservatore</div>
                             @endif
                         </td>
+                        @unless($onlyNational)
+                            <td class="px-6 py-4 text-center">
+                                <span class="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 font-bold">{{ $item['assignments_count'] }}</span>
+                            </td>
+                        @endunless
                         <td class="px-6 py-4 text-center">
                             <span class="px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
                                 +{{ $item['over_threshold'] }}

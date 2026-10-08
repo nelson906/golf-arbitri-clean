@@ -10,9 +10,9 @@ use Tests\TestCase;
 
 /**
  * Decisione 2026-10-08: Validazione Assegnazioni conta separatamente le
- * designazioni zonali e nazionali (osservatori nei nazionali). Sovrassegnati
- * e sottoutilizzati si giudicano: CRC sui nazionali, SZR sugli zonali, super
- * admin sul totale.
+ * designazioni zonali e nazionali (osservatori nei nazionali). Il CRC vede e
+ * giudica solo i nazionali; zona e super admin vedono le due colonne e
+ * giudicano sul totale.
  */
 class ValidazioneZonaliNazionaliTest extends TestCase
 {
@@ -51,10 +51,11 @@ class ValidazioneZonaliNazionaliTest extends TestCase
         $this->assertSame([1, 2, 1, 1], [$row['assignments_count'], $row['zonal_count'], $row['national_count'], $row['national_observers']]);
         $this->assertNull($this->rowFor($service->findOverassignedReferees(null, 1, true), $referee));
 
-        // SZR: si giudica sugli zonali (2)
-        $row = $this->rowFor($service->findOverassignedReferees(1, 1, false), $referee);
+        // SZR: si giudica sul totale (3): con soglia 2 non e' sottoutilizzato
+        $row = $this->rowFor($service->findOverassignedReferees(1, 2, false), $referee);
         $this->assertNotNull($row);
-        $this->assertSame(2, $row['assignments_count']);
+        $this->assertSame(3, $row['assignments_count']);
+        $this->assertNull($this->rowFor($service->findUnderassignedReferees(1, 2, false), $referee));
 
         // Super admin: totale (3)
         $row = $this->rowFor($service->findOverassignedReferees(null, 2, false), $referee);
@@ -68,18 +69,22 @@ class ValidazioneZonaliNazionaliTest extends TestCase
         $this->createAssignment(['tournament_id' => $this->tournament(false, 10)->id, 'user_id' => $referee->id]);
         $this->createAssignment(['tournament_id' => $this->tournament(true, 20)->id, 'user_id' => $referee->id, 'role' => 'Osservatore']);
 
+        // CRC: solo la colonna Nazionali
         $this->actingAs($this->createNationalAdmin())
             ->get(route('admin.assignment-validation.underassigned', ['threshold' => 5]))
             ->assertOk()
             ->assertSee('Nora Nazionale')
-            ->assertSee('Zonali')
+            ->assertDontSee('>Zonali<', false)
             ->assertSee('Nazionali')
             ->assertSee('di cui 1 da osservatore')
             ->assertSee('designazioni nazionali');
 
+        // SZR: Zonali, Nazionali e Totale
         $this->actingAs($this->createZoneAdmin(1))
-            ->get(route('admin.assignment-validation.overassigned', ['threshold' => 0]))
+            ->get(route('admin.assignment-validation.overassigned', ['threshold' => 1]))
             ->assertOk()
-            ->assertSee('designazioni zonali');
+            ->assertSee('Nora Nazionale')
+            ->assertSeeInOrder(['Zonali', 'Nazionali', 'Totale'])
+            ->assertSee('designazioni in totale');
     }
 }
