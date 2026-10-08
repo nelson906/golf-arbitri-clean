@@ -14,6 +14,14 @@ use Tests\TestCase;
  */
 class FedergolfImportReplaceTest extends TestCase
 {
+    /** L'import guidato e' riservato all'account del .env (decisione 2026-10-08). */
+    private function importer(): \App\Models\User
+    {
+        config(['golf.fig.import_email' => 'importatore@example.test']);
+
+        return $this->createSuperAdmin(['email' => 'importatore@example.test']);
+    }
+
     /**
      * @param  array<string, mixed>  $attributes
      */
@@ -38,7 +46,7 @@ class FedergolfImportReplaceTest extends TestCase
         Assignment::factory()->forUser($giaImportato)->forTournament($tournament)->asReferee()
             ->create(['notes' => 'Importato da federgolf.it']);
 
-        $response = $this->actingAs($this->createNationalAdmin())
+        $response = $this->actingAs($this->importer())
             ->postJson(route('admin.federgolf-import.execute'), [
                 'tournament_id' => $tournament->id,
                 'assegnazioni' => [
@@ -66,7 +74,7 @@ class FedergolfImportReplaceTest extends TestCase
         $tournament = $this->nationalTournament();
         $arbitro = $this->createReferee(['zone_id' => 1, 'level' => 'Nazionale']);
 
-        $this->actingAs($this->createNationalAdmin())
+        $this->actingAs($this->importer())
             ->postJson(route('admin.federgolf-import.execute'), [
                 'tournament_id' => $tournament->id,
                 'assegnazioni' => [
@@ -80,7 +88,7 @@ class FedergolfImportReplaceTest extends TestCase
         $this->assertSame(1, Assignment::where('tournament_id', $tournament->id)->count());
     }
 
-    public function test_zone_admin_cannot_replace_on_tournament_of_another_zone(): void
+    public function test_zone_admin_cannot_replace_committees(): void
     {
         $tournament = $this->nationalTournament(2);
         $esistente = $this->createReferee(['zone_id' => 2, 'level' => 'Nazionale']);
@@ -92,7 +100,7 @@ class FedergolfImportReplaceTest extends TestCase
                 'tournament_id' => $tournament->id,
                 'assegnazioni' => [['user_id' => $altro->id, 'ruolo' => 'Arbitro']],
             ])
-            ->assertForbidden();
+            ->assertNotFound();
 
         $this->assertSame([$esistente->id], Assignment::where('tournament_id', $tournament->id)->pluck('user_id')->all());
     }
@@ -101,7 +109,7 @@ class FedergolfImportReplaceTest extends TestCase
     {
         $this->nationalTournament(1, ['name' => 'Campionato Gia Giocato', 'status' => 'completed']);
 
-        $this->actingAs($this->createNationalAdmin())
+        $this->actingAs($this->importer())
             ->get(route('admin.federgolf-import.index'))
             ->assertOk()
             ->assertSee('Campionato Gia Giocato');

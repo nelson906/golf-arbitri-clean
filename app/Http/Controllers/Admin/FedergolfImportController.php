@@ -46,7 +46,7 @@ class FedergolfImportController extends Controller
      */
     public function index(): View
     {
-        $this->ensureCrcOrSuperAdmin();
+        $this->ensureFigImportAccount();
 
         // Tornei locali visibili all'admin, tutti gli anni, raggruppati per anno.
         // Niente filtro sullo stato del torneo: e' stato eliminato (P3,
@@ -86,7 +86,7 @@ class FedergolfImportController extends Controller
      */
     public function loadFigCompetitions(Request $request): JsonResponse
     {
-        $this->ensureCrcOrSuperAdmin();
+        $this->ensureFigImportAccount();
 
         $anno = $request->integer('anno', (int) date('Y'));
         // Accetta solo anni ragionevoli (corrente e precedente)
@@ -155,7 +155,7 @@ class FedergolfImportController extends Controller
      */
     public function fetchCommittee(Request $request): JsonResponse
     {
-        $this->ensureCrcOrSuperAdmin();
+        $this->ensureFigImportAccount();
 
         $request->validate([
             'competition_id' => 'required|string|max:100',
@@ -214,7 +214,7 @@ class FedergolfImportController extends Controller
      */
     public function executeImport(Request $request): JsonResponse
     {
-        $this->ensureCrcOrSuperAdmin();
+        $this->ensureFigImportAccount();
 
         $request->validate([
             'tournament_id'  => 'required|integer|exists:tournaments,id',
@@ -345,12 +345,15 @@ class FedergolfImportController extends Controller
     }
 
     /**
-     * Decisione 2026-10-06 (D3): l'import guidato e' riservato a CRC e super
-     * admin. L'admin di zona sui nazionali designa solo osservatori (P9) e il
-     * wizard sostituisce l'intero comitato: non deve poterlo aprire.
+     * Decisione 2026-10-08 (D3): l'import guidato, come Carica comitati FIG,
+     * e' riservato all'account del .env (FIG_IMPORT_EMAIL). Per tutti gli
+     * altri la pagina non esiste (404); senza la riga nel .env non esiste per
+     * nessuno.
      */
-    private function ensureCrcOrSuperAdmin(): void
+    private function ensureFigImportAccount(): void
     {
-        abort_unless($this->authUser()->isNationalAdmin(), 403, 'Import riservato al CRC e al super admin');
+        if (! \App\Support\FigImportAccess::allows($this->authUser())) {
+            abort(404);
+        }
     }
 }
