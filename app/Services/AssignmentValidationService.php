@@ -245,6 +245,10 @@ class AssignmentValidationService
                 'assignments as national_count' => $onType(true),
                 'assignments as national_observers' => fn ($q) => $onType(true)($q)
                     ->where('role', \App\Enums\AssignmentRole::Observer->value),
+                // Disponibilita' dichiarate nell'anno (per il CRC solo sui nazionali)
+                'availabilities as availabilities_count' => fn ($q) => $q->whereHas('tournament', fn ($t) => $t
+                    ->whereYear('start_date', $year)
+                    ->when($nationalOnly, fn ($n) => $n->whereHas('tournamentType', fn ($tt) => $tt->where('is_national', true)))),
             ]);
 
         if ($zoneId) {
@@ -271,12 +275,13 @@ class AssignmentValidationService
     /**
      * Righe comuni alle due liste.
      *
-     * @return array{referee: User, assignments_count: int, zonal_count: int, national_count: int, national_observers: int}
+     * @return array{referee: User, assignments_count: int, zonal_count: int, national_count: int, national_observers: int, availabilities_count: int}
      */
     private function countRow(User $referee, string $basis): array
     {
         return [
             'referee' => $referee,
+            'availabilities_count' => \App\Support\Untrusted::int($referee->getAttribute('availabilities_count')),
             'assignments_count' => $this->basisCount($referee, $basis),
             'zonal_count' => \App\Support\Untrusted::int($referee->getAttribute('zonal_count')),
             'national_count' => \App\Support\Untrusted::int($referee->getAttribute('national_count')),
@@ -329,7 +334,7 @@ class AssignmentValidationService
             ->sortBy('assignments_count')
             ->map(fn (array $row) => $row + [
                 'under_threshold' => $threshold - $row['assignments_count'],
-                'availability_status' => $this->checkAvailabilityStatus($row['referee']),
+                'availability_status' => $row['availabilities_count'] > 0 ? 'available' : 'unavailable',
             ])
             ->values();
 
@@ -481,20 +486,6 @@ class AssignmentValidationService
         });
 
         return $query->withCount('assignments')->orderBy('assignments_count')->get();
-    }
-
-    private function checkAvailabilityStatus(User $referee): string
-    {
-        // Considera solo disponibilità per tornei dell'anno corrente o futuri,
-        // per evitare che disponibilità di anni passati vengano conteggiate come "disponibile".
-        $hasAvailabilities = $referee->availabilities()
-            ->whereHas('tournament', function ($q) {
-                $q->whereYear('start_date', date('Y'))
-                    ->orWhere('start_date', '>=', now());
-            })
-            ->exists();
-
-        return $hasAvailabilities ? 'available' : 'unavailable';
     }
 
     private function getConflictsSummary(?int $zoneId, bool $nationalOnly): int

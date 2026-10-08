@@ -131,28 +131,8 @@
                             </td>
                         @endunless
                         <td class="px-6 py-4 text-center">
-                            @if($item['availability_status'] === 'available')
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                    </svg>
-                                    Disponibile
-                                </span>
-                            @elseif($item['availability_status'] === 'unavailable')
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                                    </svg>
-                                    Non Disponibile
-                                </span>
-                            @else
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                    <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
-                                    </svg>
-                                    Sconosciuto
-                                </span>
-                            @endif
+                            {{-- Numero di disponibilita' dichiarate nell'anno (2026-10-08) --}}
+                            <span class="px-3 py-1 rounded-full text-sm font-medium {{ $item['availabilities_count'] > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">{{ $item['availabilities_count'] }}</span>
                         </td>
                         <td class="px-6 py-4 text-right text-sm font-medium space-x-2">
                             <a href="{{ route('admin.users.show', $item['referee']->id) }}" class="text-blue-600 hover:text-blue-900">

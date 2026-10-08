@@ -305,6 +305,11 @@
                                 Carico di lavoro distribuito equamente
                             </p>
                         </div>
+                        {{-- Sempre apribile: la soglia si cambia nella pagina (2026-10-08) --}}
+                        <a href="{{ route('admin.assignment-validation.overassigned') }}"
+                            class="mt-4 inline-flex items-center justify-center w-full px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            Apri e cambia soglia
+                        </a>
                     @endif
                 </div>
             </div>
@@ -361,6 +366,11 @@
                                 Tutti gli arbitri sono utilizzati adeguatamente
                             </p>
                         </div>
+                        {{-- Sempre apribile: la soglia si cambia nella pagina (2026-10-08) --}}
+                        <a href="{{ route('admin.assignment-validation.underassigned') }}"
+                            class="mt-4 inline-flex items-center justify-center w-full px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                            Apri e cambia soglia
+                        </a>
                     @endif
                 </div>
             </div>

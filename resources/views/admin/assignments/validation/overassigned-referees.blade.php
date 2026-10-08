@@ -81,6 +81,7 @@
                         @unless($onlyNational)
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Totale</th>
                         @endunless
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Disponibilità</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Eccedenza</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">% Carico</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Azioni</th>
@@ -126,6 +127,9 @@
                                 <span class="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 font-bold">{{ $item['assignments_count'] }}</span>
                             </td>
                         @endunless
+                        <td class="px-6 py-4 text-center">
+                            <span class="px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">{{ $item['availabilities_count'] }}</span>
+                        </td>
                         <td class="px-6 py-4 text-center">
                             <span class="px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
                                 +{{ $item['over_threshold'] }}
