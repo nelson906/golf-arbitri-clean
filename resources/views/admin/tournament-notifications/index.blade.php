@@ -39,6 +39,22 @@
         {{-- Filtri --}}
         <form method="GET" action="{{ route('admin.tournament-notifications.index') }}"
               class="flex flex-wrap gap-3 mb-4 items-end">
+            {{-- Filtro mese (2026-10-08) --}}
+            @if(count($mesi) > 1)
+                <div>
+                    <label class="block text-xs text-gray-500 mb-1">Mese</label>
+                    <select name="mese"
+                            class="rounded border-gray-300 text-sm py-1.5 pr-8 focus:ring-indigo-500 focus:border-indigo-500"
+                            onchange="this.form.submit()">
+                        <option value="">Tutti i mesi</option>
+                        @foreach($mesi as $m)
+                            <option value="{{ $m }}" {{ request('mese') === $m ? 'selected' : '' }}>
+                                {{ ucfirst(\Carbon\Carbon::createFromFormat('Y-m-d', $m.'-01')->locale('it')->translatedFormat('F Y')) }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            @endif
             {{-- Ricerca nome --}}
             <div>
                 <label class="block text-xs text-gray-500 mb-1">Cerca torneo</label>
@@ -52,7 +68,7 @@
                     </button>
                 </div>
             </div>
-            @if(request('cerca'))
+            @if(request('cerca') || request('mese'))
                 <a href="{{ route('admin.tournament-notifications.index') }}"
                    class="self-end text-sm text-gray-500 hover:text-gray-700 underline">✕ Azzera</a>
             @endif
@@ -113,8 +129,8 @@
 
                             {{-- Lista arbitri --}}
                             <td class="px-4 py-3 text-xs text-gray-600 max-w-xs">
-                                <div class="truncate" title="{{ $primaryNotification->referee_list }}">
-                                    {{ $primaryNotification->referee_list ?: '—' }}
+                                <div class="truncate" title="{{ $group->referees }}">
+                                    {{ $group->referees ?: '—' }}
                                 </div>
                             </td>
 
@@ -151,6 +167,8 @@
                                             @endif
                                         </div>
                                     </div>
+                                @elseif(! $primaryNotification)
+                                    <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">Da inviare</span>
                                 @else
                                     @php
                                         $s = $primaryNotification->status;
@@ -184,7 +202,7 @@
                                     </a>
 
                                     {{-- Reinvia (anche su parziale/fallita per consentire retry) --}}
-                                    @if(in_array($primaryNotification->status, ['sent', 'failed', 'partial'], true))
+                                    @if($primaryNotification && in_array($primaryNotification->status, ['sent', 'failed', 'partial'], true))
                                         <form action="{{ route('admin.tournament-notifications.resend', $primaryNotification) }}"
                                               method="POST" class="inline">
                                             @csrf
@@ -210,6 +228,7 @@
                                         </svg>
                                     </a>
 
+                                    @if($primaryNotification)
                                     {{-- Dettaglio notifica --}}
                                     <a href="{{ route('admin.tournament-notifications.show', $primaryNotification) }}"
                                        class="text-gray-500 hover:text-gray-700"
@@ -237,6 +256,7 @@
                                             </svg>
                                         </button>
                                     </form>
+                                    @endif
 
                                 </div>
                             </td>
@@ -245,7 +265,7 @@
                     @empty
                         <tr>
                             <td colspan="6" class="px-6 py-10 text-center text-gray-400 text-sm">
-                                Nessuna notifica trovata.
+                                Nessun torneo con arbitri designati.
                             </td>
                         </tr>
                     @endforelse
