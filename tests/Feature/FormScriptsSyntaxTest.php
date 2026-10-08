@@ -111,7 +111,7 @@ class FormScriptsSyntaxTest extends TestCase
             'admin.dashboard', 'admin.tournaments.index', 'admin.tournaments.calendar', 'admin.tournaments.create',
             'admin.assignments.index', 'admin.assignments.create', 'admin.assignment-validation.index',
             'admin.assignment-validation.conflicts', 'admin.assignment-validation.missing-requirements',
-            'admin.assignment-validation.overassigned', 'admin.assignment-validation.underassigned',
+            'admin.assignment-validation.overassigned', 'admin.assignment-validation.underassigned', 'admin.assignment-validation.workload',
             'admin.clubs.index', 'admin.clubs.create', 'admin.users.index', 'admin.users.create',
             'admin.referees.curricula', 'admin.career-history.index', 'admin.career-history.archive-form',
             'admin.statistics.dashboard', 'admin.statistics.arbitri', 'admin.statistics.assegnazioni',

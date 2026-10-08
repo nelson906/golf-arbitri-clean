@@ -290,6 +290,26 @@ class AssignmentValidationService
     }
 
     /**
+     * Carico arbitri (decisione 2026-10-08): TUTTI gli arbitri attivi visibili,
+     * con zonali, nazionali, totale e disponibilita' dell'anno, ordinati dal
+     * piu' carico. Il conteggio che conta e' quello di countBasis().
+     *
+     * @return \Illuminate\Support\Collection<int, array{referee: User, assignments_count: int, zonal_count: int, national_count: int, national_observers: int, availabilities_count: int}>
+     */
+    public function refereeWorkload(?int $zoneId = null, bool $nationalOnly = false): Collection
+    {
+        $basis = $this->countBasis($zoneId, $nationalOnly);
+
+        return $this->refereesWithCounts($zoneId, $nationalOnly)
+            ->with('zone')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (User $referee) => $this->countRow($referee, $basis))
+            ->sortByDesc('assignments_count')
+            ->values();
+    }
+
+    /**
      * Trova arbitri sovrassegnati
      * @return \Illuminate\Support\Collection<int, array<string, mixed>>
      */

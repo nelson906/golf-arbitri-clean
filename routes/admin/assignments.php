@@ -56,4 +56,5 @@ Route::prefix('assignment-validation')->name('assignment-validation.')->group(fu
     Route::get('/missing-requirements', [AssignmentController::class, 'missingRequirements'])->name('missing-requirements');
     Route::get('/overassigned-referees', [AssignmentController::class, 'overassignedReferees'])->name('overassigned');
     Route::get('/underassigned-referees', [AssignmentController::class, 'underassignedReferees'])->name('underassigned');
+    Route::get('/carico-arbitri', [AssignmentController::class, 'refereeWorkload'])->name('workload');
 });
