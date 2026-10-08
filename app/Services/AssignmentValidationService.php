@@ -213,18 +213,15 @@ class AssignmentValidationService
 
     /**
      * Su quale conteggio si giudica il carico (decisione 2026-10-08):
-     * CRC sui tornei nazionali, admin di zona sugli zonali, super admin sul
-     * totale. Le due colonne si vedono comunque entrambe.
+     * il CRC vede e giudica solo i tornei nazionali; admin di zona e super
+     * admin vedono zonali e nazionali e giudicano sul totale (la zona designa
+     * anche gli osservatori sui nazionali).
      *
-     * @return 'national'|'zonal'|'total'
+     * @return 'national'|'total'
      */
     public function countBasis(?int $zoneId, bool $nationalOnly): string
     {
-        if ($nationalOnly) {
-            return 'national';
-        }
-
-        return $zoneId ? 'zonal' : 'total';
+        return $nationalOnly ? 'national' : 'total';
     }
 
     /**
@@ -268,11 +265,7 @@ class AssignmentValidationService
         $zonal = \App\Support\Untrusted::int($referee->getAttribute('zonal_count'));
         $national = \App\Support\Untrusted::int($referee->getAttribute('national_count'));
 
-        return match ($basis) {
-            'national' => $national,
-            'zonal' => $zonal,
-            default => $zonal + $national,
-        };
+        return $basis === 'national' ? $national : $zonal + $national;
     }
 
     /**
