@@ -7,6 +7,7 @@ use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Services\FedergolfCommitteeService;
 use App\Services\FedergolfCompetitionsClient;
+use App\Services\FigNotificationMarker;
 use App\Support\Untrusted;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -162,7 +163,7 @@ class ImportFedergolfCommittees extends Command
 
         // ── 2. Carica tornei locali ─────────────────────────────────────────
         // Tutti i tornei dell'anno: lo stato del torneo non esiste piu' (P3)
-        $torneiLocali = Tournament::with(['club', 'assignments'])
+        $torneiLocali = Tournament::with(['club', 'assignments', 'tournamentType'])
             ->whereYear('start_date', $anno)
             ->get();
 
@@ -403,6 +404,15 @@ class ImportFedergolfCommittees extends Command
         }
 
         $result['stato'] = 'ok';
+
+        // Comitato pubblicato da FIG = convocazioni gia' fatte: il torneo
+        // risulta notificato (decisione 2026-10-08, ex federgolf:mark-notified)
+        if (! $dryRun) {
+            app(FigNotificationMarker::class)->mark(
+                $bestMatch['torneo'],
+                'Import batch FIG '.($this->option('anno') ?? date('Y'))
+            );
+        }
 
         return $result;
     }

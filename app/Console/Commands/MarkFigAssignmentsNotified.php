@@ -3,12 +3,15 @@
 namespace App\Console\Commands;
 
 use App\Models\Assignment;
-use App\Models\TournamentNotification;
-use App\Models\User;
+use App\Services\FigNotificationMarker;
 use Illuminate\Console\Command;
 
 /**
  * Marca come "notificate" le assegnazioni create via import batch FIG.
+ *
+ * Dal 2026-10-08 ogni caricamento da FIG lo fa da solo (FigNotificationMarker):
+ * il comando serve per i tornei caricati prima. Include anche le designazioni
+ * dell'import guidato ('Importato da federgolf.it').
  *
  * Crea un record TournamentNotification (status=sent) per ogni torneo
  * che ha assegnazioni con note 'Import batch FIG <anno>' e non ha già
@@ -45,16 +48,12 @@ class MarkFigAssignmentsNotified extends Command
         $this->info($dryRun ? '   ⚠️  DRY-RUN: nessuna scrittura su DB' : '   ✅  Modalità scrittura attiva');
         $this->newLine();
 
-        // sent_by è nullable (ON DELETE SET NULL) — null è il fallback corretto
-        // se non esiste alcun admin nel DB (es. durante i test)
-        $adminId = User::where('user_type', 'super_admin')->value('id')
-            ?? User::where('user_type', 'national_admin')->value('id')
-            ?? null;
-
         // Trova tutte le assegnazioni dell'anno con note "Import batch FIG <anno>"
-        $assignments = Assignment::with(['tournament.club', 'user'])
+        $assignments = Assignment::with(['tournament.club', 'tournament.tournamentType', 'user'])
             ->whereHas('tournament', fn ($q) => $q->whereYear('start_date', $anno))
-            ->where('notes', 'like', "Import batch FIG {$anno}%")
+            // Anche le designazioni dell'import guidato (2026-10-08)
+            ->where(fn ($q) => $q->where('notes', 'like', "Import batch FIG {$anno}%")
+                ->orWhere('notes', 'Importato da federgolf.it'))
             ->get();
 
         if ($assignments->isEmpty()) {
@@ -72,80 +71,29 @@ class MarkFigAssignmentsNotified extends Command
 
         $createdNotif  = 0;
         $skippedNotif  = 0;
+        $marker = app(FigNotificationMarker::class);
 
         foreach ($byTournament as $tournamentId => $tournamentAssignments) {
-            $prima      = $tournamentAssignments->first();
-            $torneo     = $prima?->tournament;
-            $nomeTorneo = $torneo->name ?? "Torneo ID {$tournamentId}";
-            $dataStr    = $torneo?->start_date->format('d/m/Y') ?? '—';
-
-            // Determina il tipo di notifica per questo specifico torneo
-            if ($type === 'auto') {
-                // Fonte di verità: is_national dal tipo torneo
-                $isNational       = $torneo->tournamentType->is_national ?? false;
-                $notificationType = $isNational ? 'crc_referees' : null;
-            } elseif ($type === 'zonal') {
-                $notificationType = null;
-            } else {
-                $notificationType = $type; // crc_referees | zone_observers
+            $torneo = $tournamentAssignments->first()?->tournament;
+            if (! $torneo instanceof \App\Models\Tournament) {
+                continue;
             }
+            $dataStr = $torneo->start_date->format('d/m/Y');
 
-            $typeLabel = match ($notificationType) {
-                'crc_referees'   => 'nazionale (CRC)',
-                'zone_observers' => 'nazionale (Zona)',
-                null             => 'zonale',
-                default          => $notificationType,
-            };
-
-            // Controlla se esiste già una notifica del tipo corretto per questo torneo
-            $existingNotif = TournamentNotification::where('tournament_id', $tournamentId)
-                ->where(function ($q) use ($notificationType) {
-                    $notificationType === null
-                        ? $q->whereNull('notification_type')
-                        : $q->where('notification_type', $notificationType);
-                })
-                ->where('status', 'sent')
-                ->first();
-
-            if ($existingNotif) {
-                $sentAt = $existingNotif->sent_at?->format('d/m/Y H:i') ?? '—';
-                $this->line("  <fg=gray>  ↷ {$nomeTorneo} ({$dataStr}) [{$typeLabel}] — già notificato il {$sentAt}</>");
-                $skippedNotif++;
+            if ($dryRun) {
+                $this->line("  <fg=green>  + {$torneo->name}</> ({$dataStr})");
+                $createdNotif++;
 
                 continue;
             }
 
-            // Costruisci referee_list e details
-            $refereeNames = $tournamentAssignments
-                ->map(fn ($a) => $a->user->name ?? '?')
-                ->filter()
-                ->implode(', ');
-
-            $sentAt = $tournamentAssignments->max('assigned_at') ?? now();
-
-            $this->line("  <fg=green>  + {$nomeTorneo}</> ({$dataStr}) [{$typeLabel}]");
-            $this->line("      arbitri: {$refereeNames}");
-            $createdNotif++;
-
-            if (! $dryRun) {
-                TournamentNotification::create([
-                    'tournament_id'     => $tournamentId,
-                    'notification_type' => $notificationType,
-                    'status'            => 'sent',
-                    'sent_at'           => $sentAt,
-                    'sent_by'           => $adminId,
-                    'referee_list'      => $refereeNames,
-                    'details'           => [
-                        'sent'             => $tournamentAssignments->count(),
-                        'arbitri'          => $tournamentAssignments->count(),
-                        'total_recipients' => $tournamentAssignments->count(),
-                        'note'             => "Import automatico FIG {$anno}",
-                    ],
-                    'metadata'          => [
-                        'source'  => "Import batch FIG {$anno}",
-                        'command' => 'federgolf:mark-notified',
-                    ],
-                ]);
+            $esito = $marker->mark($torneo, "Import batch FIG {$anno}", is_string($type) ? $type : 'auto');
+            if ($esito === FigNotificationMarker::SKIPPED) {
+                $this->line("  <fg=gray>  ↷ {$torneo->name} ({$dataStr}) — gia' notificato</>");
+                $skippedNotif++;
+            } else {
+                $this->line("  <fg=green>  + {$torneo->name}</> ({$dataStr})");
+                $createdNotif++;
             }
         }
 

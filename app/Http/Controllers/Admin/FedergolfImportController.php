@@ -295,6 +295,9 @@ class FedergolfImportController extends Controller
             ]);
         }
 
+        // Comitato pubblicato da FIG = convocazioni gia' fatte (2026-10-08)
+        app(\App\Services\FigNotificationMarker::class)->mark($tournament, 'Importato da federgolf.it');
+
         $creati = count($nuove);
         $rimossi = count($sostituite);
 
