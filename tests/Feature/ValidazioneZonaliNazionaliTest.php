@@ -87,4 +87,24 @@ class ValidazioneZonaliNazionaliTest extends TestCase
             ->assertSeeInOrder(['Zonali', 'Nazionali', 'Totale'])
             ->assertSee('designazioni in totale');
     }
+
+    public function test_availability_count_and_cards_always_open(): void
+    {
+        $referee = $this->createReferee(['zone_id' => 1, 'level' => 'Nazionale', 'name' => 'Dina Dichiarata']);
+        foreach ([10, 20] as $day) {
+            \App\Models\Availability::create(['user_id' => $referee->id, 'tournament_id' => $this->tournament(true, $day)->id, 'submitted_at' => now()]);
+        }
+        \App\Models\Availability::create(['user_id' => $referee->id, 'tournament_id' => $this->tournament(false, 30)->id, 'submitted_at' => now()]);
+
+        $service = app(AssignmentValidationService::class);
+        $this->assertSame(2, $this->rowFor($service->findUnderassignedReferees(null, 2, true), $referee)['availabilities_count'] ?? null, 'CRC: solo nazionali');
+        $this->assertSame(3, $this->rowFor($service->findUnderassignedReferees(1, 2, false), $referee)['availabilities_count'] ?? null, 'Zona: tutte');
+
+        // Nessun sovrassegnato: la scheda si apre lo stesso per cambiare soglia
+        $this->actingAs($this->createNationalAdmin())
+            ->get(route('admin.assignment-validation.index'))
+            ->assertOk()
+            ->assertSee(route('admin.assignment-validation.overassigned'), false)
+            ->assertSee('Apri e cambia soglia');
+    }
 }
