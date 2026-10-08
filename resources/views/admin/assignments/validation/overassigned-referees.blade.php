@@ -3,6 +3,11 @@
 @section('title', 'Arbitri Sovrassegnati')
 
 @section('content')
+@php
+    // Su quale conteggio si giudica (2026-10-08): CRC nazionali, SZR zonali, super admin totale
+    $basisLabel = ['national' => 'nazionali', 'zonal' => 'zonali', 'total' => 'in totale'][$basis] ?? 'in totale';
+    $hl = fn (string $col) => $basis === $col || $basis === 'total' ? 'bg-blue-100 text-blue-800 font-bold' : 'bg-gray-100 text-gray-600';
+@endphp
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="flex justify-between items-center mb-8">
         <div>
@@ -23,7 +28,7 @@
             <div class="flex-grow">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Soglia Assegnazioni</label>
                 <input type="number" name="threshold" value="{{ $threshold }}" min="1" max="20" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                <p class="mt-1 text-xs text-gray-500">Mostra arbitri con più di X assegnazioni</p>
+                <p class="mt-1 text-xs text-gray-500">Mostra arbitri con più di X designazioni {{ $basisLabel }} dell'anno</p>
             </div>
             <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                 <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,7 +73,8 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Arbitro</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Livello</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Zona</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Assegnazioni</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Zonali</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Nazionali</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Eccedenza</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">% Carico</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Azioni</th>
@@ -99,9 +105,13 @@
                             {{ $item['referee']->zone->name ?? '-' }}
                         </td>
                         <td class="px-6 py-4 text-center">
-                            <span class="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                                {{ $item['assignments_count'] }}
-                            </span>
+                            <span class="px-3 py-1 rounded-full text-sm {{ $hl('zonal') }}">{{ $item['zonal_count'] }}</span>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="px-3 py-1 rounded-full text-sm {{ $hl('national') }}">{{ $item['national_count'] }}</span>
+                            @if($item['national_observers'] > 0)
+                                <div class="text-xs text-gray-500 mt-1">di cui {{ $item['national_observers'] }} da osservatore</div>
+                            @endif
                         </td>
                         <td class="px-6 py-4 text-center">
                             <span class="px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">

@@ -941,6 +941,8 @@ class AssignmentController extends Controller
         $threshold = max(1, $request->integer('threshold', 5));
 
         $referees = $this->validationService->findOverassignedReferees($zoneId, $threshold, $this->validationForCrc($user));
+        // Conteggio su cui si giudica: CRC nazionali, SZR zonali, super admin totale
+        $basis = $this->validationService->countBasis($zoneId, $this->validationForCrc($user));
 
         // Statistiche
         $stats = [
@@ -953,7 +955,8 @@ class AssignmentController extends Controller
         return view('admin.assignments.validation.overassigned-referees', compact(
             'referees',
             'stats',
-            'threshold'
+            'threshold',
+            'basis'
         ));
     }
 
@@ -971,6 +974,8 @@ class AssignmentController extends Controller
         $threshold = max(1, $request->integer('threshold', 2));
 
         $referees = $this->validationService->findUnderassignedReferees($zoneId, $threshold, $this->validationForCrc($user));
+        // Conteggio su cui si giudica: CRC nazionali, SZR zonali, super admin totale
+        $basis = $this->validationService->countBasis($zoneId, $this->validationForCrc($user));
 
         // Filtra per stato disponibilità se richiesto
         if ($request->has('only_available')) {
@@ -990,7 +995,8 @@ class AssignmentController extends Controller
         return view('admin.assignments.validation.underassigned-referees', compact(
             'referees',
             'stats',
-            'threshold'
+            'threshold',
+            'basis'
         ));
     }
 
