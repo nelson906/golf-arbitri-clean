@@ -1,0 +1,12 @@
+# Codice morto (2026-10-09): report occasionale, non e' un controllo bloccante.
+#
+#   composer require --dev shipmonk/dead-code-detector     (una volta, sul Mac)
+#   vendor/bin/phpstan analyse -c phpstan-deadcode.neon --memory-limit=2G
+#
+# Non vede Blade e rotte: segnala come "inutilizzati" anche metodi, costanti
+# e azioni usati solo nelle viste o nei file di rotta. Ogni voce va verificata
+# (grep anche in resources/views). Rotte, viste e azioni orfane le controlla
+# gia' tests/Feature/OrfaniTest.php.
+includes:
+    - phpstan-strict.neon
+    - vendor/shipmonk/dead-code-detector/rules.neon
