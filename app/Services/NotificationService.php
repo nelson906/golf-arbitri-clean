@@ -76,7 +76,7 @@ class NotificationService
         $recipients = $metadata['recipients'];
 
         $tournament = $notification->tournament;
-        $currentRefereeIds = $tournament->assignments()->pluck('user_id')->toArray();
+        $currentRefereeIds = Untrusted::intList($tournament->assignments()->pluck('user_id')->all());
 
         // Solo arbitri selezionati E ancora effettivamente assegnati al torneo
         // `recipients` e' una colonna JSON: gli ID non sono garantiti interi.

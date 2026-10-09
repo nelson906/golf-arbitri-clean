@@ -362,8 +362,9 @@ class CareerHistoryService
                 ];
 
                 // Aggiungi days_count se specificato
-                if (isset($item['days_count']) && $item['days_count'] > 0) {
-                    $tournamentData['days_count'] = (int) $item['days_count'];
+                $daysCount = Untrusted::int($item['days_count'] ?? null);
+                if ($daysCount > 0) {
+                    $tournamentData['days_count'] = $daysCount;
                 }
 
                 $tournaments[$year][] = $tournamentData;
