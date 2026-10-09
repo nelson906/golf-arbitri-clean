@@ -36,6 +36,13 @@
                             Zone
                         </a>
                     </li>
+                    <li>
+                        <a href="{{ route('super-admin.data-check.index') }}"
+                            class="flex items-center px-4 py-3 text-blue-100 hover:bg-blue-700 {{ request()->routeIs('super-admin.data-check.*') ? 'bg-blue-900' : '' }}">
+                            <span class="mr-3">🩺</span>
+                            Controllo dati
+                        </a>
+                    </li>
                     @if (\App\Support\FigImportAccess::allows(auth()->user()))
                         <li>
                             <a href="{{ route('super-admin.fig-import.index') }}"

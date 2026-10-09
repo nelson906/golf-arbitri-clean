@@ -209,7 +209,7 @@
                             <div>
                                 <p class="text-xs text-gray-500">Livello Richiesto</p>
                                 <p class="text-lg font-semibold text-gray-900">
-                                    {{ ucfirst($item['tournament']->tournamentType->required_referee_level) }}
+                                    {{ ucfirst((string) $item['tournament']->tournamentType->required_level) ?: '—' }}
                                 </p>
                             </div>
                             <div>

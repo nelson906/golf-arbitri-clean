@@ -26,6 +26,10 @@ Route::prefix('super-admin')->name('super-admin.')->middleware(['auth', 'super_a
     Route::post('fig-import/block', [\App\Http\Controllers\SuperAdmin\FigImportController::class, 'block'])
         ->name('fig-import.block');
 
+    // Controllo dati (2026-10-09): anomalie nei dati, solo lettura
+    Route::get('data-check', [\App\Http\Controllers\SuperAdmin\DataCheckController::class, 'index'])
+        ->name('data-check.index');
+
     // Tournament Types
     Route::resource('tournament-types', TournamentTypeController::class)->except(['show']);
     Route::patch('tournament-types/{tournamentType}/toggle-active', [TournamentTypeController::class, 'toggleActive'])
