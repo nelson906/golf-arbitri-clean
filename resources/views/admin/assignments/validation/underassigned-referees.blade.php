@@ -3,12 +3,6 @@
 @section('title', 'Arbitri Sottoutilizzati')
 
 @section('content')
-@php
-    // Conteggio (2026-10-08): il CRC vede e giudica solo i nazionali; zona e
-    // super admin vedono zonali e nazionali e giudicano sul totale
-    $onlyNational = $basis === 'national';
-    $basisLabel = $onlyNational ? 'nazionali' : 'in totale (zonali + nazionali)';
-@endphp
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="flex justify-between items-center mb-8">
         <div>
@@ -29,7 +23,7 @@
             <div class="flex-grow">
                 <label class="block text-sm font-medium text-gray-700 mb-2">Soglia Minima</label>
                 <input type="number" name="threshold" value="{{ $threshold }}" min="0" max="10" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                <p class="mt-1 text-xs text-gray-500">Mostra arbitri con meno di X designazioni {{ $basisLabel }} dell'anno</p>
+                <p class="mt-1 text-xs text-gray-500">Mostra arbitri con meno di X designazioni nella colonna che conta per il loro livello</p>
             </div>
             <div>
                 <label class="flex items-center">
@@ -41,6 +35,7 @@
                 Applica Filtro
             </button>
         </form>
+        <div class="mt-2">@include('admin.assignments.validation.partials.counts-legend')</div>
     </div>
 
     <!-- Stats -->
@@ -79,14 +74,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Arbitro</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Livello</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Zona</th>
-                        @unless($onlyNational)
-                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Zonali</th>
-                        @endunless
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Nazionali</th>
-                        @unless($onlyNational)
-                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Totale</th>
-                        @endunless
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Disponibilità</th>
+                        @include('admin.assignments.validation.partials.counts-head')
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Azioni</th>
                     </tr>
                 </thead>
@@ -114,26 +102,7 @@
                         <td class="px-6 py-4 text-sm text-gray-900">
                             {{ $item['referee']->zone->name ?? '-' }}
                         </td>
-                        @unless($onlyNational)
-                            <td class="px-6 py-4 text-center">
-                                <span class="px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700">{{ $item['zonal_count'] }}</span>
-                            </td>
-                        @endunless
-                        <td class="px-6 py-4 text-center">
-                            <span class="px-3 py-1 rounded-full text-sm {{ $onlyNational ? 'bg-blue-100 text-blue-800 font-bold' : 'bg-gray-100 text-gray-700' }}">{{ $item['national_count'] }}</span>
-                            @if($item['national_observers'] > 0)
-                                <div class="text-xs text-gray-500 mt-1">di cui {{ $item['national_observers'] }} da osservatore</div>
-                            @endif
-                        </td>
-                        @unless($onlyNational)
-                            <td class="px-6 py-4 text-center">
-                                <span class="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 font-bold">{{ $item['assignments_count'] }}</span>
-                            </td>
-                        @endunless
-                        <td class="px-6 py-4 text-center">
-                            {{-- Numero di disponibilita' dichiarate nell'anno (2026-10-08) --}}
-                            <span class="px-3 py-1 rounded-full text-sm font-medium {{ $item['availabilities_count'] > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">{{ $item['availabilities_count'] }}</span>
-                        </td>
+                        @include('admin.assignments.validation.partials.counts-cells')
                         <td class="px-6 py-4 text-right text-sm font-medium space-x-2">
                             <a href="{{ route('admin.users.show', $item['referee']->id) }}" class="text-blue-600 hover:text-blue-900">
                                 <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">

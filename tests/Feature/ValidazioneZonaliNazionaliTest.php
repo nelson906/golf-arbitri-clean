@@ -9,10 +9,10 @@ use App\Models\User;
 use Tests\TestCase;
 
 /**
- * Decisione 2026-10-08: Validazione Assegnazioni conta separatamente le
- * designazioni zonali e nazionali (osservatori nei nazionali). Il CRC vede e
- * giudica solo i nazionali; zona e super admin vedono le due colonne e
- * giudicano sul totale.
+ * Validazione Assegnazioni conta separatamente designazioni e disponibilita'
+ * zonali e nazionali (osservatori nei nazionali). Decisione 2026-10-09 (dal
+ * Regolamento Arbitri): per SZR e CRC si giudica Nazionali/Internazionali
+ * sulla colonna Nazionali, gli altri livelli sulla colonna Zonali.
  */
 class ValidazioneZonaliNazionaliTest extends TestCase
 {
@@ -35,60 +35,54 @@ class ValidazioneZonaliNazionaliTest extends TestCase
         return $rows->first(fn (array $r) => ($r['referee'] ?? null) instanceof User && $r['referee']->id === $referee->id);
     }
 
-    public function test_crc_counts_only_national_designations(): void
+    public function test_count_depends_on_referee_level_for_crc_and_zone(): void
     {
-        $referee = $this->createReferee(['zone_id' => 1, 'level' => 'Nazionale']);
-        foreach ([10, 20] as $day) {
-            $this->createAssignment(['tournament_id' => $this->tournament(false, $day)->id, 'user_id' => $referee->id]);
+        $national = $this->createReferee(['zone_id' => 1, 'level' => 'Nazionale']);
+        $regional = $this->createReferee(['zone_id' => 1, 'level' => 'Regionale']);
+        foreach ([$national, $regional] as $referee) {
+            foreach ([10, 20] as $day) {
+                $this->createAssignment(['tournament_id' => $this->tournament(false, $day)->id, 'user_id' => $referee->id]);
+            }
+            $this->createAssignment(['tournament_id' => $this->tournament(true, 30)->id, 'user_id' => $referee->id, 'role' => 'Osservatore']);
         }
-        $this->createAssignment(['tournament_id' => $this->tournament(true, 30)->id, 'user_id' => $referee->id, 'role' => 'Osservatore']);
 
         $service = app(AssignmentValidationService::class);
 
-        // CRC: 1 nazionale (da osservatore), non 3
-        $row = $this->rowFor($service->findUnderassignedReferees(null, 2, true), $referee);
-        $this->assertNotNull($row);
-        $this->assertSame([1, 2, 1, 1], [$row['assignments_count'], $row['zonal_count'], $row['national_count'], $row['national_observers']]);
-        $this->assertNull($this->rowFor($service->findOverassignedReferees(null, 1, true), $referee));
+        foreach (['CRC' => [null, true], 'SZR' => [1, false]] as $who => [$zone, $crc]) {
+            // Nazionale: si conta sulla colonna Nazionali (1), non sulle zonali (2)
+            $row = $this->rowFor($service->findUnderassignedReferees($zone, 2, $crc), $national);
+            $this->assertNotNull($row, $who);
+            $this->assertSame(['national', 1, 2, 1, 1], [$row['basis'], $row['assignments_count'], $row['zonal_count'], $row['national_count'], $row['national_observers']], $who);
+        }
 
-        // SZR: si giudica sul totale (3): con soglia 2 non e' sottoutilizzato
-        $row = $this->rowFor($service->findOverassignedReferees(1, 2, false), $referee);
+        // Regionale (solo la zona lo vede): si conta sulle Zonali (2)
+        $row = $this->rowFor($service->findOverassignedReferees(1, 1, false), $regional);
         $this->assertNotNull($row);
-        $this->assertSame(3, $row['assignments_count']);
-        $this->assertNull($this->rowFor($service->findUnderassignedReferees(1, 2, false), $referee));
-
-        // Super admin: totale (3)
-        $row = $this->rowFor($service->findOverassignedReferees(null, 2, false), $referee);
-        $this->assertNotNull($row);
-        $this->assertSame(3, $row['assignments_count']);
+        $this->assertSame(['zonal', 2], [$row['basis'], $row['assignments_count']]);
+        $this->assertNull($this->rowFor($service->findUnderassignedReferees(1, 2, false), $regional));
     }
 
-    public function test_pages_show_zonal_and_national_columns(): void
+    public function test_pages_show_both_columns_for_crc_and_zone(): void
     {
         $referee = $this->createReferee(['zone_id' => 1, 'level' => 'Nazionale', 'name' => 'Nora Nazionale']);
         $this->createAssignment(['tournament_id' => $this->tournament(false, 10)->id, 'user_id' => $referee->id]);
         $this->createAssignment(['tournament_id' => $this->tournament(true, 20)->id, 'user_id' => $referee->id, 'role' => 'Osservatore']);
+        $this->createAssignment(['tournament_id' => $this->tournament(true, 50)->id, 'user_id' => $referee->id, 'role' => 'Arbitro']);
 
-        // CRC: solo la colonna Nazionali
-        $this->actingAs($this->createNationalAdmin())
-            ->get(route('admin.assignment-validation.underassigned', ['threshold' => 5]))
-            ->assertOk()
-            ->assertSee('Nora Nazionale')
-            ->assertDontSee('>Zonali<', false)
-            ->assertSee('Nazionali')
-            ->assertSee('di cui 1 da osservatore')
-            ->assertSee('designazioni nazionali');
-
-        // SZR: Zonali, Nazionali e Totale
-        $this->actingAs($this->createZoneAdmin(1))
-            ->get(route('admin.assignment-validation.overassigned', ['threshold' => 1]))
-            ->assertOk()
-            ->assertSee('Nora Nazionale')
-            ->assertSeeInOrder(['Zonali', 'Nazionali', 'Totale'])
-            ->assertSee('designazioni in totale');
+        foreach ([$this->createNationalAdmin(), $this->createZoneAdmin(1)] as $admin) {
+            foreach (['underassigned' => ['threshold' => 5], 'overassigned' => ['threshold' => 1], 'workload' => []] as $page => $params) {
+                $response = $this->actingAs($admin)->get(route('admin.assignment-validation.'.$page, $params));
+                $response
+                    ->assertOk()
+                    ->assertSee('Nora Nazionale')
+                    ->assertSeeInOrder(['Zonali', 'Nazionali', 'Disp. zonali', 'Disp. nazionali'])
+                    ->assertSee('di cui 1 da osservatore')
+                    ->assertSee('per gli arbitri Nazionali e Internazionali');
+            }
+        }
     }
 
-    public function test_availability_count_and_cards_always_open(): void
+    public function test_availabilities_are_split_and_cards_always_open(): void
     {
         $referee = $this->createReferee(['zone_id' => 1, 'level' => 'Nazionale', 'name' => 'Dina Dichiarata']);
         foreach ([10, 20] as $day) {
@@ -96,9 +90,9 @@ class ValidazioneZonaliNazionaliTest extends TestCase
         }
         \App\Models\Availability::create(['user_id' => $referee->id, 'tournament_id' => $this->tournament(false, 30)->id, 'submitted_at' => now()]);
 
-        $service = app(AssignmentValidationService::class);
-        $this->assertSame(2, $this->rowFor($service->findUnderassignedReferees(null, 2, true), $referee)['availabilities_count'] ?? null, 'CRC: solo nazionali');
-        $this->assertSame(3, $this->rowFor($service->findUnderassignedReferees(1, 2, false), $referee)['availabilities_count'] ?? null, 'Zona: tutte');
+        $row = $this->rowFor(app(AssignmentValidationService::class)->findUnderassignedReferees(null, 2, true), $referee);
+        $this->assertNotNull($row);
+        $this->assertSame([1, 2], [$row['zonal_availabilities'], $row['national_availabilities']]);
 
         // Nessun sovrassegnato: la scheda si apre lo stesso per cambiare soglia
         $this->actingAs($this->createNationalAdmin())
@@ -135,8 +129,7 @@ class ValidazioneZonaliNazionaliTest extends TestCase
         $this->actingAs($this->createZoneAdmin(1))
             ->get(route('admin.assignment-validation.workload'))
             ->assertOk()
-            ->assertSee('Zeno Zonale')
-            ->assertSeeInOrder(['Zonali', 'Nazionali', 'Totale']);
+            ->assertSee('Zeno Zonale');
 
         $this->actingAs($this->createNationalAdmin())
             ->get(route('admin.assignment-validation.index'))
