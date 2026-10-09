@@ -535,7 +535,7 @@ class AvailabilityController extends Controller
      * Raccoglie email zone admin per i tornei specificati
      *
      * @param  iterable<int, \App\Models\Tournament>  $tournaments
-     * @return array<string, mixed>
+     * @return list<string>
      */
     private function collectZoneAdminEmails($tournaments): array
     {
@@ -557,9 +557,12 @@ class AvailabilityController extends Controller
             ->where('is_active', true)
             ->whereNotNull('email')
             ->pluck('email')
-            ->toArray();
+            ->all();
 
-        return array_unique(array_filter($emails));
+        return array_values(array_unique(array_filter(
+            $emails,
+            fn (mixed $email): bool => is_string($email) && $email !== ''
+        )));
     }
 
     /**

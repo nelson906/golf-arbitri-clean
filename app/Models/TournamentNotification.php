@@ -26,9 +26,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read \App\Models\User|null $sentBy
  * @property-read \App\Models\Tournament $tournament
  *
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static> newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static> newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static> query()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereAttachments($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereDetails($value)

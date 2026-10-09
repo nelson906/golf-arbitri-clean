@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\RefereeCareerService;
+use App\Support\Untrusted;
 use App\Traits\HasZoneVisibility;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -67,7 +68,12 @@ class RefereeCareerController extends Controller
             ->pluck('year')
             ->toArray();
 
-        $allYears = array_unique(array_merge($historyYears, $tournamentYears));
+        // Chiavi JSON e YEAR() arrivano come stringhe o interi: si tengono
+        // solo gli anni validi, come interi, una volta sola.
+        $allYears = array_values(array_unique(array_filter(
+            array_map(fn (mixed $year): int => Untrusted::int($year), array_merge($historyYears, $tournamentYears)),
+            fn (int $year): bool => $year > 0
+        )));
         rsort($allYears);
 
         // Se non ci sono dati, usa range completo

@@ -75,7 +75,7 @@ class RefereeCareerService
                 'career_summary' => [
                     'total_assignments' => $totalAssignments,
                     'total_years' => $totalAssignments > 0 ? $this->calculateActiveYears($currentAssignments) : 0,
-                    'roles_summary' => array_count_values(array_column($currentAssignments, 'role')),
+                    'roles_summary' => array_count_values(array_filter(array_column($currentAssignments, 'role'), 'is_string')),
                     'first_year' => $totalAssignments > 0 ? $this->getFirstYear($currentAssignments) : null,
                 ],
             ];
@@ -304,7 +304,7 @@ class RefereeCareerService
      */
     protected function getYearSummary(array $assignments, ?string $level, array $tournaments = []): array
     {
-        $roleCount = array_count_values(array_column($assignments, 'role'));
+        $roleCount = array_count_values(array_filter(array_column($assignments, 'role'), 'is_string'));
 
         return [
             'total_tournaments' => count($tournaments),
