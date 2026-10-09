@@ -1,12 +1,21 @@
-# Codice morto (2026-10-09): report occasionale, non e' un controllo bloccante.
+# Codice morto (2026-10-09): rapporto occasionale, non e' un controllo bloccante.
 #
-#   composer require --dev shipmonk/dead-code-detector     (una volta, sul Mac)
-#   vendor/bin/phpstan analyse -c phpstan-deadcode.neon --memory-limit=2G
+#   composer codice-morto
+#   (= vendor/bin/phpstan analyse -c phpstan-deadcode.neon --memory-limit=2G)
 #
-# Non vede Blade e rotte: segnala come "inutilizzati" anche metodi, costanti
-# e azioni usati solo nelle viste o nei file di rotta. Ogni voce va verificata
-# (grep anche in resources/views). Rotte, viste e azioni orfane le controlla
-# gia' tests/Feature/OrfaniTest.php.
+# Serve shipmonk/dead-code-detector ^1.4: dalla 1.x riconosce Laravel
+# (rotte -> azioni dei controller, comandi artisan, relazioni e scope
+# Eloquent, viste Blade). La 0.15 non li conosceva e segnalava come
+# "inutilizzati" quasi tutti i controller.
+#
+# Ogni voce va comunque verificata (grep anche in resources/views e routes)
+# prima di togliere qualcosa. Rotte, viste e azioni orfane le controlla gia'
+# tests/Feature/OrfaniTest.php.
 includes:
     - phpstan-strict.neon
     - vendor/shipmonk/dead-code-detector/rules.neon
+
+parameters:
+    # Livello della CI: il 10 (default di phpstan-strict) aggiunge gli errori
+    # "mixed" che non c'entrano con il codice morto.
+    level: 9

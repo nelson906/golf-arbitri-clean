@@ -15,7 +15,7 @@
         "laravel/framework": "^12.0",
         "laravel/sanctum": "^4.2",
         "laravel/tinker": "^2.9",
-        "maatwebsite/excel": "^3.1",
+        "phpoffice/phpspreadsheet": "^5.10",
         "phpoffice/phpword": "^1.4"
     },
     "require-dev": {
@@ -31,7 +31,8 @@
         "nunomaduro/collision": "^8.1",
         "phpstan/phpstan": "^2.1",
         "phpstan/phpstan-phpunit": "^2.0",
-        "phpunit/phpunit": "^11.0.1"
+        "phpunit/phpunit": "^11.0.1",
+        "shipmonk/dead-code-detector": "^1.4"
     },
     "autoload": {
         "psr-4": {
@@ -49,11 +50,21 @@
         }
     },
     "scripts": {
-        "_comment_verifica": "Un comando solo per sapere se una modifica ha rotto qualcosa. Ordine: prima gli analizzatori (secondi), poi le suite (minuti).",
+        "_comment_verifica": "Un comando solo per sapere se una modifica ha rotto qualcosa. Ordine: analizzatori (secondi), suite e build (minuti), poi il giro di tutte le pagine sul DB di MAMP, il controllo dati (solo rapporto, non blocca) e le vulnerabilita' dei pacchetti.",
         "verifica": [
-            "@php vendor/bin/phpstan analyse --memory-limit=1G",
+            "Composer\\Config::disableProcessTimeout",
+            "@php vendor/bin/phpstan analyse -c phpstan-strict.neon --level=9 --memory-limit=1G",
             "npm run qa",
-            "@php vendor/bin/phpunit"
+            "@php vendor/bin/phpunit",
+            "npm run build",
+            "@php artisan golf:giro-pagine",
+            "@php artisan golf:controlla-dati",
+            "@composer audit --abandoned=report"
+        ],
+        "_comment_codice_morto": "Rapporto del codice PHP mai usato (shipmonk). Non blocca: ogni voce va verificata anche in resources/views e routes prima di toglierla.",
+        "codice-morto": [
+            "Composer\\Config::disableProcessTimeout",
+            "@php vendor/bin/phpstan analyse -c phpstan-deadcode.neon --memory-limit=2G"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

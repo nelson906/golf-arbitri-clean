@@ -136,7 +136,10 @@ class AvailabilityManagementTest extends TestCase
         ]);
 
         $response = $this->actingAs($referee)
-            ->delete(route('user.availability.destroy', $availability));
+            ->post(route('user.availability.store'), [
+                'tournament_id' => $tournament->id,
+                'available' => 0,
+            ]);
 
         $response->assertRedirect();
         $this->assertDatabaseMissing('availabilities', [
@@ -145,7 +148,9 @@ class AvailabilityManagementTest extends TestCase
     }
 
     /**
-     * Test: Referee non può rimuovere disponibilità di altri
+     * Test: togliendo la propria disponibilita' quella di un altro arbitro
+     * sullo stesso torneo resta (la rimozione passa solo da store, che
+     * agisce sempre sull'utente collegato).
      */
     public function test_referee_cannot_remove_others_availability(): void
     {
@@ -159,10 +164,13 @@ class AvailabilityManagementTest extends TestCase
             'submitted_at' => now(),
         ]);
 
-        $response = $this->actingAs($referee1)
-            ->delete(route('user.availability.destroy', $availability));
+        $this->actingAs($referee1)->post(route('user.availability.store'), [
+            'tournament_id' => $tournament->id,
+            'available' => 0,
+        ]);
 
-        $response->assertStatus(403);
+        $this->assertDatabaseHas('availabilities', ['id' => $availability->id]);
+        $this->assertFalse(\Illuminate\Support\Facades\Route::has('user.availability.destroy'));
     }
 
     // ==========================================
