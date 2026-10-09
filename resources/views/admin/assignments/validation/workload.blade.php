@@ -3,21 +3,15 @@
 @section('title', 'Carico arbitri')
 
 @section('content')
-@php
-    // Conteggio (2026-10-08): il CRC vede e giudica solo i nazionali; zona e
-    // super admin vedono zonali e nazionali e giudicano sul totale
-    $onlyNational = $basis === 'national';
-    $basisLabel = $onlyNational ? 'nazionali' : 'in totale (zonali + nazionali)';
-    $scale = max(1, $stats['top'], $max);
-@endphp
+@php $scale = max(1, $stats['top'], $max); @endphp
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="flex justify-between items-center mb-6">
         <div>
             <h1 class="text-3xl font-bold text-gray-900">Carico arbitri</h1>
             <p class="mt-2 text-sm text-gray-600">
-                Tutti gli arbitri attivi con le designazioni dell'anno {{ date('Y') }}, dal più carico al meno carico.
-                Si conta sulle designazioni {{ $basisLabel }}.
+                Tutti gli arbitri attivi, dal più carico al meno carico.
             </p>
+            <div class="mt-1">@include('admin.assignments.validation.partials.counts-legend')</div>
         </div>
         <a href="{{ route('admin.assignment-validation.index') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
             ← Torna
@@ -57,15 +51,8 @@
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Arbitro</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Livello</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Zona</th>
-                    @unless($onlyNational)
-                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Zonali</th>
-                    @endunless
-                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Nazionali</th>
-                    @unless($onlyNational)
-                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Totale</th>
-                    @endunless
+                    @include('admin.assignments.validation.partials.counts-head')
                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-1/4">Carico</th>
-                    <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Disponibilità</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
@@ -81,24 +68,12 @@
                         </td>
                         <td class="px-4 py-2 text-sm text-gray-700">{{ $item['referee']->level }}</td>
                         <td class="px-4 py-2 text-sm text-gray-700">{{ $item['referee']->zone->name ?? '-' }}</td>
-                        @unless($onlyNational)
-                            <td class="px-4 py-2 text-center text-sm">{{ $item['zonal_count'] }}</td>
-                        @endunless
-                        <td class="px-4 py-2 text-center text-sm {{ $onlyNational ? 'font-bold' : '' }}">
-                            {{ $item['national_count'] }}
-                            @if($item['national_observers'] > 0)
-                                <div class="text-xs text-gray-500">di cui {{ $item['national_observers'] }} da osservatore</div>
-                            @endif
-                        </td>
-                        @unless($onlyNational)
-                            <td class="px-4 py-2 text-center text-sm font-bold">{{ $n }}</td>
-                        @endunless
+                        @include('admin.assignments.validation.partials.counts-cells')
                         <td class="px-4 py-2">
                             <div class="h-3 bg-gray-100 rounded">
                                 <div class="h-3 rounded {{ $barClass }}" style="width: {{ round($n / $scale * 100) }}%"></div>
                             </div>
                         </td>
-                        <td class="px-4 py-2 text-center text-sm">{{ $item['availabilities_count'] }}</td>
                     </tr>
                 @empty
                     <tr><td colspan="8" class="px-4 py-8 text-center text-gray-500">Nessun arbitro attivo.</td></tr>

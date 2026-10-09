@@ -212,19 +212,6 @@ class AssignmentValidationService
     }
 
     /**
-     * Su quale conteggio si giudica il carico (decisione 2026-10-08):
-     * il CRC vede e giudica solo i tornei nazionali; admin di zona e super
-     * admin vedono zonali e nazionali e giudicano sul totale (la zona designa
-     * anche gli osservatori sui nazionali).
-     *
-     * @return 'national'|'total'
-     */
-    public function countBasis(?int $zoneId, bool $nationalOnly): string
-    {
-        return $nationalOnly ? 'national' : 'total';
-    }
-
-    /**
      * Arbitri attivi con le designazioni dell'anno contate per tipo di torneo:
      * zonal_count (tornei zonali), national_count (tornei nazionali, osservatori
      * compresi), national_observers (di cui osservatori).
@@ -245,10 +232,9 @@ class AssignmentValidationService
                 'assignments as national_count' => $onType(true),
                 'assignments as national_observers' => fn ($q) => $onType(true)($q)
                     ->where('role', \App\Enums\AssignmentRole::Observer->value),
-                // Disponibilita' dichiarate nell'anno (per il CRC solo sui nazionali)
-                'availabilities as availabilities_count' => fn ($q) => $q->whereHas('tournament', fn ($t) => $t
-                    ->whereYear('start_date', $year)
-                    ->when($nationalOnly, fn ($n) => $n->whereHas('tournamentType', fn ($tt) => $tt->where('is_national', true)))),
+                // Disponibilita' dichiarate nell'anno, zonali e nazionali a parte
+                'availabilities as zonal_availabilities' => $onType(false),
+                'availabilities as national_availabilities' => $onType(true),
             ]);
 
         if ($zoneId) {
@@ -263,50 +249,63 @@ class AssignmentValidationService
         return $query;
     }
 
-    /** Il conteggio che conta per chi guarda (vedi countBasis). */
-    private function basisCount(User $referee, string $basis): int
+    /**
+     * Su quale colonna si giudica un arbitro (decisione 2026-10-09, dal
+     * Regolamento Arbitri): Nazionali e Internazionali sulle designazioni
+     * nazionali, tutti gli altri livelli sulle zonali. Uguale per SZR e CRC.
+     *
+     * @return 'national'|'zonal'
+     */
+    public static function basisFor(User $referee): string
     {
-        $zonal = \App\Support\Untrusted::int($referee->getAttribute('zonal_count'));
-        $national = \App\Support\Untrusted::int($referee->getAttribute('national_count'));
+        $level = RefereeLevel::tryFrom((string) $referee->level);
 
-        return $basis === 'national' ? $national : $zonal + $national;
+        return $level !== null && $level->isNational() ? 'national' : 'zonal';
     }
 
     /**
-     * Righe comuni alle due liste.
+     * Riga per arbitro: designazioni e disponibilita' zonali e nazionali; il
+     * conteggio che conta (assignments_count) dipende dal livello.
      *
-     * @return array{referee: User, assignments_count: int, zonal_count: int, national_count: int, national_observers: int, availabilities_count: int}
+     * @return array{referee: User, basis: 'national'|'zonal', assignments_count: int, zonal_count: int, national_count: int, national_observers: int, zonal_availabilities: int, national_availabilities: int, availabilities_count: int}
      */
-    private function countRow(User $referee, string $basis): array
+    private function countRow(User $referee): array
     {
+        $int = fn (string $key): int => \App\Support\Untrusted::int($referee->getAttribute($key));
+        $basis = self::basisFor($referee);
+
         return [
             'referee' => $referee,
-            'availabilities_count' => \App\Support\Untrusted::int($referee->getAttribute('availabilities_count')),
-            'assignments_count' => $this->basisCount($referee, $basis),
-            'zonal_count' => \App\Support\Untrusted::int($referee->getAttribute('zonal_count')),
-            'national_count' => \App\Support\Untrusted::int($referee->getAttribute('national_count')),
-            'national_observers' => \App\Support\Untrusted::int($referee->getAttribute('national_observers')),
+            'basis' => $basis,
+            'assignments_count' => $basis === 'national' ? $int('national_count') : $int('zonal_count'),
+            'zonal_count' => $int('zonal_count'),
+            'national_count' => $int('national_count'),
+            'national_observers' => $int('national_observers'),
+            'zonal_availabilities' => $int('zonal_availabilities'),
+            'national_availabilities' => $int('national_availabilities'),
+            'availabilities_count' => $int('zonal_availabilities') + $int('national_availabilities'),
         ];
     }
 
     /**
      * Carico arbitri (decisione 2026-10-08): TUTTI gli arbitri attivi visibili,
-     * con zonali, nazionali, totale e disponibilita' dell'anno, ordinati dal
-     * piu' carico. Il conteggio che conta e' quello di countBasis().
+     * con designazioni e disponibilita' zonali e nazionali dell'anno, ordinati
+     * dal piu' carico sul conteggio che conta per il loro livello (basisFor).
      *
-     * @return \Illuminate\Support\Collection<int, array{referee: User, assignments_count: int, zonal_count: int, national_count: int, national_observers: int, availabilities_count: int}>
+     * @return \Illuminate\Support\Collection<int, array{referee: User, basis: 'national'|'zonal', assignments_count: int, zonal_count: int, national_count: int, national_observers: int, zonal_availabilities: int, national_availabilities: int, availabilities_count: int}>
      */
     public function refereeWorkload(?int $zoneId = null, bool $nationalOnly = false): Collection
     {
-        $basis = $this->countBasis($zoneId, $nationalOnly);
-
-        return $this->refereesWithCounts($zoneId, $nationalOnly)
+        /** @var \Illuminate\Support\Collection<int, array{referee: User, basis: 'national'|'zonal', assignments_count: int, zonal_count: int, national_count: int, national_observers: int, zonal_availabilities: int, national_availabilities: int, availabilities_count: int}> $rows */
+        $rows = $this->refereesWithCounts($zoneId, $nationalOnly)
             ->with('zone')
             ->orderBy('name')
             ->get()
-            ->map(fn (User $referee) => $this->countRow($referee, $basis))
+            ->map(fn (User $referee) => $this->countRow($referee))
             ->sortByDesc('assignments_count')
             ->values();
+
+        return $rows;
     }
 
     /**
@@ -315,13 +314,11 @@ class AssignmentValidationService
      */
     public function findOverassignedReferees(?int $zoneId = null, int $threshold = 5, bool $nationalOnly = false): Collection
     {
-        $basis = $this->countBasis($zoneId, $nationalOnly);
-
         // Filtro dopo get(): HAVING su un conteggio di sottoquery non e' portabile
         $over = $this->refereesWithCounts($zoneId, $nationalOnly)
             ->with('zone')
             ->get()
-            ->map(fn (User $referee) => $this->countRow($referee, $basis))
+            ->map(fn (User $referee) => $this->countRow($referee))
             ->filter(fn (array $row) => $row['assignments_count'] > $threshold)
             ->sortByDesc('assignments_count')
             ->values();
@@ -343,13 +340,11 @@ class AssignmentValidationService
      */
     public function findUnderassignedReferees(?int $zoneId = null, int $threshold = 2, bool $nationalOnly = false): Collection
     {
-        $basis = $this->countBasis($zoneId, $nationalOnly);
-
         /** @var \Illuminate\Support\Collection<int, array<string, mixed>> $rows */
         $rows = $this->refereesWithCounts($zoneId, $nationalOnly)
             ->with('zone')
             ->get()
-            ->map(fn (User $referee) => $this->countRow($referee, $basis))
+            ->map(fn (User $referee) => $this->countRow($referee))
             ->filter(fn (array $row) => $row['assignments_count'] < $threshold)
             ->sortBy('assignments_count')
             ->map(fn (array $row) => $row + [
