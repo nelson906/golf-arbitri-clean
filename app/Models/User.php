@@ -92,21 +92,6 @@ class User extends Authenticatable
     ];
 
     /**
-     * Referee categories
-     */
-    public const CATEGORY_MASCHILE = 'maschile';
-
-    public const CATEGORY_FEMMINILE = 'femminile';
-
-    public const CATEGORY_MISTO = 'misto';
-
-    public const CATEGORIES = [
-        self::CATEGORY_MASCHILE => 'Maschile',
-        self::CATEGORY_FEMMINILE => 'Femminile',
-        self::CATEGORY_MISTO => 'Misto',
-    ];
-
-    /**
      * RELAZIONI
      */
 

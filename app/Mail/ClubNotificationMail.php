@@ -2,7 +2,6 @@
 
 namespace App\Mail;
 
-use App\Enums\AssignmentRole;
 use App\Helpers\ZoneHelper;
 use App\Models\Tournament;
 use Illuminate\Bus\Queueable;
@@ -30,11 +29,6 @@ class ClubNotificationMail extends Mailable implements ShouldQueue
     public $attachmentPaths;
 
     /**
-     * @var \Illuminate\Support\Collection<int, \App\Models\Assignment>
-     */
-    public $sortedAssignments;
-
-    /**
      * @var string|null
      */
     public $content;
@@ -55,9 +49,6 @@ class ClubNotificationMail extends Mailable implements ShouldQueue
         $this->content = $content;
         $this->attachmentPaths = $attachmentPaths;
         $this->subjectLine = $subjectLine;
-
-        // ORDINA GLI ARBITRI PER GERARCHIA (Direttore → Arbitro → Osservatore)
-        $this->sortedAssignments = AssignmentRole::sortCollection($tournament->assignments);
 
         // FIX A4: dispatch solo dopo il commit della transazione DB attiva
         // (evita invii orfani in caso di rollback). NB: $afterCommit è

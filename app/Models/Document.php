@@ -97,28 +97,6 @@ class Document extends Model
         self::CATEGORY_TEMPLATE => 'Template',
     ];
 
-    // Document types
-    public const TYPE_PDF = 'pdf';
-
-    public const TYPE_DOCUMENT = 'document';
-
-    public const TYPE_SPREADSHEET = 'spreadsheet';
-
-    public const TYPE_IMAGE = 'image';
-
-    public const TYPE_TEXT = 'text';
-
-    public const TYPE_OTHER = 'other';
-
-    public const TYPES = [
-        self::TYPE_PDF => 'PDF',
-        self::TYPE_DOCUMENT => 'Documento',
-        self::TYPE_SPREADSHEET => 'Foglio di calcolo',
-        self::TYPE_IMAGE => 'Immagine',
-        self::TYPE_TEXT => 'Testo',
-        self::TYPE_OTHER => 'Altro',
-    ];
-
     /**
      * Get the uploader (user) who uploaded this document
      *

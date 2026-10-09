@@ -400,55 +400,6 @@ abstract class TestCase extends BaseTestCase
     // ==========================================
 
     /**
-     * Login come specifico user
-     */
-    protected function actingAsUser(User $user): self
-    {
-        $this->actingAs($user);
-
-        return $this;
-    }
-
-    /**
-     * Login come arbitro
-     *
-     * @param  array<string, mixed>  $attributes
-     */
-    protected function actingAsReferee(array $attributes = []): self
-    {
-        $referee = $this->createReferee($attributes);
-        $this->actingAs($referee);
-
-        return $this;
-    }
-
-    /**
-     * Login come admin zona
-     *
-     * @param  array<string, mixed>  $attributes
-     */
-    protected function actingAsZoneAdmin(int $zoneId = 1, array $attributes = []): self
-    {
-        $admin = $this->createZoneAdmin($zoneId, $attributes);
-        $this->actingAs($admin);
-
-        return $this;
-    }
-
-    /**
-     * Login come admin nazionale
-     *
-     * @param  array<string, mixed>  $attributes
-     */
-    protected function actingAsNationalAdmin(array $attributes = []): self
-    {
-        $admin = $this->createNationalAdmin($attributes);
-        $this->actingAs($admin);
-
-        return $this;
-    }
-
-    /**
      * Login come super admin
      *
      * @param  array<string, mixed>  $attributes
@@ -475,27 +426,6 @@ abstract class TestCase extends BaseTestCase
         $this->assertTrue(
             method_exists($model, $relation),
             'Model '.get_class($model)." does not have '{$relation}' relationship"
-        );
-    }
-
-    /**
-     * Assert che user può accedere a una route
-     */
-    protected function assertUserCanAccess(User $user, string $route): void
-    {
-        $response = $this->actingAs($user)->get($route);
-        $response->assertStatus(200);
-    }
-
-    /**
-     * Assert che user NON può accedere a una route
-     */
-    protected function assertUserCannotAccess(User $user, string $route): void
-    {
-        $response = $this->actingAs($user)->get($route);
-        $this->assertTrue(
-            in_array($response->status(), [403, 302]),
-            "User should not be able to access {$route}"
         );
     }
 }

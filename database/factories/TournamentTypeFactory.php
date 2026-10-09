@@ -65,28 +65,4 @@ class TournamentTypeFactory extends Factory
             'short_name' => 'TZ'.fake()->unique()->numberBetween(10, 99),
         ]);
     }
-
-    /**
-     * Tipo giovanile
-     */
-    public function youth(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'is_national' => false,
-            'level' => 'zonale',
-            'required_level' => 'aspirante',
-            'name' => 'Tipo Giovanile',
-            'short_name' => 'TG'.fake()->unique()->numberBetween(10, 99),
-        ]);
-    }
-
-    /**
-     * Inattivo
-     */
-    public function inactive(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'is_active' => false,
-        ]);
-    }
 }

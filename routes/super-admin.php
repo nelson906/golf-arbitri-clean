@@ -43,13 +43,13 @@ Route::prefix('super-admin')->name('super-admin.')->middleware(['auth', 'super_a
     // (view placeholder mai implementata; rimossi anche i link in navigation).
 
     // Notification Clauses
-    Route::controller(\App\Http\Controllers\SuperAdmin\NotificationClauseController::class)->group(function () {
-        Route::get('clauses', 'index')->name('clauses.index');
-        Route::get('clauses/create', 'create')->name('clauses.create');
-        Route::post('clauses', 'store')->name('clauses.store');
-        Route::get('clauses/{clause}/edit', 'edit')->name('clauses.edit');
-        Route::put('clauses/{clause}', 'update')->name('clauses.update');
-        Route::delete('clauses/{clause}', 'destroy')->name('clauses.destroy');
-        Route::post('clauses/{clause}/toggle-active', 'toggleActive')->name('clauses.toggle-active');
-    });
+    // Forma esplicita [Controller, metodo]: Route::controller()->group() non
+    // la riconosce l'analisi del codice morto (composer codice-morto)
+    Route::get('clauses', [\App\Http\Controllers\SuperAdmin\NotificationClauseController::class, 'index'])->name('clauses.index');
+    Route::get('clauses/create', [\App\Http\Controllers\SuperAdmin\NotificationClauseController::class, 'create'])->name('clauses.create');
+    Route::post('clauses', [\App\Http\Controllers\SuperAdmin\NotificationClauseController::class, 'store'])->name('clauses.store');
+    Route::get('clauses/{clause}/edit', [\App\Http\Controllers\SuperAdmin\NotificationClauseController::class, 'edit'])->name('clauses.edit');
+    Route::put('clauses/{clause}', [\App\Http\Controllers\SuperAdmin\NotificationClauseController::class, 'update'])->name('clauses.update');
+    Route::delete('clauses/{clause}', [\App\Http\Controllers\SuperAdmin\NotificationClauseController::class, 'destroy'])->name('clauses.destroy');
+    Route::post('clauses/{clause}/toggle-active', [\App\Http\Controllers\SuperAdmin\NotificationClauseController::class, 'toggleActive'])->name('clauses.toggle-active');
 });

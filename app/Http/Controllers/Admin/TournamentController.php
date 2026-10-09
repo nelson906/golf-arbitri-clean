@@ -11,7 +11,6 @@ use App\Models\TournamentType;
 use App\Models\User;
 use App\Models\Zone;
 use App\Services\CalendarDataService;
-use App\Services\TournamentColorService;
 use App\Support\TournamentVisibility;
 use App\Traits\HasZoneVisibility;
 use App\Traits\TournamentControllerTrait;
@@ -24,9 +23,9 @@ class TournamentController extends Controller
     use HasZoneVisibility;
     use TournamentControllerTrait;
 
-    public function __construct(TournamentColorService $colorService, CalendarDataService $calendarService)
+    public function __construct(CalendarDataService $calendarService)
     {
-        $this->initTournamentServices($colorService, $calendarService);  // ← USA METODO TRAIT
+        $this->initTournamentServices($calendarService);
     }
 
     /**

@@ -74,23 +74,6 @@ class TournamentFactory extends Factory
     }
 
     /**
-     * Torneo in corso
-     */
-    public function active(): static
-    {
-        return $this->state(function (array $attributes) {
-            $startDate = Carbon::now()->subDays(1);
-            $endDate = Carbon::now()->addDays(2);
-
-            return [
-                'start_date' => $startDate,
-                'end_date' => $endDate,
-                'availability_deadline' => (clone $startDate)->subDays(rand(7, 14)),
-            ];
-        });
-    }
-
-    /**
      * In zona specifica
      */
     public function inZone(int $zoneId): static
@@ -114,48 +97,5 @@ class TournamentFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'tournament_type_id' => $typeId,
         ]);
-    }
-
-    /**
-     * Con status specifico
-     */
-    public function withStatus(string $status): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'status' => $status,
-        ]);
-    }
-
-    /**
-     * Torneo stesso giorno
-     */
-    public function singleDay(): static
-    {
-        return $this->state(function (array $attributes) {
-            $startDate = Carbon::now()->addDays(rand(10, 60));
-
-            return [
-                'start_date' => $startDate,
-                'end_date' => $startDate,
-            ];
-        });
-    }
-
-    /**
-     * Con deadline scaduta
-     */
-    public function deadlinePassed(): static
-    {
-        return $this->state(function (array $attributes) {
-            $startDate = Carbon::now()->addDays(5);
-            $endDate = (clone $startDate)->addDays(2);
-            $deadline = Carbon::now()->subDays(1); // Scaduta ieri
-
-            return [
-                'start_date' => $startDate,
-                'end_date' => $endDate,
-                'availability_deadline' => $deadline,
-            ];
-        });
     }
 }

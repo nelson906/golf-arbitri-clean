@@ -19,3 +19,24 @@ parameters:
     # Livello della CI: il 10 (default di phpstan-strict) aggiunge gli errori
     # "mixed" che non c'entrano con il codice morto.
     level: 9
+
+    # Il visualizzatore di viste di sviluppo (solo in locale) usa oggetti finti
+    # i cui metodi li chiamano le viste Blade: non e' codice dell'applicazione.
+    excludePaths:
+        analyse:
+            - routes/dev
+
+    # Falsi allarmi verificati il 2026-10-09. Prima di aggiungerne uno,
+    # controlla con grep in resources/views e routes che sia davvero usato.
+    ignoreErrors:
+        -
+            # Lette solo nelle viste Blade come \App\Models\...::NOME
+            # (admin/communications/index e show, documents/index)
+            identifier: shipmonk.deadConstant
+            message: '#^Unused App\\Models\\(Communication::(TYPES|PRIORITIES)|Document::CATEGORIES)$#'
+        -
+            # Servizi creati dal container di Laravel e iniettati nei
+            # costruttori dei controller: il costruttore non e' mai chiamato
+            # con new, ma lo usa il container
+            identifier: shipmonk.deadMethod
+            message: '#^Unused App\\Services\\\w+::__construct$#'

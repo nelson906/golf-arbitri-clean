@@ -67,11 +67,7 @@ class Communication extends Model
     ];
 
     // Communication statuses
-    public const STATUS_DRAFT = 'draft';
-
     public const STATUS_PUBLISHED = 'published';
-
-    public const STATUS_EXPIRED = 'expired';
 
     // Priority levels
     public const PRIORITY_LOW = 'low';
