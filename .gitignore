@@ -29,3 +29,6 @@ _ide_helper_models.php
 phpstan.neon
 .scannerwork/*
 vendor.zip
+
+# Dump e script locali: mai nel repository pubblico (2026-10-09)
+/storage/*.sql
