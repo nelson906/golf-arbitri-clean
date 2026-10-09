@@ -32,14 +32,6 @@ class AvailabilityStatsService
     }
 
     /**
-     * Ottiene conteggio totale disponibilità.
-     */
-    public function getTotal(?User $user = null): int
-    {
-        return $this->baseQuery($user)->count();
-    }
-
-    /**
      * Ottiene disponibilità per zona.
      * @return \Illuminate\Support\Collection<array-key, mixed>
      */

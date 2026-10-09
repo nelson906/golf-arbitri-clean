@@ -6,7 +6,6 @@ use App\Models\Club;
 use App\Models\TournamentType;
 use App\Models\Zone;
 use App\Services\CalendarDataService;
-use App\Services\TournamentColorService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -15,25 +14,18 @@ use Illuminate\Http\Request;
  */
 trait TournamentControllerTrait
 {
-    /** Valori del selettore periodo. Il default e' TUTTI. */
-    public const PERIODO_TUTTI = 'tutti';
-
+    /** Valori del selettore periodo. Senza nessuno dei due: tutti (default). */
     public const PERIODO_FUTURI = 'futuri';
 
     public const PERIODO_PASSATI = 'passati';
-
-    protected TournamentColorService $colorService;
 
     protected CalendarDataService $calendarService;
 
     /**
      * Inizializza i servizi (da chiamare nel costruttore)
      */
-    protected function initTournamentServices(
-        TournamentColorService $colorService,
-        CalendarDataService $calendarService
-    ): void {
-        $this->colorService = $colorService;
+    protected function initTournamentServices(CalendarDataService $calendarService): void
+    {
         $this->calendarService = $calendarService;
     }
 
@@ -111,7 +103,7 @@ trait TournamentControllerTrait
             $query->where('start_date', '<', Carbon::now()->startOfDay());
         }
 
-        // PERIODO_TUTTI (default): nessun vincolo temporale.
+        // Altrimenti (default 'tutti'): nessun vincolo temporale.
     }
 
     /**

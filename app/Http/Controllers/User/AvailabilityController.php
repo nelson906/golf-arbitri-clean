@@ -12,7 +12,6 @@ use App\Models\TournamentType;
 use App\Models\User;
 use App\Models\Zone;
 use App\Services\CalendarDataService;
-use App\Services\TournamentColorService;
 use App\Support\Untrusted;
 use App\Traits\HasZoneVisibility;
 use Illuminate\Http\JsonResponse;
@@ -28,15 +27,10 @@ class AvailabilityController extends Controller
 {
     use HasZoneVisibility;
 
-    protected TournamentColorService $colorService;
-
     protected CalendarDataService $calendarService;
 
-    public function __construct(
-        TournamentColorService $colorService,
-        CalendarDataService $calendarService,
-    ) {
-        $this->colorService = $colorService;
+    public function __construct(CalendarDataService $calendarService)
+    {
         $this->calendarService = $calendarService;
     }
 

@@ -29,7 +29,6 @@ class CurriculumAnnoCorrenteTest extends TestCase
     use RefreshDatabase;
 
     protected User $referee;
-    protected User $admin;
     protected Zone $zone;
     protected RefereeCareerService $service;
     protected int $annoCorrente;
@@ -57,7 +56,8 @@ class CurriculumAnnoCorrenteTest extends TestCase
             'referee_code' => 'TST' . now()->timestamp,
         ]);
 
-        $this->admin = User::factory()->create([
+        // Un super admin nel DB, come in produzione
+        User::factory()->create([
             'user_type' => 'super_admin',
         ]);
 

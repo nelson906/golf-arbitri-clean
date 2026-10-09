@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Tournament;
 use App\Services\CalendarDataService;
-use App\Services\TournamentColorService;
 use App\Traits\HasZoneVisibility;
 use App\Traits\TournamentControllerTrait;
 use Illuminate\Http\Request;
@@ -19,9 +18,9 @@ class TournamentController extends Controller
     use HasZoneVisibility;
     use TournamentControllerTrait;
 
-    public function __construct(TournamentColorService $colorService, CalendarDataService $calendarService)
+    public function __construct(CalendarDataService $calendarService)
     {
-        $this->initTournamentServices($colorService, $calendarService);  // ← USA METODO TRAIT
+        $this->initTournamentServices($calendarService);
     }
 
     /**

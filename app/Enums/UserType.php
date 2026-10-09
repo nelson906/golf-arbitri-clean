@@ -44,17 +44,4 @@ enum UserType: string
     {
         return $this === self::SuperAdmin;
     }
-
-    /**
-     * Etichetta leggibile per l'interfaccia.
-     */
-    public function label(): string
-    {
-        return match ($this) {
-            self::SuperAdmin    => 'Super Amministratore',
-            self::NationalAdmin => 'Amministratore Nazionale',
-            self::ZoneAdmin     => 'Amministratore Zonale',
-            self::Referee       => 'Arbitro',
-        };
-    }
 }
