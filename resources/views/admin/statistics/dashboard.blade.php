@@ -96,7 +96,7 @@
             <h3 class="text-lg font-medium text-gray-900">🔗 Collegamenti Rapidi</h3>
         </div>
         <div class="p-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 {{ $isNationalAdmin ? 'lg:grid-cols-5' : 'lg:grid-cols-4' }} gap-4">
                 <a href="{{ route('admin.statistics.disponibilita') }}"
                    class="bg-blue-50 hover:bg-blue-100 p-4 rounded-lg border border-blue-200 transition-colors">
                     <div class="flex items-center">
@@ -140,6 +140,19 @@
                         </div>
                     </div>
                 </a>
+
+                @if($isNationalAdmin)
+                <a href="{{ route('admin.statistics.zone') }}"
+                   class="bg-indigo-50 hover:bg-indigo-100 p-4 rounded-lg border border-indigo-200 transition-colors">
+                    <div class="flex items-center">
+                        <span class="text-2xl mr-3">🗺️</span>
+                        <div>
+                            <div class="font-medium text-indigo-900">Zone</div>
+                            <div class="text-sm text-indigo-600">Confronto tra le zone</div>
+                        </div>
+                    </div>
+                </a>
+                @endif
             </div>
         </div>
     </div>

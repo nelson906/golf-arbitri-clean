@@ -82,8 +82,10 @@ class Decisioni20261003SecondaParteTest extends TestCase
 
         Carbon::setTestNow(now()->addDays(5)->setTime(18, 0));
 
-        $this->actingAs($referee)->delete(route('user.availability.destroy', $availability))
-            ->assertSessionHasNoErrors();
+        $this->actingAs($referee)->post(route('user.availability.store'), [
+            'tournament_id' => $tournament->id,
+            'available' => 0,
+        ])->assertSessionHasNoErrors();
 
         $this->assertDatabaseMissing('availabilities', ['id' => $availability->id]);
     }

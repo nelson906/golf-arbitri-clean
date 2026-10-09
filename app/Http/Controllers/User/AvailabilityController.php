@@ -208,38 +208,6 @@ class AvailabilityController extends Controller
     }
 
     /**
-     * Remove a single availability
-     */
-    public function destroy(Availability $availability): RedirectResponse
-    {
-        $user = $this->authUser();
-
-        if ((int) $availability->user_id !== (int) $user->id) {
-            abort(403);
-        }
-
-        $tournament = $availability->tournament;
-
-        // Decisione 2026-10-03 (P2): dopo la scadenza la disponibilita' resta
-        if ($tournament && ! $tournament->acceptsAvailability()) {
-            return back()->withErrors([
-                'availability' => 'La scadenza è passata: la disponibilità non si può più ritirare. Contatta la zona o il CRC.',
-            ]);
-        }
-
-        $availability->delete();
-
-        // FIX A5: notifica arbitro + SZR/CRC anche su questo percorso di rimozione
-        // (prima solo store(available=false) notificava — workflow asimmetrico)
-        $mailWarning = $tournament
-            ? $this->handleSingleNotification($user, $tournament, 'removed')
-            : null;
-
-        return back()->with('success', 'Disponibilità rimossa con successo.')
-            ->with('warning', $mailWarning);
-    }
-
-    /**
      * Salva le disponibilita' della pagina "Dichiara Disponibilita'".
      *
      * Decisione 2026-10-03 (P1, P2): le disponibilita' devono rimanere SEMPRE.

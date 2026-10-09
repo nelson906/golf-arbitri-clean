@@ -119,8 +119,10 @@ class Decisioni20261003Test extends TestCase
 
         $availability = Availability::create(['user_id' => $referee->id, 'tournament_id' => $expired->id, 'submitted_at' => now()]);
 
-        $this->actingAs($referee)->delete(route('user.availability.destroy', $availability))
-            ->assertSessionHasErrors('availability');
+        $this->actingAs($referee)->post(route('user.availability.store'), [
+            'tournament_id' => $expired->id,
+            'available' => 0,
+        ])->assertSessionHasErrors('availability');
 
         $this->assertDatabaseHas('availabilities', ['id' => $availability->id]);
     }

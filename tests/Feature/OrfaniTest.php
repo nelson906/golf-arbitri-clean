@@ -19,17 +19,8 @@ class OrfaniTest extends TestCase
         'routes' => [
             // Import guidato: solo l'account del .env, senza voce di menu (D3, 2026-10-08)
             'admin.federgolf-import.index',
-            // Da decidere con Alberto (2026-10-09): nessun link li raggiunge
-            'admin.statistics.zone',
-            'user.availability.destroy',
         ],
-        'views' => [
-            // Da decidere con Alberto (2026-10-09): componenti Breeze rimasti
-            // senza uso dopo la rimozione dell'auto-cancellazione del profilo
-            'components.danger-button',
-            'components.modal',
-            'components.secondary-button',
-        ],
+        'views' => [],
         'actions' => [],
     ];
 
