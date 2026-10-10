@@ -286,6 +286,7 @@
         </main>
     </div>
 
+    @include('layouts.partials.page-loading')
     @stack('scripts')
 </body>
 

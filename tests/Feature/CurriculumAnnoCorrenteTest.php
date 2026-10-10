@@ -316,6 +316,54 @@ class CurriculumAnnoCorrenteTest extends TestCase
     // =========================================================================
 
     /**
+     * preload() (pagina Curricula, Controllo dati) carica tutto in due query:
+     * i numeri devono essere gli stessi del calcolo arbitro per arbitro, con
+     * e senza storico archiviato.
+     */
+    #[\PHPUnit\Framework\Attributes\Test]
+    public function preload_da_gli_stessi_numeri_del_calcolo_singolo(): void
+    {
+        $this->creaStoricoArchiviato($this->referee, $this->annoPrecedente, 3);
+        $senzaStorico = User::factory()->create(['user_type' => 'referee', 'zone_id' => $this->zone->id]);
+
+        foreach ($this->creaTorneiAnnoCorrente(2) as $i => $torneo) {
+            Assignment::factory()->forUser($this->referee)->forTournament($torneo)->create(['role' => 'Arbitro']);
+            Assignment::factory()->forUser($senzaStorico)->forTournament($torneo)
+                ->create(['role' => $i === 0 ? 'Arbitro' : 'Osservatore']);
+        }
+
+        $referees = [User::findOrFail($this->referee->id), User::findOrFail($senzaStorico->id)];
+        $calcola = function (RefereeCareerService $service) use ($referees): array {
+            $out = [];
+            foreach ($referees as $referee) {
+                $career = $service->getCareerData($referee);
+                $out[$referee->id] = [
+                    'summary' => $career['career_summary'],
+                    'anni' => array_map(fn (mixed $lista): int => is_array($lista) ? count($lista) : 0, $this->arrayAt($career, 'assignments')),
+                    'corrente' => $service->getYearData($referee, $this->annoCorrente),
+                    'precedente' => $service->getYearData($referee, $this->annoPrecedente),
+                ];
+            }
+
+            return $out;
+        };
+
+        $singolo = $calcola(new RefereeCareerService);
+
+        $inBlocco = new RefereeCareerService;
+        $inBlocco->preload($referees);
+        \Illuminate\Support\Facades\DB::enableQueryLog();
+        $bloccato = $calcola($inBlocco);
+
+        $this->assertEquals($singolo, $bloccato);
+        $this->assertSame(2, $bloccato[$this->referee->id]['corrente']['total_tournaments']);
+        $this->assertSame(3, $bloccato[$this->referee->id]['precedente']['total_tournaments']);
+        $this->assertSame(['Arbitro' => 1, 'Osservatore' => 1], $bloccato[$senzaStorico->id]['corrente']['roles']);
+        // Dopo il preload nessuna query per arbitro
+        $this->assertCount(0, \Illuminate\Support\Facades\DB::getQueryLog());
+    }
+
+    /**
      * Crea un record RefereeCareerHistory con $numAssignments assignments
      * archiviati per l'anno specificato.
      */

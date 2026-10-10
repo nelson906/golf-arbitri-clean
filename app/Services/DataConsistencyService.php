@@ -341,9 +341,12 @@ final class DataConsistencyService
         $career = app(RefereeCareerService::class);
         $workload = app(AssignmentValidationService::class)->refereeWorkload()->keyBy(fn (array $r) => $r['referee']->id);
 
-        $rows = User::with(['zone', 'assignments.tournament'])
+        $referees = User::with(['zone', 'assignments.tournament'])
             ->where('user_type', 'referee')->where('is_active', true)
-            ->get()
+            ->get();
+        $career->preload($referees);
+
+        $rows = $referees
             ->map(function (User $u) use ($year, $career, $workload) {
                 $live = $u->assignments->filter(fn (Assignment $a) => $a->tournament->start_date->year === $year)->count();
                 $cv = $career->getYearData($u, $year)['total_tournaments'];

@@ -11,6 +11,62 @@ use Illuminate\Support\Collection;
 class RefereeCareerService
 {
     /**
+     * Dati caricati in blocco da preload() per le pagine con molti arbitri
+     * (Curricula, Controllo dati): stessi risultati, una query per tabella
+     * invece di quattro per arbitro.
+     *
+     * @var array<int, RefereeCareerHistory|null>
+     */
+    private array $preloadedHistory = [];
+
+    /** @var array<int, Collection<int, Assignment>> */
+    private array $preloadedAssignments = [];
+
+    private bool $preloaded = false;
+
+    /**
+     * Carica in blocco storico e designazioni degli arbitri indicati.
+     *
+     * @param  iterable<int, User>  $referees
+     */
+    public function preload(iterable $referees): void
+    {
+        $ids = collect($referees)->map(fn (User $u): int => (int) $u->id)->unique()->values()->all();
+
+        $history = RefereeCareerHistory::whereIn('user_id', $ids)->get()->keyBy('user_id');
+        $assignments = Assignment::whereIn('user_id', $ids)->with('tournament')->orderBy('tournament_id')->get()->groupBy('user_id');
+
+        foreach ($ids as $id) {
+            $this->preloadedHistory[$id] = $history->get($id);
+            $this->preloadedAssignments[$id] = $assignments->get($id) ?? new \Illuminate\Database\Eloquent\Collection;
+        }
+        $this->preloaded = true;
+    }
+
+    private function isPreloaded(User $referee): bool
+    {
+        return $this->preloaded && array_key_exists((int) $referee->id, $this->preloadedHistory);
+    }
+
+    private function careerHistoryFor(User $referee): ?RefereeCareerHistory
+    {
+        if ($this->isPreloaded($referee)) {
+            return $this->preloadedHistory[(int) $referee->id];
+        }
+
+        return RefereeCareerHistory::where('user_id', $referee->id)->first();
+    }
+
+    /**
+     * Designazioni dell'arbitro (con torneo) gia' caricate da preload().
+     *
+     * @return Collection<int, Assignment>
+     */
+    private function preloadedAssignmentsOf(User $referee): Collection
+    {
+        return $this->preloadedAssignments[(int) $referee->id];
+    }
+    /**
      * Get career data for a referee, optionally filtered by year
      *
      * @return array<string, mixed>
@@ -18,7 +74,7 @@ class RefereeCareerService
     public function getCareerData(User $referee, ?int $year = null): array
     {
         // Prendi i dati storici dalla tabella referee_career_history
-        $careerHistory = RefereeCareerHistory::where('user_id', $referee->id)->first();
+        $careerHistory = $this->careerHistoryFor($referee);
 
         if ($careerHistory) {
             // Usa i dati storici
@@ -123,7 +179,7 @@ class RefereeCareerService
     public function getYearData(User $referee, int $year): array
     {
         // Prendi i dati dal career history se disponibili
-        $careerHistory = RefereeCareerHistory::where('user_id', $referee->id)->first();
+        $careerHistory = $this->careerHistoryFor($referee);
 
         if ($careerHistory) {
             $yearKey = (string) $year;
@@ -176,9 +232,11 @@ class RefereeCareerService
      */
     protected function getCurrentAssignmentsData(User $referee): array
     {
-        $assignments = Assignment::where('user_id', $referee->id)
-            ->with('tournament')
-            ->get()
+        $source = $this->isPreloaded($referee)
+            ? $this->preloadedAssignmentsOf($referee)
+            : Assignment::where('user_id', $referee->id)->with('tournament')->get();
+
+        $assignments = $source
             ->filter(function ($assignment) {
                 return $assignment->tournament && $assignment->tournament->start_date;
             })
@@ -208,12 +266,17 @@ class RefereeCareerService
      */
     protected function getAssignmentsForYear(User $referee, int $year): array
     {
-        $assignments = Assignment::where('user_id', $referee->id)
-            ->whereHas('tournament', function ($q) use ($year) {
-                $q->whereYear('start_date', $year);
-            })
-            ->with('tournament')
-            ->get()
+        $source = $this->isPreloaded($referee)
+            ? $this->preloadedAssignmentsOf($referee)
+                ->filter(fn (Assignment $a): bool => $a->tournament?->start_date !== null && $a->tournament->start_date->year === $year)
+            : Assignment::where('user_id', $referee->id)
+                ->whereHas('tournament', function ($q) use ($year) {
+                    $q->whereYear('start_date', $year);
+                })
+                ->with('tournament')
+                ->get();
+
+        $assignments = $source
             ->map(function ($assignment) {
                 return [
                     'id' => $assignment->id,
@@ -235,11 +298,19 @@ class RefereeCareerService
      */
     protected function getTournamentsForYear(User $referee, int $year): array
     {
-        $tournaments = Tournament::whereYear('start_date', $year)
-            ->whereHas('assignments', function ($q) use ($referee) {
-                $q->where('user_id', $referee->id);
-            })
-            ->get()
+        $source = $this->isPreloaded($referee)
+            ? $this->preloadedAssignmentsOf($referee)
+                ->pluck('tournament')
+                ->filter(fn (mixed $t): bool => $t instanceof Tournament && $t->start_date !== null && $t->start_date->year === $year)
+                ->unique('id')
+                ->sortBy('id')
+            : Tournament::whereYear('start_date', $year)
+                ->whereHas('assignments', function ($q) use ($referee) {
+                    $q->where('user_id', $referee->id);
+                })
+                ->get();
+
+        $tournaments = $source
             ->map(function ($tournament) {
                 return [
                     'id' => $tournament->id,

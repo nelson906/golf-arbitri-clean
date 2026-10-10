@@ -11,36 +11,39 @@
         <span class="ml-1 inline-block px-2 rounded bg-amber-100 text-amber-800">da verificare</span>
     </p>
 
-    <div class="space-y-3">
-        @foreach($checks as $check)
-            @php $n = count($check['rows']); @endphp
-            <details class="bg-white shadow rounded-lg" @if($n > 0 && $check['level'] === 'errore') open @endif>
-                <summary class="px-4 py-3 cursor-pointer flex items-center gap-3">
-                    @if($n === 0)
-                        <span class="w-10 text-center px-2 py-0.5 rounded bg-green-100 text-green-800 text-sm font-bold">✓</span>
-                    @else
-                        <span class="w-10 text-center px-2 py-0.5 rounded text-sm font-bold {{ $check['level'] === 'errore' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800' }}">{{ $n }}</span>
-                    @endif
-                    <span class="font-medium text-gray-900">{{ $check['title'] }}</span>
-                </summary>
-                <div class="px-4 pb-4">
-                    <p class="text-xs text-gray-500 mb-2">{{ $check['why'] }}</p>
-                    @if($n > 0)
-                        <ul class="text-sm space-y-1">
-                            @foreach($check['rows'] as $row)
-                                <li>
-                                    @if($row['url'])
-                                        <a href="{{ $row['url'] }}" class="text-blue-700 hover:underline">{{ $row['label'] }}</a>
-                                    @else
-                                        {{ $row['label'] }}
-                                    @endif
-                                </li>
-                            @endforeach
-                        </ul>
-                    @endif
-                </div>
-            </details>
-        @endforeach
+    <div id="controllo-risultati" data-url="{{ route('super-admin.data-check.index', ['parziale' => 1]) }}">
+        <div class="bg-white shadow rounded-lg px-4 py-10 flex flex-col items-center gap-3 text-gray-600">
+            <svg class="animate-spin h-10 w-10 text-blue-600" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <p class="text-sm">Controllo in corso: può richiedere qualche secondo…</p>
+        </div>
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    (function () {
+        const box = document.getElementById('controllo-risultati');
+        if (!box) {
+            return;
+        }
+        fetch(box.dataset.url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+                return response.text();
+            })
+            .then(function (html) {
+                box.innerHTML = html;
+            })
+            .catch(function (error) {
+                box.innerHTML = '<div class="bg-red-50 text-red-800 rounded-lg p-4 text-sm">'
+                    + 'Il controllo non è riuscito (' + error.message + '). Ricarica la pagina per riprovare.</div>';
+            });
+    })();
+</script>
+@endpush
