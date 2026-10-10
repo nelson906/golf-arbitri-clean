@@ -9,6 +9,8 @@ use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
@@ -23,7 +25,7 @@ use Illuminate\Support\Facades\Route;
  */
 class PageTourCommand extends Command
 {
-    protected $signature = 'golf:giro-pagine';
+    protected $signature = 'golf:giro-pagine {--letture : elenca le pagine con piu\' letture del database}';
 
     protected $description = 'Apre tutte le pagine per ogni ruolo e segnala quelle che vanno in errore';
 
@@ -63,6 +65,14 @@ class PageTourCommand extends Command
 
         $requests = 0;
         $errors = [];
+        $reads = [];
+        $countReads = (bool) $this->option('letture');
+        $queries = [];
+        if ($countReads) {
+            DB::listen(function (QueryExecuted $q) use (&$queries): void {
+                $queries[] = [$q->sql, $q->time];
+            });
+        }
         foreach (Route::getRoutes()->getRoutes() as $route) {
             $name = $route->getName();
             if ($name === null || ! in_array('GET', $route->methods(), true)
@@ -95,8 +105,22 @@ class PageTourCommand extends Command
                     if ($session instanceof \Illuminate\Contracts\Session\Session) {
                         $request->setLaravelSession($session);
                     }
+                    $queries = [];
                     $response = $kernel->handle($request);
                     $requests++;
+                    if ($countReads) {
+                        // La stessa query ripetuta molte volte = una lettura per riga (N+1)
+                        $same = array_count_values(array_column($queries, 0));
+                        arsort($same);
+                        $reads[] = [
+                            'who' => $who,
+                            'url' => $url,
+                            'n' => count($queries),
+                            'ms' => (int) array_sum(array_column($queries, 1)),
+                            'top' => (int) reset($same),
+                            'sql' => mb_substr((string) key($same), 0, 110),
+                        ];
+                    }
                     if ($response->getStatusCode() >= 500) {
                         $ex = $response->exception ?? null;
                         $errors[] = "{$who}  {$url}  ".($ex ? class_basename($ex).': '.mb_substr($ex->getMessage(), 0, 150) : '');
@@ -107,6 +131,13 @@ class PageTourCommand extends Command
         }
 
         $this->info("Pagine aperte: {$requests} con ".count($users).' utenti');
+        if ($countReads) {
+            usort($reads, fn (array $a, array $b): int => $b['n'] <=> $a['n']);
+            $this->table(
+                ['Letture', 'ms', 'Ripetuta', 'Pagina', 'Utente', 'Query piu\' ripetuta'],
+                array_map(fn (array $r): array => [$r['n'], $r['ms'], $r['top'].'x', $r['url'], $r['who'], $r['sql']], array_slice($reads, 0, 25))
+            );
+        }
         if ($errors === []) {
             $this->info('Nessuna pagina in errore.');
 

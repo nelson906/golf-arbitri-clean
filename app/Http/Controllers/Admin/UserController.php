@@ -177,7 +177,7 @@ class UserController extends Controller
         $zones = $this->zonesForNewUser($currentUser);
 
         // Circoli disponibili (tutti, anche fuori zona)
-        $clubs = \App\Models\Club::orderBy('name')->get();
+        $clubs = \App\Models\Club::with('zone')->orderBy('name')->get();
 
         $userTypes = UserManagement::assignableTypes($currentUser);
 
@@ -253,7 +253,7 @@ class UserController extends Controller
             : Zone::whereKey($user->zone_id)->get();
 
         // Circoli disponibili (tutti, anche fuori zona)
-        $clubs = \App\Models\Club::where('is_active', true)
+        $clubs = \App\Models\Club::with('zone')->where('is_active', true)
             ->orderBy('name')
             ->get();
 

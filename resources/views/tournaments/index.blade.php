@@ -154,11 +154,11 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
                                     <div class="text-sm text-gray-900">
-                                        {{ $tournament->assignments()->count() }} /
+                                        {{ $tournament->assignments_count }} /
                                         {{ $tournament->tournamentType->min_referees }}
                                     </div>
                                     <div class="text-xs text-gray-500">
-                                        Disp: {{ $tournament->availabilities()->count() }}
+                                        Disp: {{ $tournament->availabilities_count }}
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -167,9 +167,9 @@
                                             class="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
                                             Visualizza
                                         </a>
-                                        @if ($tournament->assignments()->count() > 0)
+                                        @if ($tournament->assignments_count > 0)
                                             <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
-                                                {{ $tournament->assignments()->count() }} assegnati
+                                                {{ $tournament->assignments_count }} assegnati
                                             </span>
                                         @endif
                                     </div>

@@ -35,7 +35,7 @@ class TournamentController extends Controller
     {
         $user = $this->authUser();
 
-        $query = Tournament::with(['club.zone', 'tournamentType', 'notification']);
+        $query = Tournament::with(['club.zone', 'tournamentType', 'notification'])->withCount(['assignments', 'availabilities']);
         $this->applyTournamentVisibility($query, $user);
 
         // Filtro status specifico admin
@@ -325,7 +325,7 @@ class TournamentController extends Controller
             ->sortBy('user.name');
 
         // Get all eligible referees who haven't declared availability
-        $eligibleReferees = \App\Models\User::where('user_type', '=', 'referee')
+        $eligibleReferees = \App\Models\User::with('zone')->where('user_type', '=', 'referee')
             ->where('is_active', '=', true)
 
             // Nazionale: il CRC (e il super admin) vede gli arbitri Nazionali e

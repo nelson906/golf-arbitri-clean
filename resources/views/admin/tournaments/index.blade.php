@@ -214,16 +214,16 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                 <div class="text-sm text-gray-900">
-                                    @if ($tournament->assignments()->count() > 0)
+                                    @if ($tournament->assignments_count > 0)
                                         <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
-                                            {{ $tournament->assignments()->count() }} /
+                                            {{ $tournament->assignments_count }} /
                                             {{ $tournament->tournamentType->min_referees }}
                                         </span>
                                     @endif
 
                                 </div>
                                 <div class="text-xs text-gray-500">
-                                    Disp: {{ $tournament->availabilities()->count() }}
+                                    Disp: {{ $tournament->availabilities_count }}
                                 </div>
                             </td>
 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -240,7 +240,7 @@
            class="prepare-notification-btn bg-indigo-600 text-white px-3 py-1 rounded text-xs hover:bg-indigo-700 w-full max-w-[160px] text-center"
            data-tournament-id="{{ $tournament->id }}"
            data-tournament-name="{{ $tournament->name }}"
-           data-assignments-count="{{ $tournament->assignments()->count() }}">
+           data-assignments-count="{{ $tournament->assignments_count }}">
             @if($tournament->notification && $tournament->notification->sent_at)
                 📝 Modifica/Reinvia
             @else
