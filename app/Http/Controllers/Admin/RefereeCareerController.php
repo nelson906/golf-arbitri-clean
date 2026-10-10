@@ -118,6 +118,10 @@ class RefereeCareerController extends Controller
         $query->orderBy($sort, $direction);
         $referees = $query->get();
 
+        // Storico e designazioni di tutti gli arbitri in due query, invece di
+        // quattro per arbitro (la pagina impiegava secondi)
+        $this->careerService->preload($referees);
+
         $stats = $referees->map(function ($referee) use ($year) {
             $fullCareerData = $this->careerService->getCareerData($referee);
             $yearSpecificData = null;

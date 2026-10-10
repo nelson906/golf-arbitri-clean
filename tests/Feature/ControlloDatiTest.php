@@ -66,13 +66,27 @@ class ControlloDatiTest extends TestCase
 
     public function test_page_and_command(): void
     {
-        $this->actingAs($this->createSuperAdmin())
+        $super = $this->createSuperAdmin();
+
+        // La pagina si apre subito con la rotella, senza eseguire i controlli
+        $this->actingAs($super)
             ->get(route('super-admin.data-check.index'))
             ->assertOk()
             ->assertSee('Controllo dati')
-            ->assertSee('Nome da gara nazionale ma tipo zonale');
+            ->assertSee('Controllo in corso')
+            ->assertSee(route('super-admin.data-check.index', ['parziale' => 1]), false)
+            ->assertDontSee('Nome da gara nazionale ma tipo zonale');
 
-        $this->actingAs($this->createNationalAdmin())->get(route('super-admin.data-check.index'))->assertForbidden();
+        // I risultati arrivano a parte, senza il layout
+        $this->actingAs($super)
+            ->get(route('super-admin.data-check.index', ['parziale' => 1]))
+            ->assertOk()
+            ->assertSee('Nome da gara nazionale ma tipo zonale')
+            ->assertDontSee('<html', false);
+
+        $crc = $this->createNationalAdmin();
+        $this->actingAs($crc)->get(route('super-admin.data-check.index'))->assertForbidden();
+        $this->actingAs($crc)->get(route('super-admin.data-check.index', ['parziale' => 1]))->assertForbidden();
 
         $this->artisanCommand('golf:controlla-dati')->assertExitCode(0);
     }
