@@ -32,7 +32,7 @@ class TournamentController extends Controller
     {
         $user = $this->authUser();
 
-        $query = Tournament::with(['tournamentType', 'zone', 'club']);
+        $query = Tournament::with(['tournamentType', 'zone', 'club'])->withCount(['assignments', 'availabilities']);
         $this->applyTournamentVisibility($query, $user);
 
         // Usa metodo condiviso dal trait

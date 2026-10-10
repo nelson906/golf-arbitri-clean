@@ -102,5 +102,36 @@ class ControlloDatiTest extends TestCase
         $this->createSuperAdmin();
 
         $this->artisanCommand('golf:giro-pagine')->expectsOutputToContain('Nessuna pagina in errore')->assertExitCode(0);
+
+        // Con --letture elenca anche le pagine con piu' query
+        $this->artisanCommand('golf:giro-pagine', ['--letture' => true])
+            ->expectsOutputToContain('Letture')
+            ->expectsOutputToContain('Nessuna pagina in errore')
+            ->assertExitCode(0);
+    }
+
+    /**
+     * Le liste tornei contano designazioni e disponibilita' con una query
+     * sola (withCount), non una per riga.
+     */
+    public function test_tournament_lists_do_not_count_row_by_row(): void
+    {
+        $club = $this->createClub(['zone_id' => 1]);
+        foreach (range(1, 6) as $i) {
+            $t = $this->createTournament(['club_id' => $club->id, 'zone_id' => 1]);
+            $this->createAssignment(['tournament_id' => $t->id, 'user_id' => $this->createReferee(['zone_id' => 1])->id]);
+        }
+        $super = $this->createSuperAdmin();
+
+        foreach (['admin.tournaments.index', 'tournaments.index'] as $route) {
+            \Illuminate\Support\Facades\DB::flushQueryLog();
+            \Illuminate\Support\Facades\DB::enableQueryLog();
+            $this->actingAs($super)->get(route($route))->assertOk();
+            $perRow = collect(\Illuminate\Support\Facades\DB::getQueryLog())
+                ->filter(fn (array $q): bool => str_starts_with($q['query'], 'select count(*) as aggregate from `assignments` where `assignments`.`tournament_id` = ?')
+                    || str_starts_with($q['query'], 'select count(*) as aggregate from `availabilities` where `availabilities`.`tournament_id` = ?'));
+            \Illuminate\Support\Facades\DB::disableQueryLog();
+            $this->assertCount(0, $perRow, $route);
+        }
     }
 }
