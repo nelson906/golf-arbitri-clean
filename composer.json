@@ -50,18 +50,19 @@
         }
     },
     "scripts": {
-        "_comment_verifica": "Un comando solo per sapere se una modifica ha rotto qualcosa. Ordine: analizzatori (secondi), suite e build (minuti), poi il giro di tutte le pagine sul DB di MAMP, il controllo dati (solo rapporto, non blocca) e le vulnerabilita' dei pacchetti.",
+        "_comment_verifica": "Un comando solo per sapere se una modifica ha rotto qualcosa. Ordine: analizzatori e codice morto, suite e build, poi il giro di tutte le pagine sul DB di MAMP con le pagine che leggono di piu' il database, il controllo dati (solo rapporto, non blocca) e le vulnerabilita' dei pacchetti.",
         "verifica": [
             "Composer\\Config::disableProcessTimeout",
             "@php vendor/bin/phpstan analyse -c phpstan-strict.neon --level=9 --memory-limit=1G",
+            "@codice-morto",
             "npm run qa",
             "@php vendor/bin/phpunit",
             "npm run build",
-            "@php artisan golf:giro-pagine",
+            "@php artisan golf:giro-pagine --letture",
             "@php artisan golf:controlla-dati",
             "@composer audit --abandoned=report"
         ],
-        "_comment_codice_morto": "Rapporto del codice PHP mai usato (shipmonk). Non blocca: ogni voce va verificata anche in resources/views e routes prima di toglierla.",
+        "_comment_codice_morto": "Codice PHP mai usato (shipmonk). E' a zero dal 2026-10-09 ed e' dentro composer verifica: una voce nuova la fa fallire. Prima di togliere, verifica anche in resources/views e routes; un falso allarme va in phpstan-deadcode.neon con il motivo.",
         "codice-morto": [
             "Composer\\Config::disableProcessTimeout",
             "@php vendor/bin/phpstan analyse -c phpstan-deadcode.neon --memory-limit=2G"

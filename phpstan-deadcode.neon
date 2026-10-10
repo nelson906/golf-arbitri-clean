@@ -1,4 +1,5 @@
-# Codice morto (2026-10-09): rapporto occasionale, non e' un controllo bloccante.
+# Codice morto (2026-10-09). A zero dal 2026-10-09 e dentro composer verifica
+# (dal 2026-10-10): una voce nuova fa fallire la verifica.
 #
 #   composer codice-morto
 #   (= vendor/bin/phpstan analyse -c phpstan-deadcode.neon --memory-limit=2G)
