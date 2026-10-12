@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Start MySQL (preinstallato sul runner, niente Docker Hub)
         run: |
@@ -55,7 +55,7 @@ jobs:
           tools: composer:v2
 
       - name: Cache Composer
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: vendor
           key: composer-${{ hashFiles('composer.lock') }}
@@ -65,9 +65,9 @@ jobs:
         run: composer install --prefer-dist --no-interaction --no-progress
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Build front-end assets
@@ -120,7 +120,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup PHP 8.5
         uses: shivammathur/setup-php@v2
@@ -134,9 +134,9 @@ jobs:
         run: composer install --no-dev --optimize-autoloader --prefer-dist --no-interaction --no-progress
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Build front-end (Vite -> public/build)
