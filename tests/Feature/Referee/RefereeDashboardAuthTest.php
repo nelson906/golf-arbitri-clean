@@ -12,7 +12,8 @@ use Tests\TestCase;
  * in routes/referee/dashboard.php.
  *
  * AGGIORNAMENTO (audit 2026-07): le route legacy /referee/quadranti/* sono
- * state RIMOSSE (mai referenziate; la versione attiva è user.quadranti.*).
+ * state RIMOSSE (mai referenziate). Dal 2026-10 il simulatore vive nell'app
+ * Schema Partenze: qui resta solo il link user.partenze.
  * I test relativi ora verificano che NON esistano più.
  *
  * @see routes/referee/dashboard.php
@@ -88,7 +89,8 @@ class RefereeDashboardAuthTest extends TestCase
 
     /**
      * Regressione inversa (audit 2026-07): le route legacy quadranti
-     * NON devono più esistere — la versione attiva è user.quadranti.*.
+     * NON devono più esistere. Dal 2026-10 nemmeno user.quadranti.*: il
+     * simulatore vive in Schema Partenze, raggiunto con user.partenze.
      */
     public function test_legacy_referee_quadranti_routes_are_removed(): void
     {
@@ -97,9 +99,14 @@ class RefereeDashboardAuthTest extends TestCase
             "La route legacy 'referee.quadranti.index' deve essere stata rimossa"
         );
 
-        $this->assertTrue(
+        $this->assertFalse(
             \Illuminate\Support\Facades\Route::has('user.quadranti.index'),
-            "La route attiva 'user.quadranti.index' deve esistere"
+            "Il simulatore e' stato spostato in Schema Partenze"
+        );
+
+        $this->assertTrue(
+            \Illuminate\Support\Facades\Route::has('user.partenze'),
+            "Il link 'user.partenze' verso Schema Partenze deve esistere"
         );
     }
 }

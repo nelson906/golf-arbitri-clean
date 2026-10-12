@@ -161,10 +161,12 @@
             📋 Il Mio Curriculum
         </x-nav-link>
 
-        {{-- Simulatore Tempi Partenza --}}
-        <x-nav-link :href="route('user.quadranti.index')" :active="request()->routeIs('user.quadranti.*')">
+        {{-- Simulatore Tempi Partenza: app Schema Partenze, accesso automatico --}}
+        @if (config('services.partenze.url') && config('services.partenze.sso_secret'))
+        <x-nav-link :href="route('user.partenze')" :active="false" target="_blank" rel="noopener">
             ⏰ Simulatore Tempi Partenza
         </x-nav-link>
+        @endif
 
         {{-- Documents --}}
         <x-nav-link :href="route('user.documents.index')" :active="request()->routeIs('user.documents.*')">
@@ -339,9 +341,11 @@
                 <x-responsive-nav-link :href="route('user.curriculum')" :active="request()->routeIs('user.curriculum')">
                     📋 Il Mio Curriculum
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('user.quadranti.index')" :active="request()->routeIs('user.quadranti.*')">
+                @if (config('services.partenze.url') && config('services.partenze.sso_secret'))
+                <x-responsive-nav-link :href="route('user.partenze')" :active="false" target="_blank" rel="noopener">
                     ⏰ Simulatore Tempi Partenza
                 </x-responsive-nav-link>
+                @endif
                 <x-responsive-nav-link :href="route('user.assignments.index')" :active="request()->routeIs('user.assignments.*')">
                     🏌️ Le Mie Assegnazioni
                 </x-responsive-nav-link>

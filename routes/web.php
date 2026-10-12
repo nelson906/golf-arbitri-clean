@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\FedergolfImportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController;
-use App\Http\Controllers\User\FedergolfController;
+use App\Http\Controllers\User\PartenzeController;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 
@@ -49,10 +49,6 @@ Route::middleware(['auth'])->group(function () {
 
     // NOTA (audit 2026-07): rimosso placeholder 'reports.dashboard'
     // (view placeholder, link in navigation già commentati).
-});
-Route::middleware(['auth'])->prefix('user/federgolf')->group(function () {
-    Route::post('/load-all', [FedergolfController::class, 'loadAllCompetitions']);
-    Route::post('/iscritti', [FedergolfController::class, 'getIscritti']);
 });
 
 // Authentication routes
@@ -122,7 +118,9 @@ Route::middleware(['auth', 'referee_or_admin'])->group(function () {
         // ===== MODULAR USER ROUTES =====
         require __DIR__.'/user/availability.php';
         require __DIR__.'/user/assignments.php';
-        require __DIR__.'/user/quadranti.php';
+        // Simulatore Tempi Partenza: vive nell'app Schema Partenze, qui solo il
+        // link firmato che fa entrare l'utente gia' collegato.
+        Route::get('/partenze', PartenzeController::class)->name('partenze');
         require __DIR__.'/user/curriculum.php';
         require __DIR__.'/user/documents.php';
         require __DIR__.'/user/communications.php';

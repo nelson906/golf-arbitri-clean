@@ -78,7 +78,7 @@ class FedergolfImportController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // CARICA GARE FIG (riusa logica esistente in FedergolfController)
+    // CARICA GARE FIG
     // ─────────────────────────────────────────────────────────────────────────
 
     /**

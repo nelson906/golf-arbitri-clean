@@ -15,8 +15,8 @@ use Illuminate\Support\Facades\Route;
 | non autenticato). Vedere test: RefereeDashboardAuthTest.
 |
 | NOTA (audit 2026-07): rimosso il blocco legacy /referee/quadranti/* —
-| mai referenziato da views/JS; la versione attiva è user.quadranti.*
-| (routes/user/quadranti.php). referee.dashboard resta: è il target del
+| mai referenziato da views/JS. Dal 2026-10 il simulatore vive nell'app
+| Schema Partenze (link user.partenze). referee.dashboard resta: è il target del
 | redirect di DashboardController per gli arbitri.
 |--------------------------------------------------------------------------
 */

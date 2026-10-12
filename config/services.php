@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    // Simulatore Tempi Partenza (app Schema Partenze): indirizzo e segreto
+    // condiviso per l'accesso automatico. Stesso segreto di SSO_SECRET la'.
+    // Vuoti = voce di menu nascosta.
+    'partenze' => [
+        'url'        => env('PARTENZE_URL'),
+        'sso_secret' => env('PARTENZE_SSO_SECRET'),
+    ],
+
 ];
