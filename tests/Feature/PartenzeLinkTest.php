@@ -49,7 +49,9 @@ class PartenzeLinkTest extends TestCase
         $this->assertSame('arbitro@example.com', $dati['email']);
         $this->assertSame('Mario Rossi', $dati['name']);
         $this->assertEqualsWithDelta(time(), $dati['iat'], 5);
-        $this->assertGreaterThanOrEqual(16, strlen($dati['nonce']));
+        $nonce = $dati['nonce'];
+        $this->assertIsString($nonce);
+        $this->assertGreaterThanOrEqual(16, strlen($nonce));
     }
 
     public function test_due_click_danno_token_diversi(): void
