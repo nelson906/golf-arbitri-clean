@@ -75,39 +75,6 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * Legge una chiave dal JSON di risposta pretendendo che sia una stringa.
-     *
-     * `TestResponse::json()` restituisce mixed: senza questo controllo un
-     * assertStringContainsString() su un valore che non e' una stringa fallisce
-     * con un TypeError invece che con un messaggio utile.
-     *
-     * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $response
-     */
-    protected function jsonString(TestResponse $response, string $key): string
-    {
-        $value = $response->json($key);
-
-        $this->assertIsString($value, "La chiave '{$key}' del JSON di risposta non e' una stringa.");
-
-        return $value;
-    }
-
-    /**
-     * Legge una chiave dal JSON di risposta pretendendo che sia un array.
-     *
-     * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $response
-     * @return array<array-key, mixed>
-     */
-    protected function jsonArray(TestResponse $response, ?string $key = null): array
-    {
-        $value = $response->json($key);
-
-        $this->assertIsArray($value, "La chiave '".($key ?? '(radice)')."' del JSON di risposta non e' un array.");
-
-        return $value;
-    }
-
-    /**
      * Legge un dato passato alla view pretendendo che sia dell'oggetto atteso.
      *
      * @template TExpected of object
