@@ -55,6 +55,15 @@
             </div>
         </div>
 
+        {{-- Calendario non caricato: lo si dice, invece di mostrarlo vuoto --}}
+        @if (! empty($calendarData['error']))
+            <div class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800" role="alert">
+                {{ $calendarData['error'] }}
+                Le tue disponibilità sono comunque in
+                <a href="{{ route('user.availability.index') }}" class="underline font-medium">Le Mie Disponibilità</a>.
+            </div>
+        @endif
+
         {{-- Calendar Container --}}
         <div class="bg-white rounded-lg shadow">
             <div id="user-calendar" class="p-4"></div>

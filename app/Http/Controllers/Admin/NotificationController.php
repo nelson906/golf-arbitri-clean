@@ -740,12 +740,18 @@ class NotificationController extends Controller
             return response()->json(['success' => false, 'message' => 'Sui tornei nazionali non ci sono allegati.'], 422);
         }
 
-        try {
-            // Valida il file
-            $request->validate([
-                'document' => 'required|file|mimes:doc,docx|max:10240', // max 10MB
-            ]);
+        // Fuori dal try: prima il catch generico trasformava l'errore di
+        // validazione in un 500 con la chiave grezza ("validation.mimes")
+        $request->validate([
+            'document' => 'required|file|mimes:doc,docx|max:10240', // max 10MB
+        ], [
+            'document.required' => 'Scegli il file da caricare.',
+            'document.file' => 'Scegli il file da caricare.',
+            'document.mimes' => 'Si possono caricare solo file Word (.doc o .docx).',
+            'document.max' => 'Il file supera i 10 MB.',
+        ]);
 
+        try {
             $file = $request->file('document');
             $filename = $this->documentService->uploadDocument($notification, $type, $file);
 

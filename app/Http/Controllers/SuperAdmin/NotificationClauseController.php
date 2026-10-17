@@ -183,7 +183,10 @@ class NotificationClauseController extends Controller
                     ->with('warning', "La clausola è utilizzata in {$usageCount} notifiche. Eliminazione non consentita.");
             }
 
-            $clause->delete();
+            // Eliminazione definitiva (decisione 2026-10-17): la clausola non e'
+            // usata da nessuna notifica, e con la cancellazione "morbida" il suo
+            // codice restava occupato e non si poteva piu' riusare
+            $clause->forceDelete();
 
             return redirect()
                 ->route('super-admin.clauses.index')

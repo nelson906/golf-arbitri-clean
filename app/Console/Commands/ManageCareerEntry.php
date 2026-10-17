@@ -213,10 +213,13 @@ class ManageCareerEntry extends Command
                     'tournament_name' => $tournament->name,
                     'role' => $role,
                     'assigned_at' => now()->format('Y-m-d'),
-                    'status' => 'confirmed',
+                    // Come la pagina Storico carriera (la "conferma" delle
+                    // assegnazioni non esiste piu', decisione 2026-10-03)
+                    'status' => 'manual_entry',
                 ];
 
                 $history->assignments_by_year = $assignments;
+                $history->career_stats = $history->generateStatsSummary();
                 $history->save();
             }
         }
@@ -243,6 +246,22 @@ class ManageCareerEntry extends Command
         }
 
         $removed = $this->careerService->removeTournamentEntry($user->id, (int) $year, (int) $tournamentId);
+
+        // Come la pagina Storico carriera: via anche l'assegnazione di quel
+        // torneo, e statistiche ricalcolate
+        $history = RefereeCareerHistory::where('user_id', $user->id)->first();
+        if ($history) {
+            $assignments = $history->assignments_by_year ?? [];
+            if (isset($assignments[$year]) && is_array($assignments[$year])) {
+                $assignments[$year] = array_values(array_filter(
+                    $assignments[$year],
+                    fn ($a) => ! is_array($a) || ($a['tournament_id'] ?? null) != $tournamentId
+                ));
+                $history->assignments_by_year = $assignments;
+                $history->career_stats = $history->generateStatsSummary();
+                $history->save();
+            }
+        }
 
         if ($removed) {
             $this->info("Torneo ID {$tournamentId} rimosso dallo storico {$year} di {$user->name}");

@@ -42,7 +42,10 @@ function uploadDocument(notificationId, type, file) {
     })
     .then(response => {
         if (!response.ok) {
-            throw new Error('Errore nel caricamento del file');
+            // Il server spiega il motivo (file mancante, formato, dimensione)
+            return response.json()
+                .catch(() => ({}))
+                .then(data => { throw new Error(data.message || 'Errore nel caricamento del file'); });
         }
         return response.json();
     })

@@ -328,9 +328,11 @@ class AvailabilityController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
+            // La view mostra 'error' in un riquadro rosso sopra il calendario
             $calendarData = [
                 'tournaments' => collect(),
-                'userType' => 'user',
+                'tournamentTypes' => [],
+                'userType' => $user->user_type->value,
                 'error' => 'Si è verificato un errore nel caricamento del calendario.',
             ];
 

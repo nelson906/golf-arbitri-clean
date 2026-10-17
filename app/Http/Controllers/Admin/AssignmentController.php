@@ -175,21 +175,10 @@ class AssignmentController extends Controller
         $tournament = Tournament::findOrFail($request->integer('tournament_id'));
         $this->checkTournamentAccess($tournament);
 
-        $exists = Assignment::where('tournament_id', $validated['tournament_id'])
-            ->where('user_id', $validated['user_id'])
-            ->exists();
-
-        if ($exists) {
-            return back()->with('error', 'Arbitro già assegnato a questo torneo');
-        }
-
-        $role = $validated['role'] ?? null;
-        if (! is_string($role) || $role === '') {
-            $role = $this->isObserverOnly($tournament)
-                ? AssignmentRole::Observer->value
-                : AssignmentRole::default()->value;
-        }
-        $validated['role'] = $role;
+        // Doppione e ruolo li controlla gia' AssignmentRequest (ruolo
+        // obbligatorio e valido, arbitro non ancora sul torneo): tolti i due
+        // rami che ripetevano quei controlli e non scattavano mai (2026-10-17)
+        $role = $request->string('role')->toString();
 
         if (! $this->observerRoleAllowed($tournament, $role)) {
             return back()->withInput()->with('error', 'Sui tornei nazionali l\'admin di zona designa solo osservatori.');

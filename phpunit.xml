@@ -18,6 +18,9 @@
         </include>
     </source>
     <php>
+        <!-- La suite usa ~115 MB: con il limite di 128 MB il report di coverage
+             di artisan test con coverage esauriva la memoria. Vale anche per composer verifica. -->
+        <ini name="memory_limit" value="1G"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
