@@ -409,7 +409,7 @@ class NotificationController extends Controller
      * FIX D3: il redirect post-invio riflette lo stato reale — un invio
      * parziale (es. circolo senza email) non deve apparire come pieno successo.
      */
-    private function redirectAfterSend(TournamentNotification $notification): RedirectResponse
+    private function redirectAfterSend(TournamentNotification $notification, ?string $extraWarning = null): RedirectResponse
     {
         $final = $notification->refresh();
 
@@ -417,7 +417,10 @@ class NotificationController extends Controller
             $lastError = $final->metadata['last_error'] ?? 'destinatario non raggiungibile';
 
             return redirect()->route('admin.tournament-notifications.index')
-                ->with('warning', "Notifica inviata PARZIALMENTE — {$lastError}. Verificare i destinatari.");
+                ->with('warning', $this->joinWarnings(
+                    "Notifica inviata PARZIALMENTE — {$lastError}. Verificare i destinatari.",
+                    $extraWarning
+                ));
         }
 
         // FIX M5 (audit 2026-07): nessuna mail partita (es. nessun destinatario
@@ -425,12 +428,40 @@ class NotificationController extends Controller
         if ($final->status === 'failed') {
             $lastError = $final->metadata['last_error'] ?? 'nessun destinatario valido';
 
-            return redirect()->route('admin.tournament-notifications.index')
+            $response = redirect()->route('admin.tournament-notifications.index')
                 ->with('error', "Notifica NON inviata — {$lastError}.");
+
+            return $extraWarning === null ? $response : $response->with('warning', $extraWarning);
         }
 
-        return redirect()->route('admin.tournament-notifications.index')
+        $response = redirect()->route('admin.tournament-notifications.index')
             ->with('success', 'Notifiche inviate con successo');
+
+        return $extraWarning === null ? $response : $response->with('warning', $extraWarning);
+    }
+
+    /**
+     * Avviso per le clausole scartate al salvataggio (inesistenti o
+     * disattivate). Null se non ne e' stata scartata nessuna.
+     *
+     * @param  list<string>  $placeholders
+     */
+    private function discardedClausesWarning(array $placeholders): ?string
+    {
+        if ($placeholders === []) {
+            return null;
+        }
+
+        $list = implode(', ', array_map(fn (string $p): string => '{'.$p.'}', $placeholders));
+
+        return count($placeholders) === 1
+            ? "Clausola per {$list} non più disponibile: ignorata."
+            : "Clausole per {$list} non più disponibili: ignorate.";
+    }
+
+    private function joinWarnings(string $first, ?string $second): string
+    {
+        return $second === null ? $first : "{$first} {$second}";
     }
 
     /**
@@ -563,7 +594,9 @@ class NotificationController extends Controller
             'additional_names.*' => 'nullable|string|max:255',
             'attach_convocation' => 'boolean',
             'clauses' => 'nullable|array',
-            'clauses.*' => 'nullable|exists:notification_clauses,id',
+            // Niente exists: una clausola cancellata o disattivata nel frattempo
+            // viene scartata dal servizio e il resto si salva (2026-10-15)
+            'clauses.*' => 'nullable|integer',
             'action' => 'nullable|string|in:save,send,preview',
         ]);
 
@@ -627,11 +660,12 @@ class NotificationController extends Controller
             ];
 
             // Salva come bozza con tutti i dati
-            $this->transactionService->saveAsDraft(
+            $discardedClauses = $this->transactionService->saveAsDraft(
                 $notification,
                 $metadata,
                 $request->array('clauses')
             );
+            $clauseWarning = $this->discardedClausesWarning($discardedClauses);
 
             // ═══════════════════════════════════════════════════════════════════════
             // GESTIONE AZIONE: save, send, o preview
@@ -644,6 +678,7 @@ class NotificationController extends Controller
                 return response()->json([
                     'success' => true,
                     'preview' => $preview,
+                    'warning' => $clauseWarning,
                 ]);
             }
 
@@ -653,17 +688,19 @@ class NotificationController extends Controller
                     $this->transactionService->sendWithTransaction($notification);
 
                     // FIX D3: distingue invio pieno da invio parziale
-                    return $this->redirectAfterSend($notification);
+                    return $this->redirectAfterSend($notification, $clauseWarning);
                 } catch (\Exception $sendError) {
                     return redirect()->back()
                         ->with('error', 'Errore nell\'invio: '.$sendError->getMessage())
-                        ->with('warning', 'La notifica è stata salvata come bozza.');
+                        ->with('warning', $this->joinWarnings('La notifica è stata salvata come bozza.', $clauseWarning));
                 }
             }
 
             // SAVE (default): salva solo come bozza
-            return redirect()->route('admin.tournaments.index')
+            $saved = redirect()->route('admin.tournaments.index')
                 ->with('success', 'Notifica salvata come bozza. Puoi inviarla dalla lista tornei.');
+
+            return $clauseWarning === null ? $saved : $saved->with('warning', $clauseWarning);
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Errore nella preparazione: '.$e->getMessage());
         }

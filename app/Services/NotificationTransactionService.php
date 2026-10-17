@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\NotificationClause;
+use App\Models\NotificationClauseSelection;
 use App\Models\TournamentNotification;
+use App\Support\Untrusted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -101,16 +104,23 @@ class NotificationTransactionService
     // (il flusso reale è saveAsDraft() + sendWithTransaction()).
 
     /**
-     * Salva una notifica come bozza con tutti i dati
+     * Salva una notifica come bozza con tutti i dati.
+     *
+     * Le clausole che non esistono piu' o sono disattivate vengono scartate
+     * senza bloccare il salvataggio del resto (decisione 2026-10-15): il
+     * chiamante riceve i segnaposti scartati per avvisare l'admin.
      *
      * @param  array<string, mixed>  $metadata
-     * @param  array<string, mixed>  $clauses
+     * @param  array<array-key, mixed>  $clauses  segnaposto => id clausola
+     * @return list<string> segnaposti delle clausole scartate
      */
     public function saveAsDraft(
         TournamentNotification $notification,
         array $metadata,
         array $clauses = []
-    ): void {
+    ): array {
+        $discarded = [];
+
         DB::beginTransaction();
 
         try {
@@ -122,7 +132,7 @@ class NotificationTransactionService
 
             // Salva clausole se presenti
             if (! empty($clauses)) {
-                $this->saveClausesInTransaction($notification, $clauses);
+                $discarded = $this->saveClausesInTransaction($notification, $clauses);
             }
 
             // Gli allegati NON si rigenerano: si usa sempre la versione salvata
@@ -136,7 +146,10 @@ class NotificationTransactionService
 
             Log::info('Notification saved as draft', [
                 'notification_id' => $notification->id,
+                'discarded_clauses' => $discarded,
             ]);
+
+            return $discarded;
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -150,35 +163,73 @@ class NotificationTransactionService
     }
 
     /**
-     * Salva le clausole all'interno di una transazione esistente
+     * Salva le clausole all'interno di una transazione esistente.
      *
-     * @param  array<string, mixed>  $clauses
+     * Sostituisce sempre le selezioni precedenti: un segnaposto lasciato vuoto
+     * toglie la clausola che c'era. Una clausola inesistente o disattivata
+     * viene scartata (non salvata) e il suo segnaposto restituito.
+     *
+     * @param  array<array-key, mixed>  $clauses  segnaposto => id clausola
+     * @return list<string> segnaposti delle clausole scartate
      */
     private function saveClausesInTransaction(
         TournamentNotification $notification,
         array $clauses
-    ): void {
+    ): array {
         // Rimuovi le selezioni precedenti
-        \App\Models\NotificationClauseSelection::where('tournament_notification_id', $notification->id)->delete();
+        NotificationClauseSelection::where('tournament_notification_id', $notification->id)->delete();
 
+        $requested = [];
         foreach ($clauses as $placeholder => $clauseId) {
-            if (! empty($clauseId)) {
-                try {
-                    \App\Models\NotificationClauseSelection::create([
-                        'tournament_notification_id' => $notification->id,
-                        'clause_id' => $clauseId,
-                        'placeholder_code' => $placeholder,
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error('Error saving clause selection', [
-                        'notification_id' => $notification->id,
-                        'placeholder' => $placeholder,
-                        'clause_id' => $clauseId,
-                        'error' => $e->getMessage(),
-                    ]);
-                    throw $e;
-                }
+            if (empty($clauseId)) {
+                continue;
+            }
+            $requested[(string) $placeholder] = Untrusted::int($clauseId);
+        }
+
+        if ($requested === []) {
+            return [];
+        }
+
+        $validIds = Untrusted::intList(
+            NotificationClause::active()->whereIn('id', array_values($requested))->pluck('id')->all()
+        );
+
+        $discarded = [];
+
+        foreach ($requested as $placeholder => $clauseId) {
+            // Le chiavi numeriche diventano int negli array PHP: si riportano a stringa
+            $placeholder = (string) $placeholder;
+
+            if (! in_array($clauseId, $validIds, true)) {
+                $discarded[] = $placeholder;
+
+                Log::warning('Clause discarded: missing or inactive', [
+                    'notification_id' => $notification->id,
+                    'placeholder' => $placeholder,
+                    'clause_id' => $clauseId,
+                ]);
+
+                continue;
+            }
+
+            try {
+                NotificationClauseSelection::create([
+                    'tournament_notification_id' => $notification->id,
+                    'clause_id' => $clauseId,
+                    'placeholder_code' => $placeholder,
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Error saving clause selection', [
+                    'notification_id' => $notification->id,
+                    'placeholder' => $placeholder,
+                    'clause_id' => $clauseId,
+                    'error' => $e->getMessage(),
+                ]);
+                throw $e;
             }
         }
+
+        return $discarded;
     }
 }
